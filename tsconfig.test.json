@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "tests/dist",
+    "rootDir": "assets/scripts",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": [
+    "assets/scripts/core/MathUtils.ts",
+    "assets/scripts/core/Constants.ts",
+    "assets/scripts/core/ArtRemap.ts",
+    "assets/scripts/data/WaveData.ts",
+    "assets/scripts/data/CharacterDB.ts",
+    "assets/scripts/data/AugmentDB.ts",
+    "assets/scripts/systems/AugmentManager.ts",
+    "assets/scripts/systems/InputManager.ts",
+    "assets/scripts/systems/Economy.ts",
+    "assets/scripts/systems/EffectSystem.ts",
+    "assets/scripts/systems/ParticleManager.ts",
+    "assets/scripts/systems/WaveManager.ts",
+    "assets/scripts/entities/EnemyBase.ts",
+    "assets/scripts/entities/BossController.ts",
+    "assets/scripts/entities/BulletController.ts"
+  ]
+}

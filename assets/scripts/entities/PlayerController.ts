@@ -1,0 +1,380 @@
+// ============================================================
+//  PlayerController.ts — 玩家控制器（Cocos Creator 3.x 组件）
+// ============================================================
+import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
+import { Vec, Rng, clamp } from '../core/MathUtils';
+import { CANVAS_W, CANVAS_H } from '../core/Constants';
+import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
+import { applyArtSprite } from '../core/SpriteUtils';
+const { ccclass, property } = _decorator;
+
+export interface PlayerStats extends CharStats {
+    extraBullets: number;
+    bulletBounce: number;
+    barrageMode: boolean;
+    novaMode: boolean;
+    allInBullets: number;
+    goldPickupRange: number;
+    cdReduction: number;
+    ultChargeRate: number;
+    eliteBonus: number;
+    maxAugments: number;
+    previewAugments: boolean;
+    phaseDash: boolean;
+    _bloodAwakening: boolean;
+    _coreOverflow: boolean;
+    _coreUsed: boolean;
+    _reikPassive: boolean;
+    chaosBonus: boolean;
+    explosionMult: number;
+    turretBonus: number;
+    freezeBonus: number;
+    [key: string]: any;
+}
+
+interface Buff { id: string; duration: number; mods: Record<string, any>; }
+
+@ccclass('PlayerController')
+export class PlayerController extends Component {
+    charId  = 'kai';
+    stats!: PlayerStats;
+    hp      = 100;
+    shield  = 0;
+    radius  = 16;
+    x       = 640;
+    y       = 360;
+    alive   = true;
+    color   = '#00ffcc';
+
+    // timers
+    private _shootTimer  = 0;
+    private _dashCd      = 0;
+    private _qCd         = 0;
+    private _eCd         = 0;
+    private _iframeTimer = 0;
+    private _invincible  = 0;
+    private _cosmosCd    = 0;
+    _rCharge             = 0;
+    ultReady             = false;
+
+    private _buffs: Buff[] = [];
+    private _charDef!: CharDef;
+
+    /** Sprite carrying the character's battle token art (char_<id>), set up in init(). */
+    sprite?: Sprite;
+
+    // ── 初始化 ───────────────────────────────────────────
+    init(charId: string, game: any): void {
+        this.charId   = charId;
+        this._charDef = CHARACTERS[charId];
+        const def     = this._charDef;
+        this.color    = def.color;
+
+        // 玩家战斗token贴图：使用专为战斗内小尺寸显示设计的 char_token_<id>
+        // （比角色选择界面的大立绘更简洁、轮廓对比度更高）；找不到贴图时不
+        // 影响逻辑，只是看不到图（回退到无贴图）。
+        if (!this.sprite) {
+            this.node.addComponent(UITransform).setContentSize(48, 48);
+            this.sprite = this.node.addComponent(Sprite);
+            this.sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        }
+        applyArtSprite(this.sprite, `char_token_${charId}`);
+        this.sprite.color = new Color(255, 255, 255, 255);
+
+        this.stats = {
+            maxHp: def.stats.maxHp, speed: def.stats.speed,
+            damage: def.stats.damage, attackSpeed: def.stats.attackSpeed,
+            armor: def.stats.armor, critRate: def.stats.critRate, critDmg: def.stats.critDmg,
+            pierce: def.stats.pierce || 0,
+            extraBullets: 0, bulletBounce: 0,
+            barrageMode: false, novaMode: false, allInBullets: 0,
+            goldPickupRange: 60, cdReduction: 0, ultChargeRate: 1,
+            eliteBonus: 0, maxAugments: 6, previewAugments: false,
+            phaseDash: false, _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
+            _reikPassive: false, chaosBonus: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
+        };
+
+        this.hp     = this.stats.maxHp;
+        this.shield = 0;
+        this.x      = CANVAS_W / 2;
+        this.y      = CANVAS_H / 2;
+        this.alive  = true;
+        this._buffs = [];
+        this._rCharge = 0;
+
+        if (def.passive) def.passive(this, game);
+    }
+
+    // ── 当前伤害（含词条/buff/连击） ──────────────────────
+    getDamage(game?: any): number {
+        let d = this.stats.damage;
+        if (this.stats._reikPassive) {
+            const lost = 1 - this.hp / this.stats.maxHp;
+            d *= (1 + Math.min(0.8, Math.floor(lost / 0.1) * 0.08));
+        }
+        for (const b of this._buffs) if (b.mods.dmgMult) d *= b.mods.dmgMult;
+        if (this.stats._comboDmgAug && game) {
+            const c = game.comboCount || 0;
+            if (c >= 100) d *= 1.30; else if (c >= 50) d *= 1.15; else if (c >= 20) d *= 1.05;
+        }
+        if (this.stats._bloodAwakening && this.hp / this.stats.maxHp < 0.25) d *= 2;
+        if (this.stats._overloadCheck && game?.augmentManager?.active?.length >= 5) d *= 1.5;
+        if (this.stats.chaosGodActive) d *= 5;
+        return d;
+    }
+
+    getAtkSpd(): number {
+        let s = this.stats.attackSpeed;
+        for (const b of this._buffs) if (b.mods.atkSpd) s *= b.mods.atkSpd;
+        return s;
+    }
+
+    getSpeed(): number {
+        let s = this.stats.speed;
+        for (const b of this._buffs) if (b.mods.speed) s *= b.mods.speed;
+        return s;
+    }
+
+    applyBuff(id: string, duration: number, mods: Record<string, any>): void {
+        const existing = this._buffs.find(b => b.id === id);
+        if (existing) { existing.duration = duration; return; }
+        this._buffs.push({ id, duration, mods });
+    }
+
+    heal(amount: number): void {
+        this.hp = Math.min(this.stats.maxHp, this.hp + amount);
+    }
+
+    takeDamage(amount: number, game: any): void {
+        if (this._iframeTimer > 0 || this._invincible > 0) return;
+        // 核心溢出保护
+        if (this.stats._coreOverflow && !this.stats._coreUsed && this.hp / this.stats.maxHp < 0.2) {
+            this.stats._coreUsed = true;
+            this.applyBuff('core_overflow', 10, { invincible: true, dmgMult: 3, atkSpd: 3 });
+            game.floatingText?.spawn(this.x, this.y - 50, '核心溢出！', '#ffcc00', 24, true);
+            game.particles?.hexActivate(this.x, this.y, '#ffcc00');
+            setTimeout(() => { this.heal(this.stats.maxHp * 0.5); this.stats._coreUsed = false; }, 10000);
+        }
+        // 护盾先扣
+        if (this.shield > 0) {
+            const abs = Math.min(this.shield, amount);
+            this.shield -= abs; amount -= abs;
+            if (amount <= 0) { this._iframeTimer = 0.3; return; }
+        }
+        // 护甲减伤（对齐 EnemyBase.takeDamage 的 armor/(armor+100) 衰减公式；
+        // armor_up 词条/角色初始 armor 之前只写入 stats.armor 从未在这里读取，是死代码）。
+        const mitigation = this.stats.armor / (this.stats.armor + 100);
+        amount = Math.max(1, amount * (1 - mitigation));
+        this.hp -= amount;
+        this._iframeTimer = 0.5;
+        game.screenShake?.shake(8, 0.3);
+        game.floatingText?.spawn(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff4444', 16, false);
+        if (this.hp <= 0) {
+            // 时间悖论(time_paradox)：每波一次撤销死亡（对齐 AugmentDB.ts 的 desc 描述）。
+            // 简化为"撤销本次死亡"而非完整的状态快照回滚到波次起点——后者需要整局
+            // 状态序列化，超出核心玩法QA范围；_timeParadoxUsed 在每波开始时重置。
+            if (this.stats.hasTimeParadox && !this.stats._timeParadoxUsed) {
+                this.stats._timeParadoxUsed = true;
+                this.hp = this.stats.maxHp * 0.5;
+                this.applyBuff('time_paradox_iframe', 1.5, { invincible: true });
+                game.floatingText?.spawn(this.x, this.y - 50, '时间倒流！', '#66ffff', 24, true);
+                game.particles?.hexActivate?.(this.x, this.y, '#66ffff');
+                return;
+            }
+            this.hp = 0; this.alive = false; game.onPlayerDeath();
+        }
+    }
+
+    // ── 每帧更新 ─────────────────────────────────────────
+    tick(dt: number, input: any, game: any): void {
+        if (!this.alive) return;
+        this._iframeTimer = Math.max(0, this._iframeTimer - dt);
+        this._invincible  = Math.max(0, this._invincible - dt);
+        this._dashCd      = Math.max(0, this._dashCd - dt);
+        this._qCd         = Math.max(0, this._qCd - dt * (1 + this.stats.cdReduction));
+        this._eCd         = Math.max(0, this._eCd - dt * (1 + this.stats.cdReduction));
+        this._cosmosCd    = Math.max(0, this._cosmosCd - dt);
+
+        // Buff 更新
+        for (let i = this._buffs.length - 1; i >= 0; i--) {
+            const b = this._buffs[i];
+            b.duration -= dt;
+            if (b.mods.invincible) this._invincible = Math.max(this._invincible, 0.1);
+            if (b.duration <= 0) this._buffs.splice(i, 1);
+        }
+
+        // 移动
+        const noMove = this._buffs.some(b => b.mods.noMove);
+        if (!noMove) {
+            let mx = input.moveX, my = input.moveY;
+            if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
+            const spd = this.getSpeed();
+            this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
+            this.y = clamp(this.y + my * spd * dt, this.radius, CANVAS_H - this.radius);
+        }
+
+        // 冲刺
+        if (input.isDash() && this._dashCd <= 0) {
+            this._dashCd = 3;
+            if (this.stats.phaseDash) {
+                this.x = clamp(input.mouse.x, this.radius, CANVAS_W - this.radius);
+                this.y = clamp(input.mouse.y, this.radius, CANVAS_H - this.radius);
+            } else {
+                let dx = input.moveX, dy = input.moveY;
+                if (dx === 0 && dy === 0) {
+                    const a = Math.atan2(input.mouse.y - this.y, input.mouse.x - this.x);
+                    dx = Math.cos(a); dy = Math.sin(a);
+                }
+                this.x = clamp(this.x + dx * 120, this.radius, CANVAS_W - this.radius);
+                this.y = clamp(this.y + dy * 120, this.radius, CANVAS_H - this.radius);
+            }
+            this._iframeTimer = 0.3;
+            game.particles?.dashTrail?.(this.x, this.y, this.color);
+            game.augmentManager?.dispatchSkill(this, game);
+        }
+
+        // 普攻
+        this._shootTimer += dt;
+        const atkInterval = 1 / Math.max(0.1, this.getAtkSpd());
+        if (this._shootTimer >= atkInterval) {
+            this._shootTimer = 0;
+            this._shoot(input, game);
+        }
+
+        // 技能 Q
+        if (input.isKeyQ() && this._qCd <= 0) {
+            this._qCd = 4 * (1 - this.stats.cdReduction);
+            this._charDef.qSkill(this, game);
+            game.augmentManager?.dispatchSkill(this, game);
+        }
+        // 技能 E
+        if (input.isKeyE() && this._eCd <= 0) {
+            this._eCd = 10 * (1 - this.stats.cdReduction);
+            if (this.stats.eSkillUpgrade === 'blackhole') {
+                const bx = input.mouse.x, by = input.mouse.y;
+                game.attractEnemies?.(bx, by, 120);
+                game.particles?.explode(bx, by, '#aa00ff', 60);
+                for (const e of game.enemies) {
+                    if (e.alive && Math.hypot(e.x - bx, e.y - by) < 120) e.takeDamage(this.getDamage(game) * 2, this, game);
+                }
+                game.floatingText?.spawn(bx, by - 40, '黑洞引擎！', '#cc00ff', 18, true);
+            } else {
+                this._charDef.eSkill(this, game);
+            }
+            game.augmentManager?.dispatchSkill(this, game);
+        }
+        // 宇宙法则(cosmos_law)：R 键触发（独立于大招 R，走独立30s CD）。
+        // 对齐 hexblast-py entities/player.py 的触发方式：
+        // 持有 hasCosmos 且 CD 就绪时按 R 即激活，不消耗大招充能；
+        // "互相攻击"部分沿用 hexblast-py 的半成品（变色+5s后AOE爆炸），
+        // 这在 Python 原版中也未实现互攻 AI，记录为已知限制。
+        if (input.isKeyR() && this.stats.hasCosmos && this._cosmosCd <= 0) {
+            this._cosmosCd = 30;
+            game.activateCosmos?.(this);
+        }
+        // 终极 R
+        if (input.isKeyR() && this._rCharge >= 1) {
+            this._rCharge = 0; this.ultReady = false;
+            this._charDef.ultimate(this, game);
+            game.hitStop?.trigger(0.1);
+        }
+        this._rCharge = Math.min(1, this._rCharge);
+        if (this._rCharge >= 1) this.ultReady = true;
+    }
+
+    // ── 发射子弹 ─────────────────────────────────────────
+    private _shoot(input: any, game: any): void {
+        const nearest = game.getNearestEnemy?.(this.x, this.y);
+        let tx = input.mouse.x, ty = input.mouse.y;
+        if (nearest) { tx = nearest.x; ty = nearest.y; }
+        const [ndx, ndy] = Vec.normalize(tx - this.x, ty - this.y);
+
+        const dmg    = this.getDamage(game);
+        const isCrit = Math.random() < (this.stats.critRate || 0);
+
+        const spawnBullet = (dx: number, dy: number, dmgMult = 1) => {
+            game.bulletPool?.spawn({
+                x: this.x, y: this.y, vx: dx * 550, vy: dy * 550,
+                damage: dmg * dmgMult, radius: this._charDef.attackType === 'melee' ? 20 : 5,
+                color: this.color, owner: 'player', isCrit,
+                pierceLeft: this.stats.pierce || 0,
+                bounceLeft: this.stats.bulletBounce || 0,
+                charKey: this.charId, lifeTime: 2,
+            });
+        };
+
+        if (this.stats.novaMode) {
+            // 全方向9发
+            for (let i = 0; i < 9; i++) {
+                const a = (i / 9) * Math.PI * 2;
+                spawnBullet(Math.cos(a), Math.sin(a), 0.35);
+            }
+        } else if (this.stats.barrageMode) {
+            // 5发散射
+            const spread = 0.25;
+            for (let i = -2; i <= 2; i++) {
+                const a = Math.atan2(ndy, ndx) + i * spread;
+                spawnBullet(Math.cos(a), Math.sin(a), 0.5);
+            }
+        } else {
+            spawnBullet(ndx, ndy, 1);
+            // 额外子弹
+            for (let i = 0; i < (this.stats.extraBullets || 0); i++) {
+                const off = (Math.random() - 0.5) * 0.3;
+                const a   = Math.atan2(ndy, ndx) + off;
+                spawnBullet(Math.cos(a), Math.sin(a), 0.7);
+            }
+            // all_in
+            for (let i = 1; i < (this.stats.allInBullets || 0); i++) {
+                const off = (i / (this.stats.allInBullets - 1) - 0.5) * 0.5;
+                const a   = Math.atan2(ndy, ndx) + off;
+                spawnBullet(Math.cos(a), Math.sin(a), 0.8);
+            }
+        }
+    }
+
+    // ── 终极充能（击杀时调用） ────────────────────────────
+    addUltCharge(amount = 0.15): void {
+        this._rCharge = Math.min(1, this._rCharge + amount * (this.stats.ultChargeRate || 1));
+    }
+
+    // ── CD 归零（eternal_machine 词条调用） ──────────────
+    resetCooldowns(): void {
+        this._qCd = 0;
+        this._eCd = 0;
+        this._dashCd = 0;
+    }
+
+    // ── 状态快照（用于 HUD） ─────────────────────────────
+    getHPRatio(): number       { return this.hp / (this.stats.maxHp || 1); }
+    getQCdRatio(): number      { return 1 - Math.min(1, this._qCd / 4); }
+    getECdRatio(): number      { return 1 - Math.min(1, this._eCd / 10); }
+    getUltChargeRatio(): number { return this._rCharge; }
+    getDashCdRatio(): number   { return 1 - Math.min(1, this._dashCd / 3); }
+    hasBuff(id: string): boolean { return !!this._buffs.find(b => b.id === id); }
+
+    // ── 便捷访问器（GameManager / HUD 直接读取） ─────────
+    get dead():         boolean { return !this.alive; }
+    get maxHp():        number  { return this.stats.maxHp; }
+    set maxHp(v:number)         { this.stats.maxHp = v; }
+    get maxShield():    number  { return (this.stats as any).maxShield ?? 0; }
+    set maxShield(v: number)    { (this.stats as any).maxShield = v; }
+    get moveSpeed():    number  { return this.stats.speed; }
+    set moveSpeed(v: number)    { this.stats.speed = v; }
+    get damageMulti():  number  { return (this.stats as any).damageMulti ?? 1; }
+    set damageMulti(v: number)  { (this.stats as any).damageMulti = v; }
+
+    /**
+     * Returns a skill-state snapshot consumed by HUD.refresh().
+     * Slots: [0]=Q dash, [1]=E skill, [2]=R ultimate.
+     */
+    getSkillStates(): { name: string; icon: string; cd: number; maxCd: number }[] {
+        const cdR = 1 + (this.stats.cdReduction ?? 0);
+        const icons = this._charDef.skillIcons;
+        return [
+            { name: 'Q', icon: icons.q, cd: this._qCd,   maxCd: 4  / cdR },
+            { name: 'E', icon: icons.e, cd: this._eCd,   maxCd: 10 / cdR },
+            { name: 'R', icon: icons.r, cd: 1 - this._rCharge, maxCd: 1 },   // rCharge [0‥1]
+        ];
+    }
+}

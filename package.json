@@ -1,0 +1,15 @@
+{
+  "name": "hexblast",
+  "uuid": "abfa3e88-2554-445d-bc1d-32a914d58551",
+  "creator": {
+    "version": "3.8.8"
+  },
+  "scripts": {
+    "test": "tsc -p tsconfig.test.json && node --test",
+    "typecheck": "tsc -p tsconfig.json --noEmit --skipLibCheck"
+  },
+  "devDependencies": {
+    "cc": "file:tests/stubs/cc",
+    "typescript": "^5.4.5"
+  }
+}
