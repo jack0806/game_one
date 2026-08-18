@@ -162,7 +162,7 @@ export const CHARACTERS: Record<string, CharDef> = {
     },
     graf: {
         id: 'graf',
-        name: '混沌傀儡·格雷夫', icon: '🌀', color: '#cc44ff', unlocked: false,
+        name: '混沌傀儡·格雷夫', icon: '🌀', color: '#cc44ff', unlocked: true,
         unlockHint: '无尽模式撑过第50波',
         attackType: 'ranged', attackRange: 550,
         desc: '获得词条时额外随机一个，混沌本质',
@@ -201,7 +201,7 @@ export const CHARACTERS: Record<string, CharDef> = {
     },
     liana: {
         id: 'liana',
-        name: '冰霜狙击手·利亚娜', icon: '🔵', color: '#00ccff', unlocked: false,
+        name: '冰霜狙击手·利亚娜', icon: '🔵', color: '#00ccff', unlocked: true,
         unlockHint: '通关噩梦难度',
         attackType: 'ranged', attackRange: 550,
         desc: '低攻速超高单发，冻结要害×2.5伤害',
