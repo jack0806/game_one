@@ -74,8 +74,9 @@ export class PlayerController extends Component {
         // （比角色选择界面的大立绘更简洁、轮廓对比度更高）；找不到贴图时不
         // 影响逻辑，只是看不到图（回退到无贴图）。
         if (!this.sprite) {
-            this.node.addComponent(UITransform).setContentSize(48, 48);
-            this.sprite = this.node.addComponent(Sprite);
+            const node = (this as any).node as Node;
+            node.addComponent(UITransform).setContentSize(48, 48);
+            this.sprite = node.addComponent(Sprite);
             this.sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         }
         applyArtSprite(this.sprite, `char_token_${charId}`);
@@ -186,6 +187,15 @@ export class PlayerController extends Component {
     }
 
     // ── 每帧更新 ─────────────────────────────────────────
+    tickMovement(dt: number, input: any): void {
+        if (!this.alive || this._buffs.some(b => b.mods.noMove)) return;
+        let mx = input.moveX, my = input.moveY;
+        if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
+        const spd = this.getSpeed();
+        this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
+        this.y = clamp(this.y + my * spd * dt, this.radius, CANVAS_H - this.radius);
+    }
+
     tick(dt: number, input: any, game: any): void {
         if (!this.alive) return;
         this._iframeTimer = Math.max(0, this._iframeTimer - dt);
@@ -204,21 +214,15 @@ export class PlayerController extends Component {
         }
 
         // 移动
-        const noMove = this._buffs.some(b => b.mods.noMove);
-        if (!noMove) {
-            let mx = input.moveX, my = input.moveY;
-            if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
-            const spd = this.getSpeed();
-            this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
-            this.y = clamp(this.y + my * spd * dt, this.radius, CANVAS_H - this.radius);
-        }
+        this.tickMovement(dt, input);
 
-        // 冲刺
-        if (input.isDash() && this._dashCd <= 0) {
+        // 冲刺使用按下沿，避免长按在冷却结束后每3秒自动重复传送。
+        if ((input.isDashPressed?.() ?? input.isDash()) && this._dashCd <= 0) {
             this._dashCd = 3;
             if (this.stats.phaseDash) {
                 this.x = clamp(input.mouse.x, this.radius, CANVAS_W - this.radius);
                 this.y = clamp(input.mouse.y, this.radius, CANVAS_H - this.radius);
+                game.floatingText?.spawn(this.x, this.y - 40, '相位跳跃！', '#cc88ff', 18, true);
             } else {
                 let dx = input.moveX, dy = input.moveY;
                 if (dx === 0 && dy === 0) {
@@ -242,13 +246,14 @@ export class PlayerController extends Component {
         }
 
         // 技能 Q
-        if (input.isKeyQ() && this._qCd <= 0) {
+        if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
             this._qCd = 4 * (1 - this.stats.cdReduction);
             this._charDef.qSkill(this, game);
+            game.floatingText?.spawn(this.x, this.y - 55, this._charDef.skills.q.split('—')[0].trim(), this.color, 15, true);
             game.augmentManager?.dispatchSkill(this, game);
         }
         // 技能 E
-        if (input.isKeyE() && this._eCd <= 0) {
+        if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
             this._eCd = 10 * (1 - this.stats.cdReduction);
             if (this.stats.eSkillUpgrade === 'blackhole') {
                 const bx = input.mouse.x, by = input.mouse.y;
@@ -261,6 +266,7 @@ export class PlayerController extends Component {
             } else {
                 this._charDef.eSkill(this, game);
             }
+            game.floatingText?.spawn(this.x, this.y - 55, this._charDef.skills.e.split('—')[0].trim(), this.color, 15, true);
             game.augmentManager?.dispatchSkill(this, game);
         }
         // 宇宙法则(cosmos_law)：R 键触发（独立于大招 R，走独立30s CD）。
@@ -268,12 +274,12 @@ export class PlayerController extends Component {
         // 持有 hasCosmos 且 CD 就绪时按 R 即激活，不消耗大招充能；
         // "互相攻击"部分沿用 hexblast-py 的半成品（变色+5s后AOE爆炸），
         // 这在 Python 原版中也未实现互攻 AI，记录为已知限制。
-        if (input.isKeyR() && this.stats.hasCosmos && this._cosmosCd <= 0) {
+        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this.stats.hasCosmos && this._cosmosCd <= 0) {
             this._cosmosCd = 30;
             game.activateCosmos?.(this);
         }
         // 终极 R
-        if (input.isKeyR() && this._rCharge >= 1) {
+        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1) {
             this._rCharge = 0; this.ultReady = false;
             this._charDef.ultimate(this, game);
             game.hitStop?.trigger(0.1);
@@ -282,8 +288,30 @@ export class PlayerController extends Component {
         if (this._rCharge >= 1) this.ultReady = true;
     }
 
+    // ── 近战普攻 ────────────────────────────────────────────
+    private _meleeAttack(game: any): void {
+        const enemy = game.getNearestEnemy?.(this.x, this.y);
+        if (!enemy || !enemy.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > this._charDef.attackRange + this.radius + enemy.radius) return;
+        let dmg = this.getDamage(game);
+        const isCrit = Math.random() < (this.stats.critRate || 0);
+        if (isCrit) {
+            dmg *= 1 + (this.stats.critDmg || 0.5);
+            game.floatingText?.spawn(enemy.x, enemy.y - 20, 'CRIT!', '#ffd700', 14, true);
+        }
+        if ((enemy.isElite || enemy.isBoss) && this.stats.eliteBonus) dmg *= 1 + this.stats.eliteBonus;
+        if (enemy.frozen > 0 && this.stats.freezeBonus) dmg *= this.stats.freezeBonus;
+        enemy.takeDamage(dmg, this, game);
+        game.augmentManager?.dispatchHit(this, enemy, dmg, game);
+        game.floatingText?.spawn(enemy.x, enemy.y - 10, Math.ceil(dmg).toString(), isCrit ? '#ffd700' : this.color, isCrit ? 16 : 13, isCrit);
+        game.particles?.hit(enemy.x, enemy.y, this.color);
+    }
+
     // ── 发射子弹 ─────────────────────────────────────────
     private _shoot(input: any, game: any): void {
+        if (this._charDef.attackType === 'melee') {
+            this._meleeAttack(game);
+            return;
+        }
         const nearest = game.getNearestEnemy?.(this.x, this.y);
         let tx = input.mouse.x, ty = input.mouse.y;
         if (nearest) { tx = nearest.x; ty = nearest.y; }
@@ -368,13 +396,14 @@ export class PlayerController extends Component {
      * Returns a skill-state snapshot consumed by HUD.refresh().
      * Slots: [0]=Q dash, [1]=E skill, [2]=R ultimate.
      */
-    getSkillStates(): { name: string; icon: string; cd: number; maxCd: number }[] {
+    getSkillStates(): { name: string; desc: string; icon: string; cd: number; maxCd: number }[] {
         const cdR = 1 + (this.stats.cdReduction ?? 0);
         const icons = this._charDef.skillIcons;
+        const skills = this._charDef.skills;
         return [
-            { name: 'Q', icon: icons.q, cd: this._qCd,   maxCd: 4  / cdR },
-            { name: 'E', icon: icons.e, cd: this._eCd,   maxCd: 10 / cdR },
-            { name: 'R', icon: icons.r, cd: 1 - this._rCharge, maxCd: 1 },   // rCharge [0‥1]
+            { name: 'Q', desc: skills.q, icon: icons.q, cd: this._qCd,   maxCd: 4  / cdR },
+            { name: 'E', desc: skills.e, icon: icons.e, cd: this._eCd,   maxCd: 10 / cdR },
+            { name: 'R', desc: skills.r, icon: icons.r, cd: 1 - this._rCharge, maxCd: 1 },   // rCharge [0‥1]
         ];
     }
 }

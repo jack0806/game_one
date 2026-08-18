@@ -19,7 +19,8 @@ export interface HudData {
     wave: number;
     chapter: number;
     augments: AugDef[];
-    skills: { name: string; icon: string; cd: number; maxCd: number }[];
+    skills: { name: string; desc: string; icon: string; cd: number; maxCd: number }[];
+    initialPassive?: { name: string; desc: string };
     bossHp?: number;
     bossMaxHp?: number;
     bossName?: string;
@@ -37,7 +38,8 @@ export class HUD extends Component {
     private _bossBarFg!:   Graphics;
     private _bossLabel!:   Label;
     private _augSlots:     Node[] = [];
-    private _skillRings:   { g: Graphics; label: Label; icon: Sprite }[] = [];
+    private _initialPassiveLabel?: Label;
+    private _skillRings:   { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
 
     private readonly BAR_W   = 240;
     private readonly BAR_H   = 18;
@@ -121,6 +123,15 @@ export class HUD extends Component {
             const slot = this._mkNode(`Aug${i}`, startX + i * 46, y);
             slot.addComponent(UITransform).setContentSize(40, 40);
             slot.addComponent(Graphics);   // redrawn each refresh (border/rarity tint)
+            if (i === 0) {
+                const passiveN = new Node('InitialPassive'); passiveN.setParent(slot);
+                passiveN.setPosition(new Vec3(0, -28, 0));
+                passiveN.addComponent(UITransform).setContentSize(70, 18);
+                this._initialPassiveLabel = passiveN.addComponent(Label);
+                this._initialPassiveLabel.fontSize = 9;
+                this._initialPassiveLabel.color = new Color(255, 220, 120, 255);
+                styleLabel(this._initialPassiveLabel);
+            }
 
             // 图标Sprite：叠在稀有度边框之上，居中显示，初始inactive（无词条时隐藏）。
             const iconN = new Node('Icon'); iconN.setParent(slot);
@@ -155,7 +166,16 @@ export class HUD extends Component {
             lbl.color = new Color(200, 200, 200, 255);
             styleLabel(lbl);
 
-            this._skillRings.push({ g, label: lbl, icon: iconSp });
+            const descN = new Node('Desc'); descN.setParent(n);
+            descN.setPosition(new Vec3(0, this.SKILL_R + 18, 0));
+            descN.addComponent(UITransform).setContentSize(66, 18);
+            const desc = descN.addComponent(Label);
+            desc.fontSize = 10;
+            desc.color = new Color(200, 220, 240, 220);
+            desc.overflow = Label.Overflow.RESIZE_HEIGHT;
+            styleLabel(desc);
+
+            this._skillRings.push({ g, label: lbl, icon: iconSp, desc });
         }
     }
 
@@ -166,7 +186,7 @@ export class HUD extends Component {
         this._refreshGold(d.gold);
         this._refreshWave(d.wave, d.chapter);
         this._refreshBoss(d);
-        this._refreshAugs(d.augments);
+        this._refreshAugs(d.augments, d.initialPassive);
         this._refreshSkills(d.skills);
     }
 
@@ -208,7 +228,10 @@ export class HUD extends Component {
         this._bossLabel.string = `${d.bossName ?? 'BOSS'}  ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
     }
 
-    private _refreshAugs(augs: AugDef[]) {
+    private _refreshAugs(augs: AugDef[], initialPassive?: { name: string; desc: string }) {
+        if (this._initialPassiveLabel) {
+            this._initialPassiveLabel.string = initialPassive ? `初始：${initialPassive.name}` : '';
+        }
         for (let i = 0; i < this._augSlots.length; i++) {
             const slot   = this._augSlots[i];
             const aug    = augs[i];
@@ -237,15 +260,16 @@ export class HUD extends Component {
         }
     }
 
-    private _refreshSkills(skills: { name: string; icon: string; cd: number; maxCd: number }[]) {
+    private _refreshSkills(skills: { name: string; desc: string; icon: string; cd: number; maxCd: number }[]) {
         const R = this.SKILL_R;
         for (let i = 0; i < this._skillRings.length; i++) {
-            const { g, label, icon } = this._skillRings[i];
+            const { g, label, icon, desc } = this._skillRings[i];
             const sk = skills[i];
             g.clear();
             if (!sk) continue;
 
             applyArtSprite(icon, `ui_icon_${sk.icon}`);
+            desc.string = (sk.desc || '').split('—')[0].trim();
 
             const ratio = sk.maxCd > 0 ? Math.max(0, 1 - sk.cd / sk.maxCd) : 1;
             const ready = ratio >= 1;

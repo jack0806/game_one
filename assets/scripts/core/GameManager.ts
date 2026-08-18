@@ -109,9 +109,13 @@ export class GameManager extends Component {
     update(rawDt: number) {
         const dt = Math.min(rawDt, DT_MAX);
 
-        // Hit-stop: freeze all logic but still tick the timer
+        // Hit-stop pauses combat simulation, but movement/input must stay responsive.
         if (this._hitStop.active) {
             this._hitStop.update(rawDt);
+            if (this.state === 'playing' && this._player?.alive) {
+                this._player.tickMovement(dt, this._input);
+                if (this._input.justPressed('Escape')) this._setState('paused');
+            }
             this._renderFrame();
             return;
         }
@@ -334,7 +338,7 @@ export class GameManager extends Component {
         // _setState hides all panels (incl. any stray chapterClear) before
         // the augment UI takes over.
         this._setState('augSelect');
-        const options = this._augMgr.rollOptions(3);
+        const options = this._augMgr.rollOptions(3, this._waveMgr.wave, this._player.charId);
         this._augUI.show(options, (aug) => {
             if (aug) this._augMgr.equip(aug, this._player, this);
             this._setState('playing');
@@ -495,7 +499,9 @@ export class GameManager extends Component {
         for (const t of this._turrets) {
             if (!t.alive) continue;
             const [tx, ty] = this._toLocal(t.x, t.y);
-            g.fillColor = new Color(0, 170, 255, 220);
+            g.fillColor = t.kind === 'clone'
+                ? new Color(170, 90, 255, 230)
+                : new Color(0, 170, 255, 220);
             g.circle(tx, ty, t.r ?? 10); g.fill();
             g.strokeColor = new Color(255, 255, 255, 200);
             g.lineWidth = 2; g.circle(tx, ty, (t.r ?? 10) + 3); g.stroke();
@@ -711,6 +717,7 @@ export class GameManager extends Component {
             wave: this._waveMgr.wave, chapter: this._chapter,
             augments: this._augMgr.active,
             skills: p.getSkillStates(),
+            initialPassive: this._char ? { name: this._char.name, desc: this._char.desc } : undefined,
             bossHp:    this._boss?.hp,
             bossMaxHp: this._boss?.maxHp,
             bossName:  this._boss?.name,
@@ -889,7 +896,7 @@ export class GameManager extends Component {
         // 分身不属于"炮台类词条"，不吃 turretBonus 加成——仅炮台/轨道炮台享受该被动。
         const c: any = {
             x: player.x + 80, y: player.y, r: player.radius,
-            alive: true, _timer: 0, _life: 8, owner: player,
+            alive: true, _timer: 0, _life: 8, owner: player, kind: 'clone',
         };
         c.update = (dt: number, g: GameManager) => {
             c._life -= dt; c._timer -= dt;
@@ -901,12 +908,14 @@ export class GameManager extends Component {
                 const target = g.getNearestEnemy(c.x, c.y);
                 if (target) {
                     const [dx, dy] = Vec.normalize(target.x - c.x, target.y - c.y);
-                    const dmg = player.getDamage(this) * 0.5;
-                    g.bullets.fire(c.x, c.y, dx, dy, dmg, { color: '#a4f', r: 5, owner: 'turret' });
+                    const dmg = player.getDamage(this) * 0.6;
+                    g.bullets.fire(c.x, c.y, dx, dy, dmg, { color: '#aa66ff', r: 6, owner: 'clone' });
                 }
             }
         };
         this._turrets.push(c);
+        this._floatText.spawn(player.x, player.y - 50, '暗影分身！', '#aa66ff', 18, true);
+        this._particles.hexActivate(player.x, player.y, '#aa66ff');
     }
 
     /**
@@ -1100,7 +1109,7 @@ export class GameManager extends Component {
             case 'speed':  p.moveSpeed *= 1 + (item.value ?? 0.1); break;
             case 'damage': p.damageMulti *= 1 + (item.value ?? 0.15); break;
             case 'augment':
-                const opts = this._augMgr.rollOptions(3);
+                const opts = this._augMgr.rollOptions(3, this._waveMgr.wave, p.charId);
                 this._augUI.show(opts, (aug) => {
                     if (aug) this._augMgr.equip(aug, p, this);
                 });

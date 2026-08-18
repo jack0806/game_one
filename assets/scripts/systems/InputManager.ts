@@ -48,6 +48,8 @@ export class InputManager extends Component {
         return code !== undefined && this._justPressed.has(code);
     }
 
+    justPressedCode(code: number): boolean { return this._justPressed.has(code); }
+
     get moveX(): number {
         return (this.isAnyDown(KeyCode.KEY_D, KeyCode.ARROW_RIGHT) ? 1 : 0)
              - (this.isAnyDown(KeyCode.KEY_A, KeyCode.ARROW_LEFT)  ? 1 : 0);
@@ -60,5 +62,12 @@ export class InputManager extends Component {
     isKeyQ(): boolean { return this.isDown(KeyCode.KEY_Q); }
     isKeyE(): boolean { return this.isDown(KeyCode.KEY_E); }
     isKeyR(): boolean { return this.isDown(KeyCode.KEY_R); }
+    isKeyQPressed(): boolean { return this.justPressedCode(KeyCode.KEY_Q); }
+    isKeyEPressed(): boolean { return this.justPressedCode(KeyCode.KEY_E); }
+    isKeyRPressed(): boolean { return this.justPressedCode(KeyCode.KEY_R); }
     isDash(): boolean { return this.isAnyDown(KeyCode.SHIFT_LEFT, KeyCode.SHIFT_RIGHT, KeyCode.SPACE); }
+    isDashPressed(): boolean {
+        return [KeyCode.SHIFT_LEFT, KeyCode.SHIFT_RIGHT, KeyCode.SPACE]
+            .some(code => this.justPressedCode(code));
+    }
 }

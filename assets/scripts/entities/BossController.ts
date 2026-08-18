@@ -15,6 +15,7 @@ export class BossController extends EnemyBase {
     isCharging   = false;
     _chargeVx    = 0;
     _chargeVy    = 0;
+    private _contactCd = 0;
 
     override init(type: string, wave: number, game: any): void {
         this.isBoss = true;
@@ -24,7 +25,7 @@ export class BossController extends EnemyBase {
         this.dots   = [];
         this.frozen = 0; this.slowMult = 1;
         this.phase  = 1; this.enraged = false; this._animTime = 0;
-        this._skillTimer = 3; this._summonTimer = 8; this._chargeCd = 12;
+        this._skillTimer = 2.5; this._summonTimer = 7; this._chargeCd = 10;
         this._setupForChapter(this.chapter);
     }
 
@@ -35,10 +36,10 @@ export class BossController extends EnemyBase {
 
     private _setupForChapter(ch: number): void {
         const tbl = [
-            { maxHp: 3000, damage: 30, speed: 55, color: '#cc3300', glow: '#ff0000',   label: '废土领主·腐肉'    },
-            { maxHp: 5500, damage: 48, speed: 60, color: '#4488cc', glow: '#00ccff',   label: '钢铁之王·熔炉'    },
-            { maxHp: 9000, damage: 70, speed: 65, color: '#00cc88', glow: '#00ffcc',   label: '海克斯异变体·无限核' },
-            { maxHp:14000, damage:100, speed: 70, color: '#8800cc', glow: '#cc44ff',   label: '混沌深渊·终焉之门' },
+            { maxHp: 3000, damage: 42, speed: 62, color: '#cc3300', glow: '#ff0000',   label: '废土领主·腐肉'    },
+            { maxHp: 5500, damage: 66, speed: 68, color: '#4488cc', glow: '#00ccff',   label: '钢铁之王·熔炉'    },
+            { maxHp: 9000, damage: 94, speed: 74, color: '#00cc88', glow: '#00ffcc',   label: '海克斯异变体·无限核' },
+            { maxHp:14000, damage:132, speed: 80, color: '#8800cc', glow: '#cc44ff',   label: '混沌深渊·终焉之门' },
         ];
         const t = tbl[Math.min(ch - 1, 3)];
         this.maxHp     = t.maxHp; this.hp        = t.maxHp;
@@ -63,6 +64,7 @@ export class BossController extends EnemyBase {
         if (!this.alive) return;
         this._animTime += dt;
         this.flashTimer = Math.max(0, this.flashTimer - dt);
+        this._contactCd = Math.max(0, this._contactCd - dt);
 
         // DoT（对齐 hexblast-py entities/boss.py update()：DoT把血打空时也要触发死亡，
         // 之前只扣血从不检查hp<=0，boss会一直"活着"卡在0血不消失）
@@ -107,13 +109,14 @@ export class BossController extends EnemyBase {
         this._summonTimer -= dt;
         this._chargeCd    -= dt;
 
-        if (this._skillTimer <= 0) { this._skillTimer = 5 - this.phase; this._useSkill(player, game); }
-        if (this._summonTimer <= 0) { this._summonTimer = 12; this._summon(game); }
-        if (this._chargeCd <= 0) { this._chargeCd = 10; this._startCharge(player); }
+        if (this._skillTimer <= 0) { this._skillTimer = Math.max(2.2, 5 - this.phase * 0.8); this._useSkill(player, game); }
+        if (this._summonTimer <= 0) { this._summonTimer = Math.max(7, 12 - this.phase); this._summon(game); }
+        if (this._chargeCd <= 0) { this._chargeCd = Math.max(7, 10 - this.phase); this._startCharge(player); }
 
-        // 近战伤害
-        if (Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
-            player.takeDamage(this.damage * dt * 3, game);
+        // 近战伤害按攻击冷却结算整次伤害，避免每帧小数伤害被玩家无敌帧吞掉。
+        if (Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
+            this._contactCd = 0.65;
+            player.takeDamage(this.damage, game);
         }
     }
 

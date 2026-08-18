@@ -26,6 +26,7 @@
     "assets/scripts/systems/WaveManager.ts",
     "assets/scripts/entities/EnemyBase.ts",
     "assets/scripts/entities/BossController.ts",
-    "assets/scripts/entities/BulletController.ts"
+    "assets/scripts/entities/BulletController.ts",
+    "assets/scripts/entities/PlayerController.ts"
   ]
 }

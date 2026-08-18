@@ -186,7 +186,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             const am = game.augmentManager;
             if (am && am.active && am.active.length > 0) {
                 am.active.pop();
-                const opts = am.rollOptions(2, game.wave);
+                const opts = am.rollOptions(2, game.wave, p.charId);
                 for (const o of opts) am.equip(o, p, game);
             }
             game.particles.hexActivate(p.x, p.y, '#cc44ff');

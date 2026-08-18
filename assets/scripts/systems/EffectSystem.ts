@@ -41,7 +41,7 @@ export class HitStop {
 
     /** dur 可以是秒（<2）或毫秒（≥2），自动识别 */
     trigger(dur = 0.05): void {
-        this._t = dur >= 2 ? dur / 1000 : dur;
+        this._t = Math.min(0.08, dur >= 2 ? dur / 1000 : dur);
     }
     update(dt: number): void { if (this._t > 0) this._t -= dt; }
     isActive(): boolean  { return this._t > 0; }

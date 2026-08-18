@@ -6,7 +6,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { AUGMENT_DB } = require('../dist/data/AugmentDB');
+const { AUGMENT_DB, chainLightning } = require('../dist/data/AugmentDB');
 const { makeMockGame, makePlayer } = require('./mockGame');
 
 // 每个测试都取一份独立拷贝，避免_cd/_timer等内部状态跨测试串味
@@ -15,6 +15,31 @@ function findAug(id) {
     assert.ok(a, `词条${id}应存在于AUGMENT_DB`);
     return { ...a };
 }
+
+test('chainLightning只命中邻近目标且不会循环重复命中', () => {
+    const hits = new Map();
+    const enemies = [
+        { x: 0, y: 0, alive: true, takeDamage(dmg) { hits.set(this, (hits.get(this) || 0) + dmg); } },
+        { x: 100, y: 0, alive: true, takeDamage(dmg) { hits.set(this, (hits.get(this) || 0) + dmg); } },
+        { x: 180, y: 0, alive: true, takeDamage(dmg) { hits.set(this, (hits.get(this) || 0) + dmg); } },
+        { x: 600, y: 0, alive: true, takeDamage(dmg) { hits.set(this, (hits.get(this) || 0) + dmg); } },
+    ];
+    const game = {
+        enemies,
+        particles: { lightning() {} },
+        floatingText: { spawn() {} },
+    };
+    const originalRandom = Math.random;
+    Math.random = () => 0;
+    try {
+        chainLightning({}, enemies[0], 20, 3, game);
+    } finally {
+        Math.random = originalRandom;
+    }
+    assert.equal(hits.get(enemies[1]), 20);
+    assert.equal(hits.get(enemies[2]), 16);
+    assert.equal(hits.has(enemies[3]), false, '远处敌人不应被连锁误伤');
+});
 
 // ── cosmos_law ──────────────────────────────────────────────
 test('cosmos_law: onEquip写入stats.hasCosmos=true(消费点在PlayerController.tick的R键分支)', () => {

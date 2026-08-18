@@ -192,6 +192,15 @@ export class BulletPool {
         for (let i = this._active.length - 1; i >= 0; i--) {
             const b = this._active[i];
             if (!b.isEnemyBullet && b.owner !== 'enemy') continue;
+            if (b.homing && player.alive) {
+                const [dx, dy] = Vec.normalize(player.x - b.x, player.y - b.y);
+                const speed = Math.max(1, Math.hypot(b.vx, b.vy));
+                b.vx += dx * speed * dt * 2.5;
+                b.vy += dy * speed * dt * 2.5;
+                const nextSpeed = Math.hypot(b.vx, b.vy) || speed;
+                b.vx = b.vx / nextSpeed * speed;
+                b.vy = b.vy / nextSpeed * speed;
+            }
             b.x += b.vx * dt; b.y += b.vy * dt; b.life += dt;
             if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > CANVAS_H + 30) {
                 this._release(b); continue;

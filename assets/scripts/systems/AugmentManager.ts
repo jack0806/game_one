@@ -11,7 +11,7 @@ export class AugmentManager {
     onNextAugment: (() => void) | null = null;
 
     // ── 生成选项 ──────────────────────────────────────────
-    rollOptions(n = 3, wave = 1): AugmentDef[] {
+    rollOptions(n = 3, wave = 1, charId?: string): AugmentDef[] {
         const blueW   = Math.max(10, 65 - wave * 1.5);
         const purpleW = Math.min(60, 30 + wave * 1.2);
         const orangeW = Math.min(25, Math.max(0, (wave - 5) * 1.2));
@@ -34,19 +34,22 @@ export class AugmentManager {
             }
             // 普通词条
             const avail = AUGMENT_DB.filter(a => !usedIds.has(a.id) && !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3));
-            const card = this._rollOneFromPool(avail, weights);
+            const card = this._rollOneFromPool(avail, weights, charId);
             if (card) { usedIds.add(card.id); results.push({ ...card, tier: 1 }); }
         }
         return results;
     }
 
-    private _rollOneFromPool(pool: AugmentDef[], weights: Record<string, number>): AugmentDef | null {
+    private _rollOneFromPool(pool: AugmentDef[], weights: Record<string, number>, charId?: string): AugmentDef | null {
         const avail = pool.filter(a => (weights[a.rarity] || 0) > 0);
         if (!avail.length) return null;
-        const totalW = avail.reduce((s, a) => s + (weights[a.rarity] || 0), 0);
+        const totalW = avail.reduce((s, a) => s + (weights[a.rarity] || 0) * (charId && (a.affinity?.indexOf(charId) ?? -1) >= 0 ? 2.5 : 1), 0);
         if (totalW <= 0) return null;
         let r = Math.random() * totalW;
-        for (const a of avail) { r -= weights[a.rarity] || 0; if (r <= 0) return a; }
+        for (const a of avail) {
+            r -= (weights[a.rarity] || 0) * (charId && (a.affinity?.indexOf(charId) ?? -1) >= 0 ? 2.5 : 1);
+            if (r <= 0) return a;
+        }
         return avail[avail.length - 1];
     }
 

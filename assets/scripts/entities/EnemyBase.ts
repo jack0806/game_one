@@ -150,8 +150,11 @@ export class EnemyBase {
 
         // 打击感：屏幕震动 + 顿帧
         const ratio = dmg / this.maxHp;
-        game.screenShake?.shake(Math.min(11, (this.isBoss ? 2.8 : 1) * (2 + ratio * 16)), Math.min(0.28, 0.05 + ratio * 0.28));
-        if (ratio > 0.04) game.hitStop?.trigger(15 + ratio * 110);
+        // 普通小额群攻只显示闪白/粒子；每个目标都震屏会让一次攻击带动整张画布抖动。
+        if (this.isBoss || this.isElite || ratio > 0.04) {
+            game.screenShake?.shake(Math.min(11, (this.isBoss ? 2.8 : 1) * (2 + ratio * 16)), Math.min(0.28, 0.05 + ratio * 0.28));
+            if (ratio > 0.04 || this.isBoss) game.hitStop?.trigger(15 + ratio * 110);
+        }
         // 方向粒子
         if (attacker) {
             const angle = Math.atan2(this.y - attacker.y, this.x - attacker.x);

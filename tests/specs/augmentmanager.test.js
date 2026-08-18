@@ -34,6 +34,22 @@ test('rollOptions高波次(wave>=15)才可能出现金色词条', () => {
     assert.equal(sawGold, true, 'wave=20多次尝试应至少出现一次金色词条');
 });
 
+test('角色亲和词条权重会影响抽取结果', () => {
+    const am = new AugmentManager();
+    const plain = { id: 'plain', rarity: 'blue', affinity: [] };
+    const vivian = { id: 'vivian', rarity: 'blue', affinity: ['vivian'] };
+    const originalRandom = Math.random;
+    Math.random = () => 0.4;
+    try {
+        const picked = am._rollOneFromPool([plain, vivian], { blue: 1 }, 'vivian');
+        assert.equal(picked.id, 'vivian', '固定随机值下应优先落到工程师亲和词条');
+        const unweighted = am._rollOneFromPool([plain, vivian], { blue: 1 });
+        assert.equal(unweighted.id, 'plain', '未指定角色时应按普通均匀权重抽取');
+    } finally {
+        Math.random = originalRandom;
+    }
+});
+
 test('equip新词条:加入active数组并调用onEquip(mult=1)', () => {
     const am = new AugmentManager();
     const player = makePlayer();

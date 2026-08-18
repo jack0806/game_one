@@ -81,6 +81,17 @@ test('敌人子弹(updateEnemyBullets)碰到玩家会调用player.takeDamage并�
     assert.equal(pool.active.length, 0);
 });
 
+test('敌方追踪弹会朝玩家修正方向并在越界后释放', () => {
+    const pool = new BulletPool(2);
+    const game = makeMockGame();
+    const player = makePlayer({ x: 100, y: 100 });
+    const b = pool.spawn({ x: 0, y: 0, vx: 100, vy: 0, damage: 10, radius: 5, isEnemyBullet: true, owner: 'enemy', homing: true, lifeTime: 0.2 });
+    pool.updateEnemyBullets(0.1, player, game);
+    assert.ok(b.vy > 0, '追踪弹应向玩家方向修正Y速度');
+    pool.updateEnemyBullets(0.2, player, game);
+    assert.equal(pool.active.length, 0, '过期敌方子弹应被释放');
+});
+
 test('被动freezeBonus:命中冻结中的敌人时伤害×freezeBonus(对齐liana描述)', () => {
     const pool = new BulletPool(4);
     const game = makeMockGame();

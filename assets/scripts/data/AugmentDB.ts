@@ -10,6 +10,7 @@ export interface AugmentDef {
     name: string;
     tags: string[];
     desc: string;
+    affinity?: string[];
     tier?: number;
     // 词条钩子
     onEquip?:     (p: any, game: any, mult?: number) => void;
@@ -26,14 +27,17 @@ export interface AugmentDef {
 export type AugDef = AugmentDef;
 
 // ── 辅助函数 ──────────────────────────────────────────────
-export function chainLightning(player: any, sourceEnemy: any, dmg: number, bounces: number, game: any): void {
+export function chainLightning(player: any, sourceEnemy: any, dmg: number, bounces: number, game: any, visited = new Set<any>()): void {
     if (!game || bounces <= 0) return;
-    const others = game.enemies.filter((e: any) => e !== sourceEnemy && e.alive && Vec.dist(e.x, e.y, sourceEnemy.x, sourceEnemy.y) < 150);
+    visited.add(sourceEnemy);
+    const others = game.enemies.filter((e: any) => !visited.has(e) && e.alive && Vec.dist(e.x, e.y, sourceEnemy.x, sourceEnemy.y) < 220);
     if (!others.length) return;
     const target = Rng.pick(others) as any;
+    visited.add(target);
     game.particles.lightning(sourceEnemy.x, sourceEnemy.y, target.x, target.y, '#ffe500');
     target.takeDamage(dmg, player, game);
-    chainLightning(player, target, dmg * 0.8, bounces - 1, game);
+    game.floatingText?.spawn(target.x, target.y - 22, '连锁!', '#ffe500', 13, false);
+    chainLightning(player, target, dmg * 0.8, bounces - 1, game, visited);
 }
 
 export function spawnExplosion(player: any, x: number, y: number, dmg: number, radius: number, game: any): void {
@@ -76,7 +80,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       desc: '子弹额外穿透 2 个敌人',
       onEquip(p, _g, mult = 1) { p.stats.pierce += 2 * mult; } },
 
-    { id: 'chain', rarity: 'blue', icon: 'lightning', name: '连锁闪电', tags: ['lightning'],
+    { id: 'chain', rarity: 'blue', icon: 'lightning', name: '连锁闪电', tags: ['lightning'], affinity: ['kai', 'olia'],
       desc: '击中目标后弹射至2个附近敌人（伤害×70%）',
       onHit(p, enemy, dmg, game) { chainLightning(p, enemy, dmg * 0.7, 2, game); } },
 
@@ -110,7 +114,10 @@ export const AUGMENT_DB: AugmentDef[] = [
 
     { id: 'lifesteal', rarity: 'blue', icon: 'lifesteal', name: '吸血子弹', tags: ['lifesteal'],
       desc: '每次命中回复伤害量×4% HP',
-      onHit(p, _enemy, dmg, game) { p.heal(dmg * 0.04); if (game?.particles) game.particles.heal(p.x, p.y); } },
+      onHit(p, _enemy, dmg, game) {
+          p.heal(Math.min(dmg * 0.04, p.stats.maxHp * 0.03));
+          if (game?.particles) game.particles.heal(p.x, p.y);
+      } },
 
     { id: 'bounce', rarity: 'blue', icon: 'bounce', name: '反弹弹道', tags: ['bounce'],
       desc: '子弹可在边界弹射2次不消失',
@@ -154,12 +161,12 @@ export const AUGMENT_DB: AugmentDef[] = [
       onEquip(p, _g, mult = 1) { p.stats.ultChargeRate += 0.25 * mult; } },
 
     // ─── 紫色词条 ─────────────────────────────────────────
-    { id: 'turret', rarity: 'purple', icon: 'summon', name: '海克斯炮台', tags: ['turret', 'summon'],
+    { id: 'turret', rarity: 'purple', icon: 'summon', name: '海克斯炮台', tags: ['turret', 'summon'], affinity: ['vivian'],
       desc: '召唤 1 个自动炮台，持续存在，伤害=玩家×55%',
       onEquip(p, game, mult = 1) { game.spawnTurret(p, 0.55 + 0.25 * mult); } },
 
-    { id: 'shadow_clone', rarity: 'purple', icon: 'summon', name: '暗影分身', tags: ['clone', 'summon'],
-      desc: '生成分身跟随，造成×60%伤害，HP×40%',
+    { id: 'shadow_clone', rarity: 'purple', icon: 'summon', name: '暗影分身', tags: ['clone', 'summon'], affinity: ['vivian', 'graf'],
+      desc: '生成分身跟随8秒，每次攻击造成玩家×60%伤害',
       onEquip(p, game, _mult = 1) { game.spawnClone(p); } },
 
     { id: 'barrage', rarity: 'purple', icon: 'pierce', name: '弹幕之心', tags: ['bullet', 'barrage'],
@@ -190,14 +197,17 @@ export const AUGMENT_DB: AugmentDef[] = [
       desc: '爆炸命中>3个目标时，触发追加连环爆炸（×50%）',
       onEquip(p, _g, _mult = 1) { p.stats.chainExplosion = true; } },
 
-    { id: 'berserk', rarity: 'purple', icon: 'fire', name: '狂暴化', tags: ['berserk', 'combo'],
+    { id: 'berserk', rarity: 'purple', icon: 'fire', name: '狂暴化', tags: ['berserk', 'combo'], affinity: ['reik'],
       desc: '击杀 20 个后进入狂暴 10s（攻速+60%，伤害+40%）',
       _killCount: 0,
       onKill(p, _enemy, _dmg, _game) { this._killCount++; if (this._killCount >= 20) { this._killCount = 0; p.applyBuff('berserk', 10, { atkSpd: 1.6, dmgMult: 1.4 }); } } },
 
-    { id: 'phase_dash', rarity: 'purple', icon: 'speed', name: '相位跳跃', tags: ['dash'],
+    { id: 'phase_dash', rarity: 'purple', icon: 'speed', name: '相位跳跃', tags: ['dash'], affinity: ['olia'],
       desc: '冲刺变为传送，瞬移到鼠标位置，无视障碍',
-      onEquip(p, _g, _mult = 1) { p.stats.phaseDash = true; } },
+      onEquip(p, game, _mult = 1) {
+          p.stats.phaseDash = true;
+          game.floatingText?.spawn(p.x, p.y - 45, '相位跳跃已激活：Shift/Space传送', '#cc88ff', 16, true);
+      } },
 
     // ─── 橙色词条 ─────────────────────────────────────────
     { id: 'overload', rarity: 'orange', icon: 'lightning', name: '超载海克斯', tags: ['overload'],
