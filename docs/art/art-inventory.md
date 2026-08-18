@@ -32,7 +32,7 @@
 
 ## 2. 角色立绘（6 张）
 
-选人界面头像（`ScreenManager.ts:130`，按 `char_<id>` 加载，显示 160px）。
+选人界面卡片立绘（`ScreenManager.ts:130`，按 `char_<id>` 加载，**160×160 正方形 CUSTOM 拉伸**——生成需 1:1 半身像构图，见 `docs/prompts/image-prompts.md` 第五节）。
 
 | 文件名（key） | 角色 | 主题色（来自 CharacterDB，生成时保持色调一致） |
 |---|---|---|
@@ -43,33 +43,33 @@
 | `char_graf` | 混沌傀儡·格雷夫（未解锁角色） | `#cc44ff` 紫 |
 | `char_liana` | 冰霜狙击手·利亚娜（未解锁角色） | `#00ccff` 冰蓝 |
 
-规格参考：约 161×191（**当前分辨率偏低**，重生成建议 512×512 以上）。
+规格参考：约 161×191（**当前分辨率偏低**，重生成建议 512×512 以上，1:1 构图）。
 
-## 3. 角色游戏内头像 token（6 张）
+## 3. 战斗棋子 char_token（6 张）
 
-HUD 界面玩家小头像，按 `char_token_<id>` 加载（`PlayerController.ts:73,81`）。
+**战场上的玩家本体**（`PlayerController.ts:81`），48×48 正方形 CUSTOM 拉伸、不染色——需 1:1 图标化"棋子"构图（大轮廓高对比，不是头像），见 `docs/prompts/image-prompts.md` 第六节。
 
 `char_token_kai` / `char_token_vivian` / `char_token_reik` / `char_token_olia` / `char_token_graf` / `char_token_liana`
 
 ## 4. 角色子弹（6 张）
 
-按 `bullet_<id>` 加载（`BulletController.ts`），每种角色一个弹道贴图。
+玩家子弹贴图，按 `bullet_<id>` 加载（`BulletController.spawn`）——**仅玩家子弹用图**（炮台/敌人子弹是程序画的圆点）。正方形 CUSTOM 拉伸（普攻仅 10×10），**每发染角色主题色且不旋转**：必须是白色素体、各向同性圆形弹体，见 `docs/prompts/image-prompts.md` 第八节。
 
 `bullet_kai` / `bullet_vivian` / `bullet_reik` / `bullet_olia` / `bullet_graf` / `bullet_liana`
 
-规格参考：约 30×17（横长条小图，生成时要求干净背景、主体居中）。
-
 ## 5. 敌人（5 张）
+
+正方形 CUSTOM 拉伸，显示直径=碰撞半径×2（grunt 36 / shield 40 / exploder 40 / golem 52 / boss 162，boss 另乘 1.8 视觉放大）。**染色复用**：精英怪=grunt 图染粉紫 `#ff88ff`；Boss 一张图按章节染红/青/绿青/紫 4 色，miniboss 再染紫——所以 boss 底图必须是白色素体，见 `docs/prompts/image-prompts.md` 第七节。
 
 | 文件名（key） | 敌人类型 | 引用位置 |
 |---|---|---|
-| `enemy_grunt` | 普通小怪 | `EnemyBase.ts:83` |
-| `enemy_shield` | 持盾兵 | `EnemyBase.ts:88` |
+| `enemy_grunt` | 腐肉行者（杂兵主力，精英染色复用） | `EnemyBase.ts:83` |
+| `enemy_shield` | 护盾兵 | `EnemyBase.ts:88` |
 | `enemy_exploder` | 自爆怪 | `EnemyBase.ts:94` |
-| `enemy_golem` | 魔像（重甲） | `EnemyBase.ts:100` |
-| `enemy_boss` | Boss（各章共用） | `BossController.ts:51` |
+| `enemy_golem` | 石像鬼（重甲坦克） | `EnemyBase.ts:100` |
+| `enemy_boss` | 章节 Boss×4 + miniboss（染色复用） | `BossController.ts:51` |
 
-规格参考：约 87×121（**当前分辨率偏低**，建议重生成 256 高以上）。
+规格参考：约 87×121（**当前分辨率偏低**，建议重生成 256 高以上，1:1 构图）。
 
 ## 6. 特效 FX（5 张）
 
@@ -87,7 +87,7 @@ HUD 界面玩家小头像，按 `char_token_<id>` 加载（`PlayerController.ts:
 
 ## 7. UI 图标（16 张）
 
-两处使用：词条图标 `ui_icon_<aug.icon>`（`HUD.ts:229`）与技能图标 `ui_icon_<skillIcon>`（`HUD.ts:248`）。
+两处复用（`HUD.ts`）：词条槽 **30×30 叠在程序绘制的稀有度色块+边框上**（`HUD.ts:229`）；技能环 **28×28 嵌在 CD 进度圆环内、未就绪时染灰**（`HUD.ts:248`）。因此图标必须**无底板无徽章**、纯发光符号——生成模板见 `docs/prompts/image-prompts.md` 第十节。
 
 | 文件名（key） | 语义 | 被哪些内容引用 |
 |---|---|---|
@@ -108,4 +108,4 @@ HUD 界面玩家小头像，按 `char_token_<id>` 加载（`PlayerController.ts:
 | `ui_icon_ice` | 冰 | 词条：冻结磁场/绝对零度；技能：olia-R、liana-E/R |
 | `ui_icon_chaos` | 混沌 | 词条：黑洞引擎/混沌协议/海克斯漩涡/宇宙法则/混沌神明/全力豪赌；技能：graf-Q/E/R |
 
-规格参考：1254×1254 正方形。稀有度配色（`Constants.ts`）：蓝 `#4488ff`、紫 `#aa44ff`、橙 `#ff8800`、金 `#ffd700`——图标主体建议中性色，稀有度由 UI 边框渲染。
+规格参考：1254×1254 正方形。稀有度配色（`Constants.ts`）：蓝 `#4488ff`、紫 `#aa44ff`、橙 `#ff8800`、金 `#ffd700`——稀有度由程序画的槽位边框/色块表达，图标本身按各符号语义上色即可（亮度中高，保证染灰后仍可见）。
