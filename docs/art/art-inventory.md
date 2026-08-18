@@ -1,6 +1,6 @@
 # 现有美术资源清单（assets/resources/art/）
 
-盘点日期：2026-08-17。共 50 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
+共 49 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。
 
@@ -16,7 +16,7 @@
 | `bg_chapter3` | 第3章 海克斯实验室 | 同上 | 1659×948 |
 | `bg_chapter4` | ⚠️ 磁盘内容实为**第1章「废土街道」**画面 | 同上 | 1659×948 |
 
-> ⚠️ **ArtRemap 坑**：`bg_chapter1` 与 `bg_chapter4` 两个文件的内容互为对方章节（生成时错位，历史遗留）。代码经 `ART_REMAP` 重映射纠正。**替换背景时**：
+> ⚠️ **ArtRemap 坑**：`bg_chapter1` 与 `bg_chapter4` 两个文件的内容互为对方章节，代码经 `ART_REMAP` 重映射纠正。**替换背景时**：
 > - 想替换"第1章废土街道"的画面 → 生成废土街道图 → 覆盖 `bg_chapter4.png`
 > - 想替换"第4章混沌位面"的画面 → 生成混沌位面图 → 覆盖 `bg_chapter1.png`
 > - 或者：四张全部按各自文件名的内容重新生成，然后把 `ArtRemap.ts` 里两条映射删掉（更推荐，一步到位消除错位）。
@@ -51,8 +51,6 @@ HUD 界面玩家小头像，按 `char_token_<id>` 加载（`PlayerController.ts:
 
 `char_token_kai` / `char_token_vivian` / `char_token_reik` / `char_token_olia` / `char_token_graf` / `char_token_liana`
 
-> `assets/resources/art/_backup_tokens/` 目录里另有一套旧版 token 备份，无代码引用。它位于 resources 目录内会被打进包体，确认不需要后建议移出或删除。
-
 ## 4. 角色子弹（6 张）
 
 按 `bullet_<id>` 加载（`BulletController.ts`），每种角色一个弹道贴图。
@@ -73,18 +71,17 @@ HUD 界面玩家小头像，按 `char_token_<id>` 加载（`PlayerController.ts:
 
 规格参考：约 87×121（**当前分辨率偏低**，建议重生成 256 高以上）。
 
-## 6. 特效 FX（6 张，其中 1 张未接线）
+## 6. 特效 FX（5 张）
 
 一次性播放的特效贴图，由 `ParticleManager` 驱动、`GameManager.ts:641` 渲染（三段式弹出/膨胀/淡出动画）。
 
-| 文件名（key） | 用途 | 状态 |
-|---|---|---|
-| `fx_explosion` | 爆炸（死亡爆破/大爆炸等） | ✅ 已接线 |
-| `fx_hex_ring` | 海克斯激活光环 | ✅ 已接线 |
-| `fx_poison` | 中毒 | ✅ 已接线 |
-| `fx_heal` | 治疗 | ✅ 已接线 |
-| `fx_cold_arrow` | 寒冰箭 | ✅ 已接线 |
-| `fx_freeze` | 冰冻（冻结磁场词条等） | ❌ **有图无引用，孤儿资源**，见 art-needs.md |
+| 文件名（key） | 用途 |
+|---|---|
+| `fx_explosion` | 爆炸（死亡爆破/大爆炸等） |
+| `fx_hex_ring` | 海克斯激活光环 |
+| `fx_poison` | 中毒 |
+| `fx_heal` | 治疗 |
+| `fx_cold_arrow` | 寒冰箭 |
 
 规格参考：约 1100×1100，要求透明背景 PNG。
 

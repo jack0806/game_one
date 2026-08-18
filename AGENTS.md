@@ -37,7 +37,7 @@ npm run typecheck # tsc -p tsconfig.json --noEmit --skipLibCheck（依赖编辑�
 
 ## 资源文档
 
-`docs/` 存放美术/音频资源清单（`docs/art/art-inventory.md` 现有 50 图、`docs/art/art-needs.md` 待办、`docs/audio/audio-needs.md` 音频需求）。涉及资源替换/新增的任务先读它们；替换图片只能覆盖同名文件内容，禁止改文件名。
+`docs/` 存放美术/音频资源清单（`docs/art/art-inventory.md` 现有 49 图、`docs/art/art-needs.md` 待办、`docs/audio/audio-needs.md` 音频需求、`docs/prompts/` 即梦生成提示词）。涉及资源替换/新增的任务先读它们；替换图片只能覆盖同名文件内容，禁止改文件名。
 
 ## 代码约定
 
