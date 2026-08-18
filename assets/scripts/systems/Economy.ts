@@ -12,6 +12,9 @@ interface GoldDrop {
     collected: boolean;
 }
 
+const DROP_FLOOR = CANVAS_H - 72;
+const DROP_SIDE_MARGIN = 12;
+
 export class Economy {
     gold  = 0;
     parts = 0;
@@ -26,7 +29,8 @@ export class Economy {
 
     spawnDrop(x: number, y: number, amount: number): void {
         this._drops.push({
-            x, y,
+            x: clamp(x, DROP_SIDE_MARGIN, CANVAS_W - DROP_SIDE_MARGIN),
+            y: clamp(y, DROP_SIDE_MARGIN, DROP_FLOOR),
             vx: Rng.float(-40, 40),
             vy: Rng.float(-100, -40),
             amount,
@@ -40,9 +44,14 @@ export class Economy {
         for (let i = this._drops.length - 1; i >= 0; i--) {
             const d = this._drops[i];
             d.vy   += 200 * dt;          // 重力
-            d.x    += d.vx * dt;
-            d.y    += d.vy * dt;
-            d.y    = Math.min(d.y, CANVAS_H - 8);
+            d.x    = clamp(d.x + d.vx * dt, DROP_SIDE_MARGIN, CANVAS_W - DROP_SIDE_MARGIN);
+            const nextY = d.y + d.vy * dt;
+            if (nextY >= DROP_FLOOR) {
+                d.y = DROP_FLOOR;
+                d.vy = 0;
+            } else {
+                d.y = Math.max(DROP_SIDE_MARGIN, nextY);
+            }
             d.life -= dt;
             if (d.life <= 0 || d.collected) { this._drops.splice(i, 1); continue; }
             if (Vec.dist(d.x, d.y, player.x, player.y) < pickupR) {
