@@ -28,6 +28,7 @@ export interface SpriteFx {
     life:    number;
     maxLife: number;
     scale:   number;
+    color?:  string;   // 可选染色（hex 青色环在青色网格背景下会融化，按符文色染开）
 }
 
 export class ParticleManager {
@@ -35,8 +36,8 @@ export class ParticleManager {
     spriteFx:  SpriteFx[] = [];
 
     /** 生成一个一次性美术特效（按 key 淡出消失）。 */
-    spawnSpriteFx(x: number, y: number, key: string, life = 0.5, scale = 1): void {
-        this.spriteFx.push({ x, y, key, life, maxLife: life, scale });
+    spawnSpriteFx(x: number, y: number, key: string, life = 0.5, scale = 1, color?: string): void {
+        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color });
     }
 
     // ── 通用发射 ─────────────────────────────────────────
@@ -86,7 +87,7 @@ export class ParticleManager {
             const a = (i / 6) * Math.PI * 2;
             this.emit({ x, y, count: 2, color, speedMin: 100, speedMax: 160, lifeMin: 0.2, lifeMax: 0.4, angleMin: a - 0.2, angleMax: a + 0.2, glow: true });
         }
-        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.5, 1);
+        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.5, 1, color);
     }
 
     // ── 燃烧点燃 ─────────────────────────────────────────

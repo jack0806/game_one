@@ -12,10 +12,11 @@
 // hexblast-py 参考版本全程未做任何改动，此映射只影响本项目 TS 代码。
 
 export const ART_REMAP: Record<string, string> = {
-    // bg_chapter1.png 内容实为第4章画面，bg_chapter4.png 内容实为第1章画面；
-    // bg_chapter2.png / bg_chapter3.png 内容与文件名本身相符，不参与重映射。
-    bg_chapter1: 'bg_chapter4',
-    bg_chapter4: 'bg_chapter1',
+    // 2026-08-18：四张章节背景已按语义重新生成（bg_chapter1.png 内容=第1章
+    // 废土街道……bg_chapter4.png 内容=第4章混沌位面，经视觉逐一核实），
+    // 原有的 bg_chapter1↔bg_chapter4 互换映射反而会把第1章显示成混沌位面、
+    // 第4章显示成废土街道，故删除。表保留为空：将来再有文件名/内容错位
+    // 的素材时在此登记即可，artPath() 机制不变。
 };
 
 /**

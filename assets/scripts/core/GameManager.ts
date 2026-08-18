@@ -470,11 +470,17 @@ export class GameManager extends Component {
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
         if (this.state !== 'playing') return;
 
-        // Gold drops
+        // Gold drops — 双圈硬币造型（外圈深金、内圈亮金、左上高光点），
+        // 替换旧版 12x12 纯黄方块（视觉审计反馈其像"用途不明的占位方块"）。
         for (const drop of this._economy.drops) {
             const [dx, dy] = this._toLocal(drop.x, drop.y);
-            g.fillColor = new Color(255, 200, 40, 200);
-            g.fillRect(dx - 6, dy - 6, 12, 12);
+            const r = 5 + Math.min(4, drop.amount / 12);
+            g.fillColor = new Color(140, 90, 20, 225);
+            g.circle(dx, dy, r + 1.5); g.fill();
+            g.fillColor = new Color(255, 200, 40, 225);
+            g.circle(dx, dy, r); g.fill();
+            g.fillColor = new Color(255, 240, 160, 230);
+            g.circle(dx - r * 0.3, dy + r * 0.3, r * 0.32); g.fill();
         }
 
         // Death zones
@@ -529,14 +535,21 @@ export class GameManager extends Component {
                 e.sprite.color = Color.fromHEX(new Color(), e.tintColor ?? '#ffffff');
             }
 
-            // HP bar over enemy
-            if (!e.isBoss) {
-                const bw = r * 2.2, bh = 4;
+            // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音
+            if (!e.isBoss && e.hp < e.maxHp) {
+                const bw = r * 2.2, bh = 6;
                 const [rx, ry, rw, rh] = this._toLocalRect(e.x - bw / 2, e.y - r - 10, bw, bh);
                 g.fillColor = new Color(40, 40, 40, 180);
                 g.fillRect(rx, ry, rw, rh);
                 g.fillColor = new Color(220, 60, 60, 230);
                 g.fillRect(rx, ry, rw * (e.hp / e.maxHp), rh);
+                // 护盾剩余：血条上方细蓝条
+                if (e.shieldActive && e.shieldHp > 0 && e.maxShieldHp > 0) {
+                    const sh = 3;
+                    const [sx, sy, sw, shh] = this._toLocalRect(e.x - bw / 2, e.y - r - 10 - sh, bw, sh);
+                    g.fillColor = new Color(90, 170, 255, 220);
+                    g.fillRect(sx, sy, sw * (e.shieldHp / e.maxShieldHp), shh);
+                }
             }
         }
 
@@ -664,7 +677,13 @@ export class GameManager extends Component {
             const fadeT = progress < 0.6 ? 1 : Math.max(0, 1 - (progress - 0.6) / 0.4);
             const alpha = Math.floor(fadeT * 255);
 
-            sprite.color = new Color(255, 255, 255, alpha);
+            // 可选染色（hex_ring 按符文颜色）：与白色 alpha 合成，无 color 时行为不变
+            if (fx.color) {
+                const c = Color.fromHEX(new Color(), fx.color);
+                sprite.color = new Color(c.r, c.g, c.b, alpha);
+            } else {
+                sprite.color = new Color(255, 255, 255, alpha);
+            }
 
             const size = 64 * fx.scale * scaleT;
             node.getComponent(UITransform)!.setContentSize(size, size);

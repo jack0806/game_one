@@ -37,7 +37,8 @@ export class BossController extends EnemyBase {
     private _setupForChapter(ch: number): void {
         const tbl = [
             { maxHp: 3000, damage: 42, speed: 62, color: '#cc3300', glow: '#ff0000',   label: '废土领主·腐肉'    },
-            { maxHp: 5500, damage: 66, speed: 68, color: '#4488cc', glow: '#00ccff',   label: '钢铁之王·熔炉'    },
+            // 熔炉橙：钢蓝工厂背景下蓝色 Boss 几乎隐形（视觉评审 2026-08-18），改互补暖色
+            { maxHp: 5500, damage: 66, speed: 68, color: '#cc7a33', glow: '#ffaa44',   label: '钢铁之王·熔炉'    },
             { maxHp: 9000, damage: 94, speed: 74, color: '#00cc88', glow: '#00ffcc',   label: '海克斯异变体·无限核' },
             { maxHp:14000, damage:132, speed: 80, color: '#8800cc', glow: '#cc44ff',   label: '混沌深渊·终焉之门' },
         ];
