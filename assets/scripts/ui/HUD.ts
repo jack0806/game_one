@@ -118,14 +118,16 @@ export class HUD extends Component {
     }
 
     private _buildAugSlots() {
+        // 10格：词条上限默认6，六角特权(hex_privilege)可提到10。之前固定8格，
+        // 第9/10个词条装备后完全不显示。
         const startX = -560, y = -320;
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 10; i++) {
             const slot = this._mkNode(`Aug${i}`, startX + i * 46, y);
             slot.addComponent(UITransform).setContentSize(40, 40);
             slot.addComponent(Graphics);   // redrawn each refresh (border/rarity tint)
             if (i === 0) {
                 const passiveN = new Node('InitialPassive'); passiveN.setParent(slot);
-                passiveN.setPosition(new Vec3(0, -28, 0));
+                passiveN.setPosition(new Vec3(0, -30, 0));
                 passiveN.addComponent(UITransform).setContentSize(70, 18);
                 this._initialPassiveLabel = passiveN.addComponent(Label);
                 this._initialPassiveLabel.fontSize = 9;
@@ -243,18 +245,21 @@ export class HUD extends Component {
             if (aug) {
                 const hex = RARITY_COLOR[aug.rarity] ?? '#888888';
                 const col = Color.fromHEX(new Color(), hex);
+                // 边框/底色以节点中心(0,0)为对称绘制：Graphics坐标从锚点起笔，
+                // 之前 rect(0,0,40,40) 让整个框向右上偏移半格，居中的图标Sprite
+                // 压在框的左下角上——这就是左下角海克斯"框和图片错位"的根因。
                 g.fillColor = new Color(col.r, col.g, col.b, 50);
-                g.fillRect(0, 0, 40, 40);
+                g.fillRect(-20, -20, 40, 40);
                 g.strokeColor = col; g.lineWidth = 2;
-                g.rect(0, 0, 40, 40); g.stroke();
+                g.rect(-20, -20, 40, 40); g.stroke();
 
                 iconN.active = true;
                 applyArtSprite(iconSp, `ui_icon_${aug.icon}`);
             } else {
                 g.fillColor = new Color(20, 20, 30, 100);
-                g.fillRect(0, 0, 40, 40);
+                g.fillRect(-20, -20, 40, 40);
                 g.strokeColor = new Color(55, 55, 75, 160);
-                g.lineWidth = 1; g.rect(0, 0, 40, 40); g.stroke();
+                g.lineWidth = 1; g.rect(-20, -20, 40, 40); g.stroke();
                 iconN.active = false;
             }
         }

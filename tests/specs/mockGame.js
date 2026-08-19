@@ -14,6 +14,7 @@ function makeMockGame(overrides = {}) {
         particles: {
             hit() {}, explode() {}, impact() {}, shieldBlock() {},
             hexActivate() {}, lightning() {}, heal() {}, ignite() {}, toxin() {},
+            meleeSlash() {}, enemyProjectileTrail() {},
         },
         screenShake: { shake() {} },
         hitStop: { trigger() {} },

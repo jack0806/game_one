@@ -3,7 +3,7 @@
 // ============================================================
 import { Node, Sprite, Color, UITransform } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
-import { CANVAS_W, CANVAS_H } from '../core/Constants';
+import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
 
 export interface BulletData {
@@ -28,6 +28,9 @@ export interface BulletData {
     infinite:     boolean;
     isEnemyBullet: boolean;
     homing:       boolean;
+    /** 敌弹特效标签：boss 按章节弹种附加可辨识尾迹/轮廓（毒球/齿轮/追踪/混沌）。 */
+    enemyFx?:     'poison' | 'gear' | 'homing' | 'chaos';
+    trailCd?:     number;
     /** Sprite node carrying bullet_<charKey> art — only shown for owner==='player'; turret/enemy bullets keep the Graphics dot. */
     node?:        Node;
     sprite?:      Sprite;
@@ -53,6 +56,7 @@ function makeBullet(parent?: Node): BulletData {
         color: '#00ffcc', owner: 'player', charKey: '',
         hitEnemies: new Set(), isCrit: false, onHitCb: null,
         novaMode: false, infinite: false, isEnemyBullet: false, homing: false,
+        enemyFx: undefined, trailCd: 0,
         node, sprite,
     };
 }
@@ -64,6 +68,7 @@ function resetBullet(b: BulletData): void {
     b.color = '#00ffcc'; b.owner = 'player'; b.charKey = '';
     b.hitEnemies.clear(); b.isCrit = false; b.onHitCb = null;
     b.novaMode = false; b.infinite = false; b.isEnemyBullet = false; b.homing = false;
+    b.enemyFx = undefined; b.trailCd = 0;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -153,9 +158,9 @@ export class BulletPool {
             // 边界弹射
             if (b.bounceLeft > 0) {
                 if (b.x < b.radius || b.x > CANVAS_W - b.radius) { b.vx *= -1; b.x = clamp(b.x, b.radius, CANVAS_W - b.radius); b.bounceLeft--; }
-                if (b.y < b.radius || b.y > CANVAS_H - b.radius) { b.vy *= -1; b.y = clamp(b.y, b.radius, CANVAS_H - b.radius); b.bounceLeft--; }
+                if (b.y < b.radius || b.y > PLAYFIELD_BOTTOM - b.radius) { b.vy *= -1; b.y = clamp(b.y, b.radius, PLAYFIELD_BOTTOM - b.radius); b.bounceLeft--; }
             } else if (!b.infinite) {
-                if (b.x < -20 || b.x > CANVAS_W + 20 || b.y < -20 || b.y > CANVAS_H + 20 || b.life > b.lifeTime) {
+                if (b.x < -20 || b.x > CANVAS_W + 20 || b.y < -20 || b.y > PLAYFIELD_BOTTOM + 20 || b.life > b.lifeTime) {
                     this._release(b); continue;
                 }
             }
@@ -174,7 +179,8 @@ export class BulletPool {
                     if ((e.isElite || e.isBoss) && player.stats.eliteBonus) dmg *= (1 + player.stats.eliteBonus);
                     // 被动：冻结要害×freezeBonus（对齐 CharacterDB.ts liana 的 desc 描述）
                     if (e.frozen > 0 && player.stats.freezeBonus) dmg *= player.stats.freezeBonus;
-                    e.takeDamage(dmg, player, game);
+                    const actualDamage = e.takeDamage(dmg, player, game);
+                    player.applyAttackLifesteal?.(actualDamage === undefined ? dmg : actualDamage, game);
                     if (b.onHitCb) b.onHitCb(b, e);
                     game.floatingText?.spawn(e.x + Rng.float(-10, 10), e.y - 10, Math.ceil(dmg).toString(), b.isCrit ? '#ffd700' : '#fff', b.isCrit ? 16 : 13, b.isCrit);
                     game.particles?.hit(b.x, b.y, b.color);
@@ -202,7 +208,15 @@ export class BulletPool {
                 b.vy = b.vy / nextSpeed * speed;
             }
             b.x += b.vx * dt; b.y += b.vy * dt; b.life += dt;
-            if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > CANVAS_H + 30) {
+            // 分弹种尾迹（0.08s 节流）：毒球绿雾 / 齿轮光环 / 追踪尾焰 / 混沌紫烟
+            if (b.enemyFx) {
+                b.trailCd = (b.trailCd ?? 0) - dt;
+                if (b.trailCd <= 0) {
+                    b.trailCd = 0.08;
+                    game.particles?.enemyProjectileTrail?.(b.x, b.y, b.enemyFx, b.vx, b.vy, b.color, b.radius);
+                }
+            }
+            if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30) {
                 this._release(b); continue;
             }
             if (player.alive && Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {

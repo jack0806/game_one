@@ -11,6 +11,13 @@ export interface AugmentDef {
     tags: string[];
     desc: string;
     affinity?: string[];
+    /**
+     * 词条适配的攻击方式；不写=通用。
+     * 'ranged' 的纯弹道词条（穿透/多重/反弹/弹幕等）只消费 stats 里的子弹字段，
+     * 近战角色(_shoot直接走_meleeAttack,从不spawn子弹)拿到即死词条，
+     * 会在 rollOptions/混沌加成池里被按角色 attackType 过滤掉。
+     */
+    attackType?: 'melee' | 'ranged';
     tier?: number;
     // 词条钩子
     onEquip?:     (p: any, game: any, mult?: number) => void;
@@ -76,7 +83,7 @@ export function applyPoison(enemy: any, dps: number, duration: number): void {
 // ── 词条数据库 ─────────────────────────────────────────────
 export const AUGMENT_DB: AugmentDef[] = [
     // ─── 蓝色词条 ─────────────────────────────────────────
-    { id: 'pierce', rarity: 'blue', icon: 'pierce', name: '穿透炮弹', tags: ['pierce'],
+    { id: 'pierce', rarity: 'blue', icon: 'pierce', name: '穿透炮弹', tags: ['pierce'], attackType: 'ranged',
       desc: '子弹额外穿透 2 个敌人',
       onEquip(p, _g, mult = 1) { p.stats.pierce += 2 * mult; } },
 
@@ -97,29 +104,34 @@ export const AUGMENT_DB: AugmentDef[] = [
       onHit(_p, enemy, dmg, game) { applyPoison(enemy, dmg * 0.8 / 5, 5); if (game?.particles) game.particles.toxin(enemy.x, enemy.y); } },
 
     { id: 'crit_rate', rarity: 'blue', icon: 'crit', name: '精准射击', tags: ['crit'],
-      desc: '暴击率 +20%',
-      onEquip(p, _g, mult = 1) { p.stats.critRate += 0.20 * mult; } },
+      desc: '暴击率 +20%，移动速度 -5%',
+      onEquip(p, _g, mult = 1) { p.stats.critRate += 0.20 * mult; p.stats.speed *= (1 - 0.05 * mult); } },
 
     { id: 'crit_dmg', rarity: 'blue', icon: 'crit', name: '暴击强化', tags: ['crit'],
-      desc: '暴击伤害 +60%',
-      onEquip(p, _g, mult = 1) { p.stats.critDmg += 0.60 * mult; } },
+      desc: '暴击伤害 +60%，最大 HP -8%',
+      onEquip(p, _g, mult = 1) {
+          p.stats.critDmg += 0.60 * mult;
+          p.stats.maxHp = Math.max(1, p.stats.maxHp * (1 - 0.08 * mult));
+          p.hp = Math.min(p.hp, p.stats.maxHp);
+      } },
 
-    { id: 'double_shot', rarity: 'blue', icon: 'pierce', name: '双重射击', tags: ['bullet'],
+    { id: 'double_shot', rarity: 'blue', icon: 'pierce', name: '双重射击', tags: ['bullet'], attackType: 'ranged',
       desc: '每次攻击同时发射 2 颗子弹（第二颗×70%）',
       onEquip(p, _g, _mult = 1) { p.stats.extraBullets += 1; } },
 
     { id: 'attack_spd', rarity: 'blue', icon: 'speed', name: '急速装填', tags: ['speed'],
-      desc: '攻速 +25%',
-      onEquip(p, _g, mult = 1) { p.stats.attackSpeed *= (1 + 0.25 * mult); } },
+      desc: '攻速 +25%，移动速度 -4%',
+      onEquip(p, _g, mult = 1) { p.stats.attackSpeed *= (1 + 0.25 * mult); p.stats.speed *= (1 - 0.04 * mult); } },
 
     { id: 'lifesteal', rarity: 'blue', icon: 'lifesteal', name: '吸血子弹', tags: ['lifesteal'],
-      desc: '每次命中回复伤害量×4% HP',
+      desc: '每次命中回复伤害量×4% HP，护甲 -10',
+      onEquip(p, _g, mult = 1) { p.stats.armor = Math.max(0, p.stats.armor - 10 * mult); },
       onHit(p, _enemy, dmg, game) {
           p.heal(Math.min(dmg * 0.04, p.stats.maxHp * 0.03));
           if (game?.particles) game.particles.heal(p.x, p.y);
       } },
 
-    { id: 'bounce', rarity: 'blue', icon: 'bounce', name: '反弹弹道', tags: ['bounce'],
+    { id: 'bounce', rarity: 'blue', icon: 'bounce', name: '反弹弹道', tags: ['bounce'], attackType: 'ranged',
       desc: '子弹可在边界弹射2次不消失',
       onEquip(p, _g, mult = 1) { p.stats.bulletBounce += 2 * mult; } },
 
@@ -145,8 +157,12 @@ export const AUGMENT_DB: AugmentDef[] = [
       onEquip(p, _g, _mult = 1) { p.stats._comboDmgAug = true; } },
 
     { id: 'gold_magnet', rarity: 'blue', icon: 'gold', name: '金币磁铁', tags: ['economy'],
-      desc: '金币拾取范围×3',
-      onEquip(p, _g, mult = 1) { p.stats.goldPickupRange *= (1 + 2 * mult); } },
+      desc: '金币拾取范围×3，最大 HP -20',
+      onEquip(p, _g, mult = 1) {
+          p.stats.goldPickupRange *= (1 + 2 * mult);
+          p.stats.maxHp = Math.max(1, p.stats.maxHp - 20 * mult);
+          p.hp = Math.min(p.hp, p.stats.maxHp);
+      } },
 
     { id: 'elite_hunt', rarity: 'blue', icon: 'crit', name: '精英猎手', tags: ['offense'],
       desc: '对精英/Boss伤害 +25%',
@@ -162,14 +178,14 @@ export const AUGMENT_DB: AugmentDef[] = [
 
     // ─── 紫色词条 ─────────────────────────────────────────
     { id: 'turret', rarity: 'purple', icon: 'summon', name: '海克斯炮台', tags: ['turret', 'summon'], affinity: ['vivian'],
-      desc: '召唤 1 个自动炮台，持续存在，伤害=玩家×55%',
-      onEquip(p, game, mult = 1) { game.spawnTurret(p, 0.55 + 0.25 * mult); } },
+      desc: '召唤 1 个自动炮台，持续存在，伤害=玩家×55%；移动速度 -5%（装备负重）',
+      onEquip(p, game, mult = 1) { game.spawnTurret(p, 0.55 + 0.25 * mult); p.stats.speed *= (1 - 0.05 * mult); } },
 
     { id: 'shadow_clone', rarity: 'purple', icon: 'summon', name: '暗影分身', tags: ['clone', 'summon'], affinity: ['vivian', 'graf'],
       desc: '生成分身跟随8秒，每次攻击造成玩家×60%伤害',
       onEquip(p, game, _mult = 1) { game.spawnClone(p); } },
 
-    { id: 'barrage', rarity: 'purple', icon: 'pierce', name: '弹幕之心', tags: ['bullet', 'barrage'],
+    { id: 'barrage', rarity: 'purple', icon: 'pierce', name: '弹幕之心', tags: ['bullet', 'barrage'], attackType: 'ranged',
       desc: '普攻变为5发散射，单发伤害×50%',
       onEquip(p, _g, _mult = 1) { p.stats.barrageMode = true; } },
 
@@ -211,14 +227,14 @@ export const AUGMENT_DB: AugmentDef[] = [
 
     // ─── 橙色词条 ─────────────────────────────────────────
     { id: 'overload', rarity: 'orange', icon: 'lightning', name: '超载海克斯', tags: ['overload'],
-      desc: '持有 5 个词条时，所有词条效果×1.5',
-      onEquip(p, _g, _mult = 1) { p.stats._overloadCheck = true; } },
+      desc: '持有 5 个词条时，所有词条效果×1.5；移动速度 -8%',
+      onEquip(p, _g, mult = 1) { p.stats._overloadCheck = true; p.stats.speed *= (1 - 0.08 * mult); } },
 
     { id: 'turret_army', rarity: 'orange', icon: 'summon', name: '炮台军团', tags: ['turret', 'summon'],
       desc: '持有≥3炮台类词条时，炮台数量×3，攻速×1.5',
       onEquip(p, game, _mult = 1) { if (game.checkTurretArmy) game.checkTurretArmy(p); } },
 
-    { id: 'barrage_nova', rarity: 'orange', icon: 'pierce', name: '弹幕宇宙', tags: ['bullet', 'barrage'],
+    { id: 'barrage_nova', rarity: 'orange', icon: 'pierce', name: '弹幕宇宙', tags: ['bullet', 'barrage'], attackType: 'ranged',
       desc: '普攻同时发射 9颗子弹（全方向，单颗×35%）',
       onEquip(p, _g, _mult = 1) { p.stats.novaMode = true; } },
 
@@ -248,7 +264,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       _timer: 0,
       onUpdate(p, dt, game) { this._timer += dt; if (this._timer >= 20) { this._timer = 0; if (game?.spawnVortex) game.spawnVortex(p); } } },
 
-    { id: 'all_in', rarity: 'orange', icon: 'chaos', name: '全力豪赌', tags: ['chaos', 'offense'],
+    { id: 'all_in', rarity: 'orange', icon: 'chaos', name: '全力豪赌', tags: ['chaos', 'offense'], attackType: 'ranged',
       desc: '攻速-30%，但每次攻击触发三发弹幕',
       onEquip(p, _g, mult = 1) {
           if (mult >= 1) { p.stats.attackSpeed *= 0.7; p.stats.allInBullets = 3; }

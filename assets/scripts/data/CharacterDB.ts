@@ -2,6 +2,7 @@
 //  CharacterDB.ts — 6 角色定义（纯数据 + 技能函数引用）
 // ============================================================
 import { Vec, Rng, clamp } from '../core/MathUtils';
+import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
 // CHARS 数组在文件末尾由 CHARACTERS 派生，方便按索引迭代
 
@@ -96,23 +97,33 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'reik',
         name: '狂战士·雷克', icon: '⚔️', color: '#ff4444', unlocked: true,
         attackType: 'melee', attackRange: 70,
-        desc: '每损失10% HP，伤害+8%（最高+80%）',
+        desc: '每损失10% HP，伤害+8%（最高+80%）；攻击吸血5%',
         skills: { q: '怒冲 — 向前冲刺200距离并击飞沿途敌人', e: '战吼 — 10秒攻速+50%/伤害+30%', r: '死亡意志 — 牺牲半血换取10秒无敌' },
         skillIcons: { q: 'speed', e: 'fire', r: 'shield' },
         stats: { maxHp: 200, speed: 300, damage: 30, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
-        passive(p: any) { p.stats._reikPassive = true; },
+        passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.05; },
         qSkill(p: any, game: any) {
             const [nx, ny] = Vec.normalize(game.input.mouse.x - p.x, game.input.mouse.y - p.y);
-            p.x += nx * 200; p.y += ny * 200;
-            p.x = clamp(p.x, p.radius, 1280 - p.radius);
-            p.y = clamp(p.y, p.radius, 720 - p.radius);
+            const startX = p.x, startY = p.y;
+            p.x = clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius);
+            p.y = clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius);
             game.screenShake.shake(8, 0.25);
-            game.particles.hexActivate(p.x, p.y, '#ff4444');
+            // 冲锋剑气：从起点向冲刺方向斩出长刃（覆盖整条冲锋路径）
+            game.particles.meleeSlash?.(startX, startY, Math.atan2(ny, nx), '#ff4444', 200, 1.35);
+            const mult = p.hp / p.stats.maxHp < 0.5 ? 2 : 1;
+            const pathDx = p.x - startX, pathDy = p.y - startY;
+            const pathLen2 = pathDx * pathDx + pathDy * pathDy || 1;
             for (const e of game.enemies) {
-                if (e.alive && Vec.dist(e.x, e.y, p.x, p.y) < 80) {
-                    e.takeDamage(p.stats.damage * (p.hp / p.stats.maxHp < 0.5 ? 2 : 1), p, game);
-                    e.knockbackX += (e.x - p.x) * 0.3;
-                    e.knockbackY += (e.y - p.y) * 0.3;
+                if (!e.alive) continue;
+                // 路径命中：敌人到冲锋线段的最近点在刃宽内即算命中
+                // （旧版只判终点80半径圆，从敌人头顶冲过时不造成伤害）
+                const t = Math.max(0, Math.min(1, ((e.x - startX) * pathDx + (e.y - startY) * pathDy) / pathLen2));
+                const cx = startX + pathDx * t, cy = startY + pathDy * t;
+                if (Math.hypot(e.x - cx, e.y - cy) <= e.radius + 28 || Vec.dist(e.x, e.y, p.x, p.y) < 80 + e.radius) {
+                    if (p.applyAttackDamage) p.applyAttackDamage(e, game, p.stats.damage * mult);
+                    else e.takeDamage(p.stats.damage * mult, p, game);
+                    e.knockbackX += (e.x - startX) * 0.3;
+                    e.knockbackY += (e.y - startY) * 0.3;
                 }
             }
         },

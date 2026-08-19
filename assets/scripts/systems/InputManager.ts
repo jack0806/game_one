@@ -2,6 +2,7 @@
 //  InputManager.ts — 键盘 + 鼠标输入（Cocos Creator 3.x API）
 // ============================================================
 import { _decorator, Component, Node, EventKeyboard, EventMouse, KeyCode, Input, input, Vec2 } from 'cc';
+import { CANVAS_H } from '../core/Constants';
 const { ccclass } = _decorator;
 
 @ccclass('InputManager')
@@ -31,7 +32,7 @@ export class InputManager extends Component {
         this._keys.add(e.keyCode);
     }
     private _onKeyUp(e: EventKeyboard): void    { this._keys.delete(e.keyCode); }
-    private _onMouseMove(e: EventMouse): void   { this.mouse.x = e.getLocationX(); this.mouse.y = 720 - e.getLocationY(); }
+    private _onMouseMove(e: EventMouse): void   { this.mouse.x = e.getLocationX(); this.mouse.y = CANVAS_H - e.getLocationY(); }
     private _onMouseDown(_e: EventMouse): void  { this.mouse.down = true; }
     private _onMouseUp(_e: EventMouse): void    { this.mouse.down = false; }
 

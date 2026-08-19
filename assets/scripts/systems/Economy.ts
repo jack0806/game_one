@@ -1,8 +1,8 @@
 // ============================================================
 //  Economy.ts — 金币/掉落经济系统
 // ============================================================
-import { Vec, Rng, clamp } from '../core/MathUtils';
-import { CANVAS_W, CANVAS_H } from '../core/Constants';
+import { Vec, clamp } from '../core/MathUtils';
+import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
 interface GoldDrop {
     x: number; y: number;
@@ -12,7 +12,7 @@ interface GoldDrop {
     collected: boolean;
 }
 
-const DROP_FLOOR = CANVAS_H - 72;
+const DROP_FLOOR = PLAYFIELD_BOTTOM;
 const DROP_SIDE_MARGIN = 12;
 
 export class Economy {
@@ -28,11 +28,13 @@ export class Economy {
     }
 
     spawnDrop(x: number, y: number, amount: number): void {
+        // 二维平面：金币直接固定在敌人死亡坐标（仅做一次合法范围校正），
+        // 不再生成随机速度，也不在 update 中做重力/横向漂移。
         this._drops.push({
             x: clamp(x, DROP_SIDE_MARGIN, CANVAS_W - DROP_SIDE_MARGIN),
             y: clamp(y, DROP_SIDE_MARGIN, DROP_FLOOR),
-            vx: Rng.float(-40, 40),
-            vy: Rng.float(-100, -40),
+            vx: 0,
+            vy: 0,
             amount,
             life: 30,
             collected: false,
@@ -43,15 +45,6 @@ export class Economy {
         const pickupR = player.stats.goldPickupRange || 60;
         for (let i = this._drops.length - 1; i >= 0; i--) {
             const d = this._drops[i];
-            d.vy   += 200 * dt;          // 重力
-            d.x    = clamp(d.x + d.vx * dt, DROP_SIDE_MARGIN, CANVAS_W - DROP_SIDE_MARGIN);
-            const nextY = d.y + d.vy * dt;
-            if (nextY >= DROP_FLOOR) {
-                d.y = DROP_FLOOR;
-                d.vy = 0;
-            } else {
-                d.y = Math.max(DROP_SIDE_MARGIN, nextY);
-            }
             d.life -= dt;
             if (d.life <= 0 || d.collected) { this._drops.splice(i, 1); continue; }
             if (Vec.dist(d.x, d.y, player.x, player.y) < pickupR) {

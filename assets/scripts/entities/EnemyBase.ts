@@ -3,7 +3,7 @@
 // ============================================================
 import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
-import { CANVAS_W, CANVAS_H } from '../core/Constants';
+import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
@@ -131,14 +131,15 @@ export class EnemyBase {
     }
 
     // ── 伤害处理 ──────────────────────────────────────────
-    takeDamage(rawDmg: number, attacker: any, game: any): void {
-        if (!this.alive) return;
+    /** 返回实际扣血量（护盾吸收/护甲减免后），供攻击吸血按真实伤害结算。 */
+    takeDamage(rawDmg: number, attacker: any, game: any): number {
+        if (!this.alive) return 0;
         // 护盾先扣
         if (this.shieldActive && this.shieldHp > 0) {
             const abs = Math.min(this.shieldHp, rawDmg);
             this.shieldHp -= abs; rawDmg -= abs;
             if (this.shieldHp <= 0) this.shieldActive = false;
-            if (rawDmg <= 0) { game.particles?.shieldBlock(this.x, this.y); return; }
+            if (rawDmg <= 0) { game.particles?.shieldBlock(this.x, this.y); return 0; }
         }
         // 护甲减免（对齐 hexblast-py entities/enemy.py take_damage()：
         // 用 armor/(armor+100) 的衰减公式而非线性减法，护甲越高减伤边际递减，
@@ -162,6 +163,7 @@ export class EnemyBase {
         }
 
         if (this.hp <= 0) this._die(attacker, game);
+        return dmg;
     }
 
     /** Continuous damage keeps fractional DPS while still using the normal death settlement. */
@@ -172,6 +174,8 @@ export class EnemyBase {
     }
 
     protected _die(attacker: any, game: any): void {
+        // 幂等保护：同帧多段伤害（多子弹/DoT+直伤）抢杀时只结算一次掉落与击杀数
+        if (!this.alive) return;
         this.hp    = 0;
         this.alive = false;
         game.economy?.spawnDrop(this.x, this.y, this.goldValue);
@@ -235,7 +239,7 @@ export class EnemyBase {
         this.x += (dx * spd + this.knockbackX) * dt;
         this.y += (dy * spd + this.knockbackY) * dt;
         this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
-        this.y = clamp(this.y, this.radius, CANVAS_H - this.radius);
+        this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
 
         // 近战攻击：进入攻击范围且冷却完毕才对玩家造成伤害
         // （对齐 hexblast-py 的 entities/enemy.py _move() 近战判定；
@@ -245,6 +249,8 @@ export class EnemyBase {
             const dist = Math.hypot(player.x - this.x, player.y - this.y);
             if (dist <= atkDist) {
                 this._atkCd = 1 / Math.max(0.01, this.attackSpeed);
+                // 怪物近战剑气：向玩家方向挥斩的可视化前摇提示
+                game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(player.y - this.y, player.x - this.x), this.color, this.meleeRange, 0.85);
                 player.takeDamage(this.damage * this.buffDmgMult, game);
             }
         }
@@ -255,9 +261,9 @@ export class EnemyBase {
         const side = Rng.int(0, 3);
         switch (side) {
             case 0: return [Rng.float(radius, CANVAS_W - radius), -radius];
-            case 1: return [Rng.float(radius, CANVAS_W - radius), CANVAS_H + radius];
-            case 2: return [-radius, Rng.float(radius, CANVAS_H - radius)];
-            default: return [CANVAS_W + radius, Rng.float(radius, CANVAS_H - radius)];
+            case 1: return [Rng.float(radius, CANVAS_W - radius), PLAYFIELD_BOTTOM + radius];
+            case 2: return [-radius, Rng.float(radius, PLAYFIELD_BOTTOM - radius)];
+            default: return [CANVAS_W + radius, Rng.float(radius, PLAYFIELD_BOTTOM - radius)];
         }
     }
 
@@ -267,7 +273,7 @@ export class EnemyBase {
         playerX: number, playerY: number, minDistance: number,
     ): [number, number] {
         const sx = clamp(x, radius, CANVAS_W - radius);
-        const sy = clamp(y, radius, CANVAS_H - radius);
+        const sy = clamp(y, radius, PLAYFIELD_BOTTOM - radius);
         if (Vec.dist2(sx, sy, playerX, playerY) >= minDistance * minDistance) return [sx, sy];
 
         const baseAngle = Math.atan2(sy - playerY, sx - playerX);
@@ -275,7 +281,7 @@ export class EnemyBase {
         for (let i = 0; i < 8; i++) {
             const angle = baseAngle + (i / 8) * Math.PI * 2;
             const cx = clamp(playerX + Math.cos(angle) * minDistance, radius, CANVAS_W - radius);
-            const cy = clamp(playerY + Math.sin(angle) * minDistance, radius, CANVAS_H - radius);
+            const cy = clamp(playerY + Math.sin(angle) * minDistance, radius, PLAYFIELD_BOTTOM - radius);
             const dist2 = Vec.dist2(cx, cy, playerX, playerY);
             if (dist2 > bestDist2) { bestX = cx; bestY = cy; bestDist2 = dist2; }
         }

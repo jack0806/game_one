@@ -24,16 +24,27 @@ test('spawnDrop生成的金币掉落在拾取范围内被玩家收集', () => {
     assert.equal(eco.drops.length, 0);
 });
 
-test('金币不会沉入底部HUD区域,底部生成和横向移动都会被安全限制', () => {
+test('金币固定在敌人死亡位置:不生成速度,多帧更新后位置保持不变(二维平面,无重力)', () => {
+    const eco = new Economy();
+    const player = makePlayer({ x: 5000, y: 5000 }); // 远离,不会拾取
+    eco.spawnDrop(400, 300, 10);
+    assert.equal(eco.drops[0].x, 400, '金币应生成在死亡x坐标');
+    assert.equal(eco.drops[0].y, 300, '金币应生成在死亡y坐标');
+    assert.equal(eco.drops[0].vx, 0, '不应有横向抛洒速度');
+    assert.equal(eco.drops[0].vy, 0, '不应有重力下落(之前会掉进HUD区)');
+    for (let i = 0; i < 50; i++) eco.update(0.05, player);
+    assert.equal(eco.drops[0].x, 400, '多帧更新后x不变');
+    assert.equal(eco.drops[0].y, 300, '多帧更新后y不变');
+});
+
+test('金币不会沉入底部HUD区域,死亡点在HUD区内会被校正到战斗区底边', () => {
     const eco = new Economy();
     const player = makePlayer({ x: 640, y: 704, stats: { goldPickupRange: 1 } });
     eco.spawnDrop(640, 719, 10);
-    assert.ok(eco.drops[0].y <= 648, '生成在画布底部的金币应先校正到HUD上方');
-    eco.drops[0].vx = 10000;
+    assert.equal(eco.drops[0].y, 648, 'HUD区内死亡的金币应校正到PLAYFIELD_BOTTOM(648)');
     eco.update(1, player);
-    assert.ok(eco.drops[0].x <= 1268, '金币不应横向越出画布');
-    assert.ok(eco.drops[0].y <= 648, '金币落地位置必须保持在HUD上方');
-    assert.equal(eco.drops[0].vy, 0, '金币落地后不应继续向下累积速度');
+    assert.equal(eco.drops[0].y, 648, '更新后位置保持固定');
+    assert.equal(eco.drops[0].x, 640, 'x不漂移');
 });
 
 test('掉落物超过life后自动消失(未被拾取)', () => {

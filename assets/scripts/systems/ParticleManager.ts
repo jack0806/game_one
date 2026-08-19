@@ -160,6 +160,63 @@ export class ParticleManager {
         this.emit({ x, y, count: 10, color, speedMin: 20, speedMax: 60, lifeMin: 0.2, lifeMax: 0.5, sizeMin: 4, sizeMax: 8, glow: true });
     }
 
+    // ── 近战剑气（玩家/怪物近战攻击共用） ──────────────────
+    /**
+     * 挥斩特效：3 条平行刃线沿攻击方向扫出 + 前方扩散光环 + 扇形火花。
+     * @param x,y      挥斩者坐标
+     * @param angle    攻击方向（弧度）
+     * @param color    主体色（中线固定白色提亮）
+     * @param reach    攻击距离（决定刃长与光环半径）
+     * @param strength 强度：玩家=1，小怪=0.85，Boss=1.8，放大宽度/寿命
+     */
+    meleeSlash(x: number, y: number, angle: number, color: string, reach = 70, strength = 1): void {
+        const len = Math.max(40, reach * 1.1);
+        for (let i = -1; i <= 1; i++) {
+            const off = i * (5 + strength * 3);   // 垂直于攻击方向错开，模拟刃宽
+            const ox = Math.cos(angle + Math.PI / 2) * off;
+            const oy = Math.sin(angle + Math.PI / 2) * off;
+            const a2 = angle + i * 0.12;          // 外侧两线略张开成扇形
+            const life = 0.16 + strength * 0.06;
+            this.particles.push({
+                x: x + ox, y: y + oy, vx: 0, vy: 0,
+                life, maxLife: life,
+                size: 2, color: i === 0 ? '#ffffff' : color,
+                fade: true, gravity: false, glow: true, type: 'line',
+                x2: x + ox + Math.cos(a2) * len, y2: y + oy + Math.sin(a2) * len,
+                alpha: 1, lineWidth: Math.max(1, 3 + strength * 2 - Math.abs(i) * 1.5),
+            });
+        }
+        const ringR = Math.max(18, reach) * (0.72 + strength * 0.18);
+        const rLife = 0.18 + strength * 0.05;
+        this.particles.push({ x, y, vx: 0, vy: 0, life: rLife, maxLife: rLife, size: 2, color, fade: true, gravity: false, glow: true, type: 'ring', radius: ringR * 0.35, maxRadius: ringR, alpha: 1 });
+        this.emit({ x, y, count: 4 + Math.floor(strength * 3), color, speedMin: 80, speedMax: 200 + strength * 60, lifeMin: 0.1, lifeMax: 0.3, sizeMin: 2, sizeMax: 4, glow: true, angleMin: angle - 0.45, angleMax: angle + 0.45 });
+    }
+
+    // ── 敌弹分弹种尾迹（boss 四章弹种可辨识化） ────────────
+    /**
+     * 按弹种生成尾迹，让玩家一眼分辨威胁类型：
+     * poison 毒球（绿雾） / gear 齿轮（蓝环） / homing 追踪（反向尾焰） / chaos 混沌（紫烟+环）
+     */
+    enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'gear' | 'homing' | 'chaos', vx: number, vy: number, color = '#fff', radius = 6): void {
+        switch (fx) {
+            case 'poison':
+                this.emit({ x, y, count: 3, color: '#44ff00', speedMin: 10, speedMax: 40, lifeMin: 0.25, lifeMax: 0.5, sizeMin: 2, sizeMax: 5, glow: true });
+                break;
+            case 'gear':
+                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, size: 2, color: '#66aaff', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.8, maxRadius: radius * 2.2, alpha: 1 });
+                break;
+            case 'homing': {
+                const spd = Math.hypot(vx, vy) || 1;
+                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, size: 2, color: '#00ffcc', fade: true, gravity: false, glow: true, type: 'line', x2: x - vx / spd * 16, y2: y - vy / spd * 16, alpha: 1, lineWidth: 2 });
+                break;
+            }
+            case 'chaos':
+                this.emit({ x, y, count: 2, color: '#cc44ff', speedMin: 5, speedMax: 30, lifeMin: 0.2, lifeMax: 0.4, sizeMin: 2, sizeMax: 4, glow: true });
+                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.25, maxLife: 0.25, size: 2, color: '#aa33ee', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.5, maxRadius: radius * 1.6, alpha: 1 });
+                break;
+        }
+    }
+
     // ── 每帧更新 ─────────────────────────────────────────
     update(dt: number): void {
         for (let i = this.particles.length - 1; i >= 0; i--) {

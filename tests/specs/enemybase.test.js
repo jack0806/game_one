@@ -174,27 +174,27 @@ test('变异:deathExplode 或 exploder自带deathExplode死亡时调用spawnExpl
 });
 
 
-test('随机边缘出生:大量采样始终位于四条画布边界外,不会落入场内或玩家附近', () => {
-    const { CANVAS_W, CANVAS_H } = require('../dist/core/Constants');
+test('随机边缘出生:大量采样始终位于战斗区边界外,不会落入战斗区或玩家附近', () => {
+    const { CANVAS_W, PLAYFIELD_BOTTOM } = require('../dist/core/Constants');
     const radius = 20;
     for (let i = 0; i < 1000; i++) {
         const [x, y] = EnemyBase.randomEdgePos(radius);
-        const outside = x === -radius || x === CANVAS_W + radius || y === -radius || y === CANVAS_H + radius;
-        assert.ok(outside, `出生点(${x},${y})必须位于某条边界外`);
+        const outside = x === -radius || x === CANVAS_W + radius || y === -radius || y === PLAYFIELD_BOTTOM + radius;
+        assert.ok(outside, `出生点(${x},${y})必须位于某条战斗区边界外(底部出生应在HUD区外侧)`);
         if (x === -radius || x === CANVAS_W + radius) {
-            assert.ok(y >= radius && y <= CANVAS_H - radius);
+            assert.ok(y >= radius && y <= PLAYFIELD_BOTTOM - radius, '侧边出生的y应在战斗区高度范围内');
         } else {
             assert.ok(x >= radius && x <= CANVAS_W - radius);
         }
     }
 });
 
-test('显式出生安全校正:贴脸坐标被推离玩家且保持在场内', () => {
-    const { CANVAS_W, CANVAS_H } = require('../dist/core/Constants');
+test('显式出生安全校正:贴脸坐标被推离玩家且保持在战斗区内', () => {
+    const { CANVAS_W, PLAYFIELD_BOTTOM } = require('../dist/core/Constants');
     const [x, y] = EnemyBase.safeSpawnPos(640, 360, 18, 640, 360, 180);
     assert.ok(Math.hypot(x - 640, y - 360) >= 180 - 1e-9);
     assert.ok(x >= 18 && x <= CANVAS_W - 18);
-    assert.ok(y >= 18 && y <= CANVAS_H - 18);
+    assert.ok(y >= 18 && y <= PLAYFIELD_BOTTOM - 18);
 });
 
 test('持续伤害保持小数DPS且血量归零时正常结算死亡', () => {

@@ -3,7 +3,7 @@
 // ============================================================
 import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
-import { CANVAS_W, CANVAS_H } from '../core/Constants';
+import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
 import { applyArtSprite } from '../core/SpriteUtils';
 const { ccclass, property } = _decorator;
@@ -93,6 +93,7 @@ export class PlayerController extends Component {
             eliteBonus: 0, maxAugments: 6, previewAugments: false,
             phaseDash: false, _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
             _reikPassive: false, chaosBonus: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
+            lifestealRate: 0,
         };
 
         this.hp     = this.stats.maxHp;
@@ -108,10 +109,12 @@ export class PlayerController extends Component {
 
     // ── 当前伤害（含词条/buff/连击） ──────────────────────
     getDamage(game?: any): number {
-        let d = this.stats.damage;
+        // damageMulti：商店/词条的攻击力乘区（此前只写不读，是死数据）
+        let d = this.stats.damage * this.damageMulti;
         if (this.stats._reikPassive) {
             const lost = 1 - this.hp / this.stats.maxHp;
-            d *= (1 + Math.min(0.8, Math.floor(lost / 0.1) * 0.08));
+            // +1e-6 容差：恰好损失 10%/20%…整档时浮点算出 0.0999… 不得掉档
+            d *= (1 + Math.min(0.8, Math.floor((lost + 1e-6) / 0.1) * 0.08));
         }
         for (const b of this._buffs) if (b.mods.dmgMult) d *= b.mods.dmgMult;
         if (this.stats._comboDmgAug && game) {
@@ -193,7 +196,7 @@ export class PlayerController extends Component {
         if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
         const spd = this.getSpeed();
         this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
-        this.y = clamp(this.y + my * spd * dt, this.radius, CANVAS_H - this.radius);
+        this.y = clamp(this.y + my * spd * dt, this.radius, PLAYFIELD_BOTTOM - this.radius);
     }
 
     tick(dt: number, input: any, game: any): void {
@@ -221,7 +224,7 @@ export class PlayerController extends Component {
             this._dashCd = 3;
             if (this.stats.phaseDash) {
                 this.x = clamp(input.mouse.x, this.radius, CANVAS_W - this.radius);
-                this.y = clamp(input.mouse.y, this.radius, CANVAS_H - this.radius);
+                this.y = clamp(input.mouse.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
                 game.floatingText?.spawn(this.x, this.y - 40, '相位跳跃！', '#cc88ff', 18, true);
             } else {
                 let dx = input.moveX, dy = input.moveY;
@@ -230,7 +233,7 @@ export class PlayerController extends Component {
                     dx = Math.cos(a); dy = Math.sin(a);
                 }
                 this.x = clamp(this.x + dx * 120, this.radius, CANVAS_W - this.radius);
-                this.y = clamp(this.y + dy * 120, this.radius, CANVAS_H - this.radius);
+                this.y = clamp(this.y + dy * 120, this.radius, PLAYFIELD_BOTTOM - this.radius);
             }
             this._iframeTimer = 0.3;
             game.particles?.dashTrail?.(this.x, this.y, this.color);
@@ -292,7 +295,18 @@ export class PlayerController extends Component {
     private _meleeAttack(game: any): void {
         const enemy = game.getNearestEnemy?.(this.x, this.y);
         if (!enemy || !enemy.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > this._charDef.attackRange + this.radius + enemy.radius) return;
-        let dmg = this.getDamage(game);
+        // 剑气特效：从玩家位置向目标方向斩出，刃长覆盖整个攻击距离
+        game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(enemy.y - this.y, enemy.x - this.x), this.color, this._charDef.attackRange, 1);
+        this.applyAttackDamage(enemy, game);
+    }
+
+    /**
+     * 统一攻击命中链路：暴击 → 精英/Boss加成 → 冻结要害 → 实际扣血 →
+     * 攻击吸血 → 词条分发 → 浮字/粒子。近战普攻与狂战士Q冲锋共用，
+     * 保证吸血按"实际扣血"（护盾吸收/护甲减免后）结算。
+     */
+    applyAttackDamage(enemy: any, game: any, baseDamage?: number): number {
+        let dmg = baseDamage ?? this.getDamage(game);
         const isCrit = Math.random() < (this.stats.critRate || 0);
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
@@ -300,10 +314,25 @@ export class PlayerController extends Component {
         }
         if ((enemy.isElite || enemy.isBoss) && this.stats.eliteBonus) dmg *= 1 + this.stats.eliteBonus;
         if (enemy.frozen > 0 && this.stats.freezeBonus) dmg *= this.stats.freezeBonus;
-        enemy.takeDamage(dmg, this, game);
+        const actual = enemy.takeDamage(dmg, this, game);
+        const actualDamage = actual === undefined ? dmg : actual;
+        this.applyAttackLifesteal(actualDamage, game);
         game.augmentManager?.dispatchHit(this, enemy, dmg, game);
         game.floatingText?.spawn(enemy.x, enemy.y - 10, Math.ceil(dmg).toString(), isCrit ? '#ffd700' : this.color, isCrit ? 16 : 13, isCrit);
         game.particles?.hit(enemy.x, enemy.y, this.color);
+        return dmg;
+    }
+
+    /** 攻击吸血：按实际扣血回血。lifestealRate 默认0（狂战士被动=0.05），其他角色无感知。 */
+    applyAttackLifesteal(actualDamage: number, game: any): void {
+        const rate = this.stats.lifestealRate || 0;
+        if (rate <= 0 || actualDamage <= 0 || !this.alive) return;
+        const heal = actualDamage * rate;
+        if (heal < 1) return;
+        const before = this.hp;
+        this.heal(heal);
+        const healed = this.hp - before;
+        if (healed > 0) game.floatingText?.spawn(this.x + 14, this.y - 34, `+${Math.round(healed)}`, '#5fff5f', 12, false);
     }
 
     // ── 发射子弹 ─────────────────────────────────────────

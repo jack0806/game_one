@@ -2,7 +2,7 @@ import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
     UITransform, director, game, Label, Sprite
 } from 'cc';
-import { CANVAS_W, CANVAS_H, DT_MAX } from './Constants';
+import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
 import { Vec, Rng } from './MathUtils';
 import { applyArtSprite, SpriteNodePool } from './SpriteUtils';
 import { styleLabel } from './LabelUtils';
@@ -563,6 +563,53 @@ export class GameManager extends Component {
             }
             g.fillColor = Color.fromHEX(new Color(), b.color ?? '#ffff80');
             g.circle(bx, by, b.radius ?? 5); g.fill();
+            // 敌弹分弹种轮廓：不看颜色也能一眼分辨威胁类型
+            // （毒球=双层绿圈+外毒环 / 齿轮=旋转环+4辐条 / 追踪=锁定环+十字 / 混沌=脉冲紫圈+交叉线）
+            if (b.enemyFx) {
+                const r = b.radius ?? 5;
+                const t = b.life ?? 0;
+                const pulse = 1 + Math.sin(t * 18) * 0.12;
+                switch (b.enemyFx) {
+                    case 'poison':
+                        g.strokeColor = new Color(80, 255, 60, 220);
+                        g.lineWidth = 2; g.circle(bx, by, r + 2); g.stroke();
+                        g.strokeColor = new Color(40, 160, 30, 140);
+                        g.lineWidth = 3; g.circle(bx, by, r * 1.6); g.stroke();
+                        break;
+                    case 'gear': {
+                        g.strokeColor = new Color(140, 190, 255, 230);
+                        g.lineWidth = 2.5; g.circle(bx, by, r + 1.5); g.stroke();
+                        const a0 = t * 6;
+                        for (let k = 0; k < 4; k++) {
+                            const aa = a0 + (k / 4) * Math.PI * 2;
+                            g.moveTo(bx + Math.cos(aa) * (r - 2), by + Math.sin(aa) * (r - 2));
+                            g.lineTo(bx + Math.cos(aa) * (r + 4), by + Math.sin(aa) * (r + 4));
+                        }
+                        g.stroke();
+                        break;
+                    }
+                    case 'homing':
+                        g.strokeColor = new Color(0, 255, 210, 230);
+                        g.lineWidth = 2; g.circle(bx, by, r + 4); g.stroke();
+                        g.moveTo(bx - r - 8, by); g.lineTo(bx - r - 2, by);
+                        g.moveTo(bx + r + 2, by); g.lineTo(bx + r + 8, by);
+                        g.moveTo(bx, by - r - 8); g.lineTo(bx, by - r - 2);
+                        g.moveTo(bx, by + r + 2); g.lineTo(bx, by + r + 8);
+                        g.stroke();
+                        break;
+                    case 'chaos':
+                        g.strokeColor = new Color(220, 100, 255, 230);
+                        g.lineWidth = 2; g.circle(bx, by, r * pulse + 2); g.stroke();
+                        const ca = t * 3;
+                        for (let k = 0; k < 2; k++) {
+                            const aa = ca + k * Math.PI / 2;
+                            g.moveTo(bx - Math.cos(aa) * (r + 5), by - Math.sin(aa) * (r + 5));
+                            g.lineTo(bx + Math.cos(aa) * (r + 5), by + Math.sin(aa) * (r + 5));
+                        }
+                        g.stroke();
+                        break;
+                }
+            }
         }
 
         // Player — Sprite node (char_<id> battle token, set up in PlayerController.init)
@@ -1014,7 +1061,7 @@ export class GameManager extends Component {
 
     spawnVortex(player: any): void {
         const x = Math.random() * CANVAS_W;
-        const y = Math.random() * CANVAS_H;
+        const y = Math.random() * PLAYFIELD_BOTTOM;
         const dmg = (player?.getDamage?.(this) ?? 10) * 0.2;
         this.spawnDeathZone(x, y, 80, 8, dmg);
         this._particles.explode(x, y, '#8844ff', 60);
@@ -1106,6 +1153,7 @@ export class GameManager extends Component {
                 color: b.color ?? '#ff8844', owner: 'enemy',
                 isEnemyBullet: true, homing: b.homing ?? false,
                 lifeTime: b.life ?? 3,
+                enemyFx: b.enemyFx,
             }),
         };
     }

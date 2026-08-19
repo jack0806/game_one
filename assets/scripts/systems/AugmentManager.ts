@@ -2,6 +2,7 @@
 //  AugmentManager.ts — 词条管理器
 // ============================================================
 import { AUGMENT_DB, AugmentDef } from '../data/AugmentDB';
+import { CHARACTERS } from '../data/CharacterDB';
 import { Rng } from '../core/MathUtils';
 
 export class AugmentManager {
@@ -32,12 +33,23 @@ export class AugmentManager {
                     if (!usedIds.has(card.id)) { usedIds.add(card.id); results.push(card); continue; }
                 }
             }
-            // 普通词条
-            const avail = AUGMENT_DB.filter(a => !usedIds.has(a.id) && !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3));
+            // 普通词条（按角色攻击方式过滤掉不适配的纯弹道词条）
+            const avail = this._filterForChar(AUGMENT_DB.filter(a => !usedIds.has(a.id) && !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3)), charId);
             const card = this._rollOneFromPool(avail, weights, charId);
             if (card) { usedIds.add(card.id); results.push({ ...card, tier: 1 }); }
         }
         return results;
+    }
+
+    /**
+     * 按角色攻击方式过滤词条：attackType:'ranged' 的纯弹道词条（穿透/多重/反弹/
+     * 弹幕等）只作用于 spawn 出去的子弹，近战角色拿到即死词条——近战(reik)的
+     * 候选池与混沌加成池都不得出现。反向同理（未来若有 melee 专属词条）。
+     */
+    private _filterForChar(pool: AugmentDef[], charId?: string): AugmentDef[] {
+        const atk = charId ? CHARACTERS[charId]?.attackType : undefined;
+        if (!atk) return pool;
+        return pool.filter(a => !a.attackType || a.attackType === atk);
     }
 
     private _rollOneFromPool(pool: AugmentDef[], weights: Record<string, number>, charId?: string): AugmentDef | null {
@@ -89,7 +101,10 @@ export class AugmentManager {
         // desc: '获得词条时额外随机一个，混沌本质'）。_fromChaosBonus 防止连锁触发。
         if (!_fromChaosBonus && player?.stats?.chaosBonus && this.active.length < this.maxSlots) {
             const bonus = this._rollOneFromPool(
-                AUGMENT_DB.filter(a => !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3)),
+                this._filterForChar(
+                    AUGMENT_DB.filter(a => !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3)),
+                    player?.charId,
+                ),
                 { blue: 65, purple: 30, orange: 5, gold: 1 },
             );
             if (bonus) this.equip(bonus, player, game, true);

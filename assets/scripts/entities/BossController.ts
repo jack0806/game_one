@@ -3,7 +3,7 @@
 // ============================================================
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { EnemyBase } from './EnemyBase';
-import { CANVAS_W, CANVAS_H } from '../core/Constants';
+import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
 export class BossController extends EnemyBase {
     phase        = 1;
@@ -92,9 +92,9 @@ export class BossController extends EnemyBase {
             this.x += this._chargeVx * dt;
             this.y += this._chargeVy * dt;
             if (this.x < this.radius || this.x > CANVAS_W - this.radius) this._chargeVx *= -1;
-            if (this.y < this.radius || this.y > CANVAS_H - this.radius) this._chargeVy *= -1;
+            if (this.y < this.radius || this.y > PLAYFIELD_BOTTOM - this.radius) this._chargeVy *= -1;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
-            this.y = clamp(this.y, this.radius, CANVAS_H - this.radius);
+            this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         } else {
             // 普通追逐（对齐 hexblast-py：追逐速度要乘slowMult，之前完全没接线，
             // 导致减速类词条/技能对boss完全无效）
@@ -102,7 +102,7 @@ export class BossController extends EnemyBase {
             this.x += dx * this.speed * this.slowMult * dt;
             this.y += dy * this.speed * this.slowMult * dt;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
-            this.y = clamp(this.y, this.radius, CANVAS_H - this.radius);
+            this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
 
         // 技能计时
@@ -117,6 +117,8 @@ export class BossController extends EnemyBase {
         // 近战伤害按攻击冷却结算整次伤害，避免每帧小数伤害被玩家无敌帧吞掉。
         if (Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
             this._contactCd = 0.65;
+            // Boss 挥击剑气：大幅宽刃提示接触伤害范围
+            game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(player.y - this.y, player.x - this.x), this.glowColor, this.radius + player.radius, 1.8);
             player.takeDamage(this.damage, game);
         }
     }
@@ -138,23 +140,23 @@ export class BossController extends EnemyBase {
                 // 向玩家发射3发毒球
                 for (let i = -1; i <= 1; i++) {
                     const a = Math.atan2(player.y - this.y, player.x - this.x) + i * 0.3;
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, damage: this.damage * 0.6, radius: 10, color: '#44ff00', life: 3, owner: 'enemy', isEnemyBullet: true });
+                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, damage: this.damage * 0.6, radius: 10, color: '#44ff00', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison' });
                 }
                 break;
             case 2: // 钢铁：齿轮弹
                 for (let i = 0; i < 8; i++) {
                     const a = (i / 8) * Math.PI * 2 + this._animTime;
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, damage: this.damage * 0.5, radius: 8, color: '#4488cc', life: 3, owner: 'enemy', isEnemyBullet: true });
+                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, damage: this.damage * 0.5, radius: 8, color: '#4488cc', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'gear' });
                 }
                 break;
             case 3: // 海克斯：追踪弹
                 { const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
-                  game.enemyBullets?.push({ x: this.x, y: this.y, vx: dx * 300, vy: dy * 300, damage: this.damage * 0.8, radius: 12, color: '#00ffcc', life: 4, owner: 'enemy', isEnemyBullet: true, homing: true }); }
+                  game.enemyBullets?.push({ x: this.x, y: this.y, vx: dx * 300, vy: dy * 300, damage: this.damage * 0.8, radius: 12, color: '#00ffcc', life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'homing' }); }
                 break;
             case 4: // 混沌：随机多弹
                 for (let i = 0; i < 12; i++) {
                     const a = Rng.float(0, Math.PI * 2);
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * 0.7, radius: 9, color: '#cc44ff', life: 3, owner: 'enemy', isEnemyBullet: true });
+                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * 0.7, radius: 9, color: '#cc44ff', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos' });
                 }
                 break;
         }
