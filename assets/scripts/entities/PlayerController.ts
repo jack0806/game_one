@@ -310,7 +310,7 @@ export class PlayerController extends Component {
         const isCrit = Math.random() < (this.stats.critRate || 0);
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
-            game.floatingText?.spawn(enemy.x, enemy.y - 20, 'CRIT!', '#ffd700', 14, true);
+            game.floatingText?.spawn(enemy.x, enemy.y - 20, '暴击！', '#ffd700', 14, true);
         }
         if ((enemy.isElite || enemy.isBoss) && this.stats.eliteBonus) dmg *= 1 + this.stats.eliteBonus;
         if (enemy.frozen > 0 && this.stats.freezeBonus) dmg *= this.stats.freezeBonus;

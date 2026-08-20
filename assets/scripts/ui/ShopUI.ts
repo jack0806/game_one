@@ -68,7 +68,7 @@ export class ShopUI extends Component {
         n.setPosition(new Vec3(0, 280, 0));
         n.addComponent(UITransform).setContentSize(400, 40);
         const lbl = n.addComponent(Label);
-        lbl.string = '— SHOP —';
+        lbl.string = '— 商店 —';
         lbl.fontSize = 28; lbl.color = new Color(255, 215, 90, 255);
         styleLabel(lbl);
     }
@@ -99,7 +99,7 @@ export class ShopUI extends Component {
         const ln = new Node('L'); ln.setParent(this._leaveBtn);
         ln.addComponent(UITransform).setContentSize(160, 40);
         const lbl = ln.addComponent(Label);
-        lbl.string = 'LEAVE'; lbl.fontSize = 18;
+        lbl.string = '离开'; lbl.fontSize = 18;
         lbl.color = new Color(180, 180, 220, 220);
         styleLabel(lbl);
         this._leaveBtn.on(Node.EventType.TOUCH_END, () => {
@@ -174,7 +174,7 @@ export class ShopUI extends Component {
         const btnLN = new Node('L'); btnLN.setParent(btn);
         btnLN.addComponent(UITransform).setContentSize(80, 36);
         const btnLbl = btnLN.addComponent(Label);
-        btnLbl.string = 'BUY'; btnLbl.fontSize = 14;
+                btnLbl.string = '购买'; btnLbl.fontSize = 14;
         btnLbl.color = new Color(200, 255, 200, 255);
         styleLabel(btnLbl);
 
@@ -184,7 +184,7 @@ export class ShopUI extends Component {
             if (ok) {
                 // grey out after purchase
                 btnG.fillColor = new Color(50, 50, 60, 160);
-                btnLbl.string = 'SOLD'; btnLbl.color = new Color(120, 120, 120, 180);
+                btnLbl.string = '已售出'; btnLbl.color = new Color(120, 120, 120, 180);
                 btn.off(Node.EventType.TOUCH_END);
                 this._goldLabel.string = `⬡ ${this._currentGold}`;
             }

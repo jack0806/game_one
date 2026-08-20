@@ -111,7 +111,7 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 280, 0));
         tn.addComponent(UITransform).setContentSize(500, 44);
         const tl = tn.addComponent(Label);
-        tl.string = '— SELECT CHARACTER —';
+        tl.string = '— 选择角色 —';
         tl.fontSize = 26; tl.color = new Color(255, 215, 90, 255);
         styleLabel(tl);
 
@@ -223,12 +223,12 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 160, 0));
         tn.addComponent(UITransform).setContentSize(400, 56);
         const tl = tn.addComponent(Label);
-        tl.string = 'GAME OVER';
+        tl.string = '游戏结束';
         tl.fontSize = 46; tl.color = new Color(220, 50, 50, 255);
         styleLabel(tl);
 
-        const r = this._mkBtn(p, 'RETRY',     0,  30, 200, 46, new Color(50, 130, 50, 230));
-        const m = this._mkBtn(p, 'MAIN MENU', 0, -40, 200, 46, new Color(60, 60, 90, 230));
+        const r = this._mkBtn(p, '重新开始', 0,  30, 200, 46, new Color(50, 130, 50, 230));
+        const m = this._mkBtn(p, '返回主菜单', 0, -40, 200, 46, new Color(60, 60, 90, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onRestartPressed?.(),  this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
     }
@@ -246,7 +246,7 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 150, 0));
         tn.addComponent(UITransform).setContentSize(500, 52);
         const tl = tn.addComponent(Label);
-        tl.string = 'CHAPTER CLEAR!';
+        tl.string = '章节通关！';
         tl.fontSize = 40; tl.color = new Color(80, 230, 120, 255);
         styleLabel(tl);
 
@@ -254,12 +254,12 @@ export class ScreenManager extends Component {
         sub.setPosition(new Vec3(0, 100, 0));
         sub.addComponent(UITransform).setContentSize(400, 30);
         const sl = sub.addComponent(Label);
-        sl.string = 'Prepare for the next chapter…';
+        sl.string = '准备进入下一章节…';
         sl.fontSize = 15; sl.color = new Color(160, 200, 160, 200);
         styleLabel(sl);
 
-        const c = this._mkBtn(p, 'CONTINUE', 0, 20, 200, 46, new Color(40, 150, 220, 230));
-        const m = this._mkBtn(p, 'MAIN MENU', 0, -50, 200, 46, new Color(60, 60, 90, 230));
+        const c = this._mkBtn(p, '进入下一章', 0, 20, 200, 46, new Color(40, 150, 220, 230));
+        const m = this._mkBtn(p, '返回主菜单', 0, -50, 200, 46, new Color(60, 60, 90, 230));
         c.on(Node.EventType.TOUCH_END, () => this.onContinuePressed?.(),  this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(),  this);
     }
@@ -277,12 +277,12 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 130, 0));
         tn.addComponent(UITransform).setContentSize(300, 44);
         const tl = tn.addComponent(Label);
-        tl.string = 'PAUSED';
+        tl.string = '游戏暂停';
         tl.fontSize = 36; tl.color = new Color(200, 200, 240, 255);
         styleLabel(tl);
 
-        const r = this._mkBtn(p, 'RESUME',    0,  30, 200, 44, new Color(40, 140, 80, 230));
-        const m = this._mkBtn(p, 'MAIN MENU', 0, -40, 200, 44, new Color(60, 60, 90, 230));
+        const r = this._mkBtn(p, '继续游戏', 0,  30, 200, 44, new Color(40, 140, 80, 230));
+        const m = this._mkBtn(p, '返回主菜单', 0, -40, 200, 44, new Color(60, 60, 90, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onResumePressed?.(), this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
     }
@@ -348,7 +348,7 @@ export class ScreenManager extends Component {
         const ln = new Node('Status'); ln.setParent(n);
         ln.addComponent(UITransform).setContentSize(w, h);
         const label = ln.addComponent(Label);
-        label.string = 'COMING SOON';
+        label.string = '即将开放';
         label.fontSize = 13;
         label.color = new Color(145, 175, 185, 235);
         label.horizontalAlign = HorizontalTextAlignment.CENTER;

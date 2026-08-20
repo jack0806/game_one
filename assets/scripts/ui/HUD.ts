@@ -182,7 +182,7 @@ export class HUD extends Component {
     }
 
     private _refreshWave(wave: number, ch: number) {
-        this._waveLabel.string = `Ch.${ch + 1} — Wave ${wave}`;
+        this._waveLabel.string = `第${ch + 1}章 · 第${wave}波`;
     }
 
     private _refreshBoss(d: HudData) {
@@ -193,7 +193,7 @@ export class HUD extends Component {
         this._bossBarFg.clear();
         this._bossBarFg.fillColor = new Color(220, 40, 40, 255);
         this._bossBarFg.fillRect(0, 0, 400 * r, 22);
-        this._bossLabel.string = `${d.bossName ?? 'BOSS'}  ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
+        this._bossLabel.string = `${d.bossName ?? '首领'}  ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
     }
 
     private _refreshSkills(skills: { name: string; desc: string; icon: string; cd: number; maxCd: number }[]) {

@@ -3,7 +3,7 @@ import {
     Color, Vec3, UITransform
 } from 'cc';
 import { AugDef } from '../data/AugmentDB';
-import { RARITY_COLOR } from '../core/Constants';
+import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
 
@@ -71,7 +71,7 @@ export class AugSelectUI extends Component {
         n.setPosition(new Vec3(0, 270, 0));
         n.addComponent(UITransform).setContentSize(520, 42);
         const lbl = n.addComponent(Label);
-        lbl.string = '— CHOOSE AN AUGMENT —';
+        lbl.string = '— 选择一项海克斯强化 —';
         lbl.fontSize = 26;
         lbl.color = new Color(255, 215, 90, 255);
         styleLabel(lbl);
@@ -156,7 +156,7 @@ export class AugSelectUI extends Component {
         const ln = new Node('L'); ln.setParent(this._skipBtn);
         ln.addComponent(UITransform).setContentSize(140, 36);
         const l = ln.addComponent(Label);
-        l.string = 'SKIP'; l.fontSize = 16;
+        l.string = '跳过'; l.fontSize = 16;
         l.color = new Color(160, 160, 200, 220);
         styleLabel(l);
         this._skipBtn.on(Node.EventType.TOUCH_END, () => this._pick(-1), this);
@@ -187,7 +187,7 @@ export class AugSelectUI extends Component {
             c.bg.rect(-this.CARD_W/2, -this.CARD_H/2, this.CARD_W, this.CARD_H);
             c.bg.stroke();
 
-            c.rarityLabel.string = aug.rarity.toUpperCase();
+            c.rarityLabel.string = RARITY_LABEL[aug.rarity] ?? aug.rarity;
             c.rarityLabel.color  = col;
             c.tierLabel.string   = '★'.repeat(aug.tier ?? 1) + '☆'.repeat(Math.max(0, 3 - (aug.tier ?? 1)));
             c.nameLabel.string   = aug.name;

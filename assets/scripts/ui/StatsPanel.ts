@@ -271,7 +271,7 @@ export class StatsPanel extends Component {
             row.root.active = true;
             const col  = Color.fromHEX(new Color(), RARITY_COLOR[aug.rarity] ?? '#888888');
             const tier = aug.tier ?? 1;
-            row.name.string = tier > 1 ? `${aug.name}  Lv${tier}` : aug.name;
+            row.name.string = tier > 1 ? `${aug.name} · ${tier}级` : aug.name;
             row.name.color  = new Color(col.r, col.g, col.b, 255);
             row.desc.string = aug.desc;
             applyArtSprite(row.icon, `ui_icon_${aug.icon}`);

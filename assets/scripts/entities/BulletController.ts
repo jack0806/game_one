@@ -174,7 +174,7 @@ export class BulletPool {
                     let dmg = b.damage;
                     if (b.isCrit) {
                         dmg *= (1 + (player.stats.critDmg || 0.5));
-                        game.floatingText?.spawn(e.x, e.y - 20, 'CRIT!', '#ffd700', 14, true);
+                        game.floatingText?.spawn(e.x, e.y - 20, '暴击！', '#ffd700', 14, true);
                     }
                     if ((e.isElite || e.isBoss) && player.stats.eliteBonus) dmg *= (1 + player.stats.eliteBonus);
                     // 被动：冻结要害×freezeBonus（对齐 CharacterDB.ts liana 的 desc 描述）

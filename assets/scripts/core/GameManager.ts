@@ -966,7 +966,7 @@ export class GameManager extends Component {
                 { label: '冷却缩减', value: pct(st.cdReduction || 0) },
                 { label: '金币',     value: `${this._economy.gold}` },
             ],
-            progress: `进度  Ch.${this._chapter + 1} 波次 ${this._waveMgr.wave} · 击杀 ${this.kills} · 得分 ${this.score}`,
+            progress: `进度  第${this._chapter + 1}章 · 第${this._waveMgr.wave}波 · 击杀 ${this.kills} · 得分 ${this.score}`,
             augments:    this._augMgr.active,
             skillStates: p.getSkillStates(),
         };
