@@ -76,6 +76,7 @@ const KeyCode = {
     KEY_Q: 81,
     KEY_E: 69,
     KEY_R: 82,
+    KEY_M: 77,
     SHIFT_LEFT: 16,
     SHIFT_RIGHT: 16,
     SPACE: 32,

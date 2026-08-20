@@ -66,6 +66,7 @@ export class InputManager extends Component {
     isKeyQPressed(): boolean { return this.justPressedCode(KeyCode.KEY_Q); }
     isKeyEPressed(): boolean { return this.justPressedCode(KeyCode.KEY_E); }
     isKeyRPressed(): boolean { return this.justPressedCode(KeyCode.KEY_R); }
+    isKeyMPressed(): boolean { return this.justPressedCode(KeyCode.KEY_M); }
     isDash(): boolean { return this.isAnyDown(KeyCode.SHIFT_LEFT, KeyCode.SHIFT_RIGHT, KeyCode.SPACE); }
     isDashPressed(): boolean {
         return [KeyCode.SHIFT_LEFT, KeyCode.SHIFT_RIGHT, KeyCode.SPACE]

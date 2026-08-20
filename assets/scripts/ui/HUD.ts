@@ -3,7 +3,6 @@ import {
     Color, Vec3, UITransform
 } from 'cc';
 import { AugDef } from '../data/AugmentDB';
-import { RARITY_COLOR } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 
@@ -35,11 +34,9 @@ export class HUD extends Component {
     private _goldLabel!:   Label;
     private _waveLabel!:   Label;
     private _bossBarRoot!: Node;
-    private _bossBarFg!:   Graphics;
-    private _bossLabel!:   Label;
-    private _augSlots:     Node[] = [];
-    private _initialPassiveLabel?: Label;
-    private _skillRings:   { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
+    private _bossBarFg!: Graphics;
+    private _bossLabel!:  Label;
+    private _skillRings:  { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
 
     private readonly BAR_W   = 240;
     private readonly BAR_H   = 18;
@@ -50,7 +47,6 @@ export class HUD extends Component {
         this._buildGoldDisplay();
         this._buildWaveDisplay();
         this._buildBossBar();
-        this._buildAugSlots();
         this._buildSkillRings();
     }
 
@@ -117,35 +113,6 @@ export class HUD extends Component {
         this._bossBarRoot.active = false;
     }
 
-    private _buildAugSlots() {
-        // 10格：词条上限默认6，六角特权(hex_privilege)可提到10。之前固定8格，
-        // 第9/10个词条装备后完全不显示。
-        const startX = -560, y = -320;
-        for (let i = 0; i < 10; i++) {
-            const slot = this._mkNode(`Aug${i}`, startX + i * 46, y);
-            slot.addComponent(UITransform).setContentSize(40, 40);
-            slot.addComponent(Graphics);   // redrawn each refresh (border/rarity tint)
-            if (i === 0) {
-                const passiveN = new Node('InitialPassive'); passiveN.setParent(slot);
-                passiveN.setPosition(new Vec3(0, -30, 0));
-                passiveN.addComponent(UITransform).setContentSize(70, 18);
-                this._initialPassiveLabel = passiveN.addComponent(Label);
-                this._initialPassiveLabel.fontSize = 9;
-                this._initialPassiveLabel.color = new Color(255, 220, 120, 255);
-                styleLabel(this._initialPassiveLabel);
-            }
-
-            // 图标Sprite：叠在稀有度边框之上，居中显示，初始inactive（无词条时隐藏）。
-            const iconN = new Node('Icon'); iconN.setParent(slot);
-            iconN.addComponent(UITransform).setContentSize(30, 30);
-            const iconSp = iconN.addComponent(Sprite);
-            iconSp.sizeMode = Sprite.SizeMode.CUSTOM;
-            iconN.active = false;
-
-            this._augSlots.push(slot);
-        }
-    }
-
     private _buildSkillRings() {
         const keys = ['Q', 'E', 'R'];
         for (let i = 0; i < 3; i++) {
@@ -188,7 +155,6 @@ export class HUD extends Component {
         this._refreshGold(d.gold);
         this._refreshWave(d.wave, d.chapter);
         this._refreshBoss(d);
-        this._refreshAugs(d.augments, d.initialPassive);
         this._refreshSkills(d.skills);
     }
 
@@ -228,41 +194,6 @@ export class HUD extends Component {
         this._bossBarFg.fillColor = new Color(220, 40, 40, 255);
         this._bossBarFg.fillRect(0, 0, 400 * r, 22);
         this._bossLabel.string = `${d.bossName ?? 'BOSS'}  ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
-    }
-
-    private _refreshAugs(augs: AugDef[], initialPassive?: { name: string; desc: string }) {
-        if (this._initialPassiveLabel) {
-            this._initialPassiveLabel.string = initialPassive ? `初始：${initialPassive.name}` : '';
-        }
-        for (let i = 0; i < this._augSlots.length; i++) {
-            const slot   = this._augSlots[i];
-            const aug    = augs[i];
-            const g      = slot.getComponent(Graphics)!;
-            const iconN  = slot.getChildByName('Icon')!;
-            const iconSp = iconN.getComponent(Sprite)!;
-            g.clear();
-
-            if (aug) {
-                const hex = RARITY_COLOR[aug.rarity] ?? '#888888';
-                const col = Color.fromHEX(new Color(), hex);
-                // 边框/底色以节点中心(0,0)为对称绘制：Graphics坐标从锚点起笔，
-                // 之前 rect(0,0,40,40) 让整个框向右上偏移半格，居中的图标Sprite
-                // 压在框的左下角上——这就是左下角海克斯"框和图片错位"的根因。
-                g.fillColor = new Color(col.r, col.g, col.b, 50);
-                g.fillRect(-20, -20, 40, 40);
-                g.strokeColor = col; g.lineWidth = 2;
-                g.rect(-20, -20, 40, 40); g.stroke();
-
-                iconN.active = true;
-                applyArtSprite(iconSp, `ui_icon_${aug.icon}`);
-            } else {
-                g.fillColor = new Color(20, 20, 30, 100);
-                g.fillRect(-20, -20, 40, 40);
-                g.strokeColor = new Color(55, 55, 75, 160);
-                g.lineWidth = 1; g.rect(-20, -20, 40, 40); g.stroke();
-                iconN.active = false;
-            }
-        }
     }
 
     private _refreshSkills(skills: { name: string; desc: string; icon: string; cd: number; maxCd: number }[]) {

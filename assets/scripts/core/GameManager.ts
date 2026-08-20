@@ -23,13 +23,14 @@ import { HUD, HudData }      from '../ui/HUD';
 import { AugSelectUI }       from '../ui/AugSelectUI';
 import { ShopUI }            from '../ui/ShopUI';
 import { ScreenManager }     from '../ui/ScreenManager';
+import { StatsPanel, StatsPanelData } from '../ui/StatsPanel';
 
 const { ccclass, property } = _decorator;
 
 export type GameState =
     | 'menu' | 'charSelect' | 'playing'
     | 'augSelect' | 'shop' | 'gameover'
-    | 'chapterClear' | 'paused';
+    | 'chapterClear' | 'paused' | 'stats';
 
 /**
  * GameManager — singleton @ccclass component attached to a root Node.
@@ -73,6 +74,7 @@ export class GameManager extends Component {
     private _hud!:        HUD;
     private _augUI!:      AugSelectUI;
     private _shopUI!:     ShopUI;
+    private _statsUI!:    StatsPanel;
     private _screenMgr!:  ScreenManager;
 
     // ── game state ────────────────────────────────────────────
@@ -119,6 +121,7 @@ export class GameManager extends Component {
             if (this.state === 'playing' && this._player?.alive) {
                 this._player.tickMovement(dt, this._input);
                 if (this._input.justPressed('Escape')) this._setState('paused');
+                if (this._input.isKeyMPressed()) this._openStats();
             }
             this._renderFrame();
             return;
@@ -126,6 +129,12 @@ export class GameManager extends Component {
 
         if (this.state === 'playing') {
             this._updatePlaying(dt);
+        } else if (this.state === 'stats') {
+            // 再按一次 M（或 Esc）从详情面板返回战斗；Esc 直接回战斗而不是
+            // 进暂停菜单，避免"面板→菜单"两层套娃。
+            if (this._input.isKeyMPressed() || this._input.justPressed('Escape')) {
+                this._setState('playing');
+            }
         }
 
         this._renderFrame();
@@ -208,6 +217,9 @@ export class GameManager extends Component {
         const shopNode = new Node('Shop'); shopNode.setParent(ul);
         this._shopUI = shopNode.addComponent(ShopUI);
 
+        const statsNode = new Node('Stats'); statsNode.setParent(ul);
+        this._statsUI = statsNode.addComponent(StatsPanel);
+
         const smNode = new Node('ScreenMgr'); smNode.setParent(ul);
         this._screenMgr = smNode.addComponent(ScreenManager);
 
@@ -231,6 +243,7 @@ export class GameManager extends Component {
         this._hud.node.active      = (s === 'playing');
         this._augUI.node.active    = false;
         this._shopUI.node.active   = false;
+        this._statsUI.node.active  = false;
 
         switch (s) {
             case 'menu':         this._screenMgr.show('menu');         break;
@@ -241,8 +254,10 @@ export class GameManager extends Component {
             case 'playing':      /* HUD already active */              break;
             // 'shop' / 'augSelect' 面板不归 ScreenManager 管理，由调用方
             // 各自 show() 自己的 UI；这里只需确保上一个面板已被 hideAll() 清掉。
+            // 'stats' 同理：StatsPanel 由 _openStats() 激活并填充数据。
             case 'shop':
-            case 'augSelect':    break;
+            case 'augSelect':
+            case 'stats':        break;
         }
     }
 
@@ -468,6 +483,9 @@ export class GameManager extends Component {
             this.comboTimer -= dt;
             if (this.comboTimer <= 0) { this.comboTimer = 0; this.comboCount = 0; }
         }
+
+        // 角色详情面板（M）优先于暂停：打开面板时本帧剩余逻辑不再执行
+        if (input.isKeyMPressed()) { this._openStats(); return; }
 
         // Pause toggle
         if (input.justPressed('Escape')) { this._setState('paused'); }
@@ -914,6 +932,43 @@ export class GameManager extends Component {
             bossHp:    this._boss?.hp,
             bossMaxHp: this._boss?.maxHp,
             bossName:  this._boss?.name,
+        }
+    }
+
+    /** M键：暂停战斗并弹出角色属性/词条详情面板。 */
+    private _openStats() {
+        this._setState('stats');
+        // 先激活再填充：Graphics 在节点未激活时下发的绘制命令激活后可能丢失
+        // （表现为面板只剩文字、底板全透明）；onEnable/refresh 里也会重画兜底。
+        this._statsUI.node.active = true;
+        this._statsUI.refresh(this._buildStatsData());
+    }
+
+    private _buildStatsData(): StatsPanelData {
+        const p   = this._player;
+        const st  = p.stats;
+        const pct = (v: number) => `${Math.round(v * 100)}%`;
+        return {
+            charName:   this._char?.name  ?? '角色',
+            charColor:  this._char?.color ?? '#ffd700',
+            passiveDesc: this._char?.desc ?? '',
+            stats: [
+                { label: '生命',     value: `${Math.ceil(p.hp)} / ${Math.round(st.maxHp)}` },
+                { label: '护盾',     value: `${Math.ceil(p.shield)} / ${Math.round(p.maxShield)}` },
+                { label: '攻击力',   value: `${Math.round(p.getDamage(this))}` },
+                { label: '攻击速度', value: `${p.getAtkSpd().toFixed(2)} /秒` },
+                { label: '移动速度', value: `${Math.round(p.getSpeed())}` },
+                { label: '护甲',     value: `${Math.round(st.armor)}` },
+                { label: '暴击率',   value: pct(st.critRate || 0) },
+                { label: '暴击伤害', value: `+${pct(st.critDmg || 0)}` },
+                { label: '攻击吸血', value: pct(st.lifestealRate || 0) },
+                { label: '拾取范围', value: `${Math.round(st.goldPickupRange ?? 60)}` },
+                { label: '冷却缩减', value: pct(st.cdReduction || 0) },
+                { label: '金币',     value: `${this._economy.gold}` },
+            ],
+            progress: `进度  Ch.${this._chapter + 1} 波次 ${this._waveMgr.wave} · 击杀 ${this.kills} · 得分 ${this.score}`,
+            augments:    this._augMgr.active,
+            skillStates: p.getSkillStates(),
         };
     }
 

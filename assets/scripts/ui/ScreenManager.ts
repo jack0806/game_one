@@ -136,21 +136,22 @@ export class ScreenManager extends Component {
 
             // 用同一套深色卡框收束来源不同的角色立绘，并用角色主题色做细边。
             // 立绘本身仍保持透明，不会出现六张图各自带一块方形背景的拼贴感。
+            // 框从180缩到140并上移，给卡身下方腾出被动+Q/E/R技能介绍区。
             const frameN = new Node('PortraitFrame'); frameN.setParent(card);
-            frameN.setPosition(new Vec3(0, 50, 0));
-            frameN.addComponent(UITransform).setContentSize(180, 180);
+            frameN.setPosition(new Vec3(0, 70, 0));
+            frameN.addComponent(UITransform).setContentSize(140, 140);
             const frameG = frameN.addComponent(Graphics);
             frameG.fillColor = new Color(9, 15, 24, 245);
-            frameG.fillRect(-90, -90, 180, 180);
+            frameG.fillRect(-70, -70, 140, 140);
             frameG.strokeColor = colors[i] ?? new Color(80, 140, 180, 255);
             frameG.lineWidth = 3;
-            frameG.rect(-90, -90, 180, 180); frameG.stroke();
+            frameG.rect(-70, -70, 140, 140); frameG.stroke();
 
-            if (charId) this._loadPortrait(card, `char_${charId}`, 160, 50);
+            if (charId) this._loadPortrait(card, `char_${charId}`, 130, 70);
 
             const locked = !!def && !def.unlocked;
             const nameBtn = this._mkBtn(card, names[i] ?? `Char${i}`,
-                0, -90, 260, 50,
+                0, -16, 250, 44,
                 locked ? new Color(50, 50, 60, 255) : (colors[i] ?? new Color(80, 80, 120, 255)));
 
             if (locked) {
@@ -187,6 +188,24 @@ export class ScreenManager extends Component {
             } else {
                 card.on(Node.EventType.TOUCH_END,
                     () => this.onCharSelected?.(CHARS[idx]!), this);
+
+                // 被动 + Q/E/R 技能介绍：选人阶段就能看清角色定位，不必进战斗试错。
+                // 锁定卡不放（保持 LockDim+解锁提示的简洁观感，解锁后再展示）。
+                const skN = new Node('Skills'); skN.setParent(card);
+                skN.setPosition(new Vec3(0, -86, 0));
+                skN.addComponent(UITransform).setContentSize(252, 92);
+                const skLbl = skN.addComponent(Label);
+                skLbl.string = def
+                    ? `被动 ${def.desc}\nQ ${def.skills.q}\nE ${def.skills.e}\nR ${def.skills.r}`
+                    : '';
+                skLbl.fontSize = 10;
+                skLbl.lineHeight = 14;
+                skLbl.color = new Color(190, 205, 225, 235);
+                skLbl.horizontalAlign = HorizontalTextAlignment.LEFT;
+                skLbl.verticalAlign = VerticalTextAlignment.TOP;
+                skLbl.overflow = Label.Overflow.SHRINK;
+                skLbl.enableWrapText = true;
+                styleLabel(skLbl);
             }
         }
     }

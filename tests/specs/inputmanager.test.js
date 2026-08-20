@@ -28,3 +28,13 @@ test('Shift/Space和技能键只在按下沿触发,长按不会重复触发', ()
     input._onKeyDown({ keyCode: 16 });
     assert.equal(input.isDashPressed(), true, '松开后再次按下应产生新的按下沿');
 });
+
+test('M键按下沿用于开关角色详情面板', () => {
+    const input = new InputManager();
+    input._onKeyDown({ keyCode: 77 });
+    assert.equal(input.isKeyMPressed(), true, '按下M当帧应读到边沿');
+    input.lateUpdate(0.016);
+    assert.equal(input.isKeyMPressed(), false, '边沿在lateUpdate后清除');
+    input._onKeyDown({ keyCode: 77 });
+    assert.equal(input.isKeyMPressed(), false, '长按M不重复触发');
+});
