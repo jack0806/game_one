@@ -75,7 +75,7 @@ export class PlayerController extends Component {
         // 影响逻辑，只是看不到图（回退到无贴图）。
         if (!this.sprite) {
             const node = (this as any).node as Node;
-            node.addComponent(UITransform).setContentSize(48, 48);
+            node.addComponent(UITransform).setContentSize(60, 60);
             this.sprite = node.addComponent(Sprite);
             this.sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         }
@@ -171,7 +171,7 @@ export class PlayerController extends Component {
         amount = Math.max(1, amount * (1 - mitigation));
         this.hp -= amount;
         this._iframeTimer = 0.5;
-        game.screenShake?.shake(8, 0.3);
+        game.screenShake?.shake(4, 0.14);
         game.floatingText?.spawn(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff4444', 16, false);
         if (this.hp <= 0) {
             // 时间悖论(time_paradox)：每波一次撤销死亡（对齐 AugmentDB.ts 的 desc 描述）。

@@ -1,6 +1,6 @@
 import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
-    UITransform, director, game, Label, Sprite
+    UITransform, director, game, Label, Sprite, view, ResolutionPolicy
 } from 'cc';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
 import { Vec, Rng } from './MathUtils';
@@ -46,11 +46,13 @@ export class GameManager extends Component {
     // ── layer nodes ───────────────────────────────────────────
     private _bgLayer!:       Node;
     private _bgSprite!:      Sprite;      // chapter background (bg_chapter<N>), behind _gameLayer
+    private _bgToneGfx!:     Graphics;    // per-chapter desaturation/dimming overlay
     private _gameLayer!:     Node;
     private _particleLayer!: Node;
     private _uiLayer!:       Node;
     private _gameGfx!:       Graphics;   // entities draw here
     private _particleGfx!:   Graphics;   // particles draw here
+    private _coinPool!:      SpriteNodePool;
     /** One-shot art FX (explosion/heal/poison/cold_arrow/hex_ring), synced from ParticleManager.spriteFx each frame. */
     private _fxPool!:        SpriteNodePool;
 
@@ -99,6 +101,8 @@ export class GameManager extends Component {
 
     onLoad() {
         GameManager.inst = this;
+        // 始终完整显示16:9设计画布；窄窗口采用等比缩放+留边，不能再裁掉HUD/技能区。
+        view.setDesignResolutionSize(CANVAS_W, CANVAS_H, ResolutionPolicy.SHOW_ALL);
         this._initLayers();
         this._initSystems();
         this._initUI();
@@ -140,12 +144,20 @@ export class GameManager extends Component {
         this._bgSprite.sizeMode = Sprite.SizeMode.TRIMMED;
         this._bgSprite.trim = false; // 保留完整画布尺寸，让bg图填满背景
 
+        // 中性色罩放在背景图之上、所有战斗实体之下。按章节调整强度，压低
+        // 高饱和裂纹/网格/电路的视觉竞争，同时保留边缘环境主题。
+        const bgTone = new Node('BgTone');
+        bgTone.setParent(this._bgLayer);
+        bgTone.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._bgToneGfx = bgTone.addComponent(Graphics);
+
         // GameLayer — entity graphics
         this._gameLayer = new Node('GameLayer');
         this._gameLayer.setParent(this.node);
         this._gameGfx = this._gameLayer.addComponent(Graphics);
         this._gameLayer.addComponent(UITransform)
             .setContentSize(CANVAS_W, CANVAS_H);
+        this._coinPool = new SpriteNodePool(this._gameLayer, 80, 'GoldCoin', [30, 30]);
 
         // ParticleLayer — on top of entities
         this._particleLayer = new Node('ParticleLayer');
@@ -272,6 +284,26 @@ export class GameManager extends Component {
         if (!bgKey) return;
         applyArtSprite(this._bgSprite, bgKey);
         this._bgLayer.getComponent(UITransform)!.setContentSize(CANVAS_W, CANVAS_H);
+        this._applyBackgroundTone(this._chapter);
+    }
+
+    /** 四章独立背景调色：越靠后原图荧光越强，覆盖强度相应提高。 */
+    private _applyBackgroundTone(chapterIndex: number) {
+        const tones = [
+            { tint: new Color(205, 198, 190, 255), overlay: new Color(22, 24, 28, 62), center: 18 },
+            { tint: new Color(193, 198, 202, 255), overlay: new Color(20, 24, 30, 82), center: 26 },
+            { tint: new Color(184, 194, 198, 255), overlay: new Color(18, 24, 32, 94), center: 32 },
+            { tint: new Color(198, 184, 202, 255), overlay: new Color(22, 16, 30, 102), center: 36 },
+        ];
+        const tone = tones[Math.min(Math.max(0, chapterIndex), tones.length - 1)];
+        this._bgSprite.color = tone.tint;
+        const g = this._bgToneGfx;
+        g.clear();
+        g.fillColor = tone.overlay;
+        g.fillRect(-CANVAS_W / 2, -CANVAS_H / 2, CANVAS_W, CANVAS_H);
+        // 中央80%是主要走位/弹幕区，再压一层低透明度蓝黑，边缘主题装饰仍可见。
+        g.fillColor = new Color(12, 18, 28, tone.center);
+        g.fillRect(-CANVAS_W * 0.4, -CANVAS_H * 0.42, CANVAS_W * 0.8, CANVAS_H * 0.84);
     }
 
     private _restartGame() {
@@ -296,6 +328,7 @@ export class GameManager extends Component {
         this._iceZones = [];
         this._bullets?.reset();
         this._fxPool?.releaseAll();
+        this._coinPool?.releaseAll();
     }
 
     private _continueAfterChapter() {
@@ -403,15 +436,22 @@ export class GameManager extends Component {
         this._waveMgr.update(dt, this);
 
         // Economy (gold pickups)
-        this._economy.update(dt, this._player);
+        this._economy.update(dt, this._player, this);
 
         // Screen shake
         this._shake.update(dt);
         if (this._shake.x !== 0 || this._shake.y !== 0) {
-            this._gameLayer.setPosition(new Vec3(
-                this._shake.x, this._shake.y, 0));
+            const sx = Math.round(this._shake.x);
+            const sy = Math.round(this._shake.y);
+            // 实体与粒子必须同步移动，否则命中特效会从目标身上“滑开”；背景只做
+            // 轻微视差，HUD保持固定，既有冲击感又不会让整屏信息一起乱晃。
+            this._gameLayer.setPosition(new Vec3(sx, sy, 0));
+            this._particleLayer.setPosition(new Vec3(sx, sy, 0));
+            this._bgLayer.setPosition(new Vec3(Math.round(sx * 0.18), Math.round(sy * 0.18), 0));
         } else {
             this._gameLayer.setPosition(Vec3.ZERO);
+            this._particleLayer.setPosition(Vec3.ZERO);
+            this._bgLayer.setPosition(Vec3.ZERO);
         }
 
         // Floating text
@@ -470,17 +510,22 @@ export class GameManager extends Component {
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
         if (this.state !== 'playing') return;
 
-        // Gold drops — 双圈硬币造型（外圈深金、内圈亮金、左上高光点），
-        // 替换旧版 12x12 纯黄方块（视觉审计反馈其像"用途不明的占位方块"）。
+        // Gold drops — 独立六边形金币Sprite + 翻面/漂浮动画；对象池避免掉落密集时GC。
+        this._coinPool.releaseAll();
         for (const drop of this._economy.drops) {
             const [dx, dy] = this._toLocal(drop.x, drop.y);
-            const r = 5 + Math.min(4, drop.amount / 12);
-            g.fillColor = new Color(140, 90, 20, 225);
-            g.circle(dx, dy, r + 1.5); g.fill();
-            g.fillColor = new Color(255, 200, 40, 225);
-            g.circle(dx, dy, r); g.fill();
-            g.fillColor = new Color(255, 240, 160, 230);
-            g.circle(dx - r * 0.3, dy + r * 0.3, r * 0.32); g.fill();
+            const coin = this._coinPool.acquire();
+            if (!coin) continue;
+            const size = 25 + Math.min(9, drop.amount / 10);
+            coin.getComponent(UITransform)!.setContentSize(size, size);
+            const sprite = coin.getComponent(Sprite)!;
+            sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+            applyArtSprite(sprite, 'ui_gold_coin');
+            const bob = Math.sin(drop.age * 4.5) * 2.5;
+            coin.setPosition(Math.round(dx), Math.round(dy + bob), 0);
+            // X轴压缩模拟金币翻面，保持最窄仍有足够面积，不退化成黄色圆点。
+            const flip = 0.55 + Math.abs(Math.cos(drop.age * 5.2)) * 0.45;
+            coin.setScale(new Vec3(flip, 1, 1));
         }
 
         // Death zones
@@ -518,8 +563,64 @@ export class GameManager extends Component {
         for (const e of this._enemies) {
             if (e.dead) continue;
             const r = e.radius ?? 18;
+            const visualR = r * (e.visualScale ?? 1);
             const [ex, ey] = this._toLocal(e.x, e.y);
-            if (e.node) e.node.setPosition(ex, ey, 0);
+            if (e.node) e.node.setPosition(Math.round(ex), Math.round(ey), 0);
+
+            // 复杂背景上的单位分离：暗色底盘切断背景纹理，类型色细环强化阵营与危险度。
+            g.fillColor = new Color(5, 8, 14, e.isBoss ? 155 : 115);
+            g.circle(ex, ey, visualR + 3); g.fill();
+            const outline = Color.fromHEX(new Color(), e.isBoss ? e.glowColor : e.color);
+            g.strokeColor = new Color(outline.r, outline.g, outline.b, e.isBoss ? 245 : 205);
+            g.lineWidth = e.isBoss ? 3.5 : 2;
+            g.circle(ex, ey, visualR + 2); g.stroke();
+
+            // 普通怪/Boss接触攻击前摇：红橙危险区 + 锁定方向线。
+            // attackWindup 从 max 倒数到0，环形进度会逐渐收紧并增强亮度。
+            if (e.attackWindup > 0 && e.attackWindupMax > 0) {
+                const progress = 1 - e.attackWindup / e.attackWindupMax;
+                const dangerR = r + 13 - progress * 5;
+                const warning = e.type === 'exploder'
+                    ? new Color(255, 150, 25, 255)
+                    : new Color(255, 55, 45, 255);
+                g.fillColor = new Color(warning.r, warning.g, warning.b, 28 + Math.floor(progress * 55));
+                g.circle(ex, ey, dangerR + 10); g.fill();
+                g.strokeColor = new Color(warning.r, warning.g, warning.b, 170 + Math.floor(progress * 85));
+                g.lineWidth = 2.5 + progress * 2.5;
+                g.circle(ex, ey, dangerR); g.stroke();
+                const [tx, ty] = this._toLocal(e.attackTargetX, e.attackTargetY);
+                g.strokeColor = new Color(255, 235, 210, 150 + Math.floor(progress * 100));
+                g.lineWidth = 1.5 + progress;
+                g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+            }
+
+            if (e instanceof BossController) {
+                // 弹幕技能蓄力：大范围脉冲环提示“即将发射”。
+                if (e.skillWindup > 0 && e.skillWindupMax > 0) {
+                    const progress = 1 - e.skillWindup / e.skillWindupMax;
+                    const sr = r * 1.8 + 28 - progress * 18;
+                    const sc = Color.fromHEX(new Color(), e.glowColor);
+                    g.fillColor = new Color(sc.r, sc.g, sc.b, 24 + Math.floor(progress * 42));
+                    g.circle(ex, ey, sr); g.fill();
+                    g.strokeColor = new Color(255, 245, 215, 210);
+                    g.lineWidth = 3 + progress * 3;
+                    g.circle(ex, ey, sr); g.stroke();
+                }
+                // 冲锋蓄力：宽半透明路线 + 中心高亮线 + 目标圈。
+                if (e.chargeWindup > 0 && e.chargeWindupMax > 0) {
+                    const progress = 1 - e.chargeWindup / e.chargeWindupMax;
+                    const [tx, ty] = this._toLocal(e.chargeTargetX, e.chargeTargetY);
+                    g.strokeColor = new Color(255, 45, 35, 45 + Math.floor(progress * 45));
+                    g.lineWidth = r * 1.3;
+                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                    g.strokeColor = new Color(255, 235, 190, 180 + Math.floor(progress * 75));
+                    g.lineWidth = 2.5 + progress * 2;
+                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                    g.strokeColor = new Color(255, 70, 45, 220);
+                    g.lineWidth = 3;
+                    g.circle(tx, ty, 24 - progress * 8); g.stroke();
+                }
+            }
 
             // Hit-flash: brief white ring pulse on the sprite's own tint instead of a
             // Graphics circle, so the underlying art stays visible under the flash.
@@ -537,8 +638,8 @@ export class GameManager extends Component {
 
             // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音
             if (!e.isBoss && e.hp < e.maxHp) {
-                const bw = r * 2.2, bh = 6;
-                const [rx, ry, rw, rh] = this._toLocalRect(e.x - bw / 2, e.y - r - 10, bw, bh);
+                const bw = Math.max(r * 2.2, visualR * 1.55), bh = 6;
+                const [rx, ry, rw, rh] = this._toLocalRect(e.x - bw / 2, e.y - visualR - 10, bw, bh);
                 g.fillColor = new Color(40, 40, 40, 180);
                 g.fillRect(rx, ry, rw, rh);
                 g.fillColor = new Color(220, 60, 60, 230);
@@ -546,7 +647,7 @@ export class GameManager extends Component {
                 // 护盾剩余：血条上方细蓝条
                 if (e.shieldActive && e.shieldHp > 0 && e.maxShieldHp > 0) {
                     const sh = 3;
-                    const [sx, sy, sw, shh] = this._toLocalRect(e.x - bw / 2, e.y - r - 10 - sh, bw, sh);
+                    const [sx, sy, sw, shh] = this._toLocalRect(e.x - bw / 2, e.y - visualR - 10 - sh, bw, sh);
                     g.fillColor = new Color(90, 170, 255, 220);
                     g.fillRect(sx, sy, sw * (e.shieldHp / e.maxShieldHp), shh);
                 }
@@ -558,15 +659,35 @@ export class GameManager extends Component {
         for (const b of this._bullets.active) {
             const [bx, by] = this._toLocal(b.x, b.y);
             if (b.node && b.node.active) {
-                b.node.setPosition(bx, by, 0);
+                b.node.setPosition(Math.round(bx), Math.round(by), 0);
                 continue;
             }
-            g.fillColor = Color.fromHEX(new Color(), b.color ?? '#ffff80');
-            g.circle(bx, by, b.radius ?? 5); g.fill();
+            const radius = b.radius ?? 5;
+            const col = Color.fromHEX(new Color(), b.color ?? '#ffff80');
+            if (b.isEnemyBullet || b.owner === 'enemy') {
+                const speed = Math.hypot(b.vx, b.vy) || 1;
+                const nx = b.vx / speed, ny = -b.vy / speed;
+                // 敌弹先画通用拖尾、辉光和白色外轮廓，再叠加弹种轮廓。
+                // 这样既保留四章弹幕的形状语言，也能在同色背景上稳定辨认。
+                g.strokeColor = new Color(col.r, col.g, col.b, 125);
+                g.lineWidth = Math.max(3, radius * 0.75);
+                g.moveTo(bx - nx * radius * 3.2, by - ny * radius * 3.2);
+                g.lineTo(bx, by); g.stroke();
+                g.fillColor = new Color(col.r, col.g, col.b, 55);
+                g.circle(bx, by, radius * 1.9); g.fill();
+                g.fillColor = new Color(col.r, col.g, col.b, 245);
+                g.circle(bx, by, radius); g.fill();
+                g.strokeColor = new Color(255, 248, 220, 245);
+                g.lineWidth = 2;
+                g.circle(bx, by, radius + 2); g.stroke();
+            } else {
+                g.fillColor = col;
+                g.circle(bx, by, radius); g.fill();
+            }
             // 敌弹分弹种轮廓：不看颜色也能一眼分辨威胁类型
             // （毒球=双层绿圈+外毒环 / 齿轮=旋转环+4辐条 / 追踪=锁定环+十字 / 混沌=脉冲紫圈+交叉线）
             if (b.enemyFx) {
-                const r = b.radius ?? 5;
+                const r = radius;
                 const t = b.life ?? 0;
                 const pulse = 1 + Math.sin(t * 18) * 0.12;
                 switch (b.enemyFx) {
@@ -617,7 +738,13 @@ export class GameManager extends Component {
         if (this._player && !this._player.dead) {
             const p = this._player;
             const [px, py] = this._toLocal(p.x, p.y);
-            p.node.setPosition(px, py, 0);
+            const pCol = Color.fromHEX(new Color(), p.color);
+            g.fillColor = new Color(4, 10, 16, 155);
+            g.circle(px, py, 33); g.fill();
+            g.strokeColor = new Color(pCol.r, pCol.g, pCol.b, 245);
+            g.lineWidth = 2.5;
+            g.circle(px, py, 31); g.stroke();
+            p.node.setPosition(Math.round(px), Math.round(py), 0);
             // Shield ring
             if (p.shield > 0) {
                 g.strokeColor = new Color(80, 160, 255, 180);
@@ -705,7 +832,7 @@ export class GameManager extends Component {
             applyArtSprite(sprite, fx.key);
 
             const [fx_x, fx_y] = this._toLocal(fx.x, fx.y);
-            node.setPosition(fx_x, fx_y, 0);
+            node.setPosition(Math.round(fx_x), Math.round(fx_y), 0);
 
             // 播放进度：0=刚生成，1=即将消失。此前直接用 t(=life/maxLife) 线性
             // 驱动透明度+固定尺寸，特效表现是"一张图突然出现、匀速变淡后消失"，
@@ -764,7 +891,7 @@ export class GameManager extends Component {
             if (!item) { node.active = false; continue; }
             node.active = true;
             const [lx, ly] = this._toLocal(item.x, item.y);
-            node.setPosition(new Vec3(lx, ly, 0));
+            node.setPosition(new Vec3(Math.round(lx + this._shake.x), Math.round(ly + this._shake.y), 0));
             const lbl = node.getComponent(Label)!;
             lbl.string   = item.text;
             lbl.fontSize = item.crit ? item.size + 4 : item.size;

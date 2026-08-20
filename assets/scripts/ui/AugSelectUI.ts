@@ -1,16 +1,18 @@
 import {
-    _decorator, Component, Node, Label, Graphics,
+    _decorator, Component, Node, Label, Graphics, Sprite,
     Color, Vec3, UITransform
 } from 'cc';
 import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
+import { applyArtSprite } from '../core/SpriteUtils';
 
 const { ccclass } = _decorator;
 
 interface CardSlot {
     root:        Node;
     bg:          Graphics;
+    iconSprite:  Sprite;
     tierLabel:   Label;
     nameLabel:   Label;
     descLabel:   Label;
@@ -29,9 +31,9 @@ export class AugSelectUI extends Component {
     private _options:  AugDef[]  = [];
     private _cb?: (aug: AugDef | null) => void;
 
-    private readonly CARD_W = 255;
-    private readonly CARD_H = 340;
-    private readonly GAP    = 44;
+    private readonly CARD_W = 272;
+    private readonly CARD_H = 300;
+    private readonly GAP    = 34;
 
     onLoad() {
         this._buildDimmer();
@@ -102,7 +104,7 @@ export class AugSelectUI extends Component {
 
         // tier stars
         const tN = new Node('Tier'); tN.setParent(root);
-        tN.setPosition(new Vec3(0, this.CARD_H / 2 - 44, 0));
+        tN.setPosition(new Vec3(0, this.CARD_H / 2 - 40, 0));
         tN.addComponent(UITransform).setContentSize(this.CARD_W - 16, 24);
         const tierLabel = tN.addComponent(Label);
         tierLabel.fontSize = 18; tierLabel.color = new Color(255, 200, 80, 255);
@@ -110,31 +112,41 @@ export class AugSelectUI extends Component {
 
         // name
         const nN = new Node('Name'); nN.setParent(root);
-        nN.setPosition(new Vec3(0, this.CARD_H / 2 - 80, 0));
+        nN.setPosition(new Vec3(0, this.CARD_H / 2 - 70, 0));
         nN.addComponent(UITransform).setContentSize(this.CARD_W - 16, 32);
         const nameLabel = nN.addComponent(Label);
-        nameLabel.fontSize = 17; nameLabel.color = new Color(240, 240, 240, 255);
+        nameLabel.fontSize = 19; nameLabel.color = new Color(245, 245, 245, 255);
         styleLabel(nameLabel);
+
+        // 词条图标承担卡片的第一视觉焦点。此前卡片中央完全留空，玩家只能
+        // 逐字阅读小号说明；72px 图标与 HUD 中同一资源建立了稳定的识别关系。
+        const iN = new Node('Icon'); iN.setParent(root);
+        iN.setPosition(new Vec3(0, 36, 0));
+        iN.addComponent(UITransform).setContentSize(72, 72);
+        const iconSprite = iN.addComponent(Sprite);
+        iconSprite.sizeMode = Sprite.SizeMode.CUSTOM;
 
         // desc (word-wrap)
         const dN = new Node('Desc'); dN.setParent(root);
-        dN.setPosition(new Vec3(0, 20, 0));
-        dN.addComponent(UITransform).setContentSize(this.CARD_W - 24, 160);
+        dN.setPosition(new Vec3(0, -70, 0));
+        dN.addComponent(UITransform).setContentSize(this.CARD_W - 34, 76);
         const descLabel = dN.addComponent(Label);
-        descLabel.fontSize = 12;
-        descLabel.color = new Color(190, 190, 190, 255);
-        descLabel.overflow = Label.Overflow.RESIZE_HEIGHT;
+        descLabel.fontSize = 14;
+        descLabel.lineHeight = 21;
+        descLabel.color = new Color(214, 216, 224, 255);
+        descLabel.overflow = Label.Overflow.SHRINK;
+        descLabel.enableWrapText = true;
         styleLabel(descLabel);
 
         // click handler (simple: store idx on node, check in _populate)
         root.on(Node.EventType.TOUCH_END, () => this._pick(idx), this);
 
-        return { root, bg, tierLabel, nameLabel, descLabel, rarityLabel };
+        return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel };
     }
 
     private _buildSkipBtn() {
         this._skipBtn = new Node('SkipBtn'); this._skipBtn.setParent(this.node);
-        this._skipBtn.setPosition(new Vec3(0, -this.CARD_H / 2 - 36, 0));
+        this._skipBtn.setPosition(new Vec3(0, -this.CARD_H / 2 - 38, 0));
         this._skipBtn.addComponent(UITransform).setContentSize(140, 36);
         const g = this._skipBtn.addComponent(Graphics);
         g.fillColor = new Color(60, 60, 80, 200);
@@ -180,6 +192,8 @@ export class AugSelectUI extends Component {
             c.tierLabel.string   = '★'.repeat(aug.tier ?? 1) + '☆'.repeat(Math.max(0, 3 - (aug.tier ?? 1)));
             c.nameLabel.string   = aug.name;
             c.descLabel.string   = aug.desc;
+            c.iconSprite.color   = Color.WHITE;
+            applyArtSprite(c.iconSprite, `ui_icon_${aug.icon}`);
         }
     }
 

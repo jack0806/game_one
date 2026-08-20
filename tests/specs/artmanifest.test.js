@@ -20,8 +20,12 @@ const ART_DIR = path.join(__dirname, '..', '..', 'assets', 'resources', 'art');
 function collectAllArtKeys() {
     const keys = new Set();
     keys.add('title_screen');
+    keys.add('ui_gold_coin');
     for (const c of CHAPTERS) keys.add(c.bgKey);
-    for (const t of ['enemy_grunt', 'enemy_shield', 'enemy_exploder', 'enemy_golem', 'enemy_boss']) keys.add(t);
+    for (const t of [
+        'enemy_grunt', 'enemy_shield', 'enemy_exploder', 'enemy_golem',
+        'enemy_boss', 'enemy_boss_ch1', 'enemy_boss_ch2', 'enemy_boss_ch3', 'enemy_boss_ch4',
+    ]) keys.add(t);
     for (const c of CHARS) {
         keys.add('char_' + c.id);
         keys.add('char_token_' + c.id);

@@ -24,6 +24,7 @@ function makeController(charId) {
         cdReduction: 0,
         ultChargeRate: 1,
         eliteBonus: 0,
+        critRate: 0,
         maxAugments: 6,
         previewAugments: false,
         phaseDash: false,

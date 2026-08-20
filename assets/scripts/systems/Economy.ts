@@ -9,6 +9,7 @@ interface GoldDrop {
     vx: number; vy: number;
     amount: number;
     life: number;
+    age: number;
     collected: boolean;
 }
 
@@ -37,19 +38,23 @@ export class Economy {
             vy: 0,
             amount,
             life: 30,
+            age: 0,
             collected: false,
         });
     }
 
-    update(dt: number, player: any): void {
+    update(dt: number, player: any, game?: any): void {
         const pickupR = player.stats.goldPickupRange || 60;
         for (let i = this._drops.length - 1; i >= 0; i--) {
             const d = this._drops[i];
+            d.age += dt;
             d.life -= dt;
             if (d.life <= 0 || d.collected) { this._drops.splice(i, 1); continue; }
             if (Vec.dist(d.x, d.y, player.x, player.y) < pickupR) {
                 this.addGold(d.amount);
                 d.collected = true;
+                game?.particles?.hit?.(d.x, d.y, '#ffd85a');
+                game?.floatingText?.spawn?.(d.x, d.y - 18, `+${d.amount}`, '#ffd85a', 13, false);
             }
         }
     }

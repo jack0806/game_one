@@ -128,7 +128,7 @@ test('狂战士近战普攻触发剑气特效(从玩家位置朝目标方向,强
     assert.ok(enemy.hp < 1000, '普攻应同时造成伤害');
 });
 
-test('怪物近战攻击玩家时触发剑气(强度0.85,方向指向玩家)', () => {
+test('怪物近战前摇结束时触发剑气(强度0.85,方向指向玩家)', () => {
     const game = recordingGame();
     const e = new EnemyBase();
     e.init('grunt', 1, game);
@@ -137,6 +137,9 @@ test('怪物近战攻击玩家时触发剑气(强度0.85,方向指向玩家)', (
     const player = makePlayer({ x: 130, y: 100 });
     const hpBefore = player.hp;
     e.update(0.016, player, game);
+    assert.equal(game.meleeCalls.length, 0, '进入范围的第一帧只显示前摇');
+    assert.equal(player.hp, hpBefore, '前摇期间不能提前扣血');
+    e.update(e.attackWindupMax, player, game);
     assert.equal(game.meleeCalls.length, 1);
     const [sx, sy, angle, , , strength] = game.meleeCalls[0];
     assert.equal(sx, 100);
@@ -146,13 +149,15 @@ test('怪物近战攻击玩家时触发剑气(强度0.85,方向指向玩家)', (
     assert.ok(player.hp < hpBefore, '近战伤害应正常结算');
 });
 
-test('Boss接触攻击触发大幅剑气(强度1.8)', () => {
+test('Boss接触攻击前摇结束时触发大幅剑气(强度1.8)', () => {
     const game = recordingGame();
     const boss = new BossController();
     boss.initBoss(0, game);
     boss.x = 0; boss.y = 0;
     const player = makePlayer({ x: 40, y: 0 });
     boss.update(0.016, player, game);
+    assert.equal(game.meleeCalls.length, 0, 'Boss贴近时先显示接触攻击前摇');
+    boss.update(boss.attackWindupMax, player, game);
     assert.equal(game.meleeCalls.length, 1);
     assert.equal(game.meleeCalls[0][5], 1.8);
 });

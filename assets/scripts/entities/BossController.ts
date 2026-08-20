@@ -13,8 +13,15 @@ export class BossController extends EnemyBase {
     _summonTimer = 8;
     _chargeCd    = 12;
     isCharging   = false;
+    chargeWindup = 0;
+    chargeWindupMax = 0.78;
+    chargeTargetX = 0;
+    chargeTargetY = 0;
+    skillWindup = 0;
+    skillWindupMax = 0.52;
     _chargeVx    = 0;
     _chargeVy    = 0;
+    private _chargeTime = 0;
     private _contactCd = 0;
 
     override init(type: string, wave: number, game: any): void {
@@ -26,6 +33,8 @@ export class BossController extends EnemyBase {
         this.frozen = 0; this.slowMult = 1;
         this.phase  = 1; this.enraged = false; this._animTime = 0;
         this._skillTimer = 2.5; this._summonTimer = 7; this._chargeCd = 10;
+        this.isCharging = false; this.chargeWindup = 0; this.skillWindup = 0;
+        this.attackWindup = 0; this._chargeTime = 0;
         this._setupForChapter(this.chapter);
     }
 
@@ -50,14 +59,16 @@ export class BossController extends EnemyBase {
         this.radius    = 45;
         this.goldValue = 200 * ch;
         this.armor     = 10 * ch;
-        // 只有一张boss美术资源(enemy_boss)，按章节用glow色调tint区分外观。
-        this.spriteKey = 'enemy_boss';
-        this.tintColor = t.glow;
+        // 四章各有独立轮廓/材质的 Boss 贴图，不能再靠同一白模染色冒充换装。
+        // glowColor 继续承担预警、弹幕和 HUD 主题色，Sprite 本体保持原画色。
+        this.spriteKey = `enemy_boss_ch${Math.min(ch, 4)}`;
+        this.tintColor = '#ffffff';
         // Boss 应该有明显区别于场上最大常规怪(miniboss, radius=30)的体型压迫感，
         // 但 radius 本身被碰撞判定/近战距离/边界clamp直接消费（见 update() 的近战
         // 判定和 clamp 调用），不能直接调大，否则会连带把命中体积也放大破坏平衡。
         // 这里用只影响渲染直径的 visualScale 纯视觉放大，判定范围保持不变。
-        this.visualScale = 1.8;
+        this.visualScale = 2.0;
+        this.attackWindupMax = 0.42;
     }
 
     // ── 每帧更新 ──────────────────────────────────────────
@@ -87,14 +98,28 @@ export class BossController extends EnemyBase {
         if (pct < 0.33 && this.phase < 3) this._enterPhase(3, game);
         else if (pct < 0.66 && this.phase < 2) this._enterPhase(2, game);
 
-        // 冲刺移动
-        if (this.isCharging) {
+        // Boss技能先给出能量环前摇，再发射弹幕，避免子弹凭空出现。
+        if (this.skillWindup > 0) {
+            this.skillWindup = Math.max(0, this.skillWindup - dt);
+            if (this.skillWindup <= 0) this._useSkill(player, game);
+        }
+
+        // 冲刺先锁定路线并蓄力，再进入冲刺移动。
+        if (this.chargeWindup > 0) {
+            this.chargeWindup = Math.max(0, this.chargeWindup - dt);
+            if (this.chargeWindup <= 0) {
+                this.isCharging = true;
+                this._chargeTime = 0.8;
+            }
+        } else if (this.isCharging) {
             this.x += this._chargeVx * dt;
             this.y += this._chargeVy * dt;
+            this._chargeTime -= dt;
             if (this.x < this.radius || this.x > CANVAS_W - this.radius) this._chargeVx *= -1;
             if (this.y < this.radius || this.y > PLAYFIELD_BOTTOM - this.radius) this._chargeVy *= -1;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
+            if (this._chargeTime <= 0) this.isCharging = false;
         } else {
             // 普通追逐（对齐 hexblast-py：追逐速度要乘slowMult，之前完全没接线，
             // 导致减速类词条/技能对boss完全无效）
@@ -110,16 +135,31 @@ export class BossController extends EnemyBase {
         this._summonTimer -= dt;
         this._chargeCd    -= dt;
 
-        if (this._skillTimer <= 0) { this._skillTimer = Math.max(2.2, 5 - this.phase * 0.8); this._useSkill(player, game); }
+        if (this._skillTimer <= 0 && this.skillWindup <= 0) {
+            this._skillTimer = Math.max(2.2, 5 - this.phase * 0.8);
+            this.skillWindup = this.skillWindupMax;
+        }
         if (this._summonTimer <= 0) { this._summonTimer = Math.max(7, 12 - this.phase); this._summon(game); }
-        if (this._chargeCd <= 0) { this._chargeCd = Math.max(7, 10 - this.phase); this._startCharge(player); }
+        if (this._chargeCd <= 0 && !this.isCharging && this.chargeWindup <= 0) {
+            this._chargeCd = Math.max(7, 10 - this.phase);
+            this._startCharge(player);
+        }
 
-        // 近战伤害按攻击冷却结算整次伤害，避免每帧小数伤害被玩家无敌帧吞掉。
-        if (Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
+        // 接触攻击也必须经过可见前摇；玩家在结算前离开碰撞范围即可躲避。
+        if (this.attackWindup > 0) {
+            this.attackWindup = Math.max(0, this.attackWindup - dt);
+            if (this.attackWindup <= 0 &&
+                Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius + 12) {
+                const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.radius + player.radius, 1.8);
+                game.particles?.impact(player.x, player.y, angle, 0.7, this.glowColor);
+                player.takeDamage(this.damage, game);
+            }
+        } else if (Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
             this._contactCd = 0.65;
-            // Boss 挥击剑气：大幅宽刃提示接触伤害范围
-            game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(player.y - this.y, player.x - this.x), this.glowColor, this.radius + player.radius, 1.8);
-            player.takeDamage(this.damage, game);
+            this.attackWindup = this.attackWindupMax;
+            this.attackTargetX = player.x;
+            this.attackTargetY = player.y;
         }
     }
 
@@ -127,7 +167,7 @@ export class BossController extends EnemyBase {
         this.phase   = phase;
         this.enraged = true;
         this.speed  *= 1.2;
-        game.screenShake?.shake(20, 0.6);
+        game.screenShake?.shake(10, 0.32);
         game.floatingText?.spawn(640, 200, `⚠ PHASE ${phase} ⚠`, this.glowColor, 28, true);
         game.particles?.hexActivate(this.x, this.y, this.glowColor);
     }
@@ -146,17 +186,17 @@ export class BossController extends EnemyBase {
             case 2: // 钢铁：齿轮弹
                 for (let i = 0; i < 8; i++) {
                     const a = (i / 8) * Math.PI * 2 + this._animTime;
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, damage: this.damage * 0.5, radius: 8, color: '#4488cc', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'gear' });
+                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, damage: this.damage * 0.5, radius: 10, color: '#ffad42', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'gear' });
                 }
                 break;
             case 3: // 海克斯：追踪弹
                 { const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
-                  game.enemyBullets?.push({ x: this.x, y: this.y, vx: dx * 300, vy: dy * 300, damage: this.damage * 0.8, radius: 12, color: '#00ffcc', life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'homing' }); }
+                  game.enemyBullets?.push({ x: this.x, y: this.y, vx: dx * 300, vy: dy * 300, damage: this.damage * 0.8, radius: 13, color: '#ff4da6', life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'homing' }); }
                 break;
             case 4: // 混沌：随机多弹
                 for (let i = 0; i < 12; i++) {
                     const a = Rng.float(0, Math.PI * 2);
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * 0.7, radius: 9, color: '#cc44ff', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos' });
+                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * 0.7, radius: 11, color: '#ffe066', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos' });
                 }
                 break;
         }
@@ -177,8 +217,9 @@ export class BossController extends EnemyBase {
         const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
         this._chargeVx = dx * this.speed * 3;
         this._chargeVy = dy * this.speed * 3;
-        this.isCharging = true;
-        setTimeout(() => { this.isCharging = false; }, 800);
+        this.chargeTargetX = player.x;
+        this.chargeTargetY = player.y;
+        this.chargeWindup = this.chargeWindupMax;
     }
 
     /** 用于 HUD 绘制的 HP 信息 */

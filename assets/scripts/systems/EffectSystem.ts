@@ -1,7 +1,7 @@
 // ============================================================
 //  EffectSystem.ts — 屏幕震动 / 顿帧 / 飘字
 // ============================================================
-import { Rng, clamp } from '../core/MathUtils';
+import { clamp } from '../core/MathUtils';
 
 // ── 屏幕震动 ───────────────────────────────────────────────
 export class ScreenShake {
@@ -9,11 +9,19 @@ export class ScreenShake {
     y  = 0;
     private _t   = 0;
     private _str = 0;
+    private _duration = 0;
+    private _phase = 0;
 
     /** strength=像素, duration=秒 */
     shake(strength = 8, duration = 0.25): void {
-        this._str = Math.max(this._str, strength);
-        this._t   = Math.max(this._t,   duration);
+        const nextStr = clamp(strength, 0, 14);
+        const nextDur = clamp(duration, 0.04, 0.45);
+        // 正在播放的强震动不会被连续小命中无限续杯；只有同级或更强反馈才延长。
+        if (this._t > 0 && nextStr < this._str * 0.65) return;
+        if (this._t <= 0) this._phase = 0;
+        this._str = Math.max(this._str, nextStr);
+        this._duration = Math.max(this._duration, nextDur);
+        this._t = Math.max(this._t, nextDur);
     }
     /** 别名：add(strength, durationMs) */
     add(strength: number, durationMs: number): void {
@@ -22,17 +30,25 @@ export class ScreenShake {
 
     update(dt: number): void {
         if (this._t > 0) {
-            this._t -= dt;
-            const s = this._str * (this._t > 0 ? 1 : 0);
-            this.x = Rng.float(-s, s);
-            this.y = Rng.float(-s, s);
-            this._str *= 0.88;
+            this._t = Math.max(0, this._t - dt);
+            this._phase += dt * 46;
+            const remain = this._duration > 0 ? this._t / this._duration : 0;
+            const amp = this._str * remain * remain;
+            // 阻尼双轴振荡替代“每帧完全随机跳点”，保留冲击感但不再像角色持续抖动。
+            this.x = Math.round(Math.sin(this._phase) * amp);
+            this.y = Math.round(Math.sin(this._phase * 1.71 + 1.2) * amp * 0.55);
         } else {
             this.x = 0; this.y = 0; this._t = 0;
+            this._str = 0; this._duration = 0;
         }
     }
 
-    reset(): void { this.x = 0; this.y = 0; this._t = 0; this._str = 0; }
+    get active(): boolean { return this._t > 0; }
+
+    reset(): void {
+        this.x = 0; this.y = 0; this._t = 0; this._str = 0;
+        this._duration = 0; this._phase = 0;
+    }
 }
 
 // ── 顿帧（hit-stop） ──────────────────────────────────────

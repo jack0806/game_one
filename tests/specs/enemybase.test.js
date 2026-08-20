@@ -37,7 +37,7 @@ test('波次成长系数随wave增加(scale = 1+(wave-1)*0.08)', () => {
     assert.equal(e10.maxHp, 137);
 });
 
-test('近战攻击:进入攻击范围且冷却完毕才造成伤害,超出范围不造成伤害', () => {
+test('近战攻击:进入范围先显示前摇,前摇结束且玩家仍在范围内才造成伤害', () => {
     const game = makeMockGame();
     const player = makePlayer({ x: 0, y: 0, radius: 16 });
     const e = makeEnemy('grunt', 1, game);
@@ -48,7 +48,21 @@ test('近战攻击:进入攻击范围且冷却完毕才造成伤害,超出范围
     // 拉近到攻击范围内 (meleeRange=48, radius=18, player.radius=16 → atkDist=82)
     e.x = 50; e.y = 0;
     e.update(0.016, player, game);
-    assert.ok(player.hp < 100, '进入范围内应该受到近战伤害');
+    assert.equal(player.hp, 100, '进入范围的第一帧只应开始前摇,不能瞬间扣血');
+    assert.ok(e.attackWindup > 0, '前摇计时应公开给渲染层绘制危险提示');
+    e.update(e.attackWindupMax, player, game);
+    assert.ok(player.hp < 100, '前摇结束且仍在范围内才应受到近战伤害');
+});
+
+test('近战攻击前摇期间离开危险范围可以躲避', () => {
+    const game = makeMockGame();
+    const player = makePlayer({ x: 0, y: 0, radius: 16 });
+    const e = makeEnemy('grunt', 1, game);
+    e.x = 50; e.y = 0;
+    e.update(0.016, player, game);
+    player.x = 500;
+    e.update(e.attackWindupMax, player, game);
+    assert.equal(player.hp, 100, '前摇结束前离开攻击距离应成功躲避');
 });
 
 test('近战攻击有冷却:命中一次后,冷却未结束前不会再次造成伤害', () => {
@@ -57,6 +71,7 @@ test('近战攻击有冷却:命中一次后,冷却未结束前不会再次造成
     const e = makeEnemy('grunt', 1, game); // attackSpeed=1 → 冷却1秒
     e.x = 30; e.y = 0;
     e.update(0.016, player, game);
+    e.update(e.attackWindupMax, player, game);
     const hpAfterFirstHit = player.hp;
     assert.ok(hpAfterFirstHit < 100, '首次进入范围应命中');
 

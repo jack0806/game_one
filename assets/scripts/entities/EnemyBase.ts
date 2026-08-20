@@ -52,6 +52,11 @@ export class EnemyBase {
     label       = '';
     meleeRange  = 48;
     chapter     = 1;
+    /** 近战前摇公开给渲染层：>0 时绘制危险圈/攻击方向，归零后才结算伤害。 */
+    attackWindup    = 0;
+    attackWindupMax = 0.32;
+    attackTargetX   = 0;
+    attackTargetY   = 0;
     private _atkCd = 0;
 
     /** 混沌节拍变异（chaos_beat）：由 WaveManager 定时随机施加的临时增益，到期自动回落到1。 */
@@ -72,6 +77,7 @@ export class EnemyBase {
         const scale  = 1 + (wave - 1) * 0.08;
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
+        this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0;
         this._applyTypeDef(type, scale, game);
         this._applyMutations(game);
         // 精英增强
@@ -83,37 +89,43 @@ export class EnemyBase {
             case 'grunt':
                 this.color = '#ff4444'; this.glowColor = '#ff0000';
                 this.maxHp = Math.floor(80 * scale); this.speed = 65; this.damage = 8; this.radius = 18;
-                this.goldValue = 8; this.label = '';
+                this.goldValue = 8; this.label = ''; this.attackWindupMax = 0.28;
+                this.visualScale = 1.22;
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ffffff'; break;
             case 'shield':
                 this.color = '#4488ff'; this.glowColor = '#0044cc';
                 this.maxHp = Math.floor(60 * scale); this.speed = 45; this.damage = 10; this.radius = 20;
                 this.maxShieldHp = Math.floor(80 * scale); this.shieldHp = this.maxShieldHp; this.shieldActive = true;
-                this.goldValue = 12; this.label = '护盾兵';
+                this.goldValue = 12; this.label = '护盾兵'; this.attackWindupMax = 0.38;
+                this.visualScale = 1.18;
                 this.spriteKey = 'enemy_shield'; this.tintColor = '#ffffff'; break;
             case 'exploder':
                 this.color = '#ff8800'; this.glowColor = '#ff4400';
                 this.maxHp = Math.floor(50 * scale); this.speed = 85; this.damage = 40; this.radius = 20;
-                this.deathExplode = true; this.goldValue = 10; this.label = '';
+                this.deathExplode = true; this.goldValue = 10; this.label = ''; this.attackWindupMax = 0.52;
+                this.visualScale = 1.20;
                 // 素材错位：enemy_exploder key 实际内容(经ArtRemap重定向)对应"爆炸怪"语义。
                 this.spriteKey = 'enemy_exploder'; this.tintColor = '#ffffff'; break;
             case 'golem':
                 this.color = '#888888'; this.glowColor = '#aaaaaa';
                 this.maxHp = Math.floor(300 * scale); this.speed = 35; this.damage = 20; this.radius = 26;
-                this.armor = 25; this.goldValue = 20; this.label = '石像鬼';
+                this.armor = 25; this.goldValue = 20; this.label = '石像鬼'; this.attackWindupMax = 0.56;
+                this.visualScale = 1.15;
                 this.spriteKey = 'enemy_golem'; this.tintColor = '#ffffff'; break;
             case 'elite_grunt':
                 this.isElite = true;
                 this.color = '#ff44ff'; this.glowColor = '#cc00cc';
                 this.maxHp = Math.floor(200 * scale); this.speed = 75; this.damage = 18; this.radius = 22;
-                this.goldValue = 30; this.label = '精英';
+                this.goldValue = 30; this.label = '精英'; this.attackWindupMax = 0.30;
+                this.visualScale = 1.25;
                 // 没有独立精英美术，复用grunt贴图+粉紫色调区分。
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ff88ff'; break;
             case 'miniboss':
                 this.isMiniBoss = true;
                 this.color = '#aa44ff'; this.glowColor = '#6600cc';
                 this.maxHp = Math.floor(800 * scale); this.speed = 55; this.damage = 25; this.radius = 30;
-                this.goldValue = 60; this.label = '暗影猎手';
+                this.goldValue = 60; this.label = '暗影猎手'; this.attackWindupMax = 0.46;
+                this.visualScale = 1.60;
                 // 没有独立miniboss美术，复用boss贴图+紫色调区分。
                 this.spriteKey = 'enemy_boss'; this.tintColor = '#cc88ff'; break;
         }
@@ -152,9 +164,9 @@ export class EnemyBase {
         // 打击感：屏幕震动 + 顿帧
         const ratio = dmg / this.maxHp;
         // 普通小额群攻只显示闪白/粒子；每个目标都震屏会让一次攻击带动整张画布抖动。
-        if (this.isBoss || this.isElite || ratio > 0.04) {
-            game.screenShake?.shake(Math.min(11, (this.isBoss ? 2.8 : 1) * (2 + ratio * 16)), Math.min(0.28, 0.05 + ratio * 0.28));
-            if (ratio > 0.04 || this.isBoss) game.hitStop?.trigger(15 + ratio * 110);
+        if (this.isBoss || this.isElite || (this.maxHp >= 250 && ratio > 0.15)) {
+            game.screenShake?.shake(Math.min(6, (this.isBoss ? 2 : 1) * (1.5 + ratio * 7)), Math.min(0.16, 0.05 + ratio * 0.12));
+            if (ratio > 0.12 || this.isBoss) game.hitStop?.trigger(12 + ratio * 65);
         }
         // 方向粒子
         if (attacker) {
@@ -233,6 +245,24 @@ export class EnemyBase {
         this.knockbackX *= (1 - dt * 8);
         this.knockbackY *= (1 - dt * 8);
 
+        // 近战攻击先进入清晰前摇。前摇期间敌人停步，玩家能读懂危险并躲开；
+        // 只有结束时仍在攻击距离内才命中，避免旧版“贴近即无动画扣血”。
+        if (this.attackWindup > 0) {
+            this.attackWindup = Math.max(0, this.attackWindup - dt);
+            if (this.attackWindup <= 0 && player.alive) {
+                const atkDist = this.radius + (player.radius ?? 16) + this.meleeRange;
+                const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                if (dist <= atkDist + 10) {
+                    const angle = Math.atan2(player.y - this.y, player.x - this.x);
+                    // 前摇结束再挥出剑气并结算伤害，避免贴脸瞬间扣血。
+                    game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this.meleeRange, 0.85);
+                    game.particles?.impact(player.x, player.y, angle, 0.35, this.color);
+                    player.takeDamage(this.damage * this.buffDmgMult, game);
+                }
+            }
+            return;
+        }
+
         // 向玩家移动
         const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
         const spd = this.speed * (this.frozen > 0 ? 0 : this.slowMult) * this.buffSpeedMult;
@@ -249,9 +279,9 @@ export class EnemyBase {
             const dist = Math.hypot(player.x - this.x, player.y - this.y);
             if (dist <= atkDist) {
                 this._atkCd = 1 / Math.max(0.01, this.attackSpeed);
-                // 怪物近战剑气：向玩家方向挥斩的可视化前摇提示
-                game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(player.y - this.y, player.x - this.x), this.color, this.meleeRange, 0.85);
-                player.takeDamage(this.damage * this.buffDmgMult, game);
+                this.attackWindup = this.attackWindupMax;
+                this.attackTargetX = player.x;
+                this.attackTargetY = player.y;
             }
         }
     }

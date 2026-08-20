@@ -49,3 +49,27 @@ test('boss追逐移动速度应受slowMult影响(之前减速对boss完全无效
     bossNormal.update(1, player, game);
     assert.notEqual(bossNormal.x, x1, 'slowMult=1时boss应正常追逐移动');
 });
+
+test('boss接触攻击先进入前摇,不会贴脸瞬间扣血', () => {
+    const game = makeMockGame();
+    const boss = makeBoss(game);
+    const player = makePlayer({ x: 20, y: 0, radius: 16 });
+    boss.update(0.016, player, game);
+    assert.equal(player.hp, 100);
+    assert.ok(boss.attackWindup > 0, '接触攻击应暴露前摇给渲染层');
+    boss.update(boss.attackWindupMax, player, game);
+    assert.ok(player.hp < 100, '前摇结束且仍贴近时才造成伤害');
+});
+
+test('boss冲锋先锁定目标并蓄力,不会立即移动', () => {
+    const game = makeMockGame();
+    const boss = makeBoss(game);
+    const player = makePlayer({ x: 500, y: 0 });
+    boss._chargeCd = 0;
+    boss.update(0.016, player, game);
+    assert.ok(boss.chargeWindup > 0, '冲锋应先进入可见蓄力');
+    assert.equal(boss.isCharging, false);
+    assert.equal(boss.chargeTargetX, player.x);
+    boss.update(boss.chargeWindupMax, player, game);
+    assert.equal(boss.isCharging, true, '蓄力结束后才进入冲锋');
+});

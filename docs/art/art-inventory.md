@@ -1,6 +1,6 @@
 # 现有美术资源清单（assets/resources/art/）
 
-共 49 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
+共 54 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。
 
@@ -52,7 +52,7 @@
 
 ## 3. 战斗棋子 char_token（6 张）
 
-**战场上的玩家本体**（`PlayerController.ts:81`），48×48 正方形 CUSTOM 拉伸、不染色——需 1:1 图标化"棋子"构图（大轮廓高对比，不是头像），见 `docs/prompts/image-prompts.md` 第六节。
+**战场上的玩家本体**（`PlayerController.ts`），60×60 正方形 CUSTOM 拉伸、不染色，并叠加程序绘制的深色分离底与角色色轮廓——需 1:1 图标化"棋子"构图（大轮廓高对比，不是头像），见 `docs/prompts/image-prompts.md` 第六节。
 
 `char_token_kai` / `char_token_vivian` / `char_token_reik` / `char_token_olia` / `char_token_graf` / `char_token_liana`
 
@@ -62,9 +62,9 @@
 
 `bullet_kai` / `bullet_vivian` / `bullet_reik` / `bullet_olia` / `bullet_graf` / `bullet_liana`
 
-## 5. 敌人（5 张）
+## 5. 敌人（9 张）
 
-正方形 CUSTOM 拉伸，显示直径=碰撞半径×2（grunt 36 / shield 40 / exploder 40 / golem 52 / boss 162，boss 另乘 1.8 视觉放大）。**染色复用**：精英怪=grunt 图染粉紫 `#ff88ff`；Boss 一张图按章节染红/青/绿青/紫 4 色，miniboss 再染紫——所以 boss 底图必须是白色素体，见 `docs/prompts/image-prompts.md` 第七节。
+正方形 CUSTOM 拉伸，显示直径=碰撞半径×2×视觉缩放（普通怪约 44–62px，Boss 180px）。精英怪仍复用 grunt 图染粉紫；miniboss 继续使用浅色 `enemy_boss` 素体。四章正式 Boss 已改为独立原色贴图，不再用一张白模染四种颜色。
 
 | 文件名（key） | 敌人类型 | 引用位置 |
 |---|---|---|
@@ -72,11 +72,21 @@
 | `enemy_shield` | 护盾兵 | `EnemyBase.ts:88` |
 | `enemy_exploder` | 自爆怪 | `EnemyBase.ts:94` |
 | `enemy_golem` | 石像鬼（重甲坦克） | `EnemyBase.ts:100` |
-| `enemy_boss` | 章节 Boss×4 + miniboss（染色复用） | `BossController.ts:51` |
+| `enemy_boss` | miniboss 通用浅色素体（染紫复用） | `EnemyBase.ts` |
+| `enemy_boss_ch1` | 第1章废土领主·腐肉（骨甲巨爪/毒囊） | `BossController._setupForChapter` |
+| `enemy_boss_ch2` | 第2章钢铁之王·熔炉（熔炉重装） | 同上 |
+| `enemy_boss_ch3` | 第3章海克斯异变体·无限核（悬浮晶核） | 同上 |
+| `enemy_boss_ch4` | 第4章混沌深渊·终焉之门（深渊门环） | 同上 |
 
 规格参考：抠图后约 512×500（白/银素体，透明背景）。
 
-## 6. 特效 FX（5 张）
+## 6. 拾取物（1 张）
+
+| 文件名（key） | 用途 |
+|---|---|
+| `ui_gold_coin` | 战斗中掉落与拾取的六边形金币；25–34px 呼吸缩放显示 |
+
+## 7. 特效 FX（5 张）
 
 一次性播放的特效贴图，由 `ParticleManager` 驱动、`GameManager.ts` 渲染（三段式弹出/膨胀/淡出动画）。
 **2026-08-18 已全部黑底转透明 + 发光化**（`tools/enhance_fx*.py`），`fx_explosion` 额外叠加了
@@ -90,7 +100,7 @@
 | `fx_heal` | 治疗 |
 | `fx_cold_arrow` | 寒冰箭 |
 
-## 7. UI 图标（16 张）
+## 8. UI 图标（16 张）
 
 两处复用（`HUD.ts`）：词条槽 **30×30 叠在程序绘制的稀有度色块+边框上**（`HUD.ts:229`）；技能环 **28×28 嵌在 CD 进度圆环内、未就绪时染灰**（`HUD.ts:248`）。因此图标必须**无底板无徽章**、纯发光符号——生成模板见 `docs/prompts/image-prompts.md` 第十节。
 

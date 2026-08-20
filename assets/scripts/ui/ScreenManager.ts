@@ -86,8 +86,18 @@ export class ScreenManager extends Component {
         // 就是用户反馈"图片与开始按钮不对应"的根因）。
         // 这里只在图片对应位置放一个透明热区，把点击对接到图里画好的
         // "START GAME" 按钮上，不再单独画一个位置/风格都不一致的按钮。
-        const btn = this._mkHotspot(p, 0, -50, 210, 42);
+        // title_screen 的 START GAME 可见框约为 480×86，中心在面板本地 y=+30。
+        // 旧热区 (0,-50,210,42) 实机会落到图片里的 UPGRADES 一带，且只有
+        // 可见按钮约四分之一面积，导致“点在开始按钮上没有反应”。热区必须
+        // 覆盖完整可见轮廓，窗口等比缩放时仍由 Cocos UITransform 同步缩放。
+        const btn = this._mkHotspot(p, 0, 30, 480, 86);
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
+
+        // 背景图还烧录了三个尚未实现的按钮。明确置灰并标注“即将开放”，
+        // 避免玩家把装饰误认为可点击功能；后续功能上线时再替换成真实按钮。
+        this._mkDisabledArtButton(p, 0, -62, 218, 50);
+        this._mkDisabledArtButton(p, 0, -132, 218, 50);
+        this._mkDisabledArtButton(p, 0, -204, 218, 50);
     }
 
     private _buildCharSelectPanel() {
@@ -107,14 +117,10 @@ export class ScreenManager extends Component {
 
         // 6 character cards in a 3×2 grid: portrait on top, nameplate button below
         const names  = CHARS.map(c => c.name);
-        const colors = [
-            new Color(60, 180, 255, 255),  // Kai
-            new Color(220, 80, 200, 255),  // Vivian
-            new Color(200, 60, 60, 255),   // Reik
-            new Color(80, 220, 160, 255),  // Olia
-            new Color(200, 180, 60, 255),  // Graf
-            new Color(160, 100, 255, 255), // Liana
-        ];
+        // 卡框、名牌、战斗棋子和技能特效共用 CharacterDB 的身份色。
+        // 旧手写数组把 Vivian/Olia/Graf/Liana 分别错配成粉/绿/黄/紫，
+        // 选人页与进入战斗后的视觉语言完全脱节。
+        const colors = CHARS.map(c => Color.fromHEX(new Color(), c.color));
         for (let i = 0; i < 6; i++) {
             const col = i % 3, row = Math.floor(i / 3);
             const cx = -400 + col * 400;
@@ -127,6 +133,19 @@ export class ScreenManager extends Component {
             const idx = i;
             const def = CHARS[idx];
             const charId = def?.id;
+
+            // 用同一套深色卡框收束来源不同的角色立绘，并用角色主题色做细边。
+            // 立绘本身仍保持透明，不会出现六张图各自带一块方形背景的拼贴感。
+            const frameN = new Node('PortraitFrame'); frameN.setParent(card);
+            frameN.setPosition(new Vec3(0, 50, 0));
+            frameN.addComponent(UITransform).setContentSize(180, 180);
+            const frameG = frameN.addComponent(Graphics);
+            frameG.fillColor = new Color(9, 15, 24, 245);
+            frameG.fillRect(-90, -90, 180, 180);
+            frameG.strokeColor = colors[i] ?? new Color(80, 140, 180, 255);
+            frameG.lineWidth = 3;
+            frameG.rect(-90, -90, 180, 180); frameG.stroke();
+
             if (charId) this._loadPortrait(card, `char_${charId}`, 160, 50);
 
             const locked = !!def && !def.unlocked;
@@ -270,7 +289,9 @@ export class ScreenManager extends Component {
     private _loadPortrait(parent: Node, key: string, size: number, yOffset: number, extra = 0) {
         const pn = new Node('Portrait'); pn.setParent(parent);
         pn.setPosition(new Vec3(0, yOffset + extra, 0));
-        pn.setSiblingIndex(0); // draw behind the label, in front of the bg Graphics
+        // PortraitFrame 固定在卡片 sibling 0，立绘必须位于它上方；此前把立绘也
+        // 塞到 0 会将深色框底板顶到前景，实际预览中六张角色图都被遮暗。
+        pn.setSiblingIndex(1);
         const ui = pn.addComponent(UITransform);
         ui.setContentSize(size, size);
         const sp = pn.addComponent(Sprite);
@@ -293,6 +314,27 @@ export class ScreenManager extends Component {
         const n = new Node('Hotspot'); n.setParent(parent);
         n.setPosition(new Vec3(x, y, 0));
         n.addComponent(UITransform).setContentSize(w, h);
+        return n;
+    }
+
+    private _mkDisabledArtButton(parent: Node, x: number, y: number, w: number, h: number): Node {
+        const n = new Node('DisabledArtButton'); n.setParent(parent);
+        n.setPosition(new Vec3(x, y, 0));
+        n.addComponent(UITransform).setContentSize(w, h);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(5, 10, 18, 155);
+        g.fillRect(-w / 2, -h / 2, w, h);
+        g.strokeColor = new Color(80, 130, 145, 150);
+        g.lineWidth = 1; g.rect(-w / 2, -h / 2, w, h); g.stroke();
+        const ln = new Node('Status'); ln.setParent(n);
+        ln.addComponent(UITransform).setContentSize(w, h);
+        const label = ln.addComponent(Label);
+        label.string = 'COMING SOON';
+        label.fontSize = 13;
+        label.color = new Color(145, 175, 185, 235);
+        label.horizontalAlign = HorizontalTextAlignment.CENTER;
+        label.verticalAlign = VerticalTextAlignment.CENTER;
+        styleLabel(label);
         return n;
     }
 
