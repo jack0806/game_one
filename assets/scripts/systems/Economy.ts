@@ -53,6 +53,7 @@ export class Economy {
             if (Vec.dist(d.x, d.y, player.x, player.y) < pickupR) {
                 this.addGold(d.amount);
                 d.collected = true;
+                game?.audio?.playSfx?.('gold');
                 game?.particles?.hit?.(d.x, d.y, '#ffd85a');
                 game?.floatingText?.spawn?.(d.x, d.y - 18, `+${d.amount}`, '#ffd85a', 13, false);
             }

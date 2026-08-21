@@ -59,6 +59,7 @@ export class PlayerController extends Component {
 
     private _buffs: Buff[] = [];
     private _charDef!: CharDef;
+    private _game?: any;
 
     /** Sprite carrying the character's battle token art (char_<id>), set up in init(). */
     sprite?: Sprite;
@@ -67,6 +68,7 @@ export class PlayerController extends Component {
     init(charId: string, game: any): void {
         this.charId   = charId;
         this._charDef = CHARACTERS[charId];
+        this._game    = game;
         const def     = this._charDef;
         this.color    = def.color;
 
@@ -75,7 +77,7 @@ export class PlayerController extends Component {
         // 影响逻辑，只是看不到图（回退到无贴图）。
         if (!this.sprite) {
             const node = (this as any).node as Node;
-            node.addComponent(UITransform).setContentSize(60, 60);
+            node.addComponent(UITransform).setContentSize(82, 82);
             this.sprite = node.addComponent(Sprite);
             this.sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         }
@@ -145,8 +147,16 @@ export class PlayerController extends Component {
         this._buffs.push({ id, duration, mods });
     }
 
-    heal(amount: number): void {
+    heal(amount: number, feedback = true): number {
+        const before = this.hp;
         this.hp = Math.min(this.stats.maxHp, this.hp + amount);
+        const healed = this.hp - before;
+        if (feedback && healed >= 1) {
+            this._game?.particles?.heal?.(this.x, this.y);
+            this._game?.audio?.playSfx?.('heal');
+            this._game?.floatingText?.spawn?.(this.x, this.y - 42, `+${Math.round(healed)}`, '#8fffb0', 14, false);
+        }
+        return healed;
     }
 
     takeDamage(amount: number, game: any): void {
@@ -171,6 +181,7 @@ export class PlayerController extends Component {
         amount = Math.max(1, amount * (1 - mitigation));
         this.hp -= amount;
         this._iframeTimer = 0.5;
+        game.audio?.playSfx?.('player_hurt');
         game.screenShake?.shake(4, 0.14);
         game.floatingText?.spawn(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff4444', 16, false);
         if (this.hp <= 0) {
@@ -251,13 +262,17 @@ export class PlayerController extends Component {
         // 技能 Q
         if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
             this._qCd = 4 * (1 - this.stats.cdReduction);
+            game.audio?.playSfx?.('skill_q');
             this._charDef.qSkill(this, game);
-            game.floatingText?.spawn(this.x, this.y - 55, this._charDef.skills.q.split('—')[0].trim(), this.color, 15, true);
+            const qName = this._charDef.skills.q.split('—')[0].trim();
+            game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
             game.augmentManager?.dispatchSkill(this, game);
         }
         // 技能 E
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
             this._eCd = 10 * (1 - this.stats.cdReduction);
+            game.audio?.playSfx?.('skill_e');
+            let eName = this._charDef.skills.e.split('—')[0].trim();
             if (this.stats.eSkillUpgrade === 'blackhole') {
                 const bx = input.mouse.x, by = input.mouse.y;
                 game.attractEnemies?.(bx, by, 120);
@@ -265,11 +280,14 @@ export class PlayerController extends Component {
                 for (const e of game.enemies) {
                     if (e.alive && Math.hypot(e.x - bx, e.y - by) < 120) e.takeDamage(this.getDamage(game) * 2, this, game);
                 }
-                game.floatingText?.spawn(bx, by - 40, '黑洞引擎！', '#cc00ff', 18, true);
+                eName = '黑洞引擎';
             } else {
                 this._charDef.eSkill(this, game);
             }
-            game.floatingText?.spawn(this.x, this.y - 55, this._charDef.skills.e.split('—')[0].trim(), this.color, 15, true);
+            // Q/E 名称统一只由控制器显示一次。角色数据层只负责效果，避免
+            // “网络连接/连接网络”这类同义文案在英雄头顶叠两遍。
+            const eColor = this.stats.eSkillUpgrade === 'blackhole' ? '#cc00ff' : this.color;
+            game.floatingText?.spawn(this.x, this.y - 55, eName, eColor, 15, true);
             game.augmentManager?.dispatchSkill(this, game);
         }
         // 宇宙法则(cosmos_law)：R 键触发（独立于大招 R，走独立30s CD）。
@@ -284,6 +302,7 @@ export class PlayerController extends Component {
         // 终极 R
         if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1) {
             this._rCharge = 0; this.ultReady = false;
+            game.audio?.playSfx?.('skill_r');
             this._charDef.ultimate(this, game);
             game.hitStop?.trigger(0.1);
         }
@@ -330,7 +349,7 @@ export class PlayerController extends Component {
         const heal = actualDamage * rate;
         if (heal < 1) return;
         const before = this.hp;
-        this.heal(heal);
+        this.heal(heal, false);
         const healed = this.hp - before;
         if (healed > 0) game.floatingText?.spawn(this.x + 14, this.y - 34, `+${Math.round(healed)}`, '#5fff5f', 12, false);
     }
@@ -359,6 +378,8 @@ export class PlayerController extends Component {
                 charKey: this.charId, lifeTime: 2,
             });
         };
+
+        game.audio?.playSfx?.('shoot');
 
         if (this.stats.novaMode) {
             // 全方向9发

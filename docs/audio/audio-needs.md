@@ -1,6 +1,6 @@
 # 音频资源需求清单（全新，从零开始）
 
-盘点结论：代码中**没有任何音频系统**（全仓无 AudioSource/AudioClip/audio 相关引用），`assets/` 下没有任何音频文件。BGM 与 SFX 均需从零生成 + 接线。
+> 2026-08-20 更新：7 首 BGM、17 个 SFX 已入库，`systems/AudioManager.ts` 已完成并接入主要状态与玩法事件。详细映射、音量与 QA 见 `audio-integration-2026-08-20.md`。本文后半部分保留为原始需求基线。
 
 ---
 
@@ -55,8 +55,9 @@
 
 ## 3. 落地核对清单
 
-- [ ] AudioManager + cc 桩补齐，`npm test` 保持全绿
-- [ ] `assets/resources/audio/bgm/*.mp3` × 7 入库并接线
-- [ ] `assets/resources/audio/sfx/*.mp3` 入库并接线
-- [ ] `artmanifest.test.js` 扩展为音频清单自检（扫描代码中的 audio key，断言文件存在——与 art 同思路）
+- [x] AudioManager + cc 桩补齐，headless 测试保持全绿
+- [x] `assets/resources/audio/bgm/*.mp3` × 7 入库并接线
+- [x] `assets/resources/audio/sfx/*.mp3` × 17 入库并接线
+- [ ] 补独立 `sfx_heal.mp3` / `sfx_hex_activate.mp3`（当前复用现有音效）
+- [x] `audio.test.js` 已覆盖 7 首 BGM + 17 个 SFX 的文件清单自检
 - [ ] Cocos Creator 实机预览：音量平衡（BGM 约 0.4–0.6，SFX 0.7–1.0）、循环接缝检查

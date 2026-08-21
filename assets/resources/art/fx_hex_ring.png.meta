@@ -41,13 +41,13 @@
       "userData": {
         "trimThreshold": 1,
         "rotated": false,
-        "offsetX": 0,
-        "offsetY": 0,
-        "trimX": 0,
-        "trimY": 0,
-        "width": 473,
-        "height": 512,
-        "rawWidth": 473,
+        "offsetX": 5,
+        "offsetY": -5,
+        "trimX": 21,
+        "trimY": 20,
+        "width": 480,
+        "height": 482,
+        "rawWidth": 512,
         "rawHeight": 512,
         "borderTop": 0,
         "borderBottom": 0,
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -236.5,
-            -256,
+            -240,
+            -241,
             0,
-            236.5,
-            -256,
+            240,
+            -241,
             0,
-            -236.5,
-            256,
+            -240,
+            241,
             0,
-            236.5,
-            256,
+            240,
+            241,
             0
           ],
           "indexes": [
@@ -82,33 +82,33 @@
             3
           ],
           "uv": [
-            0,
-            512,
-            473,
-            512,
-            0,
-            0,
-            473,
-            0
+            21,
+            492,
+            501,
+            492,
+            21,
+            10,
+            501,
+            10
           ],
           "nuv": [
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1
+            0.041015625,
+            0.01953125,
+            0.978515625,
+            0.01953125,
+            0.041015625,
+            0.9609375,
+            0.978515625,
+            0.9609375
           ],
           "minPos": [
-            -236.5,
-            -256,
+            -240,
+            -241,
             0
           ],
           "maxPos": [
-            236.5,
-            256,
+            240,
+            241,
             0
           ]
         },
@@ -127,7 +127,7 @@
   },
   "userData": {
     "type": "sprite-frame",
-    "fixAlphaTransparencyArtifacts": false,
+    "fixAlphaTransparencyArtifacts": true,
     "hasAlpha": true,
     "redirect": "7a06703a-6098-4003-a586-9218c396692c@6c48a"
   }

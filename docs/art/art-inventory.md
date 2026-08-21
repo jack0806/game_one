@@ -16,7 +16,7 @@
 
 | 文件名（key） | 实际内容 | 引用位置 | 规格参考 |
 |---|---|---|---|
-| `title_screen` | 标题屏整版图（含烧录的 "START GAME" 按钮文字，按钮热区坐标在代码里） | `ScreenManager.ts:81` | 2560×1440 |
+| `title_screen` | 标题屏环境与标题图（旧烧录按钮区已由代码操作台覆盖，真实按钮由 `UIStyle` 绘制） | `ScreenManager.ts` | 2560×1440 |
 | `bg_chapter1` | 第1章 废土街道（碎裂沥青+锈蚀汽车残骸） | `WaveData.ts`（bgKey）+ `GameManager.ts` | 2560×1440 |
 | `bg_chapter2` | 第2章 钢铁工厂（钢格栅+齿轮+熔炉橙光） | 同上 | 2560×1440 |
 | `bg_chapter3` | 第3章 海克斯实验室（青绿蜂巢电路+容器节点） | 同上 | 2560×1440 |
@@ -50,15 +50,15 @@
 
 规格参考：抠图后约 640×570（已带透明通道，主体裁剪到包围盒）。生成替换时仍建议 1:1 构图半身像，处理后由管线裁剪。
 
-## 3. 战斗棋子 char_token（6 张）
+## 3. 英雄战斗 Sprite char_token（6 张）
 
-**战场上的玩家本体**（`PlayerController.ts`），60×60 正方形 CUSTOM 拉伸、不染色，并叠加程序绘制的深色分离底与角色色轮廓——需 1:1 图标化"棋子"构图（大轮廓高对比，不是头像），见 `docs/prompts/image-prompts.md` 第六节。
+**战场上的玩家本体**（`PlayerController.ts`），82×82 正方形 CUSTOM 显示、不染色。2026-08-20 已统一替换为 512×512 真透明、3/4 俯视、脚部可见的全身战斗 Sprite；每张图外沿至少保留 8px 全透明安全边距，并启用 Cocos 的 Alpha 边缘修复，避免缩放采样产生白色底框。程序层只叠加贴地椭圆阴影与身份色细环，不再套胸像徽章。移动时不做缩放摆动，静止时仅有 1.2% 原地呼吸。
 
 `char_token_kai` / `char_token_vivian` / `char_token_reik` / `char_token_olia` / `char_token_graf` / `char_token_liana`
 
 ## 4. 角色子弹（6 张）
 
-玩家子弹贴图，按 `bullet_<id>` 加载（`BulletController.spawn`）——**仅玩家子弹用图**（炮台/敌人子弹是程序画的圆点）。正方形 CUSTOM 拉伸（普攻仅 10×10），**每发染角色主题色且不旋转**：必须是白色素体、各向同性圆形弹体，见 `docs/prompts/image-prompts.md` 第八节。
+玩家、分身和薇薇安炮台的子弹贴图，按 `bullet_<id>` 加载（`BulletController.spawn`）；敌方子弹仍使用按危险类型区分的程序轮廓。六张素材统一为 256×128 真透明横向弹体，枪口朝右：运行时保持 2:1 以上显示比例、使用素材原色并随速度方向旋转。六名角色分别是轨道枪栓、微型导弹、冲击斧刃、时空针、混沌长矛与冰晶狙击弹，不再使用各向同性圆球。
 
 `bullet_kai` / `bullet_vivian` / `bullet_reik` / `bullet_olia` / `bullet_graf` / `bullet_liana`
 
@@ -84,13 +84,12 @@
 
 | 文件名（key） | 用途 |
 |---|---|
-| `ui_gold_coin` | 战斗中掉落与拾取的六边形金币；25–34px 呼吸缩放显示 |
+| `ui_gold_coin` | 透明六边形厚边金币；战斗中以 25–34px 翻面/悬浮显示 |
 
 ## 7. 特效 FX（5 张）
 
 一次性播放的特效贴图，由 `ParticleManager` 驱动、`GameManager.ts` 渲染（三段式弹出/膨胀/淡出动画）。
-**2026-08-18 已全部黑底转透明 + 发光化**（`tools/enhance_fx*.py`），`fx_explosion` 额外叠加了
-程序生成的随机放射光刺（白心→橙渐变），`fx_hex_ring` 增加了中心能量核与青色辉光。
+**2026-08-20 已全部重新生成**为俯视战斗一次性 VFX：512×512 RGBA、四角 Alpha=0，治疗/毒素分色，爆炸/寒冰强调方向冲击，六角环使用双层错位能量结构。`tests/specs/visualmanifest.test.js` 会阻止黑底或尺寸错误资源重新入库。
 
 | 文件名（key） | 用途 |
 |---|---|

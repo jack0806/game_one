@@ -126,3 +126,22 @@ test('clear()/reset()把所有active子弹放回池中', () => {
     assert.equal(b1.node.active, false, 'clear后第一颗子弹节点应隐藏');
     assert.equal(b2.node.active, false, 'clear后第二颗子弹节点应隐藏');
 });
+
+test('角色和炮台弹丸使用横向原色Sprite并按飞行方向旋转', () => {
+    const { Node, Sprite, UITransform } = require('cc');
+    const parent = new Node('BulletParent');
+    const pool = new BulletPool(2, parent);
+    const b = pool.fire(0, 0, 0, 1, 10, {
+        owner: 'turret', charKey: 'vivian', radius: 6,
+    });
+    const size = b.node.getComponent(UITransform);
+    const sprite = b.node.getComponent(Sprite);
+    assert.equal(b.node.active, true, '炮台子弹提供角色键后应启用正式美术');
+    assert.ok(size.width > size.height * 2, '弹丸显示框应保持横向武器弹体比例');
+    assert.deepEqual(
+        [sprite.color.r, sprite.color.g, sprite.color.b, sprite.color.a],
+        [255, 255, 255, 255],
+        '不应再用纯色染色压平弹丸自身层次',
+    );
+    assert.equal(Math.round(b.node.eulerAngles.z), -90, '朝上的弹丸应随速度方向旋转');
+});

@@ -42,6 +42,7 @@ export function chainLightning(player: any, sourceEnemy: any, dmg: number, bounc
     const target = Rng.pick(others) as any;
     visited.add(target);
     game.particles.lightning(sourceEnemy.x, sourceEnemy.y, target.x, target.y, '#ffe500');
+    game.audio?.playSfx?.('lightning');
     target.takeDamage(dmg, player, game);
     game.floatingText?.spawn(target.x, target.y - 22, '连锁!', '#ffe500', 13, false);
     chainLightning(player, target, dmg * 0.8, bounces - 1, game, visited);
@@ -51,6 +52,7 @@ export function spawnExplosion(player: any, x: number, y: number, dmg: number, r
     if (!game) return;
     const mult = (player.stats.explosionMult) || 1;
     game.particles.explode(x, y, '#ff6600', radius);
+    game.audio?.playSfx?.('explode');
     game.screenShake.shake(6, 0.2);
     const hitTargets: any[] = [];
     for (const e of game.enemies) {
@@ -127,8 +129,8 @@ export const AUGMENT_DB: AugmentDef[] = [
       desc: '每次命中回复伤害量×4% HP，护甲 -10',
       onEquip(p, _g, mult = 1) { p.stats.armor = Math.max(0, p.stats.armor - 10 * mult); },
       onHit(p, _enemy, dmg, game) {
-          p.heal(Math.min(dmg * 0.04, p.stats.maxHp * 0.03));
-          if (game?.particles) game.particles.heal(p.x, p.y);
+          // 高频吸血只显示小绿字，不能每颗子弹都铺一张完整治疗法阵。
+          p.heal(Math.min(dmg * 0.04, p.stats.maxHp * 0.03), false);
       } },
 
     { id: 'bounce', rarity: 'blue', icon: 'bounce', name: '反弹弹道', tags: ['bounce'], attackType: 'ranged',

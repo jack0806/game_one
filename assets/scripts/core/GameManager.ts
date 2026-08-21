@@ -19,6 +19,7 @@ import { Economy, ShopItem } from '../systems/Economy';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
 import { ParticleManager }   from '../systems/ParticleManager';
+import { AudioManager, BgmCue } from '../systems/AudioManager';
 import { HUD, HudData }      from '../ui/HUD';
 import { AugSelectUI }       from '../ui/AugSelectUI';
 import { ShopUI }            from '../ui/ShopUI';
@@ -69,6 +70,7 @@ export class GameManager extends Component {
     private _hitStop!:    HitStop;
     private _floatText!:  FloatingText;
     private _particles!:  ParticleManager;
+    private _audio!:      AudioManager;
 
     // ── ui ────────────────────────────────────────────────────
     private _hud!:        HUD;
@@ -84,6 +86,7 @@ export class GameManager extends Component {
     private _chapter   = 0;
     private _mutations: string[] = [];
     private _runId = 0;
+    private _visualTime = 0;
 
     // ── extra runtime state (turrets / zones / enemy bullets / stats) ──
     private _turrets:      any[] = [];
@@ -114,6 +117,7 @@ export class GameManager extends Component {
 
     update(rawDt: number) {
         const dt = Math.min(rawDt, DT_MAX);
+        this._visualTime += dt;
 
         // Hit-stop pauses combat simulation, but movement/input must stay responsive.
         if (this._hitStop.active) {
@@ -149,9 +153,10 @@ export class GameManager extends Component {
         this._bgLayer.setParent(this.node);
         this._bgLayer.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
         this._bgSprite = this._bgLayer.addComponent(Sprite);
-        // 修复背景拉伸变形：改用TRIMMED模式保持原始宽高比，居中裁切填充Canvas
-        this._bgSprite.sizeMode = Sprite.SizeMode.TRIMMED;
-        this._bgSprite.trim = false; // 保留完整画布尺寸，让bg图填满背景
+        // 四章背景资源均为 16:9。固定 CUSTOM 尺寸可确保异步挂载 SpriteFrame 后
+        // 仍严格填满 1280×720，不被 TRIMMED 模式恢复成 2560×1440 后过度裁切。
+        this._bgSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        this._bgSprite.trim = false;
 
         // 中性色罩放在背景图之上、所有战斗实体之下。按章节调整强度，压低
         // 高饱和裂纹/网格/电路的视觉竞争，同时保留边缘环境主题。
@@ -193,6 +198,7 @@ export class GameManager extends Component {
         this._hitStop   = new HitStop();
         this._floatText = new FloatingText();
         this._particles = new ParticleManager();
+        this._audio     = new AudioManager(this.node);
         this._economy   = new Economy();
         // _gameLayer already exists here — _initLayers() runs before _initSystems() in onLoad() —
         // so pooled bullets can get their permanent Sprite nodes parented immediately.
@@ -233,6 +239,14 @@ export class GameManager extends Component {
         };
         this._screenMgr.onContinuePressed = () => this._continueAfterChapter();
         this._screenMgr.onResumePressed   = () => this._setState('playing');
+        this._screenMgr.onButtonSfx       = () => {
+            this._audio.resume();
+            this._audio.playSfx('button');
+        };
+        this._augUI.onButtonSfx  = () => this._audio.playSfx('button');
+        this._augUI.onPickSfx    = () => this._audio.playSfx('augment_pick');
+        this._shopUI.onButtonSfx = () => this._audio.playSfx('button');
+        this._shopUI.onBuySfx    = () => this._audio.playSfx('buy');
     }
 
     // ── state machine ─────────────────────────────────────────
@@ -246,19 +260,34 @@ export class GameManager extends Component {
         this._statsUI.node.active  = false;
 
         switch (s) {
-            case 'menu':         this._screenMgr.show('menu');         break;
-            case 'charSelect':   this._screenMgr.show('charSelect');   break;
-            case 'gameover':     this._screenMgr.show('gameover');     break;
+            case 'menu':
+                this._screenMgr.show('menu');
+                this._audio.playBgm('title');
+                break;
+            case 'charSelect':
+                this._screenMgr.show('charSelect');
+                this._audio.playBgm('title');
+                break;
+            case 'gameover':
+                this._screenMgr.show('gameover');
+                this._audio.playBgm('title');
+                break;
             case 'chapterClear': this._screenMgr.show('chapterClear'); break;
             case 'paused':       this._screenMgr.show('pause');        break;
-            case 'playing':      /* HUD already active */              break;
+            case 'playing':
+                this._audio.playBgm(this._boss ? 'boss' : this._chapterBgm());
+                break;
             // 'shop' / 'augSelect' 面板不归 ScreenManager 管理，由调用方
             // 各自 show() 自己的 UI；这里只需确保上一个面板已被 hideAll() 清掉。
             // 'stats' 同理：StatsPanel 由 _openStats() 激活并填充数据。
-            case 'shop':
-            case 'augSelect':
+            case 'shop':         this._audio.playBgm('shop');          break;
+            case 'augSelect':    break;
             case 'stats':        break;
         }
+    }
+
+    private _chapterBgm(): BgmCue {
+        return (`ch${Math.min(4, Math.max(1, this._chapter + 1))}`) as BgmCue;
     }
 
     private _startGame(char: CharDef) {
@@ -316,9 +345,20 @@ export class GameManager extends Component {
         g.clear();
         g.fillColor = tone.overlay;
         g.fillRect(-CANVAS_W / 2, -CANVAS_H / 2, CANVAS_W, CANVAS_H);
-        // 中央80%是主要走位/弹幕区，再压一层低透明度蓝黑，边缘主题装饰仍可见。
-        g.fillColor = new Color(12, 18, 28, tone.center);
-        g.fillRect(-CANVAS_W * 0.4, -CANVAS_H * 0.42, CANVAS_W * 0.8, CANVAS_H * 0.84);
+        // 中央是主要走位/弹幕区。用三层低透明度矩形逐级收拢，代替单块
+        // 硬边遮罩：中心总压暗量不变，边缘主题装饰到战斗区之间过渡更自然。
+        const bands = [
+            { sx: 0.94, sy: 0.92, alpha: Math.round(tone.center * 0.24) },
+            { sx: 0.86, sy: 0.84, alpha: Math.round(tone.center * 0.33) },
+            { sx: 0.76, sy: 0.74, alpha: Math.round(tone.center * 0.43) },
+        ];
+        for (const band of bands) {
+            g.fillColor = new Color(12, 18, 28, band.alpha);
+            g.fillRect(
+                -CANVAS_W * band.sx / 2, -CANVAS_H * band.sy / 2,
+                CANVAS_W * band.sx, CANVAS_H * band.sy,
+            );
+        }
     }
 
     private _restartGame() {
@@ -344,6 +384,7 @@ export class GameManager extends Component {
         this._bullets?.reset();
         this._fxPool?.releaseAll();
         this._coinPool?.releaseAll();
+        this._floatText?.clear();
     }
 
     private _continueAfterChapter() {
@@ -386,6 +427,7 @@ export class GameManager extends Component {
         // _setState hides all panels (incl. any stray chapterClear) before
         // the augment UI takes over.
         this._setState('augSelect');
+        this._audio.playSfx('levelup');
         const options = this._augMgr.rollOptions(3, this._waveMgr.wave, this._player.charId);
         this._augUI.show(options, (aug) => {
             if (aug) this._augMgr.equip(aug, this._player, this);
@@ -564,16 +606,80 @@ export class GameManager extends Component {
             g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
         }
 
-        // Turrets / clones
+        // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
         for (const t of this._turrets) {
             if (!t.alive) continue;
             const [tx, ty] = this._toLocal(t.x, t.y);
-            g.fillColor = t.kind === 'clone'
-                ? new Color(170, 90, 255, 230)
-                : new Color(0, 170, 255, 220);
-            g.circle(tx, ty, t.r ?? 10); g.fill();
-            g.strokeColor = new Color(255, 255, 255, 200);
-            g.lineWidth = 2; g.circle(tx, ty, (t.r ?? 10) + 3); g.stroke();
+            const r = t.r ?? 10;
+            g.fillColor = new Color(0, 0, 0, 100);
+            g.ellipse(tx, ty - r * 0.72, r * 1.15, r * 0.34); g.fill();
+
+            if (t.kind === 'clone') {
+                // 分身使用角形人形剪影，与机械炮台明确区分。
+                const drawCloneBody = () => {
+                    g.moveTo(tx, ty + r * 1.15);
+                    g.lineTo(tx + r * 0.58, ty + r * 0.38);
+                    g.lineTo(tx + r * 0.42, ty - r * 0.75);
+                    g.lineTo(tx, ty - r * 1.05);
+                    g.lineTo(tx - r * 0.42, ty - r * 0.75);
+                    g.lineTo(tx - r * 0.58, ty + r * 0.38);
+                    g.close();
+                };
+                g.fillColor = new Color(52, 20, 82, 225);
+                drawCloneBody(); g.fill();
+                g.strokeColor = new Color(205, 120, 255, 235);
+                g.lineWidth = 2; drawCloneBody(); g.stroke();
+                g.fillColor = new Color(235, 200, 255, 240);
+                g.moveTo(tx, ty + r * 0.58);
+                g.lineTo(tx + r * 0.25, ty + r * 0.18);
+                g.lineTo(tx, ty - r * 0.12);
+                g.lineTo(tx - r * 0.25, ty + r * 0.18);
+                g.close(); g.fill();
+                continue;
+            }
+
+            const aim = t._aim ?? 0;
+            const ax = Math.cos(aim), ay = -Math.sin(aim);
+            const px = -ay, py = ax;
+            const accent = t.kind === 'orbitTurret'
+                ? new Color(80, 225, 255, 255)
+                : new Color(30, 175, 255, 255);
+
+            // 六角钢制底座。
+            const drawTurretBase = () => {
+                for (let k = 0; k < 6; k++) {
+                    const a = Math.PI / 6 + k * Math.PI / 3;
+                    const vx = tx + Math.cos(a) * r * 1.1;
+                    const vy = ty + Math.sin(a) * r * 0.82;
+                    if (k === 0) g.moveTo(vx, vy); else g.lineTo(vx, vy);
+                }
+                g.close();
+            };
+            g.fillColor = new Color(20, 31, 47, 245);
+            drawTurretBase(); g.fill();
+            g.strokeColor = new Color(accent.r, accent.g, accent.b, 235);
+            g.lineWidth = 1.8; drawTurretBase(); g.stroke();
+
+            // 双联炮管：深色粗管提供实体厚度，亮色内管显示射击方向。
+            for (const side of [-1, 1]) {
+                const ox = px * side * r * 0.28, oy = py * side * r * 0.28;
+                g.strokeColor = new Color(5, 10, 18, 255);
+                g.lineWidth = Math.max(4, r * 0.42);
+                g.moveTo(tx + ax * r * 0.2 + ox, ty + ay * r * 0.2 + oy);
+                g.lineTo(tx + ax * r * 1.85 + ox, ty + ay * r * 1.85 + oy); g.stroke();
+                g.strokeColor = new Color(accent.r, accent.g, accent.b, 245);
+                g.lineWidth = Math.max(1.5, r * 0.15);
+                g.moveTo(tx + ax * r * 0.35 + ox, ty + ay * r * 0.35 + oy);
+                g.lineTo(tx + ax * r * 1.82 + ox, ty + ay * r * 1.82 + oy); g.stroke();
+            }
+
+            // 中央菱形能源舱，避免再次出现圆形占位符。
+            g.fillColor = new Color(accent.r, accent.g, accent.b, 235);
+            g.moveTo(tx, ty + r * 0.48);
+            g.lineTo(tx + r * 0.48, ty);
+            g.lineTo(tx, ty - r * 0.48);
+            g.lineTo(tx - r * 0.48, ty);
+            g.close(); g.fill();
         }
 
         // Enemies — Sprite node carries the visual, Graphics only draws the HP bar
@@ -585,13 +691,13 @@ export class GameManager extends Component {
             const [ex, ey] = this._toLocal(e.x, e.y);
             if (e.node) e.node.setPosition(Math.round(ex), Math.round(ey), 0);
 
-            // 复杂背景上的单位分离：暗色底盘切断背景纹理，类型色细环强化阵营与危险度。
-            g.fillColor = new Color(5, 8, 14, e.isBoss ? 155 : 115);
-            g.circle(ex, ey, visualR + 3); g.fill();
-            const outline = Color.fromHEX(new Color(), e.isBoss ? e.glowColor : e.color);
-            g.strokeColor = new Color(outline.r, outline.g, outline.b, e.isBoss ? 245 : 205);
-            g.lineWidth = e.isBoss ? 3.5 : 2;
-            g.circle(ex, ey, visualR + 2); g.stroke();
+            // 常驻圆形底盘/描边会让所有单位像棋子。改为低矮接触阴影，只负责
+            // 把脚底从背景纹理中分离；危险圆环仅在攻击前摇期间出现。
+            g.fillColor = new Color(0, 0, 0, e.isBoss ? 125 : 88);
+            g.ellipse(
+                ex, ey - visualR * 0.72,
+                visualR * (e.isBoss ? 0.72 : 0.62), visualR * 0.18,
+            ); g.fill();
 
             // 普通怪/Boss接触攻击前摇：红橙危险区 + 锁定方向线。
             // attackWindup 从 max 倒数到0，环形进度会逐渐收紧并增强亮度。
@@ -672,12 +778,12 @@ export class GameManager extends Component {
             }
         }
 
-        // Bullets — player bullets with art carry a Sprite node (positioned here);
-        // turret/enemy bullets have no active node and keep the cheap Graphics dot.
+        // Bullets — 玩家、分身和炮台弹携带角色 Sprite；敌弹按威胁类型程序绘制。
         for (const b of this._bullets.active) {
             const [bx, by] = this._toLocal(b.x, b.y);
             if (b.node && b.node.active) {
                 b.node.setPosition(Math.round(bx), Math.round(by), 0);
+                b.node.setRotationFromEuler(0, 0, -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
                 continue;
             }
             const radius = b.radius ?? 5;
@@ -699,8 +805,17 @@ export class GameManager extends Component {
                 g.lineWidth = 2;
                 g.circle(bx, by, radius + 2); g.stroke();
             } else {
-                g.fillColor = col;
-                g.circle(bx, by, radius); g.fill();
+                // 兜底也使用定向能量梭而不是圆点；正常业务路径都会提供 charKey
+                // 并在上方走正式角色弹丸 Sprite。
+                const speed = Math.hypot(b.vx, b.vy) || 1;
+                const nx = b.vx / speed, ny = -b.vy / speed;
+                const px = -ny, py = nx;
+                g.fillColor = new Color(col.r, col.g, col.b, 245);
+                g.moveTo(bx + nx * radius * 2.2, by + ny * radius * 2.2);
+                g.lineTo(bx + px * radius * 0.72, by + py * radius * 0.72);
+                g.lineTo(bx - nx * radius * 1.45, by - ny * radius * 1.45);
+                g.lineTo(bx - px * radius * 0.72, by - py * radius * 0.72);
+                g.close(); g.fill();
             }
             // 敌弹分弹种轮廓：不看颜色也能一眼分辨威胁类型
             // （毒球=双层绿圈+外毒环 / 齿轮=旋转环+4辐条 / 追踪=锁定环+十字 / 混沌=脉冲紫圈+交叉线）
@@ -757,12 +872,19 @@ export class GameManager extends Component {
             const p = this._player;
             const [px, py] = this._toLocal(p.x, p.y);
             const pCol = Color.fromHEX(new Color(), p.color);
-            g.fillColor = new Color(4, 10, 16, 155);
-            g.circle(px, py, 33); g.fill();
-            g.strokeColor = new Color(pCol.r, pCol.g, pCol.b, 245);
-            g.lineWidth = 2.5;
-            g.circle(px, py, 31); g.stroke();
+            // 全身战斗Sprite使用贴地接触阴影与扁椭圆身份环，不再套“大圆形徽章”。
+            g.fillColor = new Color(0, 0, 0, 125);
+            g.ellipse(px, py - 25, 21, 6.5); g.fill();
+            g.strokeColor = new Color(pCol.r, pCol.g, pCol.b, 185);
+            g.lineWidth = 1.6;
+            g.ellipse(px, py - 25, 24, 8.5); g.stroke();
             p.node.setPosition(Math.round(px), Math.round(py), 0);
+            const moving = Math.abs(this._input.moveX) + Math.abs(this._input.moveY) > 0.01;
+            // 移动时不做缩放摆动，避免重新产生“角色一晃一晃”的观感；
+            // 只有完全静止时才保留极轻的原地呼吸，且不改变世界坐标。
+            const breathe = moving ? 0 : Math.sin(this._visualTime * 3.6) * 0.012;
+            const facing = this._input.mouse.x < p.x ? -1 : 1;
+            p.node.setScale(new Vec3(facing * (1 + breathe), 1 - breathe, 1));
             // Shield ring
             if (p.shield > 0) {
                 g.strokeColor = new Color(80, 160, 255, 180);
@@ -996,6 +1118,8 @@ export class GameManager extends Component {
             boss.initBoss(this._chapter, this);
             this._boss = boss;
             enemy = boss;
+            this._audio.playBgm('boss');
+            this._audio.playSfx('boss_roar');
         } else {
             enemy = new EnemyBase();
             enemy.node = eNode;
@@ -1035,7 +1159,10 @@ export class GameManager extends Component {
     removeEnemy(e: EnemyBase) {
         const idx = this._enemies.indexOf(e);
         if (idx >= 0) this._enemies.splice(idx, 1);
-        if (e === this._boss) this._boss = undefined;
+        if (e === this._boss) {
+            this._boss = undefined;
+            if (this.state === 'playing') this._audio.playBgm(this._chapterBgm());
+        }
     }
 
     /** Return the living enemy closest to (x, y), or undefined. */
@@ -1072,6 +1199,7 @@ export class GameManager extends Component {
     /** Called by PlayerController when HP reaches 0. */
     onPlayerDeath() {
         this._particles.explode(this._player.x, this._player.y, '#40c8ff');
+        this._audio.playSfx('player_die');
         this._setState('gameover');
     }
 
@@ -1091,6 +1219,7 @@ export class GameManager extends Component {
                 x: player.x + (Math.random() - 0.5) * 100,
                 y: player.y + (Math.random() - 0.5) * 100,
                 r: 10, alive: true, _timer: 0,
+                kind: 'turret', _aim: 0,
                 dmg: player.getDamage(this) * dmgMult * turretMult,
                 owner: player, _life: 12,
             };
@@ -1102,7 +1231,10 @@ export class GameManager extends Component {
                     const target = (t.focusTarget && !t.focusTarget.dead) ? t.focusTarget : g.getNearestEnemy(t.x, t.y);
                     if (target) {
                         const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
-                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg, { color: '#2af', r: 5, owner: 'turret' });
+                        t._aim = Math.atan2(dy, dx);
+                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg, {
+                            color: '#2af', r: 5, owner: 'turret', charKey: 'vivian',
+                        });
                     }
                 }
             };
@@ -1117,6 +1249,7 @@ export class GameManager extends Component {
             const t: any = {
                 _angle: angle0, _orbitR: 80, _orbitSpd: 2,
                 r: 8, alive: true, _timer: 0, _life: 8,
+                kind: 'orbitTurret', _aim: angle0,
                 dmg: player.getDamage(this) * 0.8 * turretMult, owner: player,
                 x: player.x + Math.cos(angle0) * 80,
                 y: player.y + Math.sin(angle0) * 80,
@@ -1132,7 +1265,10 @@ export class GameManager extends Component {
                     const target = g.getNearestEnemy(t.x, t.y);
                     if (target) {
                         const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
-                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg, { color: '#00aaff', r: 4, owner: 'turret' });
+                        t._aim = Math.atan2(dy, dx);
+                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg, {
+                            color: '#00aaff', r: 4, owner: 'turret', charKey: 'vivian',
+                        });
                     }
                 }
             };
@@ -1157,7 +1293,10 @@ export class GameManager extends Component {
                 if (target) {
                     const [dx, dy] = Vec.normalize(target.x - c.x, target.y - c.y);
                     const dmg = player.getDamage(this) * 0.6;
-                    g.bullets.fire(c.x, c.y, dx, dy, dmg, { color: '#aa66ff', r: 6, owner: 'clone' });
+                    c._aim = Math.atan2(dy, dx);
+                    g.bullets.fire(c.x, c.y, dx, dy, dmg, {
+                        color: '#aa66ff', r: 6, owner: 'clone', charKey: player.charId,
+                    });
                 }
             }
         };
@@ -1199,6 +1338,7 @@ export class GameManager extends Component {
             if (!e.dead) { e.slowMult = 0; e._slowTimer = duration; }
         }
         this._iceZones.push({ x: CANVAS_W / 2, y: CANVAS_H / 2, r: 9999, timer: duration });
+        this._audio.playSfx('freeze');
     }
 
     slowAllEnemies(mult: number, duration: number): void {
@@ -1319,6 +1459,7 @@ export class GameManager extends Component {
     get hitStop()      { return this._hitStop; }
     get floatingText() { return this._floatText; }
     get particles()    { return this._particles; }
+    get audio()        { return this._audio; }
     get economy()      { return this._economy; }
     get augManager()      { return this._augMgr; }
     /** Alias — some call sites use game.augmentManager instead of game.augManager. */
@@ -1352,7 +1493,7 @@ export class GameManager extends Component {
     private _applyShopItem(item: ShopItem) {
         const p = this._player;
         switch (item.effect) {
-            case 'heal':   p.hp = Math.min(p.maxHp, p.hp + (item.value ?? 30)); break;
+            case 'heal':   p.heal(item.value ?? 30); break;
             case 'maxhp':  p.maxHp += (item.value ?? 20); p.hp += (item.value ?? 20); break;
             case 'shield': p.maxShield += (item.value ?? 20); p.shield = p.maxShield; break;
             case 'speed':  p.moveSpeed *= 1 + (item.value ?? 0.1); break;

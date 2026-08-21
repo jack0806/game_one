@@ -5,6 +5,7 @@ import {
 import { Economy, ShopItem } from '../systems/Economy';
 import { RARITY_COLOR } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
+import { applyHexButtonSkin } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -20,6 +21,8 @@ export class ShopUI extends Component {
     private _spendFn?: (cost: number, item: ShopItem) => boolean;
     private _leaveFn?: () => void;
     private _currentGold = 0;
+    onButtonSfx?: () => void;
+    onBuySfx?: () => void;
 
     onLoad() {
         this._buildDimmer();
@@ -91,11 +94,7 @@ export class ShopUI extends Component {
         this._leaveBtn = new Node('LeaveBtn'); this._leaveBtn.setParent(this.node);
         this._leaveBtn.setPosition(new Vec3(0, -295, 0));
         this._leaveBtn.addComponent(UITransform).setContentSize(160, 40);
-        const g = this._leaveBtn.addComponent(Graphics);
-        g.fillColor = new Color(55, 55, 75, 220);
-        g.fillRect(-80, -20, 160, 40);
-        g.strokeColor = new Color(130, 130, 170, 200);
-        g.lineWidth = 1; g.rect(-80, -20, 160, 40); g.stroke();
+        applyHexButtonSkin(this._leaveBtn, 160, 40, new Color(95, 145, 175, 255));
         const ln = new Node('L'); ln.setParent(this._leaveBtn);
         ln.addComponent(UITransform).setContentSize(160, 40);
         const lbl = ln.addComponent(Label);
@@ -103,6 +102,7 @@ export class ShopUI extends Component {
         lbl.color = new Color(180, 180, 220, 220);
         styleLabel(lbl);
         this._leaveBtn.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
             this.hide(); this._leaveFn?.();
         }, this);
     }
@@ -166,24 +166,21 @@ export class ShopUI extends Component {
         const btn = new Node('Buy'); btn.setParent(row);
         btn.setPosition(new Vec3(230, 0, 0));
         btn.addComponent(UITransform).setContentSize(80, 36);
-        const btnG = btn.addComponent(Graphics);
-        btnG.fillColor = new Color(40, 130, 60, 220);
-        btnG.fillRect(-40, -18, 80, 36);
-        btnG.strokeColor = new Color(60, 200, 90, 200);
-        btnG.lineWidth = 1; btnG.rect(-40, -18, 80, 36); btnG.stroke();
+        const btnSkin = applyHexButtonSkin(btn, 80, 36, new Color(55, 205, 105, 255));
         const btnLN = new Node('L'); btnLN.setParent(btn);
         btnLN.addComponent(UITransform).setContentSize(80, 36);
         const btnLbl = btnLN.addComponent(Label);
-                btnLbl.string = '购买'; btnLbl.fontSize = 14;
+        btnLbl.string = '购买'; btnLbl.fontSize = 14;
         btnLbl.color = new Color(200, 255, 200, 255);
         styleLabel(btnLbl);
 
         btn.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
             if (!this._spendFn) return;
             const ok = this._spendFn(item.cost, item);
             if (ok) {
-                // grey out after purchase
-                btnG.fillColor = new Color(50, 50, 60, 160);
+                this.onBuySfx?.();
+                btnSkin.setDisabled(true);
                 btnLbl.string = '已售出'; btnLbl.color = new Color(120, 120, 120, 180);
                 btn.off(Node.EventType.TOUCH_END);
                 this._goldLabel.string = `⬡ ${this._currentGold}`;

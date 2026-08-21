@@ -31,7 +31,7 @@ export interface BulletData {
     /** 敌弹特效标签：boss 按章节弹种附加可辨识尾迹/轮廓（毒球/齿轮/追踪/混沌）。 */
     enemyFx?:     'poison' | 'gear' | 'homing' | 'chaos';
     trailCd?:     number;
-    /** Sprite node carrying bullet_<charKey> art — only shown for owner==='player'; turret/enemy bullets keep the Graphics dot. */
+    /** Sprite node carrying bullet_<charKey> art; enemy bullets use programmatic threat shapes. */
     node?:        Node;
     sprite?:      Sprite;
     [key: string]: any;
@@ -93,15 +93,21 @@ export class BulletPool {
         b.hitEnemies = new Set();
         b.life = 0;
 
-        // Only player bullets get art (bullet_<charKey>); turret/enemy bullets
-        // keep the cheap Graphics dot drawn in GameManager._drawEntities().
+        // 只要调用方提供 charKey 就使用角色弹丸美术；敌弹不提供 charKey，
+        // 继续走 GameManager 中按威胁类型绘制的程序化轮廓。
         if (b.node && b.sprite) {
-            if (b.owner === 'player' && b.charKey) {
+            if (!b.isEnemyBullet && b.owner !== 'enemy' && b.charKey) {
                 b.node.active = true;
                 const diameter = (b.radius ?? 5) * 2;
-                b.node.getComponent(UITransform)!.setContentSize(diameter, diameter);
+                // 新弹丸素材统一朝右并采用横向构图；显示区域保持长宽比，
+                // 不再把素材压回纯色圆点。大口径技能弹会按碰撞半径同步放大。
+                b.node.getComponent(UITransform)!.setContentSize(
+                    Math.max(18, diameter * 2.6), Math.max(8, diameter * 1.15),
+                );
+                b.node.setRotationFromEuler(0, 0, -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
                 applyArtSprite(b.sprite, `bullet_${b.charKey}`);
-                b.sprite.color = Color.fromHEX(new Color(), b.color ?? '#ffffff');
+                // 保留素材自身的金属、亮核与尾焰层次；纯色染色会再次把它压成色块。
+                b.sprite.color = new Color(255, 255, 255, 255);
             } else {
                 b.node.active = false;
             }
@@ -117,6 +123,7 @@ export class BulletPool {
             vx: dx * (opts.speed || 500), vy: dy * (opts.speed || 500),
             damage: dmg, radius: opts.r || opts.radius || 5,
             color: opts.color || '#2af', owner: opts.owner || 'turret',
+            charKey: opts.charKey || '',
             lifeTime: opts.lifeTime || 1.8,
             pierceLeft: opts.pierce || 0, bounceLeft: opts.bounce || 0,
         });

@@ -89,6 +89,10 @@ export class FloatingText {
         }
     }
 
+    clear(): void {
+        this.items.length = 0;
+    }
+
     /**
      * Render floating items via a Cocos Graphics component.
      * Note: Graphics cannot render text — each item should use a Label node.

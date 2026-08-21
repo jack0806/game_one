@@ -41,12 +41,12 @@
       "userData": {
         "trimThreshold": 1,
         "rotated": false,
-        "offsetX": 0,
-        "offsetY": 0,
+        "offsetX": -7,
+        "offsetY": -0.5,
         "trimX": 0,
-        "trimY": 0,
-        "width": 512,
-        "height": 512,
+        "trimY": 7,
+        "width": 498,
+        "height": 499,
         "rawWidth": 512,
         "rawHeight": 512,
         "borderTop": 0,
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -256,
-            -256,
+            -249,
+            -249.5,
             0,
-            256,
-            -256,
+            249,
+            -249.5,
             0,
-            -256,
-            256,
+            -249,
+            249.5,
             0,
-            256,
-            256,
+            249,
+            249.5,
             0
           ],
           "indexes": [
@@ -83,32 +83,32 @@
           ],
           "uv": [
             0,
-            512,
-            512,
-            512,
+            505,
+            498,
+            505,
             0,
-            0,
-            512,
-            0
+            6,
+            498,
+            6
           ],
           "nuv": [
             0,
+            0.01171875,
+            0.97265625,
+            0.01171875,
             0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1
+            0.986328125,
+            0.97265625,
+            0.986328125
           ],
           "minPos": [
-            -256,
-            -256,
+            -249,
+            -249.5,
             0
           ],
           "maxPos": [
-            256,
-            256,
+            249,
+            249.5,
             0
           ]
         },
@@ -127,7 +127,7 @@
   },
   "userData": {
     "type": "sprite-frame",
-    "fixAlphaTransparencyArtifacts": false,
+    "fixAlphaTransparencyArtifacts": true,
     "hasAlpha": true,
     "redirect": "4f6b51d5-9806-46dd-ade4-d2e343ebe67b@6c48a"
   }

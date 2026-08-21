@@ -22,6 +22,7 @@
     "assets/scripts/systems/InputManager.ts",
     "assets/scripts/systems/Economy.ts",
     "assets/scripts/systems/EffectSystem.ts",
+    "assets/scripts/systems/AudioManager.ts",
     "assets/scripts/systems/ParticleManager.ts",
     "assets/scripts/systems/WaveManager.ts",
     "assets/scripts/entities/EnemyBase.ts",

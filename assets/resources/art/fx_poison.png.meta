@@ -41,13 +41,13 @@
       "userData": {
         "trimThreshold": 1,
         "rotated": false,
-        "offsetX": 0,
-        "offsetY": 0,
-        "trimX": 0,
-        "trimY": 0,
-        "width": 468,
-        "height": 512,
-        "rawWidth": 468,
+        "offsetX": 5.5,
+        "offsetY": 8,
+        "trimX": 46,
+        "trimY": 18,
+        "width": 431,
+        "height": 460,
+        "rawWidth": 512,
         "rawHeight": 512,
         "borderTop": 0,
         "borderBottom": 0,
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -234,
-            -256,
+            -215.5,
+            -230,
             0,
-            234,
-            -256,
+            215.5,
+            -230,
             0,
-            -234,
-            256,
+            -215.5,
+            230,
             0,
-            234,
-            256,
+            215.5,
+            230,
             0
           ],
           "indexes": [
@@ -82,33 +82,33 @@
             3
           ],
           "uv": [
-            0,
-            512,
-            468,
-            512,
-            0,
-            0,
-            468,
-            0
+            46,
+            494,
+            477,
+            494,
+            46,
+            34,
+            477,
+            34
           ],
           "nuv": [
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1
+            0.08984375,
+            0.06640625,
+            0.931640625,
+            0.06640625,
+            0.08984375,
+            0.96484375,
+            0.931640625,
+            0.96484375
           ],
           "minPos": [
-            -234,
-            -256,
+            -215.5,
+            -230,
             0
           ],
           "maxPos": [
-            234,
-            256,
+            215.5,
+            230,
             0
           ]
         },
@@ -127,7 +127,7 @@
   },
   "userData": {
     "type": "sprite-frame",
-    "fixAlphaTransparencyArtifacts": false,
+    "fixAlphaTransparencyArtifacts": true,
     "hasAlpha": true,
     "redirect": "add7c90b-30af-400a-af9f-6c6db12d7e87@6c48a"
   }

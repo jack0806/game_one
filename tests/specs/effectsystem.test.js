@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ScreenShake } = require('../dist/systems/EffectSystem');
+const { FloatingText, ScreenShake } = require('../dist/systems/EffectSystem');
 
 test('震屏使用有界阻尼并最终回到原点', () => {
     const shake = new ScreenShake();
@@ -38,4 +38,14 @@ test('reset立即清空震动状态', () => {
     assert.equal(shake.active, false);
     assert.equal(shake.x, 0);
     assert.equal(shake.y, 0);
+});
+
+test('clear立即清空跨页面残留的战斗飘字', () => {
+    const text = new FloatingText();
+    text.spawn(640, 360, '18', '#fff');
+    text.spawn(640, 330, '网络连接', '#00aaff', 15, true);
+    assert.equal(text.items.length, 2);
+
+    text.clear();
+    assert.equal(text.items.length, 0);
 });

@@ -19,7 +19,11 @@
 class Component {}
 
 class UITransform {
-    setContentSize() { return this; }
+    setContentSize(width, height) {
+        this.width = width;
+        this.height = height;
+        return this;
+    }
 }
 
 class Node {
@@ -32,6 +36,7 @@ class Node {
     get active() { return this._active; }
     set active(v) { this._active = v; }
     setParent(p) { this._parent = p; }
+    setRotationFromEuler(x, y, z) { this.eulerAngles = { x, y, z }; }
     addComponent(Ctor) {
         const inst = new Ctor();
         this._components.set(Ctor, inst);
@@ -48,6 +53,20 @@ class Color {
 }
 
 class SpriteFrame {}
+
+class AudioClip {}
+
+class AudioSource {
+    constructor() {
+        this.clip = null;
+        this.loop = false;
+        this.volume = 1;
+        this.playing = false;
+    }
+    play() { this.playing = true; }
+    stop() { this.playing = false; }
+    playOneShot() {}
+}
 
 class Sprite {
     constructor() {
@@ -89,10 +108,10 @@ const _decorator = {
 };
 
 const resources = {
-    load(_path, _type, cb) { cb && cb(new Error('cc stub: resources.load unavailable in headless tests'), null); },
+    load(_path, _type, cb) { cb && cb(null, new SpriteFrame()); },
 };
 
 module.exports = {
-    _decorator, Component, Node, Sprite, Color, UITransform, SpriteFrame,
+    _decorator, Component, Node, Sprite, Color, UITransform, SpriteFrame, AudioClip, AudioSource,
     resources, input, Input, KeyCode, Vec2, EventKeyboard, EventMouse,
 };

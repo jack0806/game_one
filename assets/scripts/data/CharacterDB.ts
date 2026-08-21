@@ -50,19 +50,18 @@ export const CHARACTERS: Record<string, CharDef> = {
         passive(p: any) { p.stats.pierce += 1; },
         qSkill(p: any, game: any) {
             const [nx, ny] = Vec.normalize(game.input.mouse.x - p.x, game.input.mouse.y - p.y);
-            game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 12, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', isCrit: false });
+            game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 12, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
             game.particles.explode(p.x, p.y, '#ff8800', 20);
         },
         eSkill(p: any, game: any) {
             p.applyBuff('barrage_mode', 4, { atkSpd: 3, noMove: true });
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
-            game.floatingText.spawn(p.x, p.y - 40, '弹幕模式！', '#ff8800', 16, true);
         },
         ultimate(p: any, game: any) {
             for (let i = 0; i < 30; i++) {
                 const a = Rng.float(0, Math.PI * 2);
-                game.bulletPool.spawn({ x: p.x, y: p.y, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player' });
+                game.bulletPool.spawn({ x: p.x, y: p.y, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player', charKey: p.charId });
             }
             p.applyBuff('overload', 8, { dmgMult: 2 });
             game.screenShake.shake(15, 0.5);
@@ -82,7 +81,6 @@ export const CHARACTERS: Record<string, CharDef> = {
         eSkill(p: any, game: any) {
             for (const t of game.turrets) t.focusTarget = game.getNearestEnemy(p.x, p.y);
             game.particles.hexActivate(p.x, p.y, '#00aaff');
-            game.floatingText.spawn(p.x, p.y - 40, '连接网络！', '#00aaff', 16, true);
         },
         ultimate(p: any, game: any) {
             // spawnOrbitTurret(player, count) 内部已按 count 均分角度环绕生成，
@@ -130,7 +128,6 @@ export const CHARACTERS: Record<string, CharDef> = {
         eSkill(p: any, game: any) {
             p.applyBuff('warcry', 10, { atkSpd: 1.5, dmgMult: 1.3 });
             game.particles.hexActivate(p.x, p.y, '#ff4444');
-            game.floatingText.spawn(p.x, p.y - 40, '战吼！', '#ff4444', 18, true);
         },
         ultimate(p: any, game: any) {
             p.hp *= 0.5;
@@ -153,7 +150,6 @@ export const CHARACTERS: Record<string, CharDef> = {
             const saved = (game as any)._oliaSavedState;
             if (saved) {
                 p.x = saved.x; p.y = saved.y; p.hp = Math.max(1, saved.hp);
-                game.floatingText.spawn(p.x, p.y - 40, '时间倒流！', '#aaddff', 18, true);
                 game.particles.hexActivate(p.x, p.y, '#aaddff');
             }
             (game as any)._oliaSavedState = { x: p.x, y: p.y, hp: p.hp };
@@ -162,13 +158,12 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.slowEnemiesAround(p.x, p.y, 300, 0.1, 3);
             p.applyBuff('time_expand', 3, { atkSpd: 2 });
             game.particles.hexActivate(p.x, p.y, '#aaddff');
-            game.floatingText.spawn(p.x, p.y - 40, '时间膨胀！', '#aaddff', 16, true);
         },
         ultimate(p: any, game: any) {
             game.freezeAllEnemies(5);
             game.screenShake.shake(10, 0.4);
             game.particles.hexActivate(p.x, p.y, '#aaddff');
-            game.floatingText.spawn(640, 200, '⏳ 时空裂缝 ⏳', '#aaddff', 28, true);
+            game.floatingText.spawn(640, 200, '时空裂缝', '#aaddff', 28, true);
         },
     },
     graf: {
@@ -189,7 +184,6 @@ export const CHARACTERS: Record<string, CharDef> = {
             else if (ef === 'attract') game.attractEnemies(p.x, p.y, 200);
             else if (ef === 'lightning') game.laserSweep(p);
             game.particles.hexActivate(p.x, p.y, '#cc44ff');
-            game.floatingText.spawn(p.x, p.y - 40, '混沌脉冲！', '#cc44ff', 16, true);
         },
         eSkill(p: any, game: any) {
             // 对齐 hexblast-py data/characters.py 的 _graf_e：移除最后一个词条后，
@@ -207,7 +201,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             if (am) am.active.forEach((a: any) => { if (a.onKill) a.onKill(p, { x: p.x, y: p.y, alive: false }, p.stats.damage * 5, game); });
             game.particles.hexActivate(p.x, p.y, '#cc44ff');
             game.screenShake.shake(20, 0.8);
-            game.floatingText.spawn(640, 200, '⚡ 混沌爆发 ⚡', '#cc44ff', 28, true);
+            game.floatingText.spawn(640, 200, '混沌爆发', '#cc44ff', 28, true);
         },
     },
     liana: {
@@ -222,7 +216,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         passive(p: any) { p.stats.freezeBonus = 2.5; },
         qSkill(p: any, game: any) {
             const [nx, ny] = Vec.normalize(game.input.mouse.x - p.x, game.input.mouse.y - p.y);
-            const b = game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player' });
+            const b = game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId });
             b.onHitCb = (_bullet: any, enemy: any) => {
                 enemy.slowMult = 0.3; enemy.frozen = Math.max(enemy.frozen || 0, 0.8);
                 game.particles?.coldImpact(enemy.x, enemy.y);
@@ -239,7 +233,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             for (const e of game.enemies) { if (e.alive) e.takeDamage(p.stats.damage * 3, p, game); }
             game.screenShake.shake(12, 0.5);
             game.particles.hexActivate(p.x, p.y, '#00ccff');
-            game.floatingText.spawn(640, 200, '🧊 绝对零度 🧊', '#00ccff', 28, true);
+            game.floatingText.spawn(640, 200, '绝对零度', '#00ccff', 28, true);
         },
     },
 };

@@ -6,6 +6,7 @@ import { CharDef } from '../data/CharacterDB';
 import { CHARS } from '../data/CharacterDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
+import { applyHexButtonSkin } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -31,6 +32,7 @@ export class ScreenManager extends Component {
     onMainMenuPressed?:    BtnCallback;
     onContinuePressed?:    BtnCallback;   // after chapter clear
     onResumePressed?:      BtnCallback;   // resume from pause
+    onButtonSfx?:          BtnCallback;
 
     onLoad() {
         this._buildMenuPanel();
@@ -80,24 +82,26 @@ export class ScreenManager extends Component {
         bgArtSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         applyArtSprite(bgArtSprite, 'title_screen');
 
-        // title_screen.png 本身已经烧录了完整的 "HEXBLAST" 标题、副标题和
-        // START GAME/UPGRADES/SETTINGS/EXIT 四个按钮外观，不再需要代码重复
-        // 绘制一套标题/副标题文字（此前重复绘制会与图片里的文字重影错位，
-        // 就是用户反馈"图片与开始按钮不对应"的根因）。
-        // 这里只在图片对应位置放一个透明热区，把点击对接到图里画好的
-        // "START GAME" 按钮上，不再单独画一个位置/风格都不一致的按钮。
-        // title_screen 的 START GAME 可见框约为 480×86，中心在面板本地 y=+30。
-        // 旧热区 (0,-50,210,42) 实机会落到图片里的 UPGRADES 一带，且只有
-        // 可见按钮约四分之一面积，导致“点在开始按钮上没有反应”。热区必须
-        // 覆盖完整可见轮廓，窗口等比缩放时仍由 Cocos UITransform 同步缩放。
-        const btn = this._mkHotspot(p, 0, 30, 480, 86);
+        // 原 title_screen 把四个按钮烧在背景里，无法拥有悬停/按下/禁用状态，
+        // 也导致可见按钮与点击热区长期漂移。用一块深色操作台盖住原按钮区，
+        // 再叠真正的代码按钮；标题与环境插画继续复用，交互层则完全可控。
+        const menuDeck = new Node('MenuDeck'); menuDeck.setParent(p);
+        menuDeck.setPosition(new Vec3(0, -80, 0));
+        menuDeck.addComponent(UITransform).setContentSize(548, 350);
+        const deckG = menuDeck.addComponent(Graphics);
+        deckG.fillColor = new Color(4, 10, 18, 238);
+        deckG.fillRect(-274, -175, 548, 350);
+        deckG.strokeColor = new Color(35, 205, 220, 150);
+        deckG.lineWidth = 2; deckG.rect(-274, -175, 548, 350); deckG.stroke();
+        deckG.strokeColor = new Color(220, 250, 255, 55);
+        deckG.moveTo(-250, 158); deckG.lineTo(250, 158); deckG.stroke();
+
+        const btn = this._mkBtn(menuDeck, '开始游戏', 0, 105, 450, 64, new Color(20, 220, 210, 255));
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
 
-        // 背景图还烧录了三个尚未实现的按钮。明确置灰并标注“即将开放”，
-        // 避免玩家把装饰误认为可点击功能；后续功能上线时再替换成真实按钮。
-        this._mkDisabledArtButton(p, 0, -62, 218, 50);
-        this._mkDisabledArtButton(p, 0, -132, 218, 50);
-        this._mkDisabledArtButton(p, 0, -204, 218, 50);
+        this._mkBtn(menuDeck, '升级  ·  即将开放', 0, 28, 330, 46, new Color(80, 118, 135, 255), true);
+        this._mkBtn(menuDeck, '设置  ·  即将开放', 0, -40, 330, 46, new Color(80, 118, 135, 255), true);
+        this._mkBtn(menuDeck, '退出  ·  即将开放', 0, -108, 330, 46, new Color(80, 118, 135, 255), true);
     }
 
     private _buildCharSelectPanel() {
@@ -152,7 +156,7 @@ export class ScreenManager extends Component {
             const locked = !!def && !def.unlocked;
             const nameBtn = this._mkBtn(card, names[i] ?? `Char${i}`,
                 0, -16, 250, 44,
-                locked ? new Color(50, 50, 60, 255) : (colors[i] ?? new Color(80, 80, 120, 255)));
+                locked ? new Color(70, 82, 92, 255) : (colors[i] ?? new Color(80, 80, 120, 255)), locked);
 
             if (locked) {
                 // Dim the whole card and show a lock badge + unlock hint instead
@@ -168,7 +172,7 @@ export class ScreenManager extends Component {
                 lockN.setPosition(new Vec3(0, 50, 0));
                 lockN.addComponent(UITransform).setContentSize(160, 160);
                 const lockLbl = lockN.addComponent(Label);
-                lockLbl.string = '🔒'; lockLbl.fontSize = 48;
+                lockLbl.string = '未解锁'; lockLbl.fontSize = 20;
                 lockLbl.color = new Color(220, 220, 220, 255);
                 styleLabel(lockLbl);
 
@@ -324,63 +328,25 @@ export class ScreenManager extends Component {
         });
     }
 
-    /**
-     * 透明可点击热区：不画任何图形，只挂 UITransform 撑出点击范围，用于
-     * 对接美术图里已经画好的按钮（比如 title_screen.png 里烧录的 "START GAME"），
-     * 避免代码再叠一层视觉不一致的 Graphics 按钮。
-     */
-    private _mkHotspot(parent: Node, x: number, y: number, w: number, h: number): Node {
-        const n = new Node('Hotspot'); n.setParent(parent);
-        n.setPosition(new Vec3(x, y, 0));
-        n.addComponent(UITransform).setContentSize(w, h);
-        return n;
-    }
-
-    private _mkDisabledArtButton(parent: Node, x: number, y: number, w: number, h: number): Node {
-        const n = new Node('DisabledArtButton'); n.setParent(parent);
-        n.setPosition(new Vec3(x, y, 0));
-        n.addComponent(UITransform).setContentSize(w, h);
-        const g = n.addComponent(Graphics);
-        g.fillColor = new Color(5, 10, 18, 155);
-        g.fillRect(-w / 2, -h / 2, w, h);
-        g.strokeColor = new Color(80, 130, 145, 150);
-        g.lineWidth = 1; g.rect(-w / 2, -h / 2, w, h); g.stroke();
-        const ln = new Node('Status'); ln.setParent(n);
-        ln.addComponent(UITransform).setContentSize(w, h);
-        const label = ln.addComponent(Label);
-        label.string = '即将开放';
-        label.fontSize = 13;
-        label.color = new Color(145, 175, 185, 235);
-        label.horizontalAlign = HorizontalTextAlignment.CENTER;
-        label.verticalAlign = VerticalTextAlignment.CENTER;
-        styleLabel(label);
-        return n;
-    }
-
     private _mkBtn(parent: Node, text: string,
                    x: number, y: number, w: number, h: number,
-                   fillCol: Color): Node {
+                   fillCol: Color, disabled = false): Node {
         const btn = new Node(`Btn_${text}`); btn.setParent(parent);
         btn.setPosition(new Vec3(x, y, 0));
         btn.addComponent(UITransform).setContentSize(w, h);
-        const g = btn.addComponent(Graphics);
-        g.fillColor = fillCol;
-        g.fillRect(-w/2, -h/2, w, h);
-        g.strokeColor = new Color(
-            Math.min(255, fillCol.r + 60), Math.min(255, fillCol.g + 60),
-            Math.min(255, fillCol.b + 60), 200);
-        g.lineWidth = 1.5; g.rect(-w/2, -h/2, w, h); g.stroke();
+        applyHexButtonSkin(btn, w, h, fillCol, disabled);
 
         const ln = new Node('L'); ln.setParent(btn);
         ln.addComponent(UITransform).setContentSize(w - 16, h);
         const lbl = ln.addComponent(Label);
         lbl.string = text; lbl.fontSize = Math.round(h * 0.36);
-        lbl.color = new Color(230, 230, 230, 255);
+        lbl.color = disabled ? new Color(132, 148, 158, 220) : new Color(235, 246, 250, 255);
         lbl.horizontalAlign = HorizontalTextAlignment.CENTER;
         lbl.verticalAlign = VerticalTextAlignment.CENTER;
         lbl.overflow = Label.Overflow.SHRINK;
-        lbl.enableWrapText = true;
+        lbl.enableWrapText = false;
         styleLabel(lbl);
+        if (!disabled) btn.on(Node.EventType.TOUCH_END, () => this.onButtonSfx?.(), this);
         return btn;
     }
 }

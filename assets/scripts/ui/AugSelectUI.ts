@@ -6,6 +6,7 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
+import { applyHexButtonSkin } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -30,6 +31,8 @@ export class AugSelectUI extends Component {
     private _skipBtn!: Node;
     private _options:  AugDef[]  = [];
     private _cb?: (aug: AugDef | null) => void;
+    onButtonSfx?: () => void;
+    onPickSfx?: () => void;
 
     private readonly CARD_W = 272;
     private readonly CARD_H = 300;
@@ -148,11 +151,7 @@ export class AugSelectUI extends Component {
         this._skipBtn = new Node('SkipBtn'); this._skipBtn.setParent(this.node);
         this._skipBtn.setPosition(new Vec3(0, -this.CARD_H / 2 - 38, 0));
         this._skipBtn.addComponent(UITransform).setContentSize(140, 36);
-        const g = this._skipBtn.addComponent(Graphics);
-        g.fillColor = new Color(60, 60, 80, 200);
-        g.fillRect(-70, -18, 140, 36);
-        g.strokeColor = new Color(120, 120, 160, 200);
-        g.lineWidth = 1; g.rect(-70, -18, 140, 36); g.stroke();
+        applyHexButtonSkin(this._skipBtn, 140, 36, new Color(105, 125, 165, 255));
         const ln = new Node('L'); ln.setParent(this._skipBtn);
         ln.addComponent(UITransform).setContentSize(140, 36);
         const l = ln.addComponent(Label);
@@ -199,6 +198,7 @@ export class AugSelectUI extends Component {
 
     private _pick(idx: number) {
         const aug = idx >= 0 ? (this._options[idx] ?? null) : null;
+        if (aug) this.onPickSfx?.(); else this.onButtonSfx?.();
         this.hide();
         this._cb?.(aug);
     }

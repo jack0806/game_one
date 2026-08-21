@@ -41,12 +41,12 @@
       "userData": {
         "trimThreshold": 1,
         "rotated": false,
-        "offsetX": 0,
-        "offsetY": 0,
-        "trimX": 0,
-        "trimY": 0,
-        "width": 512,
-        "height": 512,
+        "offsetX": 4,
+        "offsetY": -6.5,
+        "trimX": 9,
+        "trimY": 13,
+        "width": 502,
+        "height": 499,
         "rawWidth": 512,
         "rawHeight": 512,
         "borderTop": 0,
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -256,
-            -256,
+            -251,
+            -249.5,
             0,
-            256,
-            -256,
+            251,
+            -249.5,
             0,
-            -256,
-            256,
+            -251,
+            249.5,
             0,
-            256,
-            256,
+            251,
+            249.5,
             0
           ],
           "indexes": [
@@ -82,33 +82,33 @@
             3
           ],
           "uv": [
+            9,
+            499,
+            511,
+            499,
+            9,
             0,
-            512,
-            512,
-            512,
-            0,
-            0,
-            512,
+            511,
             0
           ],
           "nuv": [
+            0.017578125,
             0,
+            0.998046875,
             0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1
+            0.017578125,
+            0.974609375,
+            0.998046875,
+            0.974609375
           ],
           "minPos": [
-            -256,
-            -256,
+            -251,
+            -249.5,
             0
           ],
           "maxPos": [
-            256,
-            256,
+            251,
+            249.5,
             0
           ]
         },
@@ -127,7 +127,7 @@
   },
   "userData": {
     "type": "sprite-frame",
-    "fixAlphaTransparencyArtifacts": false,
+    "fixAlphaTransparencyArtifacts": true,
     "hasAlpha": true,
     "redirect": "9172e378-669f-4c20-bd80-a759a222d3ad@6c48a"
   }

@@ -173,6 +173,7 @@ export class EnemyBase {
             const angle = Math.atan2(this.y - attacker.y, this.x - attacker.x);
             game.particles?.impact(this.x, this.y, angle, ratio, this.color);
         }
+        game.audio?.playSfx?.('hit', this.isBoss ? 0.52 : 0.36);
 
         if (this.hp <= 0) this._die(attacker, game);
         return dmg;
@@ -196,6 +197,8 @@ export class EnemyBase {
         game.comboCount = (game.comboCount || 0) + 1;
         game.comboTimer = 3;
         game.particles?.explode(this.x, this.y, this.color, this.isBoss ? 80 : 30);
+        game.audio?.playSfx?.('enemy_die', this.isBoss ? 0.82 : 0.55);
+        if (this.isBoss) game.audio?.playSfx?.('explode', 0.82);
         game.augmentManager?.dispatchKill(attacker, this, this.maxHp, game);
         attacker?.addUltCharge?.(0.12);
         // 变异：死亡爆炸

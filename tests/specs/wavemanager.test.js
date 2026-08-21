@@ -31,6 +31,62 @@ test('startWave在Boss波(第10/20/30/40波)只生成boss队列', () => {
     assert.deepEqual(spawnedTypes, ['boss'], 'Boss波应该只刷出1个boss');
 });
 
+test('完整主线1~40波与无尽41波的队列均可生成,章节和Boss节点连续', () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0.5; // 固定敌池，且不追加随机精英
+    try {
+        const game = makeMockGame();
+        const wm = new WaveManager();
+        const bossWaves = new Set([10, 20, 30, 40]);
+        wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
+
+        for (let wave = 1; wave <= 40; wave++) {
+            game.enemies = [];
+            wm.startWave(game);
+            drainSpawning(wm, game);
+            assert.equal(wm.wave, wave);
+            assert.equal(wm.chapter, Math.ceil(wave / 10));
+            if (bossWaves.has(wave)) {
+                assert.deepEqual(game.enemies.map(e => e.type), ['boss'], `第${wave}波应只生成章节Boss`);
+            } else {
+                assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波敌人数异常`);
+            }
+        }
+
+        // 无尽开启后的第41波会激活首个变异；固定随机数选择非增殖型变异，
+        // 同时避开随机精英追加，以验证主线通关后仍可继续建立第5章敌群。
+        Math.random = () => 0.5;
+        wm.endless = true;
+        game.enemies = [];
+        wm.startWave(game);
+        drainSpawning(wm, game);
+        assert.equal(wm.wave, 41);
+        assert.equal(wm.chapter, 5);
+        assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(41, 'normal'));
+    } finally {
+        Math.random = originalRandom;
+    }
+});
+
+test('nightmare与chaos内部模式在无尽波均使用各自难度倍率', () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0.5;
+    try {
+        for (const difficulty of ['nightmare', 'chaos']) {
+            const game = makeMockGame();
+            const wm = new WaveManager();
+            wm.wave = 40;
+            wm.difficulty = difficulty;
+            wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
+            wm.startWave(game);
+            drainSpawning(wm, game);
+            assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(41, difficulty), `${difficulty}第41波倍率异常`);
+        }
+    } finally {
+        Math.random = originalRandom;
+    }
+});
+
 test('变异mirrorArmy在Boss波时使boss数量×2', () => {
     const game = makeMockGame({ _mutationMods: { mirrorArmy: true } });
     const wm = new WaveManager();

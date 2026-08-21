@@ -43,11 +43,11 @@
         "rotated": false,
         "offsetX": 0,
         "offsetY": 0,
-        "trimX": 0,
-        "trimY": 0,
-        "width": 128,
-        "height": 128,
-        "rawWidth": 128,
+        "trimX": 10,
+        "trimY": 22,
+        "width": 236,
+        "height": 84,
+        "rawWidth": 256,
         "rawHeight": 128,
         "borderTop": 0,
         "borderBottom": 0,
@@ -60,17 +60,17 @@
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -64,
-            -64,
+            -118,
+            -42,
             0,
-            64,
-            -64,
+            118,
+            -42,
             0,
-            -64,
-            64,
+            -118,
+            42,
             0,
-            64,
-            64,
+            118,
+            42,
             0
           ],
           "indexes": [
@@ -82,33 +82,33 @@
             3
           ],
           "uv": [
-            0,
-            128,
-            128,
-            128,
-            0,
-            0,
-            128,
-            0
+            10,
+            106,
+            246,
+            106,
+            10,
+            22,
+            246,
+            22
           ],
           "nuv": [
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1
+            0.0390625,
+            0.171875,
+            0.9609375,
+            0.171875,
+            0.0390625,
+            0.828125,
+            0.9609375,
+            0.828125
           ],
           "minPos": [
-            -64,
-            -64,
+            -118,
+            -42,
             0
           ],
           "maxPos": [
-            64,
-            64,
+            118,
+            42,
             0
           ]
         },
@@ -127,7 +127,7 @@
   },
   "userData": {
     "type": "sprite-frame",
-    "fixAlphaTransparencyArtifacts": false,
+    "fixAlphaTransparencyArtifacts": true,
     "hasAlpha": true,
     "redirect": "ff2a758e-be81-42dd-b408-b210067ddf48@6c48a"
   }
