@@ -164,11 +164,17 @@ export class ScreenManager extends Component {
                 // Dim the whole card and show a lock badge + unlock hint instead
                 // of wiring the select callback — clicking a locked card does nothing.
                 const dim = new Node('LockDim'); dim.setParent(card);
-                dim.setSiblingIndex(1); // above portrait, below nameplate/label nodes added after it
-                dim.addComponent(UITransform).setContentSize(360, 260);
+                // LockDim 创建时已是卡片最上层。不要再塞回 sibling 1：Portrait
+                // 本身也在 sibling 1，插入后会把立绘推到遮罩上方，造成“黑框只遮
+                // 下半张卡、角色仍全亮”的层级穿帮。后续锁标与提示继续创建，
+                // 自然位于遮罩之上。
+                // PortraitFrame 顶边实际到 card y=141，超出原卡片半高130；
+                // 遮罩上移并扩高，完整包住描边，避免顶部再漏出一条亮色边。
+                dim.setPosition(new Vec3(0, 5, 0));
+                dim.addComponent(UITransform).setContentSize(360, 282);
                 const dimG = dim.addComponent(Graphics);
-                dimG.fillColor = new Color(0, 0, 0, 165);
-                dimG.fillRect(-180, -130, 360, 260);
+                dimG.fillColor = new Color(0, 0, 0, 205);
+                dimG.fillRect(-180, -141, 360, 282);
 
                 const lockN = new Node('LockIcon'); lockN.setParent(card);
                 lockN.setPosition(new Vec3(0, 50, 0));

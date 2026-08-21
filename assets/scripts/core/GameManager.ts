@@ -44,7 +44,6 @@ export class GameManager extends Component {
 
     /** Global singleton accessor. */
     static inst: GameManager;
-
     // ── layer nodes ───────────────────────────────────────────
     private _bgLayer!:       Node;
     private _bgSprite!:      Sprite;      // chapter background (bg_chapter<N>), behind _gameLayer
@@ -113,11 +112,13 @@ export class GameManager extends Component {
         this._initUI();
         this._initFloatTextPool();
         this._setState('menu');
+
     }
 
     update(rawDt: number) {
         const dt = Math.min(rawDt, DT_MAX);
         this._visualTime += dt;
+        this._audio.update(dt);
 
         // Hit-stop pauses combat simulation, but movement/input must stay responsive.
         if (this._hitStop.active) {
@@ -259,6 +260,20 @@ export class GameManager extends Component {
         this._shopUI.node.active   = false;
         this._statsUI.node.active  = false;
 
+        // 章节结束/结算页必须清空上一帧战斗残影。此前浮字、金币池和粒子只在
+        // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
+        if (s === 'chapterClear' || s === 'gameover' || s === 'menu' || s === 'charSelect') {
+            this._floatText?.clear();
+            for (const label of this._floatLabels) label.active = false;
+            for (const enemy of this._enemies) {
+                if (enemy.node?.isValid) enemy.node.active = false;
+            }
+            this._particles?.clear();
+            this._fxPool?.releaseAll();
+            this._coinPool?.releaseAll();
+            this._bullets?.reset();
+        }
+
         switch (s) {
             case 'menu':
                 this._screenMgr.show('menu');
@@ -305,6 +320,7 @@ export class GameManager extends Component {
         this._mutationMods = {};
         this._economy.reset();
         this._augMgr.reset();
+        this._waveMgr.reset();
         this._bullets.reset();
         this._particles.clear();
         this._updateBgForChapter();
@@ -314,7 +330,6 @@ export class GameManager extends Component {
         pNode.setParent(this._gameLayer);
         this._player = pNode.addComponent(PlayerController);
         this._player.init(char.id, this);
-
         this._setState('playing');
         // Sync WaveManager state before it increments internally
         this._waveMgr.wave    = this._wave;
@@ -572,15 +587,21 @@ export class GameManager extends Component {
 
         // Gold drops — 独立六边形金币Sprite + 翻面/漂浮动画；对象池避免掉落密集时GC。
         this._coinPool.releaseAll();
+        const crowdedCoins = this._economy.drops.length > 48;
         for (const drop of this._economy.drops) {
             const [dx, dy] = this._toLocal(drop.x, drop.y);
             const coin = this._coinPool.acquire();
             if (!coin) continue;
-            const size = 25 + Math.min(9, drop.amount / 10);
+            // 后期上百枚高亮金币会盖住近战角色与敌人轮廓。高密度时缩小远处
+            // 金币并降低透明度，靠近玩家进入拾取关注区后恢复全亮。
+            const nearPlayer = this._player && Vec.dist(drop.x, drop.y, this._player.x, this._player.y) < 150;
+            const densityScale = crowdedCoins && !nearPlayer ? 0.78 : 1;
+            const size = (25 + Math.min(9, drop.amount / 10)) * densityScale;
             coin.getComponent(UITransform)!.setContentSize(size, size);
             const sprite = coin.getComponent(Sprite)!;
             sprite.sizeMode = Sprite.SizeMode.CUSTOM;
             applyArtSprite(sprite, 'ui_gold_coin');
+            sprite.color = new Color(255, 255, 255, crowdedCoins && !nearPlayer ? 150 : 255);
             const bob = Math.sin(drop.age * 4.5) * 2.5;
             coin.setPosition(Math.round(dx), Math.round(dy + bob), 0);
             // X轴压缩模拟金币翻面，保持最窄仍有足够面积，不退化成黄色圆点。
@@ -698,6 +719,26 @@ export class GameManager extends Component {
                 ex, ey - visualR * 0.72,
                 visualR * (e.isBoss ? 0.72 : 0.62), visualR * 0.18,
             ); g.fill();
+
+            // 持续护盾不是第二条血条：用低透明能量壳让玩家在未攻击前就能
+            // 识别护盾兵，同时以断续旋转弧避免重新套回“棋子圆底盘”的廉价感。
+            if (e.shieldActive && e.shieldHp > 0 && e.maxShieldHp > 0) {
+                const shieldRatio = Math.max(0, Math.min(1, e.shieldHp / e.maxShieldHp));
+                const shieldR = visualR + 8;
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 4.2 + e.x * 0.01);
+                g.fillColor = new Color(60, 145, 255, 12 + Math.floor(12 * shieldRatio));
+                g.circle(ex, ey, shieldR); g.fill();
+                g.strokeColor = new Color(105, 190, 255, 105 + Math.floor(70 * pulse));
+                g.lineWidth = 1.5 + shieldRatio;
+                g.circle(ex, ey, shieldR); g.stroke();
+                const spin = this._visualTime * 0.7;
+                g.strokeColor = new Color(205, 238, 255, 165 + Math.floor(55 * pulse));
+                g.lineWidth = 2.4;
+                for (let seg = 0; seg < 3; seg++) {
+                    const start = spin + seg * Math.PI * 2 / 3;
+                    g.arc(ex, ey, shieldR + 2, start, start + 0.52, false); g.stroke();
+                }
+            }
 
             // 普通怪/Boss接触攻击前摇：红橙危险区 + 锁定方向线。
             // attackWindup 从 max 倒数到0，环形进度会逐渐收紧并增强亮度。
@@ -888,11 +929,24 @@ export class GameManager extends Component {
             const facing = this._input.mouse.x < p.x ? -1 : 1;
             const uniformScale = 1 + breathe;
             p.node.setScale(new Vec3(facing * uniformScale, uniformScale, 1));
-            // Shield ring
+            // 玩家护盾：薄能量壳 + 断续高光弧，既持续可见又不遮挡角色本体。
             if (p.shield > 0) {
-                g.strokeColor = new Color(80, 160, 255, 180);
-                g.lineWidth = 3;
-                g.circle(px, py, (p.radius ?? 20) + 6); g.stroke();
+                const shieldRatio = p.maxShield > 0
+                    ? Math.max(0, Math.min(1, p.shield / p.maxShield)) : 1;
+                const shieldR = (p.radius ?? 20) + 9;
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 4.8);
+                g.fillColor = new Color(65, 150, 255, 14 + Math.floor(10 * shieldRatio));
+                g.circle(px, py, shieldR); g.fill();
+                g.strokeColor = new Color(90, 175, 255, 125 + Math.floor(55 * pulse));
+                g.lineWidth = 2;
+                g.circle(px, py, shieldR); g.stroke();
+                const spin = -this._visualTime * 0.85;
+                g.strokeColor = new Color(220, 242, 255, 190 + Math.floor(45 * pulse));
+                g.lineWidth = 2.8;
+                for (let seg = 0; seg < 3; seg++) {
+                    const start = spin + seg * Math.PI * 2 / 3;
+                    g.arc(px, py, shieldR + 2, start, start + 0.58, false); g.stroke();
+                }
             }
         }
     }
@@ -914,10 +968,10 @@ export class GameManager extends Component {
                 // 所有粒子（包括爆炸/暴击/治疗）看起来都是同一种平淡实心圆，
                 // 就是用户反馈"特效很low"的根因之一。
                 if (p.glow) {
-                    const glowR = (p.radius ?? p.size) * 2.4;
-                    g.fillColor = new Color(c.r, c.g, c.b, Math.floor(alpha * 0.22));
+                    const glowR = (p.radius ?? p.size) * 1.75;
+                    g.fillColor = new Color(c.r, c.g, c.b, Math.floor(alpha * 0.16));
                     g.circle(px, py, glowR); g.fill();
-                    g.fillColor = new Color(c.r, c.g, c.b, Math.floor(alpha * 0.45));
+                    g.fillColor = new Color(c.r, c.g, c.b, Math.floor(alpha * 0.38));
                     g.circle(px, py, glowR * 0.55); g.fill();
                     // 核心略微提亮（往白色混合），让发光粒子的中心更"刺眼"
                     const core = new Color(

@@ -173,6 +173,11 @@ export class PlayerController extends Component {
         if (this.shield > 0) {
             const abs = Math.min(this.shield, amount);
             this.shield -= abs; amount -= abs;
+            const shieldBroken = this.shield <= 0;
+            game.particles?.shieldBlock?.(this.x, this.y, shieldBroken);
+            if (shieldBroken) {
+                game.floatingText?.spawn(this.x, this.y - 42, '护盾破裂', '#88ccff', 18, true);
+            }
             if (amount <= 0) { this._iframeTimer = 0.3; return; }
         }
         // 护甲减伤（对齐 EnemyBase.takeDamage 的 armor/(armor+100) 衰减公式；

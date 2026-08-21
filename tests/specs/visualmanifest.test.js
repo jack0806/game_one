@@ -131,6 +131,22 @@ test('金币使用透明方形正式美术，而非程序圆点', () => {
     assert.deepEqual(cornerAlpha(png), [0, 0, 0, 0], '金币四角必须透明');
 });
 
+test('海克斯炮台图标为透明纯符号,不再烧录黑底卡框', () => {
+    const png = parsePng('ui_icon_summon.png', true);
+    assert.equal(png.width, png.height, '炮台图标应保持正方形');
+    assert.ok(png.width >= 256, '炮台图标源图分辨率不足');
+    assert.deepEqual(cornerAlpha(png), [0, 0, 0, 0], '炮台图标四角必须透明，禁止自带卡框');
+});
+
+test('爆炸贴图尺寸与伤害范围解耦并设上限,避免后期遮住半屏', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'assets', 'scripts', 'systems', 'ParticleManager.ts'), 'utf8');
+    assert.match(src, /Math\.min\(2\.4, Math\.max\(0\.65, radius \/ 70\)\)/);
+    assert.doesNotMatch(src, /spawnSpriteFx\(x, y, 'fx_explosion', 0\.4, radius \/ 40\)/);
+    assert.match(src, /scale = Math\.min\(scale, 1\.4\)/);
+    assert.match(src, /activeExplosions >= 8/);
+    assert.match(src, /dx \* dx \+ dy \* dy < 52 \* 52/);
+});
+
 test('四章背景全部保持16:9并满足1280×720最低分辨率', () => {
     for (let chapter = 1; chapter <= 4; chapter++) {
         const file = `bg_chapter${chapter}.png`;

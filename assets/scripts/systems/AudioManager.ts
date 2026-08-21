@@ -50,10 +50,16 @@ export class AudioManager {
     private _sfxSource?: AudioSource;
     private _bgmCache = new Map<string, AudioClip>();
     private _sfxCache = new Map<string, AudioClip>();
+    /** 合并同一资源尚未完成的并发请求，避免高攻速首轮播放时重复解码。 */
+    private _loading = new Map<string, Array<(clip: AudioClip | null) => void>>();
+    /** 某个未缓存 SFX 只保留一次首播；其余请求等待缓存后再按正常限流播放。 */
+    private _pendingSfx = new Set<string>();
     private _lastPlayed = new Map<SfxCue, number>();
     private _requestedBgm?: BgmCue;
     private _playingBgm?: BgmCue;
     private _bgmRequestId = 0;
+    private _pendingBgm?: { cue: BgmCue; clip: AudioClip };
+    private _bgmFade: 'steady' | 'out' | 'in' = 'steady';
 
     bgmVolume = 0.48;
     sfxVolume = 1;
@@ -108,13 +114,34 @@ export class AudioManager {
             if (!clip || requestId !== this._bgmRequestId || this._requestedBgm !== cue || this.muted) return;
             const source = this._bgmSource;
             if (!source) return;
-            source.stop();
-            source.clip = clip;
-            source.loop = true;
-            source.volume = this.bgmVolume;
-            source.play();
-            this._playingBgm = cue;
+            if (source.playing && this._playingBgm && this._playingBgm !== cue) {
+                this._pendingBgm = { cue, clip };
+                this._bgmFade = 'out';
+            } else {
+                this._beginBgm(cue, clip, true);
+            }
         });
+    }
+
+    /** 每帧推进短淡出/淡入，消除章节、Boss、商店切换时的硬切爆音。 */
+    update(dt: number): void {
+        const source = this._bgmSource;
+        if (!source || this.muted) return;
+        if (this._bgmFade === 'out') {
+            source.volume = Math.max(0, source.volume - this.bgmVolume * dt / 0.18);
+            if (source.volume <= 0.001) {
+                const next = this._pendingBgm;
+                this._pendingBgm = undefined;
+                if (next) this._beginBgm(next.cue, next.clip, true);
+                else { source.stop(); this._bgmFade = 'steady'; }
+            }
+        } else if (this._bgmFade === 'in') {
+            source.volume = Math.min(this.bgmVolume, source.volume + this.bgmVolume * dt / 0.32);
+            if (source.volume >= this.bgmVolume - 0.001) {
+                source.volume = this.bgmVolume;
+                this._bgmFade = 'steady';
+            }
+        }
     }
 
     /** 浏览器首次用户手势后重试被自动播放策略拦截的目标 BGM。 */
@@ -126,6 +153,8 @@ export class AudioManager {
         this._bgmRequestId++;
         this._requestedBgm = undefined;
         this._playingBgm = undefined;
+        this._pendingBgm = undefined;
+        this._bgmFade = 'steady';
         this._bgmSource?.stop();
     }
 
@@ -136,7 +165,16 @@ export class AudioManager {
         if (now - last < (SFX_COOLDOWN_MS[cue] ?? 0)) return false;
         this._lastPlayed.set(cue, now);
 
-        this._load('sfx', SFX_ASSET[cue], (clip) => {
+        const asset = SFX_ASSET[cue];
+        const cached = this._sfxCache.get(asset);
+        if (cached) {
+            this._sfxSource.playOneShot(cached, Math.max(0, Math.min(1, volume * this.sfxVolume)));
+            return true;
+        }
+        if (this._pendingSfx.has(asset)) return false;
+        this._pendingSfx.add(asset);
+        this._load('sfx', asset, (clip) => {
+            this._pendingSfx.delete(asset);
             if (!clip || this.muted || !this._sfxSource) return;
             this._sfxSource.playOneShot(clip, Math.max(0, Math.min(1, volume * this.sfxVolume)));
         });
@@ -148,6 +186,8 @@ export class AudioManager {
         if (muted) {
             this._bgmSource?.stop();
             this._playingBgm = undefined;
+            this._pendingBgm = undefined;
+            this._bgmFade = 'steady';
         } else {
             this.resume();
         }
@@ -155,19 +195,38 @@ export class AudioManager {
 
     get requestedBgm(): BgmCue | undefined { return this._requestedBgm; }
 
+    private _beginBgm(cue: BgmCue, clip: AudioClip, fadeIn: boolean): void {
+        const source = this._bgmSource;
+        if (!source) return;
+        source.stop();
+        source.clip = clip;
+        source.loop = true;
+        source.volume = fadeIn ? 0 : this.bgmVolume;
+        source.play();
+        this._playingBgm = cue;
+        this._bgmFade = fadeIn ? 'in' : 'steady';
+    }
+
     private _load(kind: 'bgm' | 'sfx', asset: string, cb: (clip: AudioClip | null) => void): void {
         const cache = kind === 'bgm' ? this._bgmCache : this._sfxCache;
         const cached = cache.get(asset);
         if (cached) { cb(cached); return; }
 
+        const loadingKey = `${kind}/${asset}`;
+        const waiters = this._loading.get(loadingKey);
+        if (waiters) { waiters.push(cb); return; }
+        this._loading.set(loadingKey, [cb]);
+
         resources.load(`audio/${kind}/${asset}`, AudioClip, (err, clip) => {
+            const callbacks = this._loading.get(loadingKey) ?? [];
+            this._loading.delete(loadingKey);
             if (err || !clip) {
                 console.warn(`[AudioManager] audio not found: ${kind}/${asset}`, err);
-                cb(null);
+                for (const callback of callbacks) callback(null);
                 return;
             }
             cache.set(asset, clip);
-            cb(clip);
+            for (const callback of callbacks) callback(clip);
         });
     }
 }

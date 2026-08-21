@@ -151,7 +151,8 @@ export class EnemyBase {
             const abs = Math.min(this.shieldHp, rawDmg);
             this.shieldHp -= abs; rawDmg -= abs;
             if (this.shieldHp <= 0) this.shieldActive = false;
-            if (rawDmg <= 0) { game.particles?.shieldBlock(this.x, this.y); return 0; }
+            game.particles?.shieldBlock(this.x, this.y, !this.shieldActive);
+            if (rawDmg <= 0) return 0;
         }
         // 护甲减免（对齐 hexblast-py entities/enemy.py take_damage()：
         // 用 armor/(armor+100) 的衰减公式而非线性减法，护甲越高减伤边际递减，
@@ -162,7 +163,8 @@ export class EnemyBase {
         this.flashTimer = Math.min(0.22, 0.07 + (dmg / this.maxHp) * 0.9);
 
         // 打击感：屏幕震动 + 顿帧
-        const ratio = dmg / this.maxHp;
+        // 视觉/命停只需表达至100%生命的一击；超杀倍率不能继续放大半径与顿帧。
+        const ratio = Math.min(1, dmg / this.maxHp);
         // 普通小额群攻只显示闪白/粒子；每个目标都震屏会让一次攻击带动整张画布抖动。
         if (this.isBoss || this.isElite || (this.maxHp >= 250 && ratio > 0.15)) {
             game.screenShake?.shake(Math.min(6, (this.isBoss ? 2 : 1) * (1.5 + ratio * 7)), Math.min(0.16, 0.05 + ratio * 0.12));

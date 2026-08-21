@@ -10,6 +10,7 @@ const { PlayerController } = require('../dist/entities/PlayerController');
 const { EnemyBase } = require('../dist/entities/EnemyBase');
 const { BossController } = require('../dist/entities/BossController');
 const { BulletPool } = require('../dist/entities/BulletController');
+const { ParticleManager } = require('../dist/systems/ParticleManager');
 const { CHARACTERS } = require('../dist/data/CharacterDB');
 const { makeMockGame, makePlayer } = require('./mockGame');
 
@@ -108,6 +109,32 @@ test('护盾完全吸收的伤害不触发吸血(按实际扣血,而非面板伤
     shielded.x = 40; shielded.y = 0;
     player.applyAttackDamage(shielded, game, 50);
     assert.equal(player.hp, 100, '50点伤害被护盾全部吸收,实际扣血=0,不应回血');
+});
+
+test('玩家护盾格挡与破裂分别触发对应反馈', () => {
+    const player = makeReik();
+    player.shield = 20;
+    player.maxShield = 20;
+    const game = makeMockGame();
+    const shieldFx = [];
+    game.particles.shieldBlock = (...args) => shieldFx.push(args);
+    player.takeDamage(5, game);
+    assert.equal(player.shield, 15);
+    assert.equal(shieldFx[0][2], false);
+    // 等待格挡无敌帧结束后再验证第二次命中。
+    player._iframeTimer = 0;
+    player.takeDamage(30, game);
+    assert.equal(player.shield, 0);
+    assert.equal(shieldFx[1][2], true);
+});
+
+test('超杀伤害的冲击粒子倍率钳制为1,避免千像素光环', () => {
+    const particles = new ParticleManager();
+    particles.impact(100, 100, 0, 40, '#ff6600');
+    const rings = particles.particles.filter(p => p.type === 'ring');
+    assert.equal(rings.length, 1);
+    assert.ok(rings[0].maxRadius <= 60);
+    assert.ok(particles.particles.every(p => p.size <= 9));
 });
 
 // ---- 剑气 ----------------------------------------------------

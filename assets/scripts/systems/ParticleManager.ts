@@ -37,6 +37,19 @@ export class ParticleManager {
 
     /** 生成一个一次性美术特效（按 key 淡出消失）。 */
     spawnSpriteFx(x: number, y: number, key: string, life = 0.5, scale = 1, color?: string): void {
+        if (key === 'fx_explosion') {
+            // 连锁爆炸可能在同一帧请求几十张高覆盖率火球。伤害与粒子仍全部结算，
+            // 贴图层只保留分散的代表性爆点，避免橙色花瓣叠成不透明色块。
+            scale = Math.min(scale, 1.4);
+            let activeExplosions = 0;
+            for (const fx of this.spriteFx) {
+                if (fx.key !== 'fx_explosion') continue;
+                activeExplosions++;
+                const dx = fx.x - x, dy = fx.y - y;
+                if (fx.life > 0.16 && dx * dx + dy * dy < 52 * 52) return;
+            }
+            if (activeExplosions >= 8) return;
+        }
         this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color });
     }
 
@@ -76,7 +89,10 @@ export class ParticleManager {
         this.emit({ x, y, count: 20, color, speedMin: 50, speedMax: radius * 2, lifeMin: 0.3, lifeMax: 0.7, glow: true });
         // 扩散冲击波环
         this.particles.push({ x, y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, size: 2, color, fade: true, gravity: false, glow: true, type: 'ring', radius: 4, maxRadius: radius * 1.5, alpha: 1 });
-        this.spawnSpriteFx(x, y, 'fx_explosion', 0.4, radius / 40);
+        // 伤害半径不应线性等比放大整张贴图：后期连锁/核爆会让多张 400px+
+        // 的不透明火球遮住半屏。保留范围差异，但把视觉主体控制在约 55~210px。
+        const visualScale = Math.min(2.4, Math.max(0.65, radius / 70));
+        this.spawnSpriteFx(x, y, 'fx_explosion', 0.4, visualScale);
     }
 
     // ── 六角激活 ─────────────────────────────────────────
@@ -116,23 +132,46 @@ export class ParticleManager {
     }
 
     // ── 护盾格挡 ─────────────────────────────────────────
-    shieldBlock(x: number, y: number): void {
-        this.emit({ x, y, count: 10, color: '#4488ff', speedMin: 40, speedMax: 160, lifeMin: 0.2, lifeMax: 0.4, glow: true });
+    shieldBlock(x: number, y: number, broken = false): void {
+        const color = broken ? '#aaddff' : '#4488ff';
+        this.emit({
+            x, y, count: broken ? 18 : 7, color,
+            speedMin: broken ? 90 : 35, speedMax: broken ? 260 : 130,
+            lifeMin: 0.18, lifeMax: broken ? 0.55 : 0.32,
+            sizeMin: 2, sizeMax: broken ? 6 : 4, glow: true,
+        });
+        // 格挡需要一个瞬时扩散面，破盾则用更大、更亮的双层涟漪表达状态改变。
+        this.particles.push({
+            x, y, vx: 0, vy: 0, life: broken ? 0.42 : 0.24,
+            maxLife: broken ? 0.42 : 0.24, size: 2, color,
+            fade: true, gravity: false, glow: true, type: 'ring',
+            radius: broken ? 12 : 7, maxRadius: broken ? 54 : 32, alpha: 1,
+        });
+        if (broken) {
+            this.particles.push({
+                x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3,
+                size: 2, color: '#ffffff', fade: true, gravity: false,
+                glow: true, type: 'ring', radius: 6, maxRadius: 38, alpha: 1,
+            });
+        }
     }
 
     // ── 方向性冲击粒子（打击感） ──────────────────────────
     impact(x: number, y: number, angle: number, ratio: number, color: string): void {
-        const count = Math.floor(4 + ratio * 12);
+        // ratio 是本次伤害/目标最大生命；超杀时可能远大于1。表现强度只需要
+        // 表达到“一击必杀”，继续线性外推会生成千像素光环与百像素粒子。
+        const visualRatio = Math.min(1, Math.max(0, ratio));
+        const count = Math.floor(4 + visualRatio * 12);
         const spread = 0.6;
         for (let i = 0; i < count; i++) {
             const a     = angle + Rng.float(-spread, spread);
-            const speed = Rng.float(80, 200 + ratio * 300);
+            const speed = Rng.float(80, 200 + visualRatio * 300);
             const life  = Rng.float(0.15, 0.4);
-            this.particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life, maxLife: life, size: Rng.float(2, 5 + ratio * 4), color, fade: true, gravity: true, glow: ratio > 0.1, type: 'dot', alpha: 1 });
+            this.particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life, maxLife: life, size: Rng.float(2, 5 + visualRatio * 4), color, fade: true, gravity: true, glow: visualRatio > 0.1, type: 'dot', alpha: 1 });
         }
         // 高伤害时额外爆光环
-        if (ratio > 0.15) {
-            this.particles.push({ x, y, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, size: 2, color, fade: true, gravity: false, glow: true, type: 'ring', radius: 5, maxRadius: 20 + ratio * 40, alpha: 1 });
+        if (visualRatio > 0.15) {
+            this.particles.push({ x, y, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, size: 2, color, fade: true, gravity: false, glow: true, type: 'ring', radius: 5, maxRadius: 20 + visualRatio * 40, alpha: 1 });
         }
     }
 

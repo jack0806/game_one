@@ -95,15 +95,19 @@ test('meleeRange=0可禁用近战伤害(远程单位可用此关闭)', () => {
 
 test('护盾优先吸收伤害,护盾耗尽后才伤及HP', () => {
     const game = makeMockGame();
+    const shieldFx = [];
+    game.particles.shieldBlock = (...args) => shieldFx.push(args);
     const player = makePlayer();
     const e = makeEnemy('shield', 1, game);
     const shieldHp = e.shieldHp;
     e.takeDamage(shieldHp - 5, player, game);
     assert.equal(e.hp, e.maxHp, '护盾未破,HP不应减少');
     assert.equal(e.shieldHp, 5);
+    assert.equal(shieldFx[0][2], false, '普通格挡应播放护盾涟漪但不标记破盾');
     e.takeDamage(20, player, game);
     assert.ok(e.hp < e.maxHp, '护盾破后应扣HP');
     assert.equal(e.shieldActive, false);
+    assert.equal(shieldFx[1][2], true, '护盾耗尽必须播放独立破盾反馈');
 });
 
 test('护甲减免伤害,但至少造成1点伤害(不会出现负伤害/免伤)', () => {
