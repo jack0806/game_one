@@ -882,9 +882,12 @@ export class GameManager extends Component {
             const moving = Math.abs(this._input.moveX) + Math.abs(this._input.moveY) > 0.01;
             // 移动时不做缩放摆动，避免重新产生“角色一晃一晃”的观感；
             // 只有完全静止时才保留极轻的原地呼吸，且不改变世界坐标。
-            const breathe = moving ? 0 : Math.sin(this._visualTime * 3.6) * 0.012;
+            // 呼吸只允许等比缩放。旧版横向放大时纵向同时缩小，角色会周期性
+            // 变胖/变瘦，看起来像素材被拉伸；移动时仍完全关闭呼吸缩放。
+            const breathe = moving ? 0 : Math.sin(this._visualTime * 3.2) * 0.006;
             const facing = this._input.mouse.x < p.x ? -1 : 1;
-            p.node.setScale(new Vec3(facing * (1 + breathe), 1 - breathe, 1));
+            const uniformScale = 1 + breathe;
+            p.node.setScale(new Vec3(facing * uniformScale, uniformScale, 1));
             // Shield ring
             if (p.shield > 0) {
                 g.strokeColor = new Color(80, 160, 255, 180);

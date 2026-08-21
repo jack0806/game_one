@@ -83,18 +83,19 @@ export class ScreenManager extends Component {
         applyArtSprite(bgArtSprite, 'title_screen');
 
         // 原 title_screen 把四个按钮烧在背景里，无法拥有悬停/按下/禁用状态，
-        // 也导致可见按钮与点击热区长期漂移。用一块深色操作台盖住原按钮区，
-        // 再叠真正的代码按钮；标题与环境插画继续复用，交互层则完全可控。
+        // 也导致可见按钮与点击热区长期漂移。用一块完全不透明、向上覆盖到
+        // 原 START GAME 发光外框顶部的操作台盖住旧按钮区，再叠真正的代码按钮；
+        // 标题与环境插画继续复用，交互层则完全可控。
         const menuDeck = new Node('MenuDeck'); menuDeck.setParent(p);
-        menuDeck.setPosition(new Vec3(0, -80, 0));
-        menuDeck.addComponent(UITransform).setContentSize(548, 350);
+        menuDeck.setPosition(new Vec3(0, -70, 0));
+        menuDeck.addComponent(UITransform).setContentSize(568, 410);
         const deckG = menuDeck.addComponent(Graphics);
-        deckG.fillColor = new Color(4, 10, 18, 238);
-        deckG.fillRect(-274, -175, 548, 350);
+        deckG.fillColor = new Color(4, 10, 18, 255);
+        deckG.fillRect(-284, -205, 568, 410);
         deckG.strokeColor = new Color(35, 205, 220, 150);
-        deckG.lineWidth = 2; deckG.rect(-274, -175, 548, 350); deckG.stroke();
+        deckG.lineWidth = 2; deckG.rect(-284, -205, 568, 410); deckG.stroke();
         deckG.strokeColor = new Color(220, 250, 255, 55);
-        deckG.moveTo(-250, 158); deckG.lineTo(250, 158); deckG.stroke();
+        deckG.moveTo(-260, 188); deckG.lineTo(260, 188); deckG.stroke();
 
         const btn = this._mkBtn(menuDeck, '开始游戏', 0, 105, 450, 64, new Color(20, 220, 210, 255));
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
@@ -128,11 +129,12 @@ export class ScreenManager extends Component {
         for (let i = 0; i < 6; i++) {
             const col = i % 3, row = Math.floor(i / 3);
             const cx = -400 + col * 400;
-            const cy = 60 - row * 280;
+            // 第二排整体上收，正文与解锁提示都保留至少约50px的画布安全区。
+            const cy = 80 - row * 260;
 
             const card = new Node(`Card_${i}`); card.setParent(p);
             card.setPosition(new Vec3(cx, cy, 0));
-            card.addComponent(UITransform).setContentSize(260, 260);
+            card.addComponent(UITransform).setContentSize(360, 260);
 
             const idx = i;
             const def = CHARS[idx];
@@ -140,22 +142,22 @@ export class ScreenManager extends Component {
 
             // 用同一套深色卡框收束来源不同的角色立绘，并用角色主题色做细边。
             // 立绘本身仍保持透明，不会出现六张图各自带一块方形背景的拼贴感。
-            // 框从180缩到140并上移，给卡身下方腾出被动+Q/E/R技能介绍区。
+            // 卡片扩宽后技能说明可稳定保持四行，不再依赖 SHRINK 把正文压成小字。
             const frameN = new Node('PortraitFrame'); frameN.setParent(card);
-            frameN.setPosition(new Vec3(0, 70, 0));
-            frameN.addComponent(UITransform).setContentSize(140, 140);
+            frameN.setPosition(new Vec3(0, 75, 0));
+            frameN.addComponent(UITransform).setContentSize(132, 132);
             const frameG = frameN.addComponent(Graphics);
             frameG.fillColor = new Color(9, 15, 24, 245);
-            frameG.fillRect(-70, -70, 140, 140);
+            frameG.fillRect(-66, -66, 132, 132);
             frameG.strokeColor = colors[i] ?? new Color(80, 140, 180, 255);
             frameG.lineWidth = 3;
-            frameG.rect(-70, -70, 140, 140); frameG.stroke();
+            frameG.rect(-66, -66, 132, 132); frameG.stroke();
 
-            if (charId) this._loadPortrait(card, `char_${charId}`, 130, 70);
+            if (charId) this._loadPortrait(card, `char_${charId}`, 124, 75);
 
             const locked = !!def && !def.unlocked;
             const nameBtn = this._mkBtn(card, names[i] ?? `Char${i}`,
-                0, -16, 250, 44,
+                0, -5, 338, 44,
                 locked ? new Color(70, 82, 92, 255) : (colors[i] ?? new Color(80, 80, 120, 255)), locked);
 
             if (locked) {
@@ -163,10 +165,10 @@ export class ScreenManager extends Component {
                 // of wiring the select callback — clicking a locked card does nothing.
                 const dim = new Node('LockDim'); dim.setParent(card);
                 dim.setSiblingIndex(1); // above portrait, below nameplate/label nodes added after it
-                dim.addComponent(UITransform).setContentSize(260, 260);
+                dim.addComponent(UITransform).setContentSize(360, 260);
                 const dimG = dim.addComponent(Graphics);
                 dimG.fillColor = new Color(0, 0, 0, 165);
-                dimG.fillRect(-130, -130, 260, 260);
+                dimG.fillRect(-180, -130, 360, 260);
 
                 const lockN = new Node('LockIcon'); lockN.setParent(card);
                 lockN.setPosition(new Vec3(0, 50, 0));
@@ -177,13 +179,13 @@ export class ScreenManager extends Component {
                 styleLabel(lockLbl);
 
                 const hintN = new Node('LockHint'); hintN.setParent(card);
-                hintN.setPosition(new Vec3(0, -140, 0));
-                hintN.addComponent(UITransform).setContentSize(260, 40);
+                hintN.setPosition(new Vec3(0, -105, 0));
+                hintN.addComponent(UITransform).setContentSize(340, 28);
                 const hintLbl = hintN.addComponent(Label);
                 hintLbl.string = def?.unlockHint ?? '未解锁';
                 hintLbl.fontSize = 12;
                 hintLbl.color = new Color(200, 160, 90, 230);
-                hintLbl.overflow = Label.Overflow.RESIZE_HEIGHT;
+                hintLbl.overflow = Label.Overflow.SHRINK;
                 hintLbl.enableWrapText = true;
                 styleLabel(hintLbl);
 
@@ -196,14 +198,14 @@ export class ScreenManager extends Component {
                 // 被动 + Q/E/R 技能介绍：选人阶段就能看清角色定位，不必进战斗试错。
                 // 锁定卡不放（保持 LockDim+解锁提示的简洁观感，解锁后再展示）。
                 const skN = new Node('Skills'); skN.setParent(card);
-                skN.setPosition(new Vec3(0, -86, 0));
-                skN.addComponent(UITransform).setContentSize(252, 92);
+                skN.setPosition(new Vec3(0, -82, 0));
+                skN.addComponent(UITransform).setContentSize(344, 100);
                 const skLbl = skN.addComponent(Label);
                 skLbl.string = def
                     ? `被动 ${def.desc}\nQ ${def.skills.q}\nE ${def.skills.e}\nR ${def.skills.r}`
                     : '';
-                skLbl.fontSize = 10;
-                skLbl.lineHeight = 14;
+                skLbl.fontSize = 11;
+                skLbl.lineHeight = 17;
                 skLbl.color = new Color(190, 205, 225, 235);
                 skLbl.horizontalAlign = HorizontalTextAlignment.LEFT;
                 skLbl.verticalAlign = VerticalTextAlignment.TOP;
