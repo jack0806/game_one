@@ -80,6 +80,11 @@ export class PlayerController extends Component {
             node.addComponent(UITransform).setContentSize(82, 82);
             this.sprite = node.addComponent(Sprite);
             this.sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+            // Cocos 默认会把 auto-trim 后的可见矩形强行塞进 82×82。
+            // 六张角色的裁剪框宽高比不同（例如 Kai 约 304×461），因此会被
+            // 横向拉宽。关闭 Sprite 侧 trim 后按原始 512×512 画布排版，既保留
+            // 每张图的透明留白，也保证所有角色都以原画比例等比显示。
+            this.sprite.trim = false;
         }
         applyArtSprite(this.sprite, `char_token_${charId}`);
         this.sprite.color = new Color(255, 255, 255, 255);
@@ -95,7 +100,7 @@ export class PlayerController extends Component {
             eliteBonus: 0, maxAugments: 6, previewAugments: false,
             phaseDash: false, _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
             _reikPassive: false, chaosBonus: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
-            lifestealRate: 0,
+            lifestealRate: 0, maxShield: 0,
         };
 
         this.hp     = this.stats.maxHp;

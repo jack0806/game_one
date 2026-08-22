@@ -74,6 +74,21 @@ test('海克斯炮台:正常召唤炮台且移动速度-5%', () => {
     assert.ok(Math.abs(p.stats.speed - 285) < 1e-9);
 });
 
+test('能量护盾同步增加护盾上限，当前值不会再大于上限导致HUD越界', () => {
+    const p = makePlayer();
+    p.shield = 0;
+    p.maxShield = 20;
+    const aug = find('shield_regen');
+    aug._cap = 0;
+    aug._timer = 0;
+    aug.onEquip(p, {}, 1);
+    assert.equal(p.maxShield, 150);
+    assert.equal(p.shield, 150);
+    aug.onEquip(p, {}, 0.8);
+    assert.equal(p.maxShield, 270);
+    assert.equal(p.shield, 270);
+});
+
 test('超载海克斯:标记生效且移动速度-8%', () => {
     const p = makeFullPlayer();
     find('overload').onEquip(p, makeMockGame(), 1);

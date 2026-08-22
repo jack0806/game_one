@@ -14,6 +14,10 @@ npm run typecheck  # 全量 TS 类型检查（需先用编辑器打开过一次�
 npm test           # 编译到 tests/dist 并跑 node --test 全量回归（headless，不开编辑器）
 ```
 
+Web Desktop 发布请使用 `tools/build-web-desktop.json` 作为 Cocos CLI
+`configPath`；它同时锁定设计画布和发布外壳为 1280×720，避免默认
+1280×960 产生上下留黑。
+
 ## 操作
 
 | 输入 | 行为 |
@@ -23,6 +27,7 @@ npm test           # 编译到 tests/dist 并跑 node --test 全量回归（head
 | Shift / Space | 冲刺（3s CD；「相位跳跃」词条下变为传送） |
 | Q / E | 技能（4s / 10s CD） |
 | R | 终极技能（充能满释放）；「宇宙法则」词条下独立触发 |
+| M | 角色属性、技能与当前强化详情 |
 | Esc | 暂停 / 菜单 |
 
 ## 核心系统
@@ -46,7 +51,7 @@ npm test           # 编译到 tests/dist 并跑 node --test 全量回归（head
 - 词条攻击方式适配过滤 + 部分词条负面代价
 - HUD 海克斯格图标居中修复、格子 8→10
 - 六名英雄战斗立绘、治疗/爆炸/冰箭/海克斯/毒素特效完成统一美术升级
-- 六边形金属按钮交互皮肤与 7 首 BGM、17 个 SFX 已接入主要界面和战斗事件
+- 六边形金属按钮交互皮肤与 7 首无缝循环 BGM、19 个独立 SFX 已接入主要界面和战斗事件
 
 ## 目录结构
 
@@ -66,4 +71,4 @@ tests/         node:test 回归（specs + dist桩），headless 可脱离编辑�
 ## 已知限制
 
 - 「宇宙法则」的"敌人互攻"仅实现变色 + 5s 后全体爆炸（沿用 Python 原版半成品行为）。
-- 音频已接入；治疗与海克斯激活暂复用相近现有音效，待补两条独立 SFX（见 `docs/audio/audio-integration-2026-08-20.md`）。
+- 角色目前仍为单帧战斗 Sprite；若进入商业化精修，下一阶段建议为 6 人各补待机/移动/攻击/受击序列帧。

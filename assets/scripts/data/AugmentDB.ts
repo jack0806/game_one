@@ -208,8 +208,20 @@ export const AUGMENT_DB: AugmentDef[] = [
       _timer: 0, _cap: 0,
       // 之前重充逻辑硬编码上限150，升级到Lv.2/3(mult<1时叠加)后初始护盾会变多但重充上限
       // 一直卡在150——这里改成用_cap累计升级后的总上限，重充时也用同一个上限。
-      onEquip(p, _g, mult = 1) { this._cap += 150 * mult; p.shield += 150 * mult; },
-      onUpdate(p, dt) { this._timer += dt; if (this._timer >= 12) { this._timer = 0; p.shield = Math.min(p.shield + this._cap, this._cap); } } },
+      onEquip(p, _g, mult = 1) {
+          const gain = 150 * mult;
+          this._cap += gain;
+          p.maxShield = Math.max(p.maxShield || 0, this._cap);
+          p.shield = Math.min((p.shield || 0) + gain, p.maxShield);
+      },
+      onUpdate(p, dt) {
+          this._timer += dt;
+          if (this._timer >= 12) {
+              this._timer = 0;
+              p.maxShield = Math.max(p.maxShield || 0, this._cap);
+              p.shield = Math.min((p.shield || 0) + this._cap, p.maxShield);
+          }
+      } },
 
     { id: 'chain_explosion', rarity: 'purple', icon: 'explosion', name: '引爆连锁', tags: ['explosion', 'lightning'],
       desc: '爆炸命中>3个目标时，触发追加连环爆炸（×50%）',

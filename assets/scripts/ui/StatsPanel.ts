@@ -108,23 +108,23 @@ export class StatsPanel extends Component {
             this._statCells.push(l);
         }
 
-        // 左栏 — Q/E/R 三行：按键 / 技能名 / 描述 分层排版
+        // 左栏 — Q/E/R 三行：描述允许两行，不再用单行 SHRINK 把中文压到不可读。
         const keys = ['Q', 'E', 'R'];
         for (let i = 0; i < 3; i++) {
-            const y = -78 - i * 32;
+            const y = -62 - i * 46;
 
             const kn = new Node(`SkKey_${i}`); kn.setParent(panel);
             kn.setPosition(new Vec3(-498, y, 0));
-            kn.addComponent(UITransform).setContentSize(24, 24);
+            kn.addComponent(UITransform).setContentSize(28, 28);
             const kl = kn.addComponent(Label);
             kl.string = keys[i];
-            kl.fontSize = 15;
+            kl.fontSize = 16;
             kl.color = new Color(100, 220, 255, 255);
             styleLabel(kl);
 
             const nn = new Node(`SkName_${i}`); nn.setParent(panel);
-            nn.setPosition(new Vec3(-415, y, 0));
-            nn.addComponent(UITransform).setContentSize(130, 24);
+            nn.setPosition(new Vec3(-410, y + 8, 0));
+            nn.addComponent(UITransform).setContentSize(140, 24);
             const nl = nn.addComponent(Label);
             nl.fontSize = 16;
             nl.horizontalAlign = HorizontalTextAlignment.LEFT;
@@ -133,13 +133,16 @@ export class StatsPanel extends Component {
             styleLabel(nl);
 
             const dn = new Node(`SkDesc_${i}`); dn.setParent(panel);
-            dn.setPosition(new Vec3(-190, y, 0));
-            dn.addComponent(UITransform).setContentSize(310, 22);
+            dn.setPosition(new Vec3(-186, y - 8, 0));
+            dn.addComponent(UITransform).setContentSize(318, 36);
             const dl = dn.addComponent(Label);
-            dl.fontSize = 13;
+            dl.fontSize = 14;
+            dl.lineHeight = 17;
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
+            dl.verticalAlign = VerticalTextAlignment.CENTER;
             dl.color = new Color(165, 175, 195, 235);
             dl.overflow = Label.Overflow.SHRINK;
+            dl.enableWrapText = true;
             styleLabel(dl);
 
             this._skillRows.push({ key: kl, name: nl, desc: dl });
@@ -147,30 +150,37 @@ export class StatsPanel extends Component {
 
         // 左栏底部 — 进度行
         const gn = new Node('Progress'); gn.setParent(panel);
-        gn.setPosition(new Vec3(-265, -200, 0));
+        gn.setPosition(new Vec3(-265, -216, 0));
         gn.addComponent(UITransform).setContentSize(510, 20);
         this._progressLabel = gn.addComponent(Label);
-        this._progressLabel.fontSize = 14;
+        this._progressLabel.fontSize = 15;
         this._progressLabel.horizontalAlign = HorizontalTextAlignment.LEFT;
         this._progressLabel.color = new Color(160, 170, 190, 230);
         styleLabel(this._progressLabel);
 
-        // 右栏 — 10 行词条：图标 + 名称行 + 描述行
-        const y0 = 156, rowH = 42;
+        // 右栏 — 2列×5行词条卡。单列10行只有18px描述高，长词条最终会被
+        // SHRINK 到约6px；双列卡片给每条说明两行空间，在1280×720仍可读。
+        const augColX = [132, 398];
+        const y0 = 148, rowH = 72;
         for (let i = 0; i < this.MAX_AUG_ROWS; i++) {
             const row = new Node(`Aug_${i}`); row.setParent(panel);
-            row.setPosition(new Vec3(265, y0 - i * rowH, 0));
-            row.addComponent(UITransform).setContentSize(510, 38);
+            row.setPosition(new Vec3(augColX[i % 2], y0 - Math.floor(i / 2) * rowH, 0));
+            row.addComponent(UITransform).setContentSize(252, 64);
+            const rowG = row.addComponent(Graphics);
+            rowG.fillColor = new Color(17, 24, 37, 248);
+            rowG.fillRect(-126, -32, 252, 64);
+            rowG.strokeColor = new Color(68, 88, 118, 210);
+            rowG.lineWidth = 1; rowG.rect(-126, -32, 252, 64); rowG.stroke();
 
             const iconN = new Node('Icon'); iconN.setParent(row);
-            iconN.setPosition(new Vec3(-232, 0, 0));
-            iconN.addComponent(UITransform).setContentSize(30, 30);
+            iconN.setPosition(new Vec3(-104, 11, 0));
+            iconN.addComponent(UITransform).setContentSize(34, 34);
             const iconSp = iconN.addComponent(Sprite);
             iconSp.sizeMode = Sprite.SizeMode.CUSTOM;
 
             const nn = new Node('Name'); nn.setParent(row);
-            nn.setPosition(new Vec3(14, 10, 0));
-            nn.addComponent(UITransform).setContentSize(436, 20);
+            nn.setPosition(new Vec3(14, 18, 0));
+            nn.addComponent(UITransform).setContentSize(190, 20);
             const nl = nn.addComponent(Label);
             nl.fontSize = 16;
             nl.horizontalAlign = HorizontalTextAlignment.LEFT;
@@ -179,13 +189,15 @@ export class StatsPanel extends Component {
             styleLabel(nl);
 
             const dn = new Node('Desc'); dn.setParent(row);
-            dn.setPosition(new Vec3(14, -12, 0));
-            dn.addComponent(UITransform).setContentSize(436, 18);
+            dn.setPosition(new Vec3(14, -10, 0));
+            dn.addComponent(UITransform).setContentSize(190, 34);
             const dl = dn.addComponent(Label);
-            dl.fontSize = 13;
+            dl.fontSize = 12;
+            dl.lineHeight = 15;
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
-            dl.verticalAlign = VerticalTextAlignment.CENTER;
+            dl.verticalAlign = VerticalTextAlignment.TOP;
             dl.overflow = Label.Overflow.SHRINK;
+            dl.enableWrapText = true;
             dl.color = new Color(170, 180, 195, 235);
             styleLabel(dl);
 
@@ -257,8 +269,9 @@ export class StatsPanel extends Component {
         for (let i = 0; i < this._skillRows.length; i++) {
             const row = this._skillRows[i];
             const sk  = d.skillStates[i];
-            row.name.string = sk ? sk.name : '';
-            row.desc.string = sk ? sk.desc : '';
+            const parts = sk?.desc?.split('—').map(v => v.trim()) ?? [];
+            row.name.string = sk ? (parts[0] || sk.name) : '';
+            row.desc.string = sk ? (parts.slice(1).join(' — ') || sk.desc) : '';
         }
 
         this._progressLabel.string = d.progress;

@@ -76,7 +76,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         skills: { q: '部署炮台 — 召唤强化炮台持续攻击', e: '网络连接 — 所有炮台锁定最近敌人', r: '炮台风暴 — 召唤6座轨道炮台环绕旋转' },
         skillIcons: { q: 'summon', e: 'lightning', r: 'summon' },
         stats: { maxHp: 90, speed: 300, damage: 18, attackSpeed: 1.5, armor: 8, critRate: 0.05, critDmg: 0.5, pierce: 0 },
-        passive(p: any, game: any) { game.spawnTurret(p, 0.6); game.spawnTurret(p, 0.6); p.stats.turretBonus = 1.5; },
+        passive(p: any, game: any) { game.spawnTurret(p, 0.6, true); game.spawnTurret(p, 0.6, true); p.stats.turretBonus = 1.5; },
         qSkill(p: any, game: any) { game.spawnTurret(p, 1.5); game.particles.hexActivate(p.x, p.y, '#00aaff'); },
         eSkill(p: any, game: any) {
             for (const t of game.turrets) t.focusTarget = game.getNearestEnemy(p.x, p.y);

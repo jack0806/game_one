@@ -130,7 +130,7 @@ export class ScreenManager extends Component {
             const col = i % 3, row = Math.floor(i / 3);
             const cx = -400 + col * 400;
             // 第二排整体上收，正文与解锁提示都保留至少约50px的画布安全区。
-            const cy = 80 - row * 260;
+            const cy = 90 - row * 285;
 
             const card = new Node(`Card_${i}`); card.setParent(p);
             card.setPosition(new Vec3(cx, cy, 0));
@@ -139,6 +139,16 @@ export class ScreenManager extends Component {
             const idx = i;
             const def = CHARS[idx];
             const charId = def?.id;
+
+            // 整张卡提供低对比实体底板，把居中的头像、名牌和说明收束为一组；
+            // 旧版只有头像框与名牌，四行左对齐文字像漂在页面背景上。
+            const cardG = card.addComponent(Graphics);
+            const cardCol = colors[i] ?? new Color(80, 140, 180, 255);
+            cardG.fillColor = new Color(8, 14, 24, 212);
+            cardG.fillRect(-180, -130, 360, 260);
+            cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 92);
+            cardG.lineWidth = 1;
+            cardG.rect(-180, -130, 360, 260); cardG.stroke();
 
             // 用同一套深色卡框收束来源不同的角色立绘，并用角色主题色做细边。
             // 立绘本身仍保持透明，不会出现六张图各自带一块方形背景的拼贴感。
@@ -205,15 +215,19 @@ export class ScreenManager extends Component {
                 // 锁定卡不放（保持 LockDim+解锁提示的简洁观感，解锁后再展示）。
                 const skN = new Node('Skills'); skN.setParent(card);
                 skN.setPosition(new Vec3(0, -82, 0));
-                skN.addComponent(UITransform).setContentSize(344, 100);
+                skN.addComponent(UITransform).setContentSize(348, 100);
                 const skLbl = skN.addComponent(Label);
-                skLbl.string = def
-                    ? `被动 ${def.desc}\nQ ${def.skills.q}\nE ${def.skills.e}\nR ${def.skills.r}`
-                    : '';
-                skLbl.fontSize = 11;
-                skLbl.lineHeight = 17;
-                skLbl.color = new Color(190, 205, 225, 235);
-                skLbl.horizontalAlign = HorizontalTextAlignment.LEFT;
+                if (def) {
+                    const skillName = (text: string) => text.split('—')[0].trim();
+                    skLbl.string = `被动 · ${def.desc}\n` +
+                        `Q ${skillName(def.skills.q)}  ·  E ${skillName(def.skills.e)}  ·  R ${skillName(def.skills.r)}`;
+                } else {
+                    skLbl.string = '';
+                }
+                skLbl.fontSize = 12;
+                skLbl.lineHeight = 18;
+                skLbl.color = new Color(205, 218, 235, 245);
+                skLbl.horizontalAlign = HorizontalTextAlignment.CENTER;
                 skLbl.verticalAlign = VerticalTextAlignment.TOP;
                 skLbl.overflow = Label.Overflow.SHRINK;
                 skLbl.enableWrapText = true;

@@ -55,6 +55,8 @@ export class ShopUI extends Component {
     }
 
     hide() { this.node.active = false; }
+    /** 从神秘强化二级弹窗返回，保留已售出按钮与当前金币。 */
+    resume() { this.node.active = true; }
 
     // ── builders ──────────────────────────────────────────────
 
@@ -62,8 +64,18 @@ export class ShopUI extends Component {
         const n = new Node('Dimmer'); n.setParent(this.node);
         n.addComponent(UITransform).setContentSize(1280, 720);
         const g = n.addComponent(Graphics);
-        g.fillColor = new Color(0, 0, 0, 170);
+        g.fillColor = new Color(0, 0, 0, 218);
         g.fillRect(-640, -360, 1280, 720);
+
+        // 商品列表拥有自己的近乎不透明金属面板。即使未来再叠确认框，底层
+        // 战斗/强化卡也不会穿过六行商品文字造成“整个商店变透明”的错觉。
+        const panel = new Node('ShopPanel'); panel.setParent(this.node);
+        panel.addComponent(UITransform).setContentSize(640, 560);
+        const pg = panel.addComponent(Graphics);
+        pg.fillColor = new Color(8, 13, 23, 252);
+        pg.fillRect(-320, -280, 640, 560);
+        pg.strokeColor = new Color(105, 145, 175, 235);
+        pg.lineWidth = 2; pg.rect(-320, -280, 640, 560); pg.stroke();
     }
 
     private _buildTitle() {
@@ -130,7 +142,7 @@ export class ShopUI extends Component {
 
         // background
         const bg = row.addComponent(Graphics);
-        bg.fillColor = new Color(30, 30, 48, 200);
+        bg.fillColor = new Color(24, 29, 43, 248);
         bg.fillRect(-280, -30, 560, 60);
         bg.strokeColor = new Color(80, 80, 110, 180);
         bg.lineWidth = 1; bg.rect(-280, -30, 560, 60); bg.stroke();

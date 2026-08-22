@@ -3,7 +3,7 @@
 ## 1. 当前资源与系统状态
 
 - 已有 BGM：7 首，位于 `assets/resources/audio/bgm/`。
-- 已有 SFX：17 个，位于 `assets/resources/audio/sfx/`。
+- 已有 SFX：19 个，位于 `assets/resources/audio/sfx/`。
 - 已新增 `assets/scripts/systems/AudioManager.ts`。
 - AudioManager 支持资源缓存、BGM 状态切换、one-shot SFX、分类音量、高频并发限流、静音和 headless 模式。
 - 浏览器自动播放受限时，首次真实按钮操作会调用 `resume()` 重试标题音乐。
@@ -41,18 +41,13 @@
 | `sfx_skill_r` | 终极技能成功释放 | 0.86 | 0ms |
 | `sfx_freeze` | 全场冻结生效 | 0.66 | 0ms |
 | `sfx_lightning` | 连锁闪电首次弹射 | 0.62 | 100ms |
+| `sfx_heal` | 治疗生效 | 0.50 | 180ms |
+| `sfx_hex_activate` | 海克斯能量激活 | 0.58 | 150ms |
 
-## 4. 两个缺失的独立语义音效
+## 4. 独立语义音效
 
-目录中没有 `sfx_heal.mp3` 和 `sfx_hex_activate.mp3`，因此当前使用已有资源做临时映射：
-
-- `heal` → `sfx_skill_e.mp3`，音量 0.50。
-- `hex_activate` → `sfx_augment_pick.mp3`，音量 0.58。
-
-补入两张同名音频后，只修改 `AudioManager.ts` 的 `SFX_ASSET` 映射，不修改玩法调用。建议：
-
-- 治疗：0.45～0.65 秒，柔和上扬、暖白核心感，不带教堂钟声。
-- 六角激活：0.4～0.7 秒，低频充能 + 清脆六边形锁定声。
+- `sfx_heal.mp3`：0.60 秒，柔和上扬三和弦 + 暖色能量波，避免与 E 技能通用声混淆。
+- `sfx_hex_activate.mp3`：0.65 秒，低频充能 + 清脆机械锁定，避免与强化选卡的奖励声混淆。
 
 ## 5. 混音原则
 

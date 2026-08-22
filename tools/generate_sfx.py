@@ -1,4 +1,4 @@
-"""为 Hexblast 生成 17 条程序化科幻游戏音效。
+"""为 Hexblast 生成 19 条程序化科幻游戏音效。
 
 输出为 44.1kHz、单声道、192kbps MP3，并同步写入资源目录与文档试听目录。
 生成器只依赖 numpy 与 lameenc，便于之后按同一参数重新生成。
@@ -297,6 +297,37 @@ def lightning() -> np.ndarray:
     return normalize(0.40 * arcs + 0.18 * snap + 0.42 * zap * modulation, -16.5)
 
 
+def heal() -> np.ndarray:
+    """治疗反馈：柔和上扬的三和弦、暖色能量波和很轻的闪光。"""
+    d = 0.60
+    out = np.zeros(round(d * SAMPLE_RATE))
+    for start, frequency, gain in (
+        (0.00, 523.25, 0.34),
+        (0.09, 659.25, 0.30),
+        (0.18, 783.99, 0.27),
+    ):
+        place(out, bell(0.34, frequency), start, gain)
+    warmth = sine_sweep(d, 190, 420) * envelope(d, 0.055, 0.11, 0.34)
+    air = highpass(white_noise(d), 6800) * envelope(d, 0.12, 0.08, 0.18)
+    return normalize(out + 0.22 * warmth + 0.035 * air, -18.0)
+
+
+def hex_activate() -> np.ndarray:
+    """海克斯启动：低频充能后突出一次清脆的机械锁定。"""
+    d = 0.65
+    out = np.zeros(round(d * SAMPLE_RATE))
+    charge = sine_sweep(0.48, 82, 430) * envelope(0.48, 0.04, 0.035)
+    harmonic = sine_sweep(0.48, 164, 860) * envelope(0.48, 0.06, 0.035)
+    place(out, charge, 0.0, 0.42)
+    place(out, harmonic, 0.0, 0.18)
+    lock = sine_sweep(0.18, 1580, 760) * envelope(0.18, 0.0007, 0.028, 0.030)
+    snap = highpass(white_noise(0.18), 4100) * envelope(0.18, 0.0005, 0.016, 0.018)
+    place(out, lock, 0.43, 0.58)
+    place(out, snap, 0.43, 0.09)
+    place(out, bell(0.20, 988), 0.45, 0.20)
+    return normalize(out, -16.8)
+
+
 SOUNDS = (
     ("sfx_shoot", 0.20, shoot),
     ("sfx_hit", 0.20, hit),
@@ -315,6 +346,8 @@ SOUNDS = (
     ("sfx_skill_r", 1.00, skill_r),
     ("sfx_freeze", 0.50, freeze),
     ("sfx_lightning", 0.40, lightning),
+    ("sfx_heal", 0.60, heal),
+    ("sfx_hex_activate", 0.65, hex_activate),
 )
 
 
@@ -352,7 +385,7 @@ def main() -> None:
             f"[{index:02d}/{len(SOUNDS)}] {resource_path.name}: "
             f"{duration:.2f}s, {SAMPLE_RATE}Hz, mono, {resource_path.stat().st_size} bytes"
         )
-    print("[SFX] 17 条音效全部生成完成")
+    print(f"[SFX] {len(SOUNDS)} 条音效全部生成完成")
 
 
 if __name__ == "__main__":

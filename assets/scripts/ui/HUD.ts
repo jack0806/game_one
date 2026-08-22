@@ -39,7 +39,10 @@ export class HUD extends Component {
     private _skillRings:  { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
 
     private readonly BAR_W   = 240;
-    private readonly BAR_H   = 18;
+    private readonly BAR_H   = 14;
+    private readonly SHIELD_H = 6;
+    private readonly BOSS_W  = 460;
+    private readonly BOSS_H  = 24;
     private readonly SKILL_R = 28;
 
     onLoad() {
@@ -53,6 +56,14 @@ export class HUD extends Component {
     // ── builders ──────────────────────────────────────────────
 
     private _buildHpBar() {
+        const panel = this._mkNode('VitalsPanel', -510, 309);
+        const panelG = panel.addComponent(Graphics);
+        panelG.fillColor = new Color(5, 10, 16, 218);
+        panelG.fillRect(-8, -7, this.BAR_W + 28, 48);
+        panelG.strokeColor = new Color(80, 125, 155, 180);
+        panelG.lineWidth = 1;
+        panelG.rect(-8, -7, this.BAR_W + 28, 48); panelG.stroke();
+
         const bg = this._mkNode('HpBg', -500, 330);
         const bgG = bg.addComponent(Graphics);
         bgG.fillColor = new Color(25, 25, 25, 210);
@@ -60,13 +71,19 @@ export class HUD extends Component {
         bgG.strokeColor = new Color(70, 70, 70, 255);
         bgG.lineWidth = 1; bgG.rect(0, 0, this.BAR_W, this.BAR_H); bgG.stroke();
 
-        this._hpBarFg     = this._mkNode('HpFg',     -500, 330).addComponent(Graphics);
-        this._shieldBarFg = this._mkNode('ShieldFg', -500, 330).addComponent(Graphics);
+        this._hpBarFg = this._mkNode('HpFg', -500, 330).addComponent(Graphics);
 
-        const ln = this._mkNode('HpLbl', -500, 310);
+        const shieldBg = this._mkNode('ShieldBg', -500, 320);
+        const shieldBgG = shieldBg.addComponent(Graphics);
+        shieldBgG.fillColor = new Color(18, 30, 44, 225);
+        shieldBgG.fillRect(0, 0, this.BAR_W, this.SHIELD_H);
+        this._shieldBarFg = this._mkNode('ShieldFg', -500, 320).addComponent(Graphics);
+
+        const ln = this._mkNode('HpLbl', -490, 302);
         ln.addComponent(UITransform).setContentSize(this.BAR_W, 20);
         this._hpLabel = ln.addComponent(Label);
         this._hpLabel.fontSize = 13;
+        this._hpLabel.horizontalAlign = 0;
         this._hpLabel.color = new Color(210, 210, 210, 255);
         styleLabel(this._hpLabel);
     }
@@ -81,7 +98,7 @@ export class HUD extends Component {
     }
 
     private _buildWaveDisplay() {
-        const n = this._mkNode('WaveLbl', -30, 330);
+        const n = this._mkNode('WaveLbl', 0, 330);
         n.addComponent(UITransform).setContentSize(220, 28);
         this._waveLabel = n.addComponent(Label);
         this._waveLabel.fontSize = 17;
@@ -90,24 +107,26 @@ export class HUD extends Component {
     }
 
     private _buildBossBar() {
-        this._bossBarRoot = this._mkNode('BossRoot', -200, 300);
+        // 顶部第一行只放玩家状态 / 波次 / 金币；Boss 条单独居中下沉一行，
+        // 避免名称贴着玩家血条、数值又跑到红条左侧。
+        this._bossBarRoot = this._mkNode('BossRoot', -this.BOSS_W / 2, 282);
 
         const bg = new Node('BossBg'); bg.setParent(this._bossBarRoot);
         const bgG = bg.addComponent(Graphics);
         bgG.fillColor = new Color(18, 8, 8, 220);
-        bgG.fillRect(0, 0, 400, 22);
+        bgG.fillRect(0, 0, this.BOSS_W, this.BOSS_H);
         bgG.strokeColor = new Color(190, 30, 30, 255);
-        bgG.lineWidth = 2; bgG.rect(0, 0, 400, 22); bgG.stroke();
+        bgG.lineWidth = 2; bgG.rect(0, 0, this.BOSS_W, this.BOSS_H); bgG.stroke();
 
         const fgN = new Node('BossFg'); fgN.setParent(this._bossBarRoot);
         this._bossBarFg = fgN.addComponent(Graphics);
 
         const ln = new Node('BossLbl'); ln.setParent(this._bossBarRoot);
-        ln.setPosition(new Vec3(0, 28, 0));
-        ln.addComponent(UITransform).setContentSize(400, 22);
+        ln.setPosition(new Vec3(this.BOSS_W / 2, this.BOSS_H / 2, 0));
+        ln.addComponent(UITransform).setContentSize(this.BOSS_W - 18, this.BOSS_H);
         this._bossLabel = ln.addComponent(Label);
-        this._bossLabel.fontSize = 14;
-        this._bossLabel.color = new Color(255, 100, 100, 255);
+        this._bossLabel.fontSize = 15;
+        this._bossLabel.color = new Color(255, 225, 215, 255);
         styleLabel(this._bossLabel);
 
         this._bossBarRoot.active = false;
@@ -159,8 +178,8 @@ export class HUD extends Component {
     }
 
     private _refreshHp(d: HudData) {
-        const hR = Math.max(0, d.hp / d.maxHp);
-        const sR = d.maxShield > 0 ? Math.max(0, d.shield / d.maxShield) : 0;
+        const hR = Math.max(0, Math.min(1, d.hp / Math.max(1, d.maxHp)));
+        const sR = d.maxShield > 0 ? Math.max(0, Math.min(1, d.shield / d.maxShield)) : 0;
 
         const fg = this._hpBarFg;
         fg.clear();
@@ -170,11 +189,11 @@ export class HUD extends Component {
         const sf = this._shieldBarFg;
         sf.clear();
         if (sR > 0) {
-            sf.fillColor = new Color(80, 160, 255, 140);
-            sf.fillRect(0, 0, this.BAR_W * sR, this.BAR_H);
+            sf.fillColor = new Color(80, 170, 255, 235);
+            sf.fillRect(0, 0, this.BAR_W * sR, this.SHIELD_H);
         }
-        this._hpLabel.string = `${Math.ceil(d.hp)}/${d.maxHp}` +
-            (d.maxShield > 0 ? `  ◆${Math.ceil(d.shield)}` : '');
+        this._hpLabel.string = `生命 ${Math.ceil(d.hp)}/${Math.round(d.maxHp)}` +
+            (d.maxShield > 0 ? `  |  护盾 ${Math.ceil(d.shield)}/${Math.round(d.maxShield)}` : '');
     }
 
     private _refreshGold(gold: number) {
@@ -189,11 +208,11 @@ export class HUD extends Component {
         const has = d.bossHp !== undefined && (d.bossMaxHp ?? 0) > 0;
         this._bossBarRoot.active = has;
         if (!has) return;
-        const r = Math.max(0, d.bossHp! / d.bossMaxHp!);
+        const r = Math.max(0, Math.min(1, d.bossHp! / d.bossMaxHp!));
         this._bossBarFg.clear();
         this._bossBarFg.fillColor = new Color(220, 40, 40, 255);
-        this._bossBarFg.fillRect(0, 0, 400 * r, 22);
-        this._bossLabel.string = `${d.bossName ?? '首领'}  ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
+        this._bossBarFg.fillRect(0, 0, this.BOSS_W * r, this.BOSS_H);
+        this._bossLabel.string = `首领 · ${d.bossName ?? '未知'}   ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
     }
 
     private _refreshSkills(skills: { name: string; desc: string; icon: string; cd: number; maxCd: number }[]) {

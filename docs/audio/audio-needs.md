@@ -1,6 +1,6 @@
 # 音频资源需求清单（全新，从零开始）
 
-> 2026-08-21 更新：7 首 BGM、17 个 SFX 已入库，`systems/AudioManager.ts` 已完成并接入主要状态与玩法事件。BGM 切换现有0.18秒淡出+0.32秒淡入；资源加载会合并同一文件的并发请求，未缓存高频 SFX 只保留一次首播，消除了高攻速时的浏览器音频缓存警告。本文后半部分保留为原始需求基线。
+> 2026-08-22 更新：7 首 BGM、19 个 SFX 已入库，治疗与海克斯启动已使用独立语义音效。`systems/AudioManager.ts` 已接入主要状态与玩法事件。BGM 切换有0.18秒淡出+0.32秒淡入；资源加载会合并同一文件的并发请求，未缓存高频 SFX 只保留一次首播。本文后半部分保留为原始需求基线。
 
 ---
 
@@ -57,8 +57,8 @@
 
 - [x] AudioManager + cc 桩补齐，headless 测试保持全绿
 - [x] `assets/resources/audio/bgm/*.mp3` × 7 入库并接线
-- [x] `assets/resources/audio/sfx/*.mp3` × 17 入库并接线
-- [ ] 补独立 `sfx_heal.mp3` / `sfx_hex_activate.mp3`（当前复用现有音效）
-- [x] `audio.test.js` 已覆盖 7 首 BGM + 17 个 SFX 的文件清单自检
+- [x] `assets/resources/audio/sfx/*.mp3` × 19 入库并接线
+- [x] 独立 `sfx_heal.mp3` / `sfx_hex_activate.mp3` 已生成并接线
+- [x] `audio.test.js` 已覆盖 7 首 BGM + 19 个 SFX 的文件清单自检
 - [x] Cocos Creator Web 实机：6角色×4章+BOSS/商店状态切换，无新增音频警告；BGM 0.48、各 SFX 独立限流/音量
 - [ ] 发布前用目标耳机/音箱人工复核每首 BGM 的循环接缝（代码侧已完成平滑状态切换）

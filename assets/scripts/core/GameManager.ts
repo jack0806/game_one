@@ -54,6 +54,7 @@ export class GameManager extends Component {
     private _gameGfx!:       Graphics;   // entities draw here
     private _particleGfx!:   Graphics;   // particles draw here
     private _coinPool!:      SpriteNodePool;
+    private _turretPool!:    SpriteNodePool;
     /** One-shot art FX (explosion/heal/poison/cold_arrow/hex_ring), synced from ParticleManager.spriteFx each frame. */
     private _fxPool!:        SpriteNodePool;
 
@@ -173,6 +174,7 @@ export class GameManager extends Component {
         this._gameLayer.addComponent(UITransform)
             .setContentSize(CANVAS_W, CANVAS_H);
         this._coinPool = new SpriteNodePool(this._gameLayer, 80, 'GoldCoin', [30, 30]);
+        this._turretPool = new SpriteNodePool(this._gameLayer, 24, 'TurretArt', [48, 48]);
 
         // ParticleLayer — on top of entities
         this._particleLayer = new Node('ParticleLayer');
@@ -399,6 +401,7 @@ export class GameManager extends Component {
         this._bullets?.reset();
         this._fxPool?.releaseAll();
         this._coinPool?.releaseAll();
+        this._turretPool?.releaseAll();
         this._floatText?.clear();
     }
 
@@ -580,6 +583,7 @@ export class GameManager extends Component {
     private _drawEntities() {
         const g = this._gameGfx;
         g.clear();
+        this._turretPool.releaseAll();
 
         // Background is now the _bgSprite layer (bg_chapter<N>, set in _updateBgForChapter()),
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
@@ -659,48 +663,22 @@ export class GameManager extends Component {
                 continue;
             }
 
-            const aim = t._aim ?? 0;
-            const ax = Math.cos(aim), ay = -Math.sin(aim);
-            const px = -ay, py = ax;
-            const accent = t.kind === 'orbitTurret'
-                ? new Color(80, 225, 255, 255)
-                : new Color(30, 175, 255, 255);
-
-            // 六角钢制底座。
-            const drawTurretBase = () => {
-                for (let k = 0; k < 6; k++) {
-                    const a = Math.PI / 6 + k * Math.PI / 3;
-                    const vx = tx + Math.cos(a) * r * 1.1;
-                    const vy = ty + Math.sin(a) * r * 0.82;
-                    if (k === 0) g.moveTo(vx, vy); else g.lineTo(vx, vy);
-                }
-                g.close();
-            };
-            g.fillColor = new Color(20, 31, 47, 245);
-            drawTurretBase(); g.fill();
-            g.strokeColor = new Color(accent.r, accent.g, accent.b, 235);
-            g.lineWidth = 1.8; drawTurretBase(); g.stroke();
-
-            // 双联炮管：深色粗管提供实体厚度，亮色内管显示射击方向。
-            for (const side of [-1, 1]) {
-                const ox = px * side * r * 0.28, oy = py * side * r * 0.28;
-                g.strokeColor = new Color(5, 10, 18, 255);
-                g.lineWidth = Math.max(4, r * 0.42);
-                g.moveTo(tx + ax * r * 0.2 + ox, ty + ay * r * 0.2 + oy);
-                g.lineTo(tx + ax * r * 1.85 + ox, ty + ay * r * 1.85 + oy); g.stroke();
-                g.strokeColor = new Color(accent.r, accent.g, accent.b, 245);
-                g.lineWidth = Math.max(1.5, r * 0.15);
-                g.moveTo(tx + ax * r * 0.35 + ox, ty + ay * r * 0.35 + oy);
-                g.lineTo(tx + ax * r * 1.82 + ox, ty + ay * r * 1.82 + oy); g.stroke();
-            }
-
-            // 中央菱形能源舱，避免再次出现圆形占位符。
-            g.fillColor = new Color(accent.r, accent.g, accent.b, 235);
-            g.moveTo(tx, ty + r * 0.48);
-            g.lineTo(tx + r * 0.48, ty);
-            g.lineTo(tx, ty - r * 0.48);
-            g.lineTo(tx - r * 0.48, ty);
-            g.close(); g.fill();
+            // 使用已有的高质量3/4视角机械炮台正式美术作为战场主体；程序层只留
+            // 接触阴影。原先在20px范围内画六边形+直线炮管，即使分层仍会读成
+            // 扁平图标。Sprite 保留原始方形画布比例并实时朝向目标。
+            const art = this._turretPool.acquire();
+            if (!art) continue;
+            const sp = art.getComponent(Sprite)!;
+            sp.sizeMode = Sprite.SizeMode.CUSTOM;
+            sp.trim = false;
+            sp.color = t.kind === 'orbitTurret'
+                ? new Color(195, 245, 255, 255)
+                : new Color(255, 255, 255, 255);
+            applyArtSprite(sp, 'ui_icon_summon');
+            const size = t.kind === 'orbitTurret' ? 38 : 54;
+            art.getComponent(UITransform)!.setContentSize(size, size);
+            art.setPosition(Math.round(tx), Math.round(ty + 5 + Math.sin(this._visualTime * 4 + t.x) * 1.2), 0);
+            art.setRotationFromEuler(0, 0, -(t._aim ?? 0) * 180 / Math.PI);
         }
 
         // Enemies — Sprite node carries the visual, Graphics only draws the HP bar
@@ -929,25 +907,6 @@ export class GameManager extends Component {
             const facing = this._input.mouse.x < p.x ? -1 : 1;
             const uniformScale = 1 + breathe;
             p.node.setScale(new Vec3(facing * uniformScale, uniformScale, 1));
-            // 玩家护盾：薄能量壳 + 断续高光弧，既持续可见又不遮挡角色本体。
-            if (p.shield > 0) {
-                const shieldRatio = p.maxShield > 0
-                    ? Math.max(0, Math.min(1, p.shield / p.maxShield)) : 1;
-                const shieldR = (p.radius ?? 20) + 9;
-                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 4.8);
-                g.fillColor = new Color(65, 150, 255, 14 + Math.floor(10 * shieldRatio));
-                g.circle(px, py, shieldR); g.fill();
-                g.strokeColor = new Color(90, 175, 255, 125 + Math.floor(55 * pulse));
-                g.lineWidth = 2;
-                g.circle(px, py, shieldR); g.stroke();
-                const spin = -this._visualTime * 0.85;
-                g.strokeColor = new Color(220, 242, 255, 190 + Math.floor(45 * pulse));
-                g.lineWidth = 2.8;
-                for (let seg = 0; seg < 3; seg++) {
-                    const start = spin + seg * Math.PI * 2 / 3;
-                    g.arc(px, py, shieldR + 2, start, start + 0.58, false); g.stroke();
-                }
-            }
         }
     }
 
@@ -1007,6 +966,35 @@ export class GameManager extends Component {
                 g.lineWidth = p.lineWidth ?? 2;
                 g.moveTo(px, py); g.lineTo(px2, py2); g.stroke();
             }
+        }
+
+        // 玩家 Sprite 是 GameLayer 的子节点；若护盾也画在 GameLayer 根 Graphics，
+        // Cocos 会先画 Graphics 再画角色，护盾绝大部分必然被 82px 角色遮住。
+        // ParticleLayer 位于所有实体之上，持续护盾在这里最后绘制，形成真正覆盖
+        // 角色轮廓的能量罩。半径按战斗 Sprite 而非16px碰撞半径计算。
+        if (this._player && !this._player.dead && this._player.shield > 0) {
+            const p = this._player;
+            const [px, py] = this._toLocal(p.x, p.y);
+            const shieldRatio = p.maxShield > 0
+                ? Math.max(0, Math.min(1, p.shield / p.maxShield)) : 1;
+            const shieldR = Math.max(44, (p.radius ?? 20) + 12);
+            const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 4.8);
+            g.fillColor = new Color(65, 150, 255, 12 + Math.floor(10 * shieldRatio));
+            g.circle(px, py, shieldR); g.fill();
+            g.strokeColor = new Color(90, 175, 255, 155 + Math.floor(50 * pulse));
+            g.lineWidth = 2.2;
+            g.circle(px, py, shieldR); g.stroke();
+            const spin = -this._visualTime * 0.85;
+            g.strokeColor = new Color(225, 246, 255, 205 + Math.floor(40 * pulse));
+            g.lineWidth = 3;
+            for (let seg = 0; seg < 4; seg++) {
+                const start = spin + seg * Math.PI / 2;
+                g.arc(px, py, shieldR + 2.5, start, start + 0.48, false); g.stroke();
+            }
+            // 上半部高光让它读成罩在角色前方的透明穹顶，而不是脚下光圈。
+            g.strokeColor = new Color(195, 232, 255, 115 + Math.floor(55 * pulse));
+            g.lineWidth = 1.6;
+            g.arc(px, py + 3, shieldR * 0.82, Math.PI * 0.12, Math.PI * 0.88, false); g.stroke();
         }
     }
 
@@ -1153,6 +1141,7 @@ export class GameManager extends Component {
 
     // ── public game API (called by systems / augments) ────────
 
+
     /** Spawn an enemy of the given type. If x/y omitted, spawns just outside a random edge. */
     spawnEnemy(type: string, x?: number, y?: number): EnemyBase {
         // EnemyBase/BossController are plain TS classes (not cc.Component),
@@ -1262,7 +1251,7 @@ export class GameManager extends Component {
 
     // ── turret / clone summon system ────────────────────────────
 
-    spawnTurret(player: any, dmgMult = 1): void {
+    spawnTurret(player: any, dmgMult = 1, followOwner = false): void {
         // 被动：炮台类词条效果×1.5（对齐 CharacterDB.ts vivian 的 desc 描述）
         const turretMult = player.stats?.turretBonus || 1;
         // 炮台军团(turret_army)：持有≥3个"炮台类"词条(tags含'turret')时，
@@ -1272,17 +1261,28 @@ export class GameManager extends Component {
         const spawnCount  = armyActive ? 3 : 1;
         const fireInterval = armyActive ? 0.6 / 1.5 : 0.6;
         for (let n = 0; n < spawnCount; n++) {
+            const followIndex = this._turrets.filter(t => t.followOwner).length;
+            const followSide = followIndex % 2 === 0 ? -1 : 1;
             const t: any = {
-                x: player.x + (Math.random() - 0.5) * 100,
-                y: player.y + (Math.random() - 0.5) * 100,
-                r: 10, alive: true, _timer: 0,
+                x: player.x + (followOwner ? followSide * 52 : (Math.random() - 0.5) * 100),
+                y: player.y + (followOwner ? 34 : (Math.random() - 0.5) * 100),
+                r: 14, alive: true, _timer: 0,
                 kind: 'turret', _aim: 0,
                 dmg: player.getDamage(this) * dmgMult * turretMult,
-                owner: player, _life: 12,
+                owner: player, followOwner,
+                _followX: followSide * 52, _followY: 34,
+                _life: followOwner ? Number.POSITIVE_INFINITY : 12,
             };
             t.update = (dt: number, g: GameManager) => {
                 t._life -= dt; t._timer -= dt;
                 if (t._life <= 0) { t.alive = false; return; }
+                if (t.followOwner) {
+                    const targetX = player.x + t._followX;
+                    const targetY = player.y + t._followY;
+                    const followT = Math.min(1, dt * 9);
+                    t.x += (targetX - t.x) * followT;
+                    t.y += (targetY - t.y) * followT;
+                }
                 if (t._timer <= 0) {
                     t._timer = fireInterval;
                     const target = (t.focusTarget && !t.focusTarget.dead) ? t.focusTarget : g.getNearestEnemy(t.x, t.y);
@@ -1305,7 +1305,7 @@ export class GameManager extends Component {
             const angle0 = (i / count) * Math.PI * 2;
             const t: any = {
                 _angle: angle0, _orbitR: 80, _orbitSpd: 2,
-                r: 8, alive: true, _timer: 0, _life: 8,
+                r: 10, alive: true, _timer: 0, _life: 8,
                 kind: 'orbitTurret', _aim: angle0,
                 dmg: player.getDamage(this) * 0.8 * turretMult, owner: player,
                 x: player.x + Math.cos(angle0) * 80,
@@ -1557,8 +1557,13 @@ export class GameManager extends Component {
             case 'damage': p.damageMulti *= 1 + (item.value ?? 0.15); break;
             case 'augment':
                 const opts = this._augMgr.rollOptions(3, this._waveMgr.wave, p.charId);
+                // 商店与强化选择都是全屏模态层。两者同时 active 时，创建顺序较早
+                // 的强化卡会透过商店半透明底板显示，形成“售罄后商店突然透明”的
+                // 视觉穿帮。购买神秘强化时暂停商店，选完再原样恢复售罄状态。
+                this._shopUI.hide();
                 this._augUI.show(opts, (aug) => {
                     if (aug) this._augMgr.equip(aug, p, this);
+                    this._shopUI.resume();
                 });
                 break;
         }

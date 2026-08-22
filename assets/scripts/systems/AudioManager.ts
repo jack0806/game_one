@@ -15,10 +15,6 @@ const BGM_ASSET: Record<BgmCue, string> = {
     ch4: 'bgm_ch4', boss: 'bgm_boss', shop: 'bgm_shop',
 };
 
-/**
- * 目录目前没有独立的 sfx_heal / sfx_hex_activate，先复用语义最接近的现有成品；
- * 后续同名资源补入后只需改这里，不需要改玩法调用点。
- */
 const SFX_ASSET: Record<SfxCue, string> = {
     shoot: 'sfx_shoot', hit: 'sfx_hit', enemy_die: 'sfx_enemy_die',
     explode: 'sfx_explode', boss_roar: 'sfx_boss_roar',
@@ -27,7 +23,7 @@ const SFX_ASSET: Record<SfxCue, string> = {
     augment_pick: 'sfx_augment_pick', levelup: 'sfx_levelup',
     skill_q: 'sfx_skill_q', skill_e: 'sfx_skill_e', skill_r: 'sfx_skill_r',
     freeze: 'sfx_freeze', lightning: 'sfx_lightning',
-    heal: 'sfx_skill_e', hex_activate: 'sfx_augment_pick',
+    heal: 'sfx_heal', hex_activate: 'sfx_hex_activate',
 };
 
 const SFX_VOLUME: Partial<Record<SfxCue, number>> = {
