@@ -21,6 +21,8 @@ function collectAllArtKeys() {
     const keys = new Set();
     keys.add('title_screen');
     keys.add('ui_gold_coin');
+    keys.add('turret_base_vivian');
+    keys.add('turret_barrel_vivian');
     for (const c of CHAPTERS) keys.add(c.bgKey);
     for (const t of [
         'enemy_grunt', 'enemy_shield', 'enemy_exploder', 'enemy_golem',

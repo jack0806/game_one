@@ -108,7 +108,8 @@ export class StatsPanel extends Component {
             this._statCells.push(l);
         }
 
-        // 左栏 — Q/E/R 三行：描述允许两行，不再用单行 SHRINK 把中文压到不可读。
+        // 左栏 — Q/E/R 三行：技能名与说明共享同一阅读基线。名称在上、说明在下
+        // 会让左右两段看起来像互不相关的字段，尤其薇薇安三项技能最明显。
         const keys = ['Q', 'E', 'R'];
         for (let i = 0; i < 3; i++) {
             const y = -62 - i * 46;
@@ -123,7 +124,7 @@ export class StatsPanel extends Component {
             styleLabel(kl);
 
             const nn = new Node(`SkName_${i}`); nn.setParent(panel);
-            nn.setPosition(new Vec3(-410, y + 8, 0));
+            nn.setPosition(new Vec3(-410, y, 0));
             nn.addComponent(UITransform).setContentSize(140, 24);
             const nl = nn.addComponent(Label);
             nl.fontSize = 16;
@@ -133,16 +134,16 @@ export class StatsPanel extends Component {
             styleLabel(nl);
 
             const dn = new Node(`SkDesc_${i}`); dn.setParent(panel);
-            dn.setPosition(new Vec3(-186, y - 8, 0));
-            dn.addComponent(UITransform).setContentSize(318, 36);
+            dn.setPosition(new Vec3(-186, y, 0));
+            dn.addComponent(UITransform).setContentSize(318, 24);
             const dl = dn.addComponent(Label);
             dl.fontSize = 14;
-            dl.lineHeight = 17;
+            dl.lineHeight = 16;
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
             dl.verticalAlign = VerticalTextAlignment.CENTER;
             dl.color = new Color(165, 175, 195, 235);
             dl.overflow = Label.Overflow.SHRINK;
-            dl.enableWrapText = true;
+            dl.enableWrapText = false;
             styleLabel(dl);
 
             this._skillRows.push({ key: kl, name: nl, desc: dl });
@@ -271,7 +272,8 @@ export class StatsPanel extends Component {
             const sk  = d.skillStates[i];
             const parts = sk?.desc?.split('—').map(v => v.trim()) ?? [];
             row.name.string = sk ? (parts[0] || sk.name) : '';
-            row.desc.string = sk ? (parts.slice(1).join(' — ') || sk.desc) : '';
+            const detail = sk ? (parts.slice(1).join(' — ') || sk.desc) : '';
+            row.desc.string = detail ? `— ${detail}` : '';
         }
 
         this._progressLabel.string = d.progress;

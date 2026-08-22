@@ -1,6 +1,6 @@
 # 现有美术资源清单（assets/resources/art/）
 
-共 54 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
+共 56 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。
 
@@ -103,7 +103,16 @@
 | `fx_heal` | 治疗 |
 | `fx_cold_arrow` | 寒冰箭 |
 
-## 8. UI 图标（16 张）
+## 8. 薇薇安战场炮台（2 张）
+
+炮台拆成独立透明组件，代码以同一世界坐标叠放：固定底座不旋转、不浮动，只有炮筒围绕机械枢轴朝目标旋转。跟随炮台与海克斯科技炮台使用正常尺寸；6座轨道炮台使用较小尺寸与浅青染色区分层级。
+
+| 文件名（key） | 用途 |
+|---|---|
+| `turret_base_vivian` | 90°正俯视六角机械固定底座 |
+| `turret_barrel_vivian` | 横向双炮筒，锚点设在源图宽度36%的枢轴位置 |
+
+## 9. UI 图标（16 张）
 
 两处复用（`HUD.ts`）：词条槽 **30×30 叠在程序绘制的稀有度色块+边框上**（`HUD.ts:229`）；技能环 **28×28 嵌在 CD 进度圆环内、未就绪时染灰**（`HUD.ts:248`）。因此图标必须**无底板无徽章**、纯发光符号——生成模板见 `docs/prompts/image-prompts.md` 第十节。
 
@@ -122,7 +131,7 @@
 | `ui_icon_shield` | 护盾 | 词条：厚甲/能量护盾/核心溢出；技能：reik-R |
 | `ui_icon_combo` | 连击 | 词条：连击倍率 |
 | `ui_icon_gold` | 金币 | 词条：金币磁铁/六角特权/六芒永恒 |
-| `ui_icon_summon` | 召唤 | 透明底青蓝机械炮台纯符号；词条：海克斯炮台/暗影分身/炮台军团；技能：vivian-Q/R |
+| `ui_icon_summon` | 召唤 | 透明底青蓝机械炮台纯符号，仅用于UI；词条：海克斯炮台/暗影分身/炮台军团；技能：vivian-Q/R |
 | `ui_icon_ice` | 冰 | 词条：冻结磁场/绝对零度；技能：olia-R、liana-E/R |
 | `ui_icon_chaos` | 混沌 | 词条：黑洞引擎/混沌协议/海克斯漩涡/宇宙法则/混沌神明/全力豪赌；技能：graf-Q/E/R |
 

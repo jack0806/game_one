@@ -134,40 +134,51 @@ export class ScreenManager extends Component {
 
             const card = new Node(`Card_${i}`); card.setParent(p);
             card.setPosition(new Vec3(cx, cy, 0));
-            card.addComponent(UITransform).setContentSize(360, 260);
+            card.addComponent(UITransform).setContentSize(360, 270);
 
             const idx = i;
             const def = CHARS[idx];
             const charId = def?.id;
+            const locked = !!def && !def.unlocked;
 
             // 整张卡提供低对比实体底板，把居中的头像、名牌和说明收束为一组；
             // 旧版只有头像框与名牌，四行左对齐文字像漂在页面背景上。
             const cardG = card.addComponent(Graphics);
             const cardCol = colors[i] ?? new Color(80, 140, 180, 255);
-            cardG.fillColor = new Color(8, 14, 24, 212);
-            cardG.fillRect(-180, -130, 360, 260);
-            cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 92);
-            cardG.lineWidth = 1;
-            cardG.rect(-180, -130, 360, 260); cardG.stroke();
+            cardG.fillColor = new Color(8, 14, 24, 226);
+            cardG.fillRect(-180, -135, 360, 270);
+            // 整张角色卡才是实际点击单位，因此身份色选框必须包住完整的
+            // “立绘—名牌—定位”信息组。只框头像会误导为头像裁切框或选中态。
+            cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, locked ? 72 : 188);
+            cardG.lineWidth = locked ? 1 : 2;
+            cardG.rect(-180, -135, 360, 270); cardG.stroke();
+            if (!locked) {
+                cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 255);
+                cardG.lineWidth = 3;
+                const corner = 18;
+                for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                    const x = sx * 178, y = sy * 133;
+                    cardG.moveTo(x, y - sy * corner); cardG.lineTo(x, y); cardG.lineTo(x - sx * corner, y);
+                    cardG.stroke();
+                }
+            }
 
-            // 用同一套深色卡框收束来源不同的角色立绘，并用角色主题色做细边。
-            // 立绘本身仍保持透明，不会出现六张图各自带一块方形背景的拼贴感。
-            // 卡片扩宽后技能说明可稳定保持四行，不再依赖 SHRINK 把正文压成小字。
+            // 头像顶部、头像与名牌之间都保留明确内边距。旧版132px头像在270px
+            // 卡片中几乎贴住顶框，并与44px名牌发生约14px视觉重叠。
             const frameN = new Node('PortraitFrame'); frameN.setParent(card);
-            frameN.setPosition(new Vec3(0, 75, 0));
-            frameN.addComponent(UITransform).setContentSize(132, 132);
+            frameN.setPosition(new Vec3(0, 68, 0));
+            frameN.addComponent(UITransform).setContentSize(112, 112);
             const frameG = frameN.addComponent(Graphics);
             frameG.fillColor = new Color(9, 15, 24, 245);
-            frameG.fillRect(-66, -66, 132, 132);
-            frameG.strokeColor = colors[i] ?? new Color(80, 140, 180, 255);
-            frameG.lineWidth = 3;
-            frameG.rect(-66, -66, 132, 132); frameG.stroke();
+            frameG.fillRect(-56, -56, 112, 112);
+            frameG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 150);
+            frameG.lineWidth = 1.5;
+            frameG.rect(-56, -56, 112, 112); frameG.stroke();
 
-            if (charId) this._loadPortrait(card, `char_${charId}`, 124, 75);
+            if (charId) this._loadPortrait(card, `char_${charId}`, 104, 68);
 
-            const locked = !!def && !def.unlocked;
             const nameBtn = this._mkBtn(card, names[i] ?? `Char${i}`,
-                0, -5, 338, 44,
+                0, -14, 320, 40,
                 locked ? new Color(70, 82, 92, 255) : (colors[i] ?? new Color(80, 80, 120, 255)), locked);
 
             if (locked) {
@@ -178,13 +189,11 @@ export class ScreenManager extends Component {
                 // 本身也在 sibling 1，插入后会把立绘推到遮罩上方，造成“黑框只遮
                 // 下半张卡、角色仍全亮”的层级穿帮。后续锁标与提示继续创建，
                 // 自然位于遮罩之上。
-                // PortraitFrame 顶边实际到 card y=141，超出原卡片半高130；
-                // 遮罩上移并扩高，完整包住描边，避免顶部再漏出一条亮色边。
-                dim.setPosition(new Vec3(0, 5, 0));
-                dim.addComponent(UITransform).setContentSize(360, 282);
+                dim.setPosition(Vec3.ZERO);
+                dim.addComponent(UITransform).setContentSize(360, 270);
                 const dimG = dim.addComponent(Graphics);
                 dimG.fillColor = new Color(0, 0, 0, 205);
-                dimG.fillRect(-180, -141, 360, 282);
+                dimG.fillRect(-180, -135, 360, 270);
 
                 const lockN = new Node('LockIcon'); lockN.setParent(card);
                 lockN.setPosition(new Vec3(0, 50, 0));
@@ -213,9 +222,18 @@ export class ScreenManager extends Component {
 
                 // 被动 + Q/E/R 技能介绍：选人阶段就能看清角色定位，不必进战斗试错。
                 // 锁定卡不放（保持 LockDim+解锁提示的简洁观感，解锁后再展示）。
+                // 名牌与正文之间以弱分隔线建立层级；正文垂直居中到下半区，
+                // 不再紧贴名牌同时把整片空白都堆在卡片底部。
+                const dividerN = new Node('InfoDivider'); dividerN.setParent(card);
+                dividerN.setPosition(new Vec3(0, -45, 0));
+                const dividerG = dividerN.addComponent(Graphics);
+                dividerG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 65);
+                dividerG.lineWidth = 1;
+                dividerG.moveTo(-150, 0); dividerG.lineTo(150, 0); dividerG.stroke();
+
                 const skN = new Node('Skills'); skN.setParent(card);
-                skN.setPosition(new Vec3(0, -82, 0));
-                skN.addComponent(UITransform).setContentSize(348, 100);
+                skN.setPosition(new Vec3(0, -88, 0));
+                skN.addComponent(UITransform).setContentSize(320, 72);
                 const skLbl = skN.addComponent(Label);
                 if (def) {
                     const skillName = (text: string) => text.split('—')[0].trim();
@@ -225,10 +243,10 @@ export class ScreenManager extends Component {
                     skLbl.string = '';
                 }
                 skLbl.fontSize = 12;
-                skLbl.lineHeight = 18;
+                skLbl.lineHeight = 19;
                 skLbl.color = new Color(205, 218, 235, 245);
                 skLbl.horizontalAlign = HorizontalTextAlignment.CENTER;
-                skLbl.verticalAlign = VerticalTextAlignment.TOP;
+                skLbl.verticalAlign = VerticalTextAlignment.CENTER;
                 skLbl.overflow = Label.Overflow.SHRINK;
                 skLbl.enableWrapText = true;
                 styleLabel(skLbl);

@@ -138,6 +138,17 @@ test('海克斯炮台图标为透明纯符号,不再烧录黑底卡框', () => {
     assert.deepEqual(cornerAlpha(png), [0, 0, 0, 0], '炮台图标四角必须透明，禁止自带卡框');
 });
 
+test('薇薇安战场炮台拆为透明俯视底座与横向旋转炮筒', () => {
+    const base = parsePng('turret_base_vivian.png', true);
+    const barrel = parsePng('turret_barrel_vivian.png', true);
+    assert.equal(base.width, base.height, '固定底座应为正方形俯视构图');
+    assert.ok(base.width >= 512, '炮台底座源图分辨率不足');
+    assert.ok(barrel.width > barrel.height, '旋转炮筒应保持横向构图');
+    assert.ok(barrel.height >= 512, '炮台炮筒源图分辨率不足');
+    assert.deepEqual(cornerAlpha(base), [0, 0, 0, 0], '炮台底座四角必须透明');
+    assert.deepEqual(cornerAlpha(barrel), [0, 0, 0, 0], '炮台炮筒四角必须透明');
+});
+
 test('爆炸贴图尺寸与伤害范围解耦并设上限,避免后期遮住半屏', () => {
     const src = fs.readFileSync(path.join(process.cwd(), 'assets', 'scripts', 'systems', 'ParticleManager.ts'), 'utf8');
     assert.match(src, /Math\.min\(2\.4, Math\.max\(0\.65, radius \/ 70\)\)/);

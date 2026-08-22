@@ -31,6 +31,7 @@ export class HUD extends Component {
     private _hpBarFg!:     Graphics;
     private _shieldBarFg!: Graphics;
     private _hpLabel!:     Label;
+    private _shieldLabel!: Label;
     private _goldLabel!:   Label;
     private _waveLabel!:   Label;
     private _bossBarRoot!: Node;
@@ -39,8 +40,8 @@ export class HUD extends Component {
     private _skillRings:  { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
 
     private readonly BAR_W   = 240;
-    private readonly BAR_H   = 14;
-    private readonly SHIELD_H = 6;
+    private readonly BAR_H   = 16;
+    private readonly SHIELD_H = 12;
     private readonly BOSS_W  = 460;
     private readonly BOSS_H  = 24;
     private readonly SKILL_R = 28;
@@ -56,13 +57,13 @@ export class HUD extends Component {
     // ── builders ──────────────────────────────────────────────
 
     private _buildHpBar() {
-        const panel = this._mkNode('VitalsPanel', -510, 309);
+        const panel = this._mkNode('VitalsPanel', -510, 310);
         const panelG = panel.addComponent(Graphics);
         panelG.fillColor = new Color(5, 10, 16, 218);
-        panelG.fillRect(-8, -7, this.BAR_W + 28, 48);
+        panelG.fillRect(-8, -8, this.BAR_W + 28, 48);
         panelG.strokeColor = new Color(80, 125, 155, 180);
         panelG.lineWidth = 1;
-        panelG.rect(-8, -7, this.BAR_W + 28, 48); panelG.stroke();
+        panelG.rect(-8, -8, this.BAR_W + 28, 48); panelG.stroke();
 
         const bg = this._mkNode('HpBg', -500, 330);
         const bgG = bg.addComponent(Graphics);
@@ -77,15 +78,25 @@ export class HUD extends Component {
         const shieldBgG = shieldBg.addComponent(Graphics);
         shieldBgG.fillColor = new Color(18, 30, 44, 225);
         shieldBgG.fillRect(0, 0, this.BAR_W, this.SHIELD_H);
+        shieldBgG.strokeColor = new Color(55, 90, 120, 230);
+        shieldBgG.lineWidth = 1;
+        shieldBgG.rect(0, 0, this.BAR_W, this.SHIELD_H); shieldBgG.stroke();
         this._shieldBarFg = this._mkNode('ShieldFg', -500, 320).addComponent(Graphics);
 
-        const ln = this._mkNode('HpLbl', -490, 302);
-        ln.addComponent(UITransform).setContentSize(this.BAR_W, 20);
+        // 数值直接归属各自的条，不再另起一行挤出面板或覆盖外框。
+        const ln = this._mkNode('HpLbl', -380, 338);
+        ln.addComponent(UITransform).setContentSize(this.BAR_W - 12, this.BAR_H);
         this._hpLabel = ln.addComponent(Label);
-        this._hpLabel.fontSize = 13;
-        this._hpLabel.horizontalAlign = 0;
-        this._hpLabel.color = new Color(210, 210, 210, 255);
+        this._hpLabel.fontSize = 12;
+        this._hpLabel.color = new Color(245, 250, 245, 255);
         styleLabel(this._hpLabel);
+
+        const sn = this._mkNode('ShieldLbl', -380, 326);
+        sn.addComponent(UITransform).setContentSize(this.BAR_W - 12, this.SHIELD_H);
+        this._shieldLabel = sn.addComponent(Label);
+        this._shieldLabel.fontSize = 10;
+        this._shieldLabel.color = new Color(225, 242, 255, 255);
+        styleLabel(this._shieldLabel);
     }
 
     private _buildGoldDisplay() {
@@ -192,8 +203,10 @@ export class HUD extends Component {
             sf.fillColor = new Color(80, 170, 255, 235);
             sf.fillRect(0, 0, this.BAR_W * sR, this.SHIELD_H);
         }
-        this._hpLabel.string = `生命 ${Math.ceil(d.hp)}/${Math.round(d.maxHp)}` +
-            (d.maxShield > 0 ? `  |  护盾 ${Math.ceil(d.shield)}/${Math.round(d.maxShield)}` : '');
+        this._hpLabel.string = `生命  ${Math.ceil(d.hp)} / ${Math.round(d.maxHp)}`;
+        this._shieldLabel.string = d.maxShield > 0
+            ? `护盾  ${Math.ceil(d.shield)} / ${Math.round(d.maxShield)}`
+            : '护盾  —';
     }
 
     private _refreshGold(gold: number) {

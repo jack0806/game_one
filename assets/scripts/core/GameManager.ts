@@ -3,7 +3,7 @@ import {
     UITransform, director, game, Label, Sprite, view, ResolutionPolicy
 } from 'cc';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
-import { Vec, Rng } from './MathUtils';
+import { Vec, Rng, clamp } from './MathUtils';
 import { applyArtSprite, SpriteNodePool } from './SpriteUtils';
 import { styleLabel } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
@@ -54,7 +54,8 @@ export class GameManager extends Component {
     private _gameGfx!:       Graphics;   // entities draw here
     private _particleGfx!:   Graphics;   // particles draw here
     private _coinPool!:      SpriteNodePool;
-    private _turretPool!:    SpriteNodePool;
+    private _turretBasePool!:   SpriteNodePool;
+    private _turretBarrelPool!: SpriteNodePool;
     /** One-shot art FX (explosion/heal/poison/cold_arrow/hex_ring), synced from ParticleManager.spriteFx each frame. */
     private _fxPool!:        SpriteNodePool;
 
@@ -174,7 +175,8 @@ export class GameManager extends Component {
         this._gameLayer.addComponent(UITransform)
             .setContentSize(CANVAS_W, CANVAS_H);
         this._coinPool = new SpriteNodePool(this._gameLayer, 80, 'GoldCoin', [30, 30]);
-        this._turretPool = new SpriteNodePool(this._gameLayer, 24, 'TurretArt', [48, 48]);
+        this._turretBasePool = new SpriteNodePool(this._gameLayer, 24, 'TurretBase', [52, 52]);
+        this._turretBarrelPool = new SpriteNodePool(this._gameLayer, 24, 'TurretBarrel', [72, 48]);
 
         // ParticleLayer — on top of entities
         this._particleLayer = new Node('ParticleLayer');
@@ -401,7 +403,8 @@ export class GameManager extends Component {
         this._bullets?.reset();
         this._fxPool?.releaseAll();
         this._coinPool?.releaseAll();
-        this._turretPool?.releaseAll();
+        this._turretBasePool?.releaseAll();
+        this._turretBarrelPool?.releaseAll();
         this._floatText?.clear();
     }
 
@@ -583,7 +586,8 @@ export class GameManager extends Component {
     private _drawEntities() {
         const g = this._gameGfx;
         g.clear();
-        this._turretPool.releaseAll();
+        this._turretBasePool.releaseAll();
+        this._turretBarrelPool.releaseAll();
 
         // Background is now the _bgSprite layer (bg_chapter<N>, set in _updateBgForChapter()),
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
@@ -663,22 +667,42 @@ export class GameManager extends Component {
                 continue;
             }
 
-            // 使用已有的高质量3/4视角机械炮台正式美术作为战场主体；程序层只留
-            // 接触阴影。原先在20px范围内画六边形+直线炮管，即使分层仍会读成
-            // 扁平图标。Sprite 保留原始方形画布比例并实时朝向目标。
-            const art = this._turretPool.acquire();
-            if (!art) continue;
-            const sp = art.getComponent(Sprite)!;
-            sp.sizeMode = Sprite.SizeMode.CUSTOM;
-            sp.trim = false;
-            sp.color = t.kind === 'orbitTurret'
+            // 炮台按“固定俯视底座 + 独立旋转炮筒”拆层。底座不旋转、不漂浮，
+            // 只有炮筒跟随瞄准角，避免3/4视角整座玩具在地面打转的违和感。
+            const base = this._turretBasePool.acquire();
+            const barrel = this._turretBarrelPool.acquire();
+            if (!base || !barrel) {
+                if (base) this._turretBasePool.release(base);
+                if (barrel) this._turretBarrelPool.release(barrel);
+                continue;
+            }
+            const tint = t.kind === 'orbitTurret'
                 ? new Color(195, 245, 255, 255)
                 : new Color(255, 255, 255, 255);
-            applyArtSprite(sp, 'ui_icon_summon');
-            const size = t.kind === 'orbitTurret' ? 38 : 54;
-            art.getComponent(UITransform)!.setContentSize(size, size);
-            art.setPosition(Math.round(tx), Math.round(ty + 5 + Math.sin(this._visualTime * 4 + t.x) * 1.2), 0);
-            art.setRotationFromEuler(0, 0, -(t._aim ?? 0) * 180 / Math.PI);
+            const baseSize = t.kind === 'orbitTurret' ? 34 : 52;
+            const barrelW = t.kind === 'orbitTurret' ? 48 : 72;
+            const barrelH = t.kind === 'orbitTurret' ? 32 : 48;
+
+            const baseSp = base.getComponent(Sprite)!;
+            baseSp.sizeMode = Sprite.SizeMode.CUSTOM;
+            baseSp.trim = false;
+            baseSp.color = tint;
+            applyArtSprite(baseSp, 'turret_base_vivian');
+            base.getComponent(UITransform)!.setContentSize(baseSize, baseSize);
+            base.setPosition(Math.round(tx), Math.round(ty), 0);
+
+            const barrelSp = barrel.getComponent(Sprite)!;
+            barrelSp.sizeMode = Sprite.SizeMode.CUSTOM;
+            barrelSp.trim = false;
+            barrelSp.color = tint;
+            applyArtSprite(barrelSp, 'turret_barrel_vivian');
+            const barrelTransform = barrel.getComponent(UITransform)!;
+            barrelTransform.setContentSize(barrelW, barrelH);
+            // 生成图的机械枢轴位于原画宽度约36%，把锚点放到枢轴后旋转时
+            // 炮管围绕底座中心转动，而不是围绕图片几何中心公转。
+            barrelTransform.setAnchorPoint(0.36, 0.5);
+            barrel.setPosition(Math.round(tx), Math.round(ty), 0);
+            barrel.setRotationFromEuler(0, 0, -(t._aim ?? 0) * 180 / Math.PI);
         }
 
         // Enemies — Sprite node carries the visual, Graphics only draws the HP bar
@@ -1260,12 +1284,23 @@ export class GameManager extends Component {
         const armyActive = this._augMgr.active.filter(a => (a.tags?.indexOf('turret') ?? -1) >= 0).length >= 3;
         const spawnCount  = armyActive ? 3 : 1;
         const fireInterval = armyActive ? 0.6 / 1.5 : 0.6;
+        const deployAim = Math.atan2(this._input.mouse.y - player.y, this._input.mouse.x - player.x);
+        const existingDeployed = this._turrets.filter(t => t.kind === 'turret' && !t.followOwner).length;
         for (let n = 0; n < spawnCount; n++) {
             const followIndex = this._turrets.filter(t => t.followOwner).length;
             const followSide = followIndex % 2 === 0 ? -1 : 1;
+            // 部署炮台沿瞄准方向扇形落位，避免随机刷在玩家脚下。重复部署时
+            // 轻微错开角度；炮台军团一次生成3座时天然展开为左/中/右阵列。
+            const fanIndex = n - (spawnCount - 1) / 2;
+            const deployAngle = deployAim + fanIndex * 0.62 + existingDeployed * 0.18;
+            const deployDistance = 68;
             const t: any = {
-                x: player.x + (followOwner ? followSide * 52 : (Math.random() - 0.5) * 100),
-                y: player.y + (followOwner ? 34 : (Math.random() - 0.5) * 100),
+                x: followOwner
+                    ? player.x + followSide * 52
+                    : clamp(player.x + Math.cos(deployAngle) * deployDistance, 28, CANVAS_W - 28),
+                y: followOwner
+                    ? player.y + 34
+                    : clamp(player.y + Math.sin(deployAngle) * deployDistance, 28, PLAYFIELD_BOTTOM - 28),
                 r: 14, alive: true, _timer: 0,
                 kind: 'turret', _aim: 0,
                 dmg: player.getDamage(this) * dmgMult * turretMult,
