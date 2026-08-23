@@ -227,3 +227,46 @@ test('持续伤害保持小数DPS且血量归零时正常结算死亡', () => {
     assert.equal(e.hp, 0);
     assert.equal(game.kills, 1);
 });
+
+// ---- 远程毒射手(archer) ----------------------------------------
+
+test('archer为远程单位:禁用近战并配置射程/保持距离', () => {
+    const game = makeMockGame();
+    const e = makeEnemy('archer', 1, game);
+    assert.equal(e.meleeRange, 0, '远程单位应禁用近战攻击');
+    assert.ok(e.rangedRange > 0, '应配置远程射程');
+    assert.ok(e.rangedKeepDist > 0, '应配置保持距离');
+});
+
+test('archer在射程内冷却完毕发射poison敌弹,并进入新一轮冷却', () => {
+    const game = makeMockGame();
+    game.enemyBullets = [];
+    const e = makeEnemy('archer', 1, game);
+    e.x = 400; e.y = 360;
+    const player = makePlayer({ x: 400, y: 360 });
+    // 拉到保持距离的舒适区内(距离300左右),停步开火
+    player.x = 400; player.y = 60;
+    const shots = () => game.enemyBullets.filter(b => b.enemyFx === 'poison').length;
+
+    e._rangedCd = 0; // 清掉初始随机冷却,第一帧即可开火
+    e.update(0.016, player, game);
+    assert.equal(shots(), 1, '冷却完毕应在射程内立即发射毒弹');
+    // 2.2秒冷却内不应再次开火
+    for (let i = 0; i < 100; i++) e.update(0.016, player, game); // ~1.6s
+    assert.equal(shots(), 1, '冷却期间不应重复开火');
+    const b = game.enemyBullets.find(x => x.enemyFx === 'poison');
+    assert.equal(b.owner, 'enemy');
+    assert.equal(b.isEnemyBullet, true);
+});
+
+test('archer被玩家贴脸时后撤而不是继续接近', () => {
+    const game = makeMockGame();
+    game.enemyBullets = [];
+    const e = makeEnemy('archer', 1, game);
+    e.x = 400; e.y = 360;
+    const player = makePlayer({ x: 400, y: 300 }); // 距离60 < keepDist-60=240,算贴脸
+    game.enemyBullets = [];
+    const y0 = e.y;
+    e.update(0.5, player, game);
+    assert.ok(e.y > y0, '玩家贴脸时应沿远离方向后撤(y增大)');
+});

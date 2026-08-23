@@ -245,7 +245,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       onEquip(p, _g, mult = 1) { p.stats._overloadCheck = true; p.stats.speed *= (1 - 0.08 * mult); } },
 
     { id: 'turret_army', rarity: 'orange', icon: 'summon', name: '炮台军团', tags: ['turret', 'summon'],
-      desc: '持有≥3炮台类词条时，炮台数量×3，攻速×1.5',
+      desc: '持有炮台类词条时，新召唤的炮台数量×3，攻速×1.5',
       onEquip(p, game, _mult = 1) { if (game.checkTurretArmy) game.checkTurretArmy(p); } },
 
     { id: 'barrage_nova', rarity: 'orange', icon: 'pierce', name: '弹幕宇宙', tags: ['bullet', 'barrage'], attackType: 'ranged',

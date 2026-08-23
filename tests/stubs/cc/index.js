@@ -111,7 +111,19 @@ const resources = {
     load(_path, _type, cb) { cb && cb(null, new SpriteFrame()); },
 };
 
+// SaveSystem 依赖的 sys.localStorage 内存桩：跨测试保留数据，
+// 测试需要干净状态时调用 sys.localStorage._clear()。
+const _storage = new Map();
+const sys = {
+    localStorage: {
+        getItem: (k) => (_storage.has(k) ? _storage.get(k) : null),
+        setItem: (k, v) => { _storage.set(String(k), String(v)); },
+        removeItem: (k) => { _storage.delete(k); },
+        _clear: () => { _storage.clear(); },
+    },
+};
+
 module.exports = {
     _decorator, Component, Node, Sprite, Color, UITransform, SpriteFrame, AudioClip, AudioSource,
-    resources, input, Input, KeyCode, Vec2, EventKeyboard, EventMouse,
+    resources, input, Input, KeyCode, Vec2, EventKeyboard, EventMouse, sys,
 };

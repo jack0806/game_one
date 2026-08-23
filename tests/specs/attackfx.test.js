@@ -192,8 +192,8 @@ test('Boss接触攻击前摇结束时触发大幅剑气(强度1.8)', () => {
 test('狂战士Q冲锋从起点斩出长刃剑气(长度200,强度1.35)', () => {
     const player = makeReik();
     player.x = 100; player.y = 100;
+    player.facingX = 0; player.facingY = 1; // 朝+y方向冲锋（技能沿角色朝向释放）
     const game = recordingGame();
-    game.input = { mouse: { x: 100, y: 300 } }; // 向+y方向冲锋
     game.enemies = [];
     CHARACTERS.reik.qSkill(player, game);
     assert.equal(game.meleeCalls.length, 1);
@@ -210,8 +210,8 @@ test('狂战士Q冲锋从起点斩出长刃剑气(长度200,强度1.35)', () => 
 test('狂战士Q冲锋:路径中点旁的敌人也受伤(旧版只判终点圆,冲过头顶不伤害)', () => {
     const player = makeReik();
     player.x = 0; player.y = 0;
+    player.facingX = 1; player.facingY = 0; // 朝+x冲200（技能沿角色朝向释放）
     const game = makeMockGame();
-    game.input = { mouse: { x: 200, y: 0 } }; // 向+x冲200
     const mid = makeEnemy();
     mid.x = 100; mid.y = 30; // 路径中点旁,垂直距离30 ≤ radius+28
     const far = makeEnemy();

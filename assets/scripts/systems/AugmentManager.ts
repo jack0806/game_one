@@ -33,8 +33,10 @@ export class AugmentManager {
                     if (!usedIds.has(card.id)) { usedIds.add(card.id); results.push(card); continue; }
                 }
             }
-            // 普通词条（按角色攻击方式过滤掉不适配的纯弹道词条）
-            const avail = this._filterForChar(AUGMENT_DB.filter(a => !usedIds.has(a.id) && !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3)), charId);
+            // 普通词条（按角色攻击方式过滤掉不适配的纯弹道词条）。
+            // 已装备的同名词条一律排除：强化已有词条走"升级卡"路径，
+            // 否则同名会二次装备，M面板出现两行重复词条。
+            const avail = this._filterForChar(AUGMENT_DB.filter(a => !usedIds.has(a.id) && !this.active.find(x => x.id === a.id)), charId);
             const card = this._rollOneFromPool(avail, weights, charId);
             if (card) { usedIds.add(card.id); results.push({ ...card, tier: 1 }); }
         }
@@ -91,7 +93,16 @@ export class AugmentManager {
                 return true;
             }
         }
-        if (this.active.length >= this.maxSlots) return false;
+        // 满员不再静默失败（旧版直接 return false：玩家选满 6 个后再选新词条毫无
+        // 效果、也不出现在M面板）。改为替换最早装备的词条(FIFO)，新选择一定生效；
+        // 浮字告知被换下的词条，给玩家明确反馈。
+        if (this.active.length >= this.maxSlots) {
+            const removed = this.active.shift() as AugmentDef;
+            game?.floatingText?.spawn?.(
+                player?.x ?? 0, (player?.y ?? 0) - 70,
+                `词条栏已满：${removed.name} 被 ${aug.name} 替换`, '#ffaa44', 15, true,
+            );
+        }
         const inst: AugmentDef = { ...aug, tier: 1 };
         this.active.push(inst);
         if (inst.onEquip) inst.onEquip(player, game, 1);
@@ -102,7 +113,7 @@ export class AugmentManager {
         if (!_fromChaosBonus && player?.stats?.chaosBonus && this.active.length < this.maxSlots) {
             const bonus = this._rollOneFromPool(
                 this._filterForChar(
-                    AUGMENT_DB.filter(a => !this.active.find(x => x.id === a.id && (x.tier || 1) >= 3)),
+                    AUGMENT_DB.filter(a => !this.active.find(x => x.id === a.id)),
                     player?.charId,
                 ),
                 { blue: 65, purple: 30, orange: 5, gold: 1 },

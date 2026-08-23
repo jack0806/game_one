@@ -25,6 +25,7 @@
     "assets/scripts/systems/AudioManager.ts",
     "assets/scripts/systems/ParticleManager.ts",
     "assets/scripts/systems/WaveManager.ts",
+    "assets/scripts/systems/SaveSystem.ts",
     "assets/scripts/entities/EnemyBase.ts",
     "assets/scripts/entities/BossController.ts",
     "assets/scripts/entities/BulletController.ts",

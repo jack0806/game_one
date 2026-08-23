@@ -27,6 +27,9 @@ export interface CharDef {
     unlockHint?: string;
     attackType: 'ranged' | 'melee';
     attackRange: number;
+    /** 大招R固定冷却秒数。按大招强度分档15-20s：强爆发/全场伤害20s，
+     *  功能型18s，持续输出17s，依赖已装备词条(空装弱)15s。 */
+    ultCd: number;
     desc: string;
     skills: { q: string; e: string; r: string };
     /** 技能环(Q/E/R)显示的图标key，取自 ui_icon_* 共享图标模板集（见 ArtRemap 同名key）。 */
@@ -42,14 +45,15 @@ export const CHARACTERS: Record<string, CharDef> = {
     kai: {
         id: 'kai',
         name: '炮击手·凯尔', icon: '⚙️', color: '#00ffcc', unlocked: true,
-        attackType: 'ranged', attackRange: 550,
+        attackType: 'ranged', attackRange: 550, ultCd: 20,
         desc: '穿甲义肢炮，子弹额外穿透1个敌人',
         skills: { q: '强化射击 — 发射超大穿透弹，伤害×4', e: '弹幕模式 — 4秒内三连发，无法移动', r: '核心过载 — 全方向30发爆炸弹+8秒伤害×2' },
         skillIcons: { q: 'pierce', e: 'bounce', r: 'explosion' },
         stats: { maxHp: 120, speed: 330, damage: 25, attackSpeed: 2, armor: 10, critRate: 0.05, critDmg: 0.5, pierce: 1 },
         passive(p: any) { p.stats.pierce += 1; },
         qSkill(p: any, game: any) {
-            const [nx, ny] = Vec.normalize(game.input.mouse.x - p.x, game.input.mouse.y - p.y);
+            // 方向性技能沿角色朝向释放（facing 随移动输入更新），不再追鼠标
+            const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 12, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
             game.particles.explode(p.x, p.y, '#ff8800', 20);
@@ -71,7 +75,7 @@ export const CHARACTERS: Record<string, CharDef> = {
     vivian: {
         id: 'vivian',
         name: '工程师·薇薇安', icon: '🤖', color: '#00aaff', unlocked: true,
-        attackType: 'ranged', attackRange: 550,
+        attackType: 'ranged', attackRange: 550, ultCd: 17,
         desc: '炮台类词条效果×1.5，始终有2个跟随炮台',
         skills: { q: '部署炮台 — 召唤强化炮台持续攻击', e: '网络连接 — 所有炮台锁定最近敌人', r: '炮台风暴 — 召唤6座轨道炮台环绕旋转' },
         skillIcons: { q: 'summon', e: 'lightning', r: 'summon' },
@@ -94,14 +98,15 @@ export const CHARACTERS: Record<string, CharDef> = {
     reik: {
         id: 'reik',
         name: '狂战士·雷克', icon: '⚔️', color: '#ff4444', unlocked: true,
-        attackType: 'melee', attackRange: 70,
+        attackType: 'melee', attackRange: 70, ultCd: 18,
         desc: '每损失10% HP，伤害+8%（最高+80%）；攻击吸血5%',
         skills: { q: '怒冲 — 向前冲刺200距离并击飞沿途敌人', e: '战吼 — 10秒攻速+50%/伤害+30%', r: '死亡意志 — 牺牲半血换取10秒无敌' },
         skillIcons: { q: 'speed', e: 'fire', r: 'shield' },
         stats: { maxHp: 200, speed: 300, damage: 30, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
         passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.05; },
         qSkill(p: any, game: any) {
-            const [nx, ny] = Vec.normalize(game.input.mouse.x - p.x, game.input.mouse.y - p.y);
+            // 冲锋方向 = 角色朝向（不再追鼠标）
+            const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const startX = p.x, startY = p.y;
             p.x = clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius);
             p.y = clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius);
@@ -140,7 +145,7 @@ export const CHARACTERS: Record<string, CharDef> = {
     olia: {
         id: 'olia',
         name: '时空行者·奥莉亚', icon: '🕰️', color: '#aaddff', unlocked: true,
-        attackType: 'ranged', attackRange: 550,
+        attackType: 'ranged', attackRange: 550, ultCd: 18,
         desc: '预知直觉：可预览下次词条选项',
         skills: { q: '时间倒流 — 回到上次记录位置并恢复HP', e: '时间膨胀 — 范围减速敌人+3秒攻速×2', r: '时空裂缝 — 冻结全场敌人5秒' },
         skillIcons: { q: 'heart', e: 'speed', r: 'ice' },
@@ -170,7 +175,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'graf',
         name: '混沌傀儡·格雷夫', icon: '🌀', color: '#cc44ff', unlocked: false,
         unlockHint: '无尽模式撑过第50波',
-        attackType: 'ranged', attackRange: 550,
+        attackType: 'ranged', attackRange: 550, ultCd: 15,
         desc: '获得词条时额外随机一个，混沌本质',
         skills: { q: '混沌脉冲 — 随机触发爆炸/传送/吸引/闪电之一', e: '词条重组 — 移除最后词条并随机获得2个新词条', r: '混沌爆发 — 同时触发所有词条的击杀效果' },
         skillIcons: { q: 'chaos', e: 'chaos', r: 'chaos' },
@@ -180,7 +185,11 @@ export const CHARACTERS: Record<string, CharDef> = {
             const effects = ['explode', 'lightning', 'attract', 'teleport'];
             const ef = Rng.pick(effects);
             if (ef === 'explode') game.spawnExplosion(p, p.x, p.y, p.stats.damage * 3, 120);
-            else if (ef === 'teleport') { p.x = game.input.mouse.x; p.y = game.input.mouse.y; }
+            else if (ef === 'teleport') {
+                // 传送沿角色朝向闪现260距离（不再跳鼠标位置）
+                p.x = clamp(p.x + (p.facingX ?? 1) * 260, 16, CANVAS_W - 16);
+                p.y = clamp(p.y + (p.facingY ?? 0) * 260, 16, PLAYFIELD_BOTTOM - 16);
+            }
             else if (ef === 'attract') game.attractEnemies(p.x, p.y, 200);
             else if (ef === 'lightning') game.laserSweep(p);
             game.particles.hexActivate(p.x, p.y, '#cc44ff');
@@ -208,14 +217,15 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'liana',
         name: '冰霜狙击手·利亚娜', icon: '🔵', color: '#00ccff', unlocked: false,
         unlockHint: '通关噩梦难度',
-        attackType: 'ranged', attackRange: 550,
+        attackType: 'ranged', attackRange: 550, ultCd: 20,
         desc: '低攻速超高单发，冻结要害×2.5伤害',
         skills: { q: '冰晶穿刺 — 发射无限穿透冰弹并冻结命中目标', e: '冰场领域 — 在鼠标位置创造减速冰冻区域', r: '绝对零度 — 冻结全场5秒并对所有敌人造成×3伤害' },
         skillIcons: { q: 'pierce', e: 'ice', r: 'ice' },
         stats: { maxHp: 80, speed: 285, damage: 120, attackSpeed: 0.5, armor: 5, critRate: 0.15, critDmg: 1.0, pierce: 0 },
         passive(p: any) { p.stats.freezeBonus = 2.5; },
         qSkill(p: any, game: any) {
-            const [nx, ny] = Vec.normalize(game.input.mouse.x - p.x, game.input.mouse.y - p.y);
+            // 方向性技能沿角色朝向释放（不再追鼠标）
+            const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const b = game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId });
             b.onHitCb = (_bullet: any, enemy: any) => {
                 enemy.slowMult = 0.3; enemy.frozen = Math.max(enemy.frozen || 0, 0.8);
@@ -224,7 +234,10 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.particles.hexActivate(p.x, p.y, '#00ccff');
         },
         eSkill(p: any, game: any) {
-            const cx = game.input.mouse.x, cy = game.input.mouse.y;
+            // 放置类技能：冰场释放在敌人最密集的位置；场上没有敌人时退回鼠标位置
+            const c  = game.getEnemyClusterPoint?.();
+            const cx = c ? c.x : game.input.mouse.x;
+            const cy = c ? c.y : game.input.mouse.y;
             game.spawnIceZone(cx, cy, 100, 12);
             game.particles.hexActivate(cx, cy, '#00ccff');
         },

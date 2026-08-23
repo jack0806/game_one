@@ -51,6 +51,10 @@ export class EnemyBase {
     deathExplode = false;
     label       = '';
     meleeRange  = 48;
+    /** 远程单位（>0 时启用）：射程内冷却完毕朝玩家发射毒弹，并与玩家保持距离。 */
+    rangedRange    = 0;
+    rangedKeepDist = 300;
+    private _rangedCd = 0;
     chapter     = 1;
     /** 近战前摇公开给渲染层：>0 时绘制危险圈/攻击方向，归零后才结算伤害。 */
     attackWindup    = 0;
@@ -120,6 +124,16 @@ export class EnemyBase {
                 this.visualScale = 1.25;
                 // 没有独立精英美术，复用grunt贴图+粉紫色调区分。
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ff88ff'; break;
+            case 'archer':
+                this.color = '#88ff44'; this.glowColor = '#44cc00';
+                this.maxHp = Math.floor(70 * scale); this.speed = 60; this.damage = 12; this.radius = 18;
+                this.goldValue = 12; this.label = '毒射手'; this.attackWindupMax = 0.4;
+                this.meleeRange = 0;
+                this.rangedRange = 460; this.rangedKeepDist = 300;
+                this._rangedCd = Rng.float(0.8, 1.6);
+                this.visualScale = 1.20;
+                // 无独立美术：复用grunt贴图+绿色调区分（与elite/miniboss同套路）。
+                this.spriteKey = 'enemy_grunt'; this.tintColor = '#7dff5f'; break;
             case 'miniboss':
                 this.isMiniBoss = true;
                 this.color = '#aa44ff'; this.glowColor = '#6600cc';
@@ -197,12 +211,15 @@ export class EnemyBase {
         game.score    = (game.score || 0) + (this.isBoss ? 500 : this.isElite ? 50 : 10);
         game.kills    = (game.kills || 0) + 1;
         game.comboCount = (game.comboCount || 0) + 1;
+        // 成就存档统计：Boss 击杀数、单局最高连击（GameManager 局末读取）
+        if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
+        if (game.comboCount > (game.maxCombo || 0)) game.maxCombo = game.comboCount;
         game.comboTimer = 3;
         game.particles?.explode(this.x, this.y, this.color, this.isBoss ? 80 : 30);
         game.audio?.playSfx?.('enemy_die', this.isBoss ? 0.82 : 0.55);
         if (this.isBoss) game.audio?.playSfx?.('explode', 0.82);
         game.augmentManager?.dispatchKill(attacker, this, this.maxHp, game);
-        attacker?.addUltCharge?.(0.12);
+        // 大招R已改为固定30秒冷却(见PlayerController.tick)，击杀不再提供充能。
         // 变异：死亡爆炸
         if (game._mutationMods?.deathExplode || this.deathExplode) {
             game.spawnExplosion?.(attacker, this.x, this.y, this.damage * 2, 60);
@@ -268,11 +285,30 @@ export class EnemyBase {
             return;
         }
 
-        // 向玩家移动
+        // 向玩家移动；远程单位改为与玩家拉扯保持距离，并在射程内发射毒弹
         const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
         const spd = this.speed * (this.frozen > 0 ? 0 : this.slowMult) * this.buffSpeedMult;
-        this.x += (dx * spd + this.knockbackX) * dt;
-        this.y += (dy * spd + this.knockbackY) * dt;
+        let mvx = dx, mvy = dy;
+        if (this.rangedRange > 0) {
+            const dist = Math.hypot(player.x - this.x, player.y - this.y);
+            if (dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }      // 太近 → 后撤
+            else if (dist <= this.rangedKeepDist + 40) { mvx = 0; mvy = 0; }    // 舒适区 → 停步开火
+            if (this._rangedCd > 0) {
+                this._rangedCd -= dt;
+            } else if (player.alive && dist <= this.rangedRange && this.frozen <= 0) {
+                const a = Math.atan2(player.y - this.y, player.x - this.x);
+                game.enemyBullets?.push({
+                    x: this.x, y: this.y,
+                    vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
+                    damage: this.damage * this.buffDmgMult, radius: 9,
+                    color: '#88ff44', life: 3, lifeTime: 3,
+                    owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison',
+                });
+                this._rangedCd = 2.2;
+            }
+        }
+        this.x += (mvx * spd + this.knockbackX) * dt;
+        this.y += (mvy * spd + this.knockbackY) * dt;
         this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
         this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
 

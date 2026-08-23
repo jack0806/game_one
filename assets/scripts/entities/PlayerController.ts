@@ -45,6 +45,10 @@ export class PlayerController extends Component {
     y       = 360;
     alive   = true;
     color   = '#00ffcc';
+    /** 角色朝向（单位向量）：随移动输入更新，站定时保持最后朝向；
+     *  方向性技能（Q冲锋/穿刺弹等）一律沿朝向释放，不再追鼠标。 */
+    facingX = 1;
+    facingY = 0;
 
     // timers
     private _shootTimer  = 0;
@@ -215,6 +219,12 @@ export class PlayerController extends Component {
         if (!this.alive || this._buffs.some(b => b.mods.noMove)) return;
         let mx = input.moveX, my = input.moveY;
         if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
+        // 有移动输入时更新朝向（对角线已归一，这里再稳一次防御性归一）
+        if (mx !== 0 || my !== 0) {
+            const len = Math.hypot(mx, my) || 1;
+            this.facingX = mx / len;
+            this.facingY = my / len;
+        }
         const spd = this.getSpeed();
         this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
         this.y = clamp(this.y + my * spd * dt, this.radius, PLAYFIELD_BOTTOM - this.radius);
@@ -228,6 +238,11 @@ export class PlayerController extends Component {
         this._qCd         = Math.max(0, this._qCd - dt * (1 + this.stats.cdReduction));
         this._eCd         = Math.max(0, this._eCd - dt * (1 + this.stats.cdReduction));
         this._cosmosCd    = Math.max(0, this._cosmosCd - dt);
+        // 大招R为固定冷却制，冷却时长按角色大招强度分档(见 CharacterDB.ultCd，
+        // 强爆发20s/功能型18s/依赖词条15s)。ultChargeRate(储能核心等词条)沿用
+        // "充能速度"语义，等比缩短恢复时间。
+        const ultCd = this._charDef?.ultCd || 20;
+        this._rCharge     = Math.min(1, this._rCharge + dt / ultCd * (this.stats.ultChargeRate || 1));
 
         // Buff 更新
         for (let i = this._buffs.length - 1; i >= 0; i--) {
@@ -284,7 +299,11 @@ export class PlayerController extends Component {
             game.audio?.playSfx?.('skill_e');
             let eName = this._charDef.skills.e.split('—')[0].trim();
             if (this.stats.eSkillUpgrade === 'blackhole') {
-                const bx = input.mouse.x, by = input.mouse.y;
+                // 放置类技能：黑洞直接释放在敌人最密集的位置；
+                // 场上没有敌人时才退回鼠标位置。
+                const cluster = game.getEnemyClusterPoint?.();
+                const bx = cluster ? cluster.x : input.mouse.x;
+                const by = cluster ? cluster.y : input.mouse.y;
                 game.attractEnemies?.(bx, by, 120);
                 game.particles?.explode(bx, by, '#aa00ff', 60);
                 for (const e of game.enemies) {
@@ -421,16 +440,13 @@ export class PlayerController extends Component {
         }
     }
 
-    // ── 终极充能（击杀时调用） ────────────────────────────
-    addUltCharge(amount = 0.15): void {
-        this._rCharge = Math.min(1, this._rCharge + amount * (this.stats.ultChargeRate || 1));
-    }
-
     // ── CD 归零（eternal_machine 词条调用） ──────────────
     resetCooldowns(): void {
         this._qCd = 0;
         this._eCd = 0;
         this._dashCd = 0;
+        // 大招R已是冷却制，"所有技能CD归零"应把大招也立即充满可用。
+        this._rCharge = 1;
     }
 
     // ── 状态快照（用于 HUD） ─────────────────────────────

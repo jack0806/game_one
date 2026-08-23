@@ -19,9 +19,11 @@ const DROP_SIDE_MARGIN = 12;
 export class Economy {
     gold  = 0;
     parts = 0;
+    /** 本局累计获得金币（含已花费），供局末存档统计成就，reset 时清零。 */
+    earnedThisRun = 0;
     private _drops: GoldDrop[] = [];
 
-    addGold(amount: number): void  { this.gold  += amount; }
+    addGold(amount: number): void  { this.gold  += amount; if (amount > 0) this.earnedThisRun += amount; }
     spendGold(amount: number): boolean {
         if (this.gold < amount) return false;
         this.gold -= amount;
@@ -62,7 +64,7 @@ export class Economy {
 
     get drops(): GoldDrop[] { return this._drops; }
 
-    reset(): void { this.gold = 0; this.parts = 0; this._drops = []; }
+    reset(): void { this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this._drops = []; }
 
     /** Alias used by GameManager / ShopUI. */
     spend(amount: number): boolean { return this.spendGold(amount); }

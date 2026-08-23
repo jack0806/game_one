@@ -61,17 +61,44 @@ test('equip新词条:加入active数组并调用onEquip(mult=1)', () => {
     assert.equal(player.stats.maxHp, 150); // 100+50
 });
 
-test('active满格(maxSlots)时equip新词条应失败返回false', () => {
+test('active满格(maxSlots)时equip新词条改为替换最旧词条(FIFO),返回true', () => {
     const am = new AugmentManager();
     am.maxSlots = 2;
     const player = makePlayer();
     const game = makeMockGame();
+    const texts = [];
+    game.floatingText = { spawn: (x, y, text) => texts.push(text) };
     am.equip(AUGMENT_DB[0], player, game);
     am.equip(AUGMENT_DB[1], player, game);
     assert.equal(am.active.length, 2);
     const ok = am.equip(AUGMENT_DB[2], player, game);
-    assert.equal(ok, false, '满格后不应能再装备新词条');
-    assert.equal(am.active.length, 2);
+    // 旧版这里静默return false：玩家选了新词条不生效也不进M面板(用户反馈的bug)。
+    // 现在满员时替换最早装备的词条，新选择一定生效。
+    assert.equal(ok, true, '满格后装备新词条应通过替换最旧词条成功');
+    assert.equal(am.active.length, 2, '替换后词条数不应超过maxSlots');
+    assert.deepEqual(am.active.map(a => a.id), [AUGMENT_DB[1].id, AUGMENT_DB[2].id],
+        '最早装备的词条应被替换掉');
+    assert.equal(texts.length, 1, '替换时应给出一条浮字提示');
+    assert.ok(texts[0].includes(AUGMENT_DB[0].name) && texts[0].includes(AUGMENT_DB[2].name),
+        '浮字应同时提及被换下与换上的词条名');
+});
+
+test('rollOptions不再刷出已装备的词条(强化走升级卡,避免M面板出现重复行)', () => {
+    const am = new AugmentManager();
+    const player = makePlayer();
+    const game = makeMockGame();
+    // 装备两个不同词条（选无onEquip副作用的，避免污染player stats断言）
+    const first = AUGMENT_DB.find(a => a.id === 'combo_dmg');
+    const second = AUGMENT_DB.find(a => a.id === 'elite_hunt');
+    am.equip(first, player, game);
+    am.equip(second, player, game);
+    for (let i = 0; i < 200; i++) {
+        const opts = am.rollOptions(3, 20); // 高波次让所有稀有度都可能出现
+        for (const o of opts) {
+            assert.ok(o.id !== first.id && o.id !== second.id,
+                `已装备的词条(${o.id})不应再次出现在候选里`);
+        }
+    }
 });
 
 test('升级卡equip:找到已有同id词条并提升tier,调用onEquip(tierMult)', () => {

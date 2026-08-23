@@ -162,3 +162,31 @@ test('reset()清空波次状态回到初始值', () => {
     assert.equal(wm.chapter, 1);
     assert.equal(wm.state, 'idle');
 });
+
+// ---- 批次刷怪(一波3-4个,近战+远程混合) --------------------------
+
+test('普通波队列成批编组:每批3-4个且包含近战与远程(archer)', () => {
+    const game = makeMockGame();
+    const wm = new WaveManager();
+    const batches = [];
+    let clock = 0;
+    let lastFire = -1;
+    wm.onSpawnEnemy = (type, x, y) => {
+        if (clock !== lastFire) { batches.push([]); lastFire = clock; }
+        batches[batches.length - 1].push({ type, x, y });
+    };
+    wm.startWave(game); // 第1波: 6个
+    while (wm.state === 'spawning') { clock += 3.5; wm.update(3.5, game); }
+
+    assert.equal(batches.length, 2, '6个敌人应分成2批');
+    for (const b of batches) {
+        assert.ok(b.length >= 3 && b.length <= 4, `每批应3-4个,实际${b.length}`);
+        assert.ok(b.some(e => e.type === 'archer'), '每批都应含远程archer');
+        assert.ok(b.some(e => e.type !== 'archer'), '每批都应含近战');
+    }
+    // 同批成员应共享同一个边缘锚点(x或y贴近同一边缘,散布在±50内)
+    const first = batches[0];
+    const xs = first.map(e => e.x), ys = first.map(e => e.y);
+    const sameEdge = Math.max(...xs) - Math.min(...xs) <= 130 || Math.max(...ys) - Math.min(...ys) <= 130;
+    assert.ok(sameEdge, '同批成员应从同一边缘锚点附近进场');
+});

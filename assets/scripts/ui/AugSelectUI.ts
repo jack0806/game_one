@@ -51,8 +51,12 @@ export class AugSelectUI extends Component {
     show(options: AugDef[], cb: (aug: AugDef | null) => void) {
         this._options = options;
         this._cb      = cb;
-        this._populate();
+        // 三选一是模态弹窗，必须盖在商店等后创建的面板之上：每次显示都把本节点
+        // 移到 UI 层末尾（绘制顺序最顶），否则会被商店商品压在下面。
+        if (this.node.parent) this.node.setSiblingIndex(this.node.parent.children.length - 1);
+        // 先激活再填充：Graphics 在未激活节点上下发的绘制命令，激活后会丢失。
         this.node.active = true;
+        this._populate();
     }
 
     hide() { this.node.active = false; }
@@ -63,9 +67,9 @@ export class AugSelectUI extends Component {
         const n = new Node('Dimmer'); n.setParent(this.node);
         n.addComponent(UITransform).setContentSize(1280, 720);
         const g = n.addComponent(Graphics);
-        // 提高到 92% 不透明度：章节背景图细节很丰富，遮罩太透会让卡片文字被压花的
-        // 插画干扰(见用户反馈"图片不清晰")。这里只压暗背景层，卡片自身仍有独立底色。
-        g.fillColor = new Color(0, 0, 0, 235);
+        // 完全不透明遮罩：弹窗期间压住底下的商店商品/战场画面，避免文字被
+        // 压花的商品图标干扰(见用户反馈"移到上面 为不透明模式")。
+        g.fillColor = new Color(0, 0, 0, 255);
         g.fillRect(-640, -360, 1280, 720);
     }
 
@@ -173,12 +177,11 @@ export class AugSelectUI extends Component {
             const hex = RARITY_COLOR[aug.rarity] ?? '#888888';
             const col = Color.fromHEX(new Color(), hex);
 
-            // card background — near-opaque dark base tinted by rarity color, plus a
-            // thin rarity-colored tint layer on top. 28/255(~11%) alpha let the busy
-            // chapter art bleed straight through the text (用户反馈"图片不清晰"的根因之一);
-            // 210/255 gives a solid readable card while still hinting the rarity color.
+            // card background — fully opaque dark base tinted by rarity color, plus a
+            // thin rarity-colored tint layer on top. 半透明底会让商店商品/战场画面从
+            // 文字底下透出来(用户反馈"为不透明模式")，这里改为 255 全不透明。
             c.bg.clear();
-            c.bg.fillColor = new Color(18, 16, 24, 235);
+            c.bg.fillColor = new Color(18, 16, 24, 255);
             c.bg.fillRect(-this.CARD_W/2, -this.CARD_H/2, this.CARD_W, this.CARD_H);
             c.bg.fillColor = new Color(col.r, col.g, col.b, 40);
             c.bg.fillRect(-this.CARD_W/2, -this.CARD_H/2, this.CARD_W, this.CARD_H);

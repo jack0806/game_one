@@ -16,6 +16,7 @@ import { BulletPool }        from '../entities/BulletController';
 import { AugmentManager }    from '../systems/AugmentManager';
 import { WaveManager }       from '../systems/WaveManager';
 import { Economy, ShopItem } from '../systems/Economy';
+import { SaveSystem }        from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
 import { ParticleManager }   from '../systems/ParticleManager';
@@ -99,6 +100,10 @@ export class GameManager extends Component {
     kills       = 0;
     comboCount  = 0;
     comboTimer  = 0;
+    /** 本局统计（EnemyBase._die 累加），局末写入玩家档案。 */
+    bossKills   = 0;
+    maxCombo    = 0;
+    private _runRecorded = false;
 
     /** Written by WaveData mutation defs' apply(game) hooks (endless mode). */
     _mutationMods: Record<string, any> = {};
@@ -212,7 +217,8 @@ export class GameManager extends Component {
         this._waveMgr   = new WaveManager();
 
         // Wire WaveManager callbacks
-        this._waveMgr.onSpawnEnemy  = (type)  => this.spawnEnemy(type);
+        // x/y 为该批次共享的边缘出生锚点（成批刷怪），缺省时回退随机边缘
+        this._waveMgr.onSpawnEnemy  = (type, x, y)  => this.spawnEnemy(type, x, y);
         this._waveMgr.onWaveCleared = ()       => this._onWaveCleared();
     }
 
@@ -321,6 +327,7 @@ export class GameManager extends Component {
         this._deathZones = [];
         this._iceZones   = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
+        this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
         this._mutationMods = {};
         this._economy.reset();
         this._augMgr.reset();
@@ -409,6 +416,8 @@ export class GameManager extends Component {
     }
 
     private _continueAfterChapter() {
+        // 通关最终章（0-based: 最后一章 clear 后再无下一章）→ 记录胜利局档案
+        if (this._chapter + 1 >= CHAPTERS.length) this._recordRun(true);
         this._chapter++;
         this._updateBgForChapter();
         // _setState hides chapterClear panel (and everything else) before the
@@ -1248,6 +1257,28 @@ export class GameManager extends Component {
         return best;
     }
 
+    /**
+     * 敌人最密集的位置：以150为半径统计每个存活敌人的邻居数，
+     * 取邻居最多者的邻域质心。放置类技能（黑洞/冰场）释放在这里，
+     * 不再依赖鼠标指向。
+     */
+    getEnemyClusterPoint(): { x: number; y: number } | undefined {
+        const alive = this._enemies.filter(e => !e.dead && e.alive);
+        if (alive.length === 0) return undefined;
+        const R = 150;
+        let best = alive[0], bestCount = -1;
+        for (const a of alive) {
+            let count = 0;
+            for (const b of alive) if (Vec.dist(a.x, a.y, b.x, b.y) <= R) count++;
+            if (count > bestCount) { bestCount = count; best = a; }
+        }
+        let sx = 0, sy = 0, n = 0;
+        for (const b of alive) {
+            if (Vec.dist(best.x, best.y, b.x, b.y) <= R) { sx += b.x; sy += b.y; n++; }
+        }
+        return n > 0 ? { x: sx / n, y: sy / n } : { x: best.x, y: best.y };
+    }
+
     /** Return all living enemies within radius r of (x, y). */
     getEnemiesInRadius(x: number, y: number, r: number): EnemyBase[] {
         const r2 = r * r;
@@ -1270,7 +1301,28 @@ export class GameManager extends Component {
     onPlayerDeath() {
         this._particles.explode(this._player.x, this._player.y, '#40c8ff');
         this._audio.playSfx('player_die');
+        this._recordRun(false);
         this._setState('gameover');
+    }
+
+    /** 局末：把本局数据写入玩家档案(SaveSystem)，新解锁成就弹中央浮字。 */
+    private _recordRun(won: boolean) {
+        if (this._runRecorded) return; // 一局只记一次（先通关后死亡不重复计）
+        this._runRecorded = true;
+        const unlocked = SaveSystem.recordRun({
+            charId:        this._player?.charId ?? '',
+            chapter:       this._chapter + 1,
+            wave:          this._waveMgr.wave,
+            kills:         this.kills,
+            bossKills:     this.bossKills,
+            goldEarned:    this._economy.earnedThisRun,
+            maxCombo:      this.maxCombo,
+            augmentCount:  this._augMgr.active.length,
+            won,
+        });
+        for (const a of unlocked) {
+            this._floatText.spawn(CANVAS_W / 2, 180, `成就解锁：${a.icon} ${a.name}`, '#ffd655', 22, true);
+        }
     }
 
     // ── turret / clone summon system ────────────────────────────
@@ -1278,10 +1330,12 @@ export class GameManager extends Component {
     spawnTurret(player: any, dmgMult = 1, followOwner = false): void {
         // 被动：炮台类词条效果×1.5（对齐 CharacterDB.ts vivian 的 desc 描述）
         const turretMult = player.stats?.turretBonus || 1;
-        // 炮台军团(turret_army)：持有≥3个"炮台类"词条(tags含'turret')时，
-        // 数量×3、攻速×1.5（对齐 AugmentDB.ts 的 desc 描述）。每次召唤时动态判定，
-        // 不缓存 flag —— 避免"先装turret_army、后补满3个炮台词条"时永远不生效的顺序依赖问题。
-        const armyActive = this._augMgr.active.filter(a => (a.tags?.indexOf('turret') ?? -1) >= 0).length >= 3;
+        // 炮台军团(turret_army)：持有炮台类词条(tags含'turret')时，数量×3、
+        // 攻速×1.5。旧阈值是"≥3个炮台词条"，但炮台类词条只有'turret'一种且
+        // 同名词条不可重复装备，3个永远凑不齐——对任何角色都是死词条，降为≥1。
+        // 每次召唤时动态判定，不缓存 flag —— 避免"先装turret_army、后装炮台词条"
+        // 时永远不生效的顺序依赖问题。
+        const armyActive = this._augMgr.active.filter(a => (a.tags?.indexOf('turret') ?? -1) >= 0).length >= 1;
         const spawnCount  = armyActive ? 3 : 1;
         const fireInterval = armyActive ? 0.6 / 1.5 : 0.6;
         const deployAim = Math.atan2(this._input.mouse.y - player.y, this._input.mouse.x - player.x);
@@ -1406,7 +1460,8 @@ export class GameManager extends Component {
     checkTurretArmy(player: any): void {
         const turretAugCount = this._augMgr.active.filter(a => (a.tags?.indexOf('turret') ?? -1) >= 0).length;
         const wasActive = !!player.stats?._turretArmyActive;
-        const nowActive = turretAugCount >= 3;
+        // 与 spawnTurret 的动态判定保持一致：≥1 即激活（炮台类词条只有'turret'一种）。
+        const nowActive = turretAugCount >= 1;
         if (player.stats) player.stats._turretArmyActive = nowActive;
         if (nowActive && !wasActive) {
             this._floatText.spawn(CANVAS_W / 2, 200, '炮台军团激活！', '#4488ff', 22, true);

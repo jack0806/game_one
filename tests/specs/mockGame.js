@@ -22,6 +22,7 @@ function makeMockGame(overrides = {}) {
         augmentManager: { dispatchHit() {}, dispatchKill() {} },
         spawnEnemy() {},
         spawnExplosion() {},
+        onWaveCleared() {},
     };
     return Object.assign(game, overrides);
 }
@@ -29,6 +30,8 @@ function makeMockGame(overrides = {}) {
 function makePlayer(overrides = {}) {
     const player = {
         x: 0, y: 0, radius: 16, alive: true, hp: 100,
+        // 技能朝向默认朝右（方向性技能沿角色朝向释放）
+        facingX: 1, facingY: 0,
         stats: {
             critDmg: 0.5, eliteBonus: 0, maxHp: 100, pierce: 0,
             damage: 20, goldPickupRange: 60,

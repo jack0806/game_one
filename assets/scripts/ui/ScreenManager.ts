@@ -7,6 +7,7 @@ import { CHARS } from '../data/CharacterDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin } from '../core/UIStyle';
+import { SaveSystem, ACHIEVEMENTS } from '../systems/SaveSystem';
 
 const { ccclass } = _decorator;
 
@@ -24,6 +25,10 @@ type BtnCallback = () => void;
 @ccclass('ScreenManager')
 export class ScreenManager extends Component {
     private _panels: Map<ScreenName, Node> = new Map();
+    /** 成就墙行缓存（图标/名称/进度 + 行底重画），打开成就墙时刷新。 */
+    private _achRows: { g: Graphics; icon: Label; name: Label; prog: Label }[] = [];
+    private _achSummary: Label | null = null;
+    private _achWallNode: Node | null = null;
 
     // callbacks set by GameManager
     onPlayPressed?:        BtnCallback;
@@ -49,6 +54,8 @@ export class ScreenManager extends Component {
     show(name: ScreenName) {
         const p = this._panels.get(name);
         if (p) p.active = true;
+        // 每次回到首页，成就墙复位为关闭（数据在打开时才刷新）
+        if (name === 'menu') this._closeAchievementWall();
     }
 
     hide(name: ScreenName) {
@@ -103,6 +110,129 @@ export class ScreenManager extends Component {
         this._mkBtn(menuDeck, '升级  ·  即将开放', 0, 28, 330, 46, new Color(80, 118, 135, 255), true);
         this._mkBtn(menuDeck, '设置  ·  即将开放', 0, -40, 330, 46, new Color(80, 118, 135, 255), true);
         this._mkBtn(menuDeck, '退出  ·  即将开放', 0, -108, 330, 46, new Color(80, 118, 135, 255), true);
+
+        // 左下角成就入口：点击弹出成就墙（不常驻首页）
+        const achBtn = this._mkBtn(p, '🏆 成就', -545, -318, 160, 44, new Color(170, 130, 30, 255));
+        achBtn.on(Node.EventType.TOUCH_END, () => this._openAchievementWall(), this);
+
+        this._buildAchievementWall(p);
+    }
+
+    /** 成就墙弹出层：默认隐藏，点首页左下角"成就"按钮打开。
+     *  12 个成就条目（图标/名称/进度），达成金色、未达成灰色。 */
+    private _buildAchievementWall(parent: Node) {
+        const wall = new Node('AchWall'); wall.setParent(parent);
+        wall.setPosition(new Vec3(0, 0, 0));
+        this._achWallNode = wall;
+
+        // 全屏暗化遮罩：挡住底层的开始/设置等按钮防误点，点遮罩即关闭。
+        // 注意 Graphics 绘制命令必须在节点激活时下发（构建期 menu 面板尚未隐藏），
+        // 构建完成后再 wall.active=false，否则命令丢失（同 StatsPanel 的教训）。
+        const dim = new Node('Dim'); dim.setParent(wall);
+        dim.addComponent(UITransform).setContentSize(1280, 720);
+        const dg = dim.addComponent(Graphics);
+        dg.fillColor = new Color(0, 0, 0, 205);
+        dg.fillRect(-640, -360, 1280, 720);
+        dim.on(Node.EventType.TOUCH_END, () => this._closeAchievementWall(), this);
+
+        // 面板本体（居中 340×640）
+        const panel = new Node('Panel'); panel.setParent(wall);
+        panel.addComponent(UITransform).setContentSize(340, 640);
+        const g = panel.addComponent(Graphics);
+        g.fillColor = new Color(4, 10, 18, 255);
+        g.fillRect(-170, -320, 340, 640);
+        g.strokeColor = new Color(255, 214, 90, 80); g.lineWidth = 2;
+        g.rect(-170, -320, 340, 640); g.stroke();
+
+        const tn = new Node('T'); tn.setParent(panel);
+        tn.setPosition(new Vec3(0, 292, 0));
+        tn.addComponent(UITransform).setContentSize(320, 36);
+        const tl = tn.addComponent(Label);
+        tl.string = '— 成就墙 —';
+        tl.fontSize = 22; tl.color = new Color(255, 214, 90, 255);
+        styleLabel(tl);
+
+        // 右上角关闭按钮
+        const closeBtn = this._mkBtn(panel, '✕', 142, 292, 36, 30, new Color(120, 62, 58, 255));
+        closeBtn.on(Node.EventType.TOUCH_END, () => this._closeAchievementWall(), this);
+
+        const ROW_H = 44, TOP_Y = 258;
+        for (let i = 0; i < ACHIEVEMENTS.length; i++) {
+            const y = TOP_Y - i * ROW_H;
+            const rowN = new Node(`Ach_${i}`); rowN.setParent(panel);
+            rowN.setPosition(new Vec3(0, y, 0));
+            rowN.addComponent(UITransform).setContentSize(316, 40);
+            const rg = rowN.addComponent(Graphics);
+
+            const iconN = new Node('Ic'); iconN.setParent(rowN);
+            iconN.setPosition(new Vec3(-132, 0, 0));
+            iconN.addComponent(UITransform).setContentSize(30, 26);
+            const icon = iconN.addComponent(Label);
+            icon.fontSize = 16; icon.string = ACHIEVEMENTS[i].icon;
+            styleLabel(icon);
+
+            const nameN = new Node('Nm'); nameN.setParent(rowN);
+            nameN.setPosition(new Vec3(-32, 0, 0));
+            nameN.addComponent(UITransform).setContentSize(150, 26);
+            const name = nameN.addComponent(Label);
+            name.fontSize = 14; name.string = ACHIEVEMENTS[i].name;
+            styleLabel(name);
+
+            const progN = new Node('Pg'); progN.setParent(rowN);
+            progN.setPosition(new Vec3(104, 0, 0));
+            progN.addComponent(UITransform).setContentSize(104, 24);
+            const prog = progN.addComponent(Label);
+            prog.fontSize = 12; prog.string = '';
+            styleLabel(prog);
+
+            this._achRows.push({ g: rg, icon, name, prog });
+        }
+
+        const sumN = new Node('Sum'); sumN.setParent(panel);
+        sumN.setPosition(new Vec3(0, -296, 0));
+        sumN.addComponent(UITransform).setContentSize(320, 24);
+        this._achSummary = sumN.addComponent(Label);
+        this._achSummary.fontSize = 13;
+        this._achSummary.color = new Color(160, 170, 190, 255);
+        styleLabel(this._achSummary);
+
+        // 构建完成后再隐藏（见上方注释：保证 Graphics 命令已激活下发）
+        wall.active = false;
+    }
+
+    /** 打开成就墙：先激活再刷新（未激活时下发 Graphics 命令会丢失）。 */
+    private _openAchievementWall() {
+        if (!this._achWallNode) return;
+        this._achWallNode.active = true;
+        this._refreshAchievements();
+        this.onButtonSfx?.();
+    }
+
+    private _closeAchievementWall() {
+        if (this._achWallNode) this._achWallNode.active = false;
+    }
+
+    /** 重读玩家档案，刷新成就墙全部条目的解锁状态与进度。 */
+    private _refreshAchievements() {
+        const profile = SaveSystem.load();
+        for (let i = 0; i < ACHIEVEMENTS.length && i < this._achRows.length; i++) {
+            const a = ACHIEVEMENTS[i], row = this._achRows[i];
+            const done = profile.achievements.indexOf(a.id) >= 0;
+            const cur = Math.min(a.progress(profile), a.goal);
+            row.prog.string = done ? '已达成' : `${Math.floor(cur)}/${a.goal}`;
+            row.icon.color = done ? new Color(255, 230, 130, 255) : new Color(110, 118, 136, 255);
+            row.name.color = done ? new Color(255, 214, 90, 255) : new Color(150, 158, 175, 255);
+            row.prog.color = done ? new Color(120, 220, 140, 255) : new Color(110, 118, 136, 255);
+            row.g.clear();
+            row.g.fillColor = done ? new Color(40, 32, 8, 240) : new Color(14, 18, 26, 200);
+            row.g.fillRect(-158, -19, 316, 38);
+            row.g.strokeColor = done ? new Color(255, 214, 90, 130) : new Color(70, 78, 95, 110);
+            row.g.lineWidth = 1;
+            row.g.rect(-158, -19, 316, 38); row.g.stroke();
+        }
+        if (this._achSummary) {
+            this._achSummary.string = `已解锁 ${profile.achievements.length} / ${ACHIEVEMENTS.length}`;
+        }
     }
 
     private _buildCharSelectPanel() {
