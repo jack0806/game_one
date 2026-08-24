@@ -131,6 +131,41 @@ test('金币使用透明方形正式美术，而非程序圆点', () => {
     assert.deepEqual(cornerAlpha(png), [0, 0, 0, 0], '金币四角必须透明');
 });
 
+const directionalBases = [
+    ...['kai', 'vivian', 'reik', 'olia', 'graf', 'liana'].map(id => `char_token_${id}`),
+    'enemy_grunt', 'enemy_shield', 'enemy_exploder', 'enemy_golem', 'enemy_boss',
+    ...[1, 2, 3, 4].map(chapter => `enemy_boss_ch${chapter}`),
+];
+
+const directionalFiles = directionalBases.flatMap(base => [
+    `${base}_move.png`, `${base}_side.png`, `${base}_side_move.png`,
+    `${base}_back.png`, `${base}_back_move.png`,
+]);
+
+test('全部英雄、普通怪和Boss的前侧背动作矩阵均为统一透明RGBA', () => {
+    const files = directionalFiles;
+    for (const file of files) {
+        const png = parsePng(file, true);
+        assert.deepEqual([png.width, png.height], [512, 512], `${file} 应统一为512×512`);
+        assertTransparentMargin(png, 4, `${file} 必须保留透明边缘，禁止棋盘格或白底`);
+        let opaque = 0;
+        for (let i = 3; i < png.pixels.length; i += 4) if (png.pixels[i] >= 16) opaque++;
+        assert.ok(opaque / (png.width * png.height) < 0.72, `${file} 透明面积不足，疑似烘入背景`);
+    }
+});
+
+test('全部方向与动作帧携带独立Cocos资源元数据', () => {
+    const files = directionalFiles;
+    const uuids = new Set();
+    for (const file of files) {
+        const meta = JSON.parse(fs.readFileSync(path.join(ART_DIR, `${file}.meta`), 'utf8'));
+        assert.ok(meta.uuid, `${file} 缺少资源UUID`);
+        assert.ok(!uuids.has(meta.uuid), `${file} 与其他动作帧复用了UUID`);
+        uuids.add(meta.uuid);
+        assert.equal(meta.subMetas.f9941.displayName, path.basename(file, '.png'));
+    }
+});
+
 test('海克斯炮台图标为透明纯符号,不再烧录黑底卡框', () => {
     const png = parsePng('ui_icon_summon.png', true);
     assert.equal(png.width, png.height, '炮台图标应保持正方形');

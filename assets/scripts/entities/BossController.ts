@@ -5,6 +5,8 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { EnemyBase } from './EnemyBase';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getBossDef, TEST_BOSSES } from '../data/BossDB';
+import { resetLocomotion } from '../core/Locomotion';
+import { resetDirectionalFacing } from '../core/DirectionalFacing';
 
 export class BossController extends EnemyBase {
     phase        = 1;
@@ -54,6 +56,8 @@ export class BossController extends EnemyBase {
         this._skillTimer = 2.5; this._summonTimer = 7; this._chargeCd = 10;
         this.isCharging = false; this.chargeWindup = 0; this.skillWindup = 0;
         this.attackWindup = 0; this._chargeTime = 0;
+        resetLocomotion(this.locomotion);
+        resetDirectionalFacing(this.directionalFacing, 'front');
         this._setupForChapter(this.chapter);
     }
 
@@ -78,6 +82,9 @@ export class BossController extends EnemyBase {
         this.tintColor = def.tintColor ?? '#ffffff';
         this.visualScale = def.visualScale;
         this.attackWindupMax = def.attackWindupMax;
+        this.locomotionKind = def.chapter <= 2 ? 'heavy' : 'hover';
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = '';
     }
 
     /** 机械高达被动：50% 概率格挡玩家伤害（用剑劈掉攻击，简化实现）。 */
@@ -111,6 +118,10 @@ export class BossController extends EnemyBase {
         // 这里用只影响渲染直径的 visualScale 纯视觉放大，判定范围保持不变。
         this.visualScale = t.visualScale;
         this.attackWindupMax = t.attackWindupMax;
+        // 步态：前两章重甲，后两章悬浮；动作帧与静止帧成对
+        this.locomotionKind = ch <= 2 ? 'heavy' : 'hover';
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = '';
     }
 
     // ── 每帧更新 ──────────────────────────────────────────

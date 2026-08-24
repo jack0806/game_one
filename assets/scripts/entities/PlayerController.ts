@@ -5,7 +5,11 @@ import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
-import { applyArtSprite } from '../core/SpriteUtils';
+import { applyArtSprite, preloadArt } from '../core/SpriteUtils';
+import { createLocomotionState, resetLocomotion } from '../core/Locomotion';
+import {
+    createDirectionalFacingState, directionalArtKeys, resetDirectionalFacing,
+} from '../core/DirectionalFacing';
 import type { DotEffect } from './EnemyBase';
 const { ccclass, property } = _decorator;
 
@@ -72,6 +76,16 @@ export class PlayerController extends Component {
 
     /** Sprite carrying the character's battle token art (char_<id>), set up in init(). */
     sprite?: Sprite;
+    /** 战斗贴图基 key（char_token_<id>），init 时按角色设置。 */
+    spriteKey = 'char_token_kai';
+    /** 与静止帧成对的真实动作帧。 */
+    moveSpriteKey = 'char_token_kai_move';
+    /** 距离驱动步态（前/侧/背 × 静止/动作 六帧矩阵的渲染驱动）。 */
+    locomotion = createLocomotionState(0.35);
+    /** 渲染层用于避免每帧重复提交同一资源。 */
+    locomotionFrameKey = '';
+    /** 朝向状态（鼠标驱动，侧面镜像）。 */
+    directionalFacing = createDirectionalFacingState('side');
 
     // ── 初始化 ───────────────────────────────────────────
     init(charId: string, game: any): void {
@@ -95,7 +109,11 @@ export class PlayerController extends Component {
             // 每张图的透明留白，也保证所有角色都以原画比例等比显示。
             this.sprite.trim = false;
         }
-        applyArtSprite(this.sprite, `char_token_${charId}`);
+        this.spriteKey = `char_token_${charId}`;
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = this.spriteKey;
+        preloadArt(directionalArtKeys(this.spriteKey));
+        applyArtSprite(this.sprite, this.spriteKey);
         this.sprite.color = new Color(255, 255, 255, 255);
 
         this.stats = {
@@ -119,6 +137,9 @@ export class PlayerController extends Component {
         this.alive  = true;
         this._buffs = [];
         this._rCharge = 0;
+        // 方向动画状态重置（六帧矩阵由渲染层按朝向/步态切换）
+        resetLocomotion(this.locomotion, this.x, this.y);
+        resetDirectionalFacing(this.directionalFacing, 'side');
 
         if (def.passive) def.passive(this, game);
     }

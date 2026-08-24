@@ -5,6 +5,8 @@ import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getMiniBossDef } from '../data/BossDB';
+import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
+import { createDirectionalFacingState, resetDirectionalFacing } from '../core/DirectionalFacing';
 
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
@@ -27,6 +29,15 @@ export class EnemyBase {
     glowColor   = '#ff0000';
     /** 美术资源key（走 ArtRemap.artPath() 解析真实文件名），按敌人类型在 _applyTypeDef() 里设置。 */
     spriteKey   = 'enemy_grunt';
+    /** 与静止帧成对的真实动作帧。 */
+    moveSpriteKey = 'enemy_grunt_move';
+    /** 渲染层用于避免每帧重复提交同一资源。 */
+    locomotionFrameKey = '';
+    /** 按敌人身体结构选择的步态；只影响渲染，不影响速度与碰撞。 */
+    locomotionKind: LocomotionKind = 'biped';
+    locomotion = createLocomotionState();
+    /** 无论追击、横移、后退或站定，视觉上都由“指向玩家”的向量驱动。 */
+    directionalFacing = createDirectionalFacingState('front');
     /** 精英/miniboss没有独立美术，复用基础怪物贴图+这个色调叠加区分（Sprite.color tint）。 */
     tintColor   = '#ffffff';
     /**
@@ -101,6 +112,8 @@ export class EnemyBase {
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0;
+        resetLocomotion(this.locomotion);
+        resetDirectionalFacing(this.directionalFacing, 'front');
         this._applyTypeDef(type, scale, game);
         this._applyMutations(game);
         // 精英增强
@@ -124,6 +137,13 @@ export class EnemyBase {
             if (type === 'shrimp') this.buffSpeedMult = 1.5;
             // 水母先以现形状态入场，2s 后进入隐身循环
             this._miniTimer = type === 'jelly' ? 2 : Rng.float(1, 3);
+            // 步态：水栖滑行/重甲/节肢/悬浮
+            this.locomotionKind = ({
+                squid: 'skitter', turtle: 'heavy', shrimp: 'skitter',
+                jelly: 'hover', drone_a: 'hover', drone_s: 'hover',
+            } as Record<string, LocomotionKind>)[type] ?? 'biped';
+            this.moveSpriteKey = `${this.spriteKey}_move`;
+            this.locomotionFrameKey = '';
             this.hp = this.maxHp;
             return;
         }
@@ -182,6 +202,14 @@ export class EnemyBase {
                 this.spriteKey = 'enemy_boss'; this.tintColor = '#cc88ff'; break;
         }
         this.hp = this.maxHp;
+        // 步态映射（只影响渲染，与数值/碰撞无关）
+        const GAIT: Record<string, LocomotionKind> = {
+            grunt: 'biped', shield: 'heavy', exploder: 'skitter', golem: 'heavy',
+            elite_grunt: 'biped', archer: 'biped', miniboss: 'quadruped',
+        };
+        this.locomotionKind = GAIT[type] ?? this.locomotionKind;
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = '';
     }
 
     private _applyMutations(game: any): void {
