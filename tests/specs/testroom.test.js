@@ -92,6 +92,8 @@ test('测试房间跳过波次调度,玩家阵亡3秒后重生且不写档案', 
 test('深海恐惧场景系统:水柱/冰冻预告区/水分身/召唤鱿鱼/受击加盾钩子', () => {
     assert.match(gameSource, /startPillarStorm\(boss: BossController\): void/);
     assert.match(gameSource, /startTelegraphZones\(boss: BossController\): void/);
+    assert.match(gameSource, /const MIN_GAP = 200; \/\/ 区域半径90×2\+余量，保证互不重叠/, '冰冻区域间距约束');
+    assert.match(gameSource, /zones\.every\(z => Vec\.dist\(z\.x, z\.y, x, y\) >= MIN_GAP\)/, '拒绝采样保证互不重叠');
     assert.match(gameSource, /spawnWaterClone\(boss: BossController, player: any\): void/);
     assert.match(gameSource, /abyssSummonSquid\(boss: BossController\): void/);
     assert.match(gameSource, /onPlayerHit\(p: PlayerController, _game: GameManager\): void/);

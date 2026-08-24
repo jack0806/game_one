@@ -690,14 +690,25 @@ export class GameManager extends Component {
         }
     }
 
-    /** 冰冻区域：随机 4 个预告区，3s 闪烁后玩家在内则冰冻 1.5s。 */
+    /** 冰冻区域：释放 4 个互不重叠的预告区（拒绝采样保证间距），3s 闪烁后玩家在内则冰冻 1.5s。 */
     startTelegraphZones(boss: BossController): void {
         if (this.state !== 'testRoom') return;
         this._telegraphZones.length = 0;
+        const zones = this._telegraphZones;
+        const MIN_GAP = 200; // 区域半径90×2+余量，保证互不重叠
         for (let i = 0; i < 4; i++) {
-            const x = Rng.float(120, CANVAS_W - 120);
-            const y = Rng.float(110, PLAYFIELD_BOTTOM - 90);
-            this._telegraphZones.push({ x, y, r: 90, timer: 3 });
+            // 拒绝采样：最多尝试30次挑出与已有区域不重叠的位置；空间不足时宁可少放也不重叠
+            let placed = false;
+            for (let t = 0; t < 30; t++) {
+                const x = Rng.float(120, CANVAS_W - 120);
+                const y = Rng.float(110, PLAYFIELD_BOTTOM - 90);
+                if (zones.every(z => Vec.dist(z.x, z.y, x, y) >= MIN_GAP)) {
+                    zones.push({ x, y, r: 90, timer: 3 });
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) break;
         }
         this._floatText.spawn(CANVAS_W / 2, 160, '危险水域！', '#66ddff', 24, true);
         this._audio.playSfx('freeze', 0.6);

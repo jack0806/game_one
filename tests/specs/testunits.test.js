@@ -82,7 +82,7 @@ test('深水炸弹反弹1次后撞边爆炸,大水刺反弹2次', () => {
     assert.equal(bomb.bounceLeft, 1, '深水炸弹反弹1次');
     assert.equal(bomb.bounceExplode, true, '深水炸弹反弹耗尽后撞边爆炸');
 
-    // 深海恐惧大水刺：bounceLeft=2（反弹2次）
+    // 深海恐惧大水刺：bounceLeft=2（反弹2次），6 个均匀方向×3 发=18 发
     const { BossController } = require('../dist/entities/BossController');
     const game2 = makeMockGame();
     const boss = new BossController();
@@ -91,7 +91,10 @@ test('深水炸弹反弹1次后撞边爆炸,大水刺反弹2次', () => {
     boss.skillWindup = 0.05;
     boss.update(0.1, player2, game2);
     const spikes = game2.enemyBullets.filter(b => b.radius === 11);
-    assert.equal(spikes.length, 9, '3随机方向×3发=9发大水刺');
+    assert.equal(spikes.length, 18, '6个均匀方向×3发=18发大水刺');
+    // 六个方向均匀分布（相邻基准角差 ≈ 60°）
+    const angles = [...new Set(spikes.map(b => Math.atan2(b.vy, b.vx).toFixed(3)))];
+    assert.ok(angles.length >= 6, '至少覆盖6个不同方向');
     assert.ok(spikes.every(b => b.bounceLeft === 2), '大水刺应反弹2次');
     assert.ok(spikes.every(b => !b.bounceExplode), '水刺撞边不爆炸,反弹耗尽后自然消散');
 });

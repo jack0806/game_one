@@ -424,11 +424,12 @@ export class BossController extends EnemyBase {
         }
     }
 
-    /** 大水刺：向随机 3 个方向释放 3 发大水刺，每发 20 伤，遇屏幕边缘反弹 2 次。 */
+    /** 大水刺：向 6 个均匀方向（整体随机旋转）各释放 3 发水刺，每发 20 伤，遇屏幕边缘反弹 2 次。 */
     private _abyssWaterSpikes(player: any, game: any): void {
         game.particles?.explode(this.x, this.y, '#33ccff', 90);
-        for (let s = 0; s < 3; s++) {
-            const base = Rng.float(0, Math.PI * 2);
+        const baseAngle = Rng.float(0, Math.PI * 2 / 6); // 整体随机旋转
+        for (let s = 0; s < 6; s++) {
+            const base = baseAngle + (s / 6) * Math.PI * 2;
             for (let i = -1; i <= 1; i++) {
                 const a = base + i * 0.22;
                 game.enemyBullets?.push({
