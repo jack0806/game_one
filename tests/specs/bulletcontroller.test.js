@@ -29,6 +29,27 @@ test('子弹碰撞敌人造成伤害,并调用onHitCb/particles/augmentManager.d
     assert.ok(dispatched);
 });
 
+test('无敌/隐身敌人被命中只显示免疫,不显示伤害数字与命中粒子', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const texts = [];
+    game.floatingText.spawn = (x, y, text) => texts.push(text);
+    let hitFx = 0;
+    game.particles.hit = () => { hitFx++; };
+    const player = makePlayer();
+    const enemy = {
+        x: 20, y: 0, radius: 10, alive: true, isElite: false, isBoss: false,
+        invulnerable: true, hp: 100,
+        takeDamage() { return 0; }, // 无敌目标实际扣血为0
+    };
+    pool.spawn({ x: 10, y: 0, vx: 0, vy: 0, damage: 15, radius: 5, pierceLeft: 0, hitEnemies: new Set() });
+    pool.update(0.016, [enemy], player, game);
+    assert.equal(enemy.hp, 100, '无敌目标不应掉血');
+    assert.ok(texts.includes('免疫'), '应显示免疫提示');
+    assert.ok(!texts.some(t => t === '15'), '不应显示伤害数字');
+    assert.equal(hitFx, 0, '不应播放命中粒子');
+});
+
 test('无穿透(pierceLeft=0)命中后子弹立即释放回池', () => {
     const pool = new BulletPool(4);
     const game = makeMockGame();

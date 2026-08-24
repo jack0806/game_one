@@ -198,8 +198,13 @@ export class BulletPool {
                     const actualDamage = e.takeDamage(dmg, player, game);
                     player.applyAttackLifesteal?.(actualDamage === undefined ? dmg : actualDamage, game);
                     if (b.onHitCb) b.onHitCb(b, e);
-                    game.floatingText?.spawn(e.x + Rng.float(-10, 10), e.y - 10, Math.ceil(dmg).toString(), b.isCrit ? '#ffd700' : '#fff', b.isCrit ? 16 : 13, b.isCrit);
-                    game.particles?.hit(b.x, b.y, b.color);
+                    if (actualDamage > 0) {
+                        game.floatingText?.spawn(e.x + Rng.float(-10, 10), e.y - 10, Math.ceil(dmg).toString(), b.isCrit ? '#ffd700' : '#fff', b.isCrit ? 16 : 13, b.isCrit);
+                        game.particles?.hit(b.x, b.y, b.color);
+                    } else {
+                        // 无敌/隐身/格挡：显示"免疫"而不是伤害数字，避免看起来还在掉血
+                        game.floatingText?.spawn(e.x, e.y - 14, '免疫', '#9fb4c8', 12, false);
+                    }
                     game.augmentManager?.dispatchHit(player, e, dmg, game);
                     if (b.pierceLeft <= 0 && !b.infinite) { this._release(b); released = true; break; }
                     else b.pierceLeft = Math.max(0, b.pierceLeft - 1);

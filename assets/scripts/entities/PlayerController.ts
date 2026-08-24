@@ -436,8 +436,13 @@ export class PlayerController extends Component {
         const actualDamage = actual === undefined ? dmg : actual;
         this.applyAttackLifesteal(actualDamage, game);
         game.augmentManager?.dispatchHit(this, enemy, dmg, game);
-        game.floatingText?.spawn(enemy.x, enemy.y - 10, Math.ceil(dmg).toString(), isCrit ? '#ffd700' : this.color, isCrit ? 16 : 13, isCrit);
-        game.particles?.hit(enemy.x, enemy.y, this.color);
+        if (actualDamage > 0) {
+            game.floatingText?.spawn(enemy.x, enemy.y - 10, Math.ceil(dmg).toString(), isCrit ? '#ffd700' : this.color, isCrit ? 16 : 13, isCrit);
+            game.particles?.hit(enemy.x, enemy.y, this.color);
+        } else {
+            // 无敌/隐身/格挡：显示"免疫"而不是伤害数字，避免看起来还在掉血
+            game.floatingText?.spawn(enemy.x, enemy.y - 14, '免疫', '#9fb4c8', 12, false);
+        }
         return dmg;
     }
 

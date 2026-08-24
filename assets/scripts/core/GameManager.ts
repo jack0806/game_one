@@ -1212,13 +1212,18 @@ export class GameManager extends Component {
                 e.directionalFacing, faceDx, faceDy, this._visualDt,
             );
 
+            // 隐身（毒刺鬼水母）/机械高达飞空：贴图淡出时阴影与血条一并隐藏，
+            // 否则地上仍留实影、头顶仍飘血条，看起来"实体还在"
+            const hidden = e.invisible || (e instanceof BossController && e.mechSkyT > 0);
             // 常驻圆形底盘/描边会让所有单位像棋子。改为低矮接触阴影，只负责
             // 把脚底从背景纹理中分离；危险圆环仅在攻击前摇期间出现。
-            g.fillColor = new Color(0, 0, 0, e.isBoss ? 125 : 88);
-            g.ellipse(
-                ex, ey - visualR * 0.72,
-                visualR * (e.isBoss ? 0.72 : 0.62), visualR * 0.18,
-            ); g.fill();
+            if (!hidden) {
+                g.fillColor = new Color(0, 0, 0, e.isBoss ? 125 : 88);
+                g.ellipse(
+                    ex, ey - visualR * 0.72,
+                    visualR * (e.isBoss ? 0.72 : 0.62), visualR * 0.18,
+                ); g.fill();
+            }
             this._syncDirectionalFrame(e, walkPose, facingPose);
 
             if (e.node) {
@@ -1355,8 +1360,8 @@ export class GameManager extends Component {
                     : baseTint;
             }
 
-            // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音
-            if (!e.isBoss && e.hp < e.maxHp) {
+            // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音；隐身/飞空时隐藏
+            if (!e.isBoss && e.hp < e.maxHp && !hidden) {
                 const bw = Math.max(r * 2.2, visualR * 1.55), bh = 6;
                 const [rx, ry, rw, rh] = this._toLocalRect(e.x - bw / 2, e.y - visualR - 10, bw, bh);
                 g.fillColor = new Color(40, 40, 40, 180);

@@ -154,6 +154,15 @@ test('机械高达横劈扇形与判定区域一致,飞空期间完全消失', (
     assert.match(gameSource, /e\.invisible \? 60 : 0\)/, '机械高达飞空时贴图完全消失,水母隐身仍半透明');
 });
 
+test('隐形/飞空实体感修复:阴影与血条隐藏,受击显示免疫', () => {
+    assert.match(gameSource, /const hidden = e\.invisible \|\| \(e instanceof BossController && e\.mechSkyT > 0\);/, '隐藏态判定');
+    assert.match(gameSource, /if \(!hidden\) \{[\s\S]*?g\.ellipse\(/, '隐藏时不画接触阴影');
+    assert.match(gameSource, /if \(!e\.isBoss && e\.hp < e\.maxHp && !hidden\)/, '隐藏时不画头顶血条');
+    const bulletSource2 = fs.readFileSync(path.join(root, 'assets/scripts/entities/BulletController.ts'), 'utf8');
+    assert.match(bulletSource2, /'免疫'/, '子弹命中无敌目标显示免疫');
+    assert.match(playerSource, /'免疫'/, '近战命中无敌目标显示免疫');
+});
+
 test('暂停/详情面板返回状态跟随测试房间', () => {
     assert.match(gameSource, /private _pauseCombat\(\) \{[\s\S]*?this\._pauseReturn = this\.state === 'testRoom' \? 'testRoom' : 'playing'/);
     assert.match(gameSource, /this\._screenMgr\.onResumePressed\s*=\s*\(\) => this\._setState\(this\._pauseReturn\)/);
