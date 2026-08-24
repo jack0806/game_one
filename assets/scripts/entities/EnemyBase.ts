@@ -4,6 +4,8 @@
 import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
+import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
+import { createDirectionalFacingState, resetDirectionalFacing } from '../core/DirectionalFacing';
 
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
@@ -26,6 +28,10 @@ export class EnemyBase {
     glowColor   = '#ff0000';
     /** 美术资源key（走 ArtRemap.artPath() 解析真实文件名），按敌人类型在 _applyTypeDef() 里设置。 */
     spriteKey   = 'enemy_grunt';
+    /** 与静止帧成对的真实动作帧。 */
+    moveSpriteKey = 'enemy_grunt_move';
+    /** 渲染层用于避免每帧重复提交同一资源。 */
+    locomotionFrameKey = '';
     /** 精英/miniboss没有独立美术，复用基础怪物贴图+这个色调叠加区分（Sprite.color tint）。 */
     tintColor   = '#ffffff';
     /**
@@ -35,6 +41,11 @@ export class EnemyBase {
      * 避免"改大贴图"连带把判定体积也放大而破坏平衡性。默认1即渲染尺寸=radius*2。
      */
     visualScale = 1;
+    /** 按敌人身体结构选择的步态；只影响渲染，不影响速度与碰撞。 */
+    locomotionKind: LocomotionKind = 'biped';
+    locomotion = createLocomotionState();
+    /** 无论追击、横移、后退或站定，视觉上都由“指向玩家”的向量驱动。 */
+    directionalFacing = createDirectionalFacingState('front');
     dots: DotEffect[] = [];
     frozen      = 0;
     slowMult    = 1;
@@ -82,6 +93,8 @@ export class EnemyBase {
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0;
+        resetLocomotion(this.locomotion);
+        resetDirectionalFacing(this.directionalFacing, 'front');
         this._applyTypeDef(type, scale, game);
         this._applyMutations(game);
         // 精英增强
@@ -91,12 +104,14 @@ export class EnemyBase {
     private _applyTypeDef(type: string, scale: number, _game: any): void {
         switch (type) {
             case 'grunt':
+                this.locomotionKind = 'biped';
                 this.color = '#ff4444'; this.glowColor = '#ff0000';
                 this.maxHp = Math.floor(80 * scale); this.speed = 65; this.damage = 8; this.radius = 18;
                 this.goldValue = 8; this.label = ''; this.attackWindupMax = 0.28;
                 this.visualScale = 1.22;
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ffffff'; break;
             case 'shield':
+                this.locomotionKind = 'heavy';
                 this.color = '#4488ff'; this.glowColor = '#0044cc';
                 this.maxHp = Math.floor(60 * scale); this.speed = 45; this.damage = 10; this.radius = 20;
                 this.maxShieldHp = Math.floor(80 * scale); this.shieldHp = this.maxShieldHp; this.shieldActive = true;
@@ -104,6 +119,7 @@ export class EnemyBase {
                 this.visualScale = 1.18;
                 this.spriteKey = 'enemy_shield'; this.tintColor = '#ffffff'; break;
             case 'exploder':
+                this.locomotionKind = 'skitter';
                 this.color = '#ff8800'; this.glowColor = '#ff4400';
                 this.maxHp = Math.floor(50 * scale); this.speed = 85; this.damage = 40; this.radius = 20;
                 this.deathExplode = true; this.goldValue = 10; this.label = ''; this.attackWindupMax = 0.52;
@@ -111,12 +127,14 @@ export class EnemyBase {
                 // 素材错位：enemy_exploder key 实际内容(经ArtRemap重定向)对应"爆炸怪"语义。
                 this.spriteKey = 'enemy_exploder'; this.tintColor = '#ffffff'; break;
             case 'golem':
+                this.locomotionKind = 'heavy';
                 this.color = '#888888'; this.glowColor = '#aaaaaa';
                 this.maxHp = Math.floor(300 * scale); this.speed = 35; this.damage = 20; this.radius = 26;
                 this.armor = 25; this.goldValue = 20; this.label = '石像鬼'; this.attackWindupMax = 0.56;
                 this.visualScale = 1.15;
                 this.spriteKey = 'enemy_golem'; this.tintColor = '#ffffff'; break;
             case 'elite_grunt':
+                this.locomotionKind = 'biped';
                 this.isElite = true;
                 this.color = '#ff44ff'; this.glowColor = '#cc00cc';
                 this.maxHp = Math.floor(200 * scale); this.speed = 75; this.damage = 18; this.radius = 22;
@@ -125,6 +143,7 @@ export class EnemyBase {
                 // 没有独立精英美术，复用grunt贴图+粉紫色调区分。
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ff88ff'; break;
             case 'archer':
+                this.locomotionKind = 'biped';
                 this.color = '#88ff44'; this.glowColor = '#44cc00';
                 this.maxHp = Math.floor(70 * scale); this.speed = 60; this.damage = 12; this.radius = 18;
                 this.goldValue = 12; this.label = '毒射手'; this.attackWindupMax = 0.4;
@@ -135,6 +154,7 @@ export class EnemyBase {
                 // 无独立美术：复用grunt贴图+绿色调区分（与elite/miniboss同套路）。
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#7dff5f'; break;
             case 'miniboss':
+                this.locomotionKind = 'quadruped';
                 this.isMiniBoss = true;
                 this.color = '#aa44ff'; this.glowColor = '#6600cc';
                 this.maxHp = Math.floor(800 * scale); this.speed = 55; this.damage = 25; this.radius = 30;
@@ -144,6 +164,8 @@ export class EnemyBase {
                 this.spriteKey = 'enemy_boss'; this.tintColor = '#cc88ff'; break;
         }
         this.hp = this.maxHp;
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = '';
     }
 
     private _applyMutations(game: any): void {

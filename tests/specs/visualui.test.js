@@ -115,8 +115,28 @@ test('角色详情将十个词条排成2列×5行，技能名与说明保持同�
 
 test('战斗英雄呼吸动画保持等比缩放', () => {
     assert.match(gameSource, /const uniformScale = 1 \+ breathe/);
-    assert.match(gameSource, /new Vec3\(facing \* uniformScale, uniformScale, 1\)/);
+    assert.match(gameSource, /facing \* facingPose\.turnScaleX \* uniformScale, uniformScale, 1/);
     assert.doesNotMatch(gameSource, /new Vec3\(facing \* \(1 \+ breathe\), 1 - breathe, 1\)/);
+});
+
+test('英雄、普通怪和Boss接入真实动作帧且不再绘制假腿', () => {
+    assert.match(gameSource, /advanceLocomotion\([\s\S]*e\.locomotionKind/);
+    assert.match(gameSource, /advanceLocomotion\([\s\S]*p\.locomotion[\s\S]*'biped'/);
+    assert.match(gameSource, /directionalArtKey\(entity\.spriteKey, facing\.view, pose\.frameIndex\)/);
+    assert.match(gameSource, /_syncDirectionalFrame\(e, walkPose, facingPose\)/);
+    assert.match(gameSource, /_syncDirectionalFrame\(p, walkPose, facingPose\)/);
+    assert.doesNotMatch(gameSource, /_drawLocomotionRig/);
+    assert.doesNotMatch(gameSource, /new Color\(pCol\.r, pCol\.g, pCol\.b, 185\)/);
+});
+
+test('英雄朝鼠标瞄准，所有敌人与Boss朝英雄而非沿移动方向转脸', () => {
+    assert.match(gameSource, /p\.directionalFacing,[\s\S]*this\._input\.mouse\.x - p\.x,[\s\S]*this\._input\.mouse\.y - p\.y/);
+    assert.match(gameSource, /const faceDx = this\._player \? this\._player\.x - e\.x/);
+    assert.match(gameSource, /const faceDy = this\._player \? this\._player\.y - e\.y/);
+    assert.match(gameSource, /e\.directionalFacing, faceDx, faceDy/);
+    assert.doesNotMatch(gameSource, /const facing = walkPose\.directionX < -0\.025/);
+    assert.match(playerSource, /preloadArt\(directionalArtKeys\(this\.spriteKey\)\)/);
+    assert.match(gameSource, /preloadArt\(directionalArtKeys\(enemy\.spriteKey\)\)/);
 });
 
 test('高密金币降低远距亮度并在玩家附近恢复全亮', () => {

@@ -1,6 +1,6 @@
 # 现有美术资源清单（assets/resources/art/）
 
-共 56 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 自检通过）。
+共 131 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 与 `visualmanifest.test.js` 自检通过）。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。
 
@@ -54,11 +54,15 @@
 
 规格参考：抠图后约 640×570（已带透明通道，主体裁剪到包围盒）。生成替换时仍建议 1:1 构图半身像，处理后由管线裁剪。
 
-## 3. 英雄战斗 Sprite char_token（6 张）
+## 3. 英雄战斗 Sprite char_token（36 张，6 名英雄 × 3 个方向 × 2 个步态帧）
 
-**战场上的玩家本体**（`PlayerController.ts`），82×82 正方形 CUSTOM 显示、不染色。2026-08-20 已统一替换为 512×512 真透明、3/4 俯视、脚部可见的全身战斗 Sprite；每张图外沿至少保留 8px 全透明安全边距，并启用 Cocos 的 Alpha 边缘修复，避免缩放采样产生白色底框。程序层只叠加贴地椭圆阴影与身份色细环，不再套胸像徽章。移动时不做缩放摆动，静止时仅有 1.2% 原地呼吸。
+**战场上的玩家本体**（`PlayerController.ts`），82×82 正方形 CUSTOM 显示、不染色。每位英雄都有前、右侧、背三套静止/动作帧；右侧帧仅在朝左时镜像，前后帧不镜像，避免武器换手。视觉朝向使用鼠标瞄准向量，和移动/技能朝向解耦；过对角线时带滞回，转身中点以 0.13 秒轮廓收窄切帧，2D 资源也能呈现稳定的 2.5D 转体感。动作帧按实际位移交替，停住立即回对应方向的静止帧。
 
 `char_token_kai` / `char_token_vivian` / `char_token_reik` / `char_token_olia` / `char_token_graf` / `char_token_liana`
+
+`char_token_kai_move` / `char_token_vivian_move` / `char_token_reik_move` / `char_token_olia_move` / `char_token_graf_move` / `char_token_liana_move`
+
+各基础 key 另有 `_side` / `_side_move` / `_back` / `_back_move` 四张方向帧。
 
 ## 4. 角色子弹（6 张）
 
@@ -66,9 +70,11 @@
 
 `bullet_kai` / `bullet_vivian` / `bullet_reik` / `bullet_olia` / `bullet_graf` / `bullet_liana`
 
-## 5. 敌人（9 张）
+## 5. 敌人（60 张，9 个美术族 × 3 个方向 × 2 个步态帧，含复用类型）
 
 正方形 CUSTOM 拉伸，显示直径=碰撞半径×2×视觉缩放（普通怪约 44–62px，Boss 180px）。精英怪仍复用 grunt 图染粉紫；miniboss 继续使用浅色 `enemy_boss` 素体。四章正式 Boss 已改为独立原色贴图，不再用一张白模染四种颜色。
+
+移动表现由 `core/Locomotion.ts` 按实际位移驱动静止帧/`_move` 帧切换：grunt/精英/毒射手蹒跚前冲，shield 盾墙重步，exploder 六足爬行，golem 石像重踏，miniboss 四足斜跨；第1章 Boss 肉山重踏，第2章机械活塞步，第3章晶体尾流推进，第4章触手牵引。每个美术族另有 `_side` / `_side_move` / `_back` / `_back_move`，渲染朝向始终使用“敌人指向英雄”的向量，因此远程后撤、横移和 Boss 冲刺都不会再用移动方向冒充脸朝向。步态和朝向均不修改逻辑坐标、碰撞半径或移动速度，静止时不会原地踏步。
 
 | 文件名（key） | 敌人类型 | 引用位置 |
 |---|---|---|

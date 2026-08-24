@@ -15,6 +15,8 @@
     "assets/scripts/core/MathUtils.ts",
     "assets/scripts/core/Constants.ts",
     "assets/scripts/core/ArtRemap.ts",
+    "assets/scripts/core/Locomotion.ts",
+    "assets/scripts/core/DirectionalFacing.ts",
     "assets/scripts/data/WaveData.ts",
     "assets/scripts/data/CharacterDB.ts",
     "assets/scripts/data/AugmentDB.ts",

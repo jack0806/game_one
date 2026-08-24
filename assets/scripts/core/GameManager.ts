@@ -4,7 +4,7 @@ import {
 } from 'cc';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
 import { Vec, Rng, clamp } from './MathUtils';
-import { applyArtSprite, SpriteNodePool } from './SpriteUtils';
+import { applyArtSprite, preloadArt, SpriteNodePool } from './SpriteUtils';
 import { styleLabel } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
 import { AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
@@ -21,6 +21,10 @@ import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
 import { ParticleManager }   from '../systems/ParticleManager';
 import { AudioManager, BgmCue } from '../systems/AudioManager';
+import { advanceLocomotion, LocomotionPose } from './Locomotion';
+import {
+    directionalArtKey, directionalArtKeys, DirectionalFacingPose, updateDirectionalFacing,
+} from './DirectionalFacing';
 import { HUD, HudData }      from '../ui/HUD';
 import { AugSelectUI }       from '../ui/AugSelectUI';
 import { ShopUI }            from '../ui/ShopUI';
@@ -89,6 +93,7 @@ export class GameManager extends Component {
     private _mutations: string[] = [];
     private _runId = 0;
     private _visualTime = 0;
+    private _visualDt = 0;
 
     // ── extra runtime state (turrets / zones / enemy bullets / stats) ──
     private _turrets:      any[] = [];
@@ -124,6 +129,7 @@ export class GameManager extends Component {
 
     update(rawDt: number) {
         const dt = Math.min(rawDt, DT_MAX);
+        this._visualDt = dt;
         this._visualTime += dt;
         this._audio.update(dt);
 
@@ -592,6 +598,17 @@ export class GameManager extends Component {
         return [lx, Math.min(ly1, ly2), w, Math.abs(ly2 - ly1)];
     }
 
+    /** 仅在动作帧改变时切换 SpriteFrame；SpriteUtils 会缓存并防止异步竞态。 */
+    private _syncDirectionalFrame(
+        entity: any,
+        pose: LocomotionPose,
+        facing: DirectionalFacingPose,
+    ): void {
+        const key = directionalArtKey(entity.spriteKey, facing.view, pose.frameIndex);
+        if (!entity.sprite || !key || entity.locomotionFrameKey === key) return;
+        entity.locomotionFrameKey = key;
+        applyArtSprite(entity.sprite, key);
+    }
     private _drawEntities() {
         const g = this._gameGfx;
         g.clear();
@@ -721,7 +738,15 @@ export class GameManager extends Component {
             const r = e.radius ?? 18;
             const visualR = r * (e.visualScale ?? 1);
             const [ex, ey] = this._toLocal(e.x, e.y);
-            if (e.node) e.node.setPosition(Math.round(ex), Math.round(ey), 0);
+            const walkPose = advanceLocomotion(
+                e.locomotion, e.x, e.y, this._visualDt, visualR * 2, e.locomotionKind,
+            );
+            // 敌人的脸始终朝英雄；远程怪后撤和 Boss 横移时也不会背对目标。
+            const faceDx = this._player ? this._player.x - e.x : walkPose.directionX;
+            const faceDy = this._player ? this._player.y - e.y : walkPose.directionY;
+            const facingPose = updateDirectionalFacing(
+                e.directionalFacing, faceDx, faceDy, this._visualDt,
+            );
 
             // 常驻圆形底盘/描边会让所有单位像棋子。改为低矮接触阴影，只负责
             // 把脚底从背景纹理中分离；危险圆环仅在攻击前摇期间出现。
@@ -730,6 +755,16 @@ export class GameManager extends Component {
                 ex, ey - visualR * 0.72,
                 visualR * (e.isBoss ? 0.72 : 0.62), visualR * 0.18,
             ); g.fill();
+            this._syncDirectionalFrame(e, walkPose, facingPose);
+
+            if (e.node) {
+                e.node.setPosition(Math.round(ex), Math.round(ey + walkPose.bodyLift), 0);
+                const facing = facingPose.mirror;
+                e.node.setScale(new Vec3(facing * facingPose.turnScaleX, 1, 1));
+                e.node.setRotationFromEuler(
+                    0, 0, walkPose.bodyRollDeg * facing + facingPose.turnLeanDeg,
+                );
+            }
 
             // 持续护盾不是第二条血条：用低透明能量壳让玩家在未攻击前就能
             // 识别护盾兵，同时以断续旋转弧避免重新套回“棋子圆底盘”的廉价感。
@@ -923,23 +958,32 @@ export class GameManager extends Component {
         if (this._player && !this._player.dead) {
             const p = this._player;
             const [px, py] = this._toLocal(p.x, p.y);
-            const pCol = Color.fromHEX(new Color(), p.color);
-            // 全身战斗Sprite使用贴地接触阴影与扁椭圆身份环，不再套“大圆形徽章”。
+            const walkPose = advanceLocomotion(
+                p.locomotion, p.x, p.y, this._visualDt, 82, 'biped',
+            );
+            const facingPose = updateDirectionalFacing(
+                p.directionalFacing,
+                this._input.mouse.x - p.x,
+                this._input.mouse.y - p.y,
+                this._visualDt,
+            );
+            // 只保留无色接触阴影。身份色椭圆会穿过双腿之间，看起来像一根绿线。
             g.fillColor = new Color(0, 0, 0, 125);
             g.ellipse(px, py - 25, 21, 6.5); g.fill();
-            g.strokeColor = new Color(pCol.r, pCol.g, pCol.b, 185);
-            g.lineWidth = 1.6;
-            g.ellipse(px, py - 25, 24, 8.5); g.stroke();
-            p.node.setPosition(Math.round(px), Math.round(py), 0);
-            const moving = Math.abs(this._input.moveX) + Math.abs(this._input.moveY) > 0.01;
-            // 移动时不做缩放摆动，避免重新产生“角色一晃一晃”的观感；
-            // 只有完全静止时才保留极轻的原地呼吸，且不改变世界坐标。
+            this._syncDirectionalFrame(p, walkPose, facingPose);
+            p.node.setPosition(Math.round(px), Math.round(py + walkPose.bodyLift), 0);
+            // 移动时由完整动作帧和轻微重心倾斜表达步态；静止保留极轻呼吸。
             // 呼吸只允许等比缩放。旧版横向放大时纵向同时缩小，角色会周期性
             // 变胖/变瘦，看起来像素材被拉伸；移动时仍完全关闭呼吸缩放。
-            const breathe = moving ? 0 : Math.sin(this._visualTime * 3.2) * 0.006;
-            const facing = this._input.mouse.x < p.x ? -1 : 1;
+            const breathe = walkPose.moving ? 0 : Math.sin(this._visualTime * 3.2) * 0.006;
+            const facing = facingPose.mirror;
             const uniformScale = 1 + breathe;
-            p.node.setScale(new Vec3(facing * uniformScale, uniformScale, 1));
+            p.node.setScale(new Vec3(
+                facing * facingPose.turnScaleX * uniformScale, uniformScale, 1,
+            ));
+            p.node.setRotationFromEuler(
+                0, 0, walkPose.bodyRollDeg * facing + facingPose.turnLeanDeg,
+            );
         }
     }
 
@@ -1220,6 +1264,8 @@ export class GameManager extends Component {
         }
         enemy.x = ex; enemy.y = ey;
 
+        enemy.locomotionFrameKey = enemy.spriteKey;
+        preloadArt(directionalArtKeys(enemy.spriteKey));
         applyArtSprite(eSprite, enemy.spriteKey);
         eSprite.color = Color.fromHEX(new Color(), enemy.tintColor ?? '#ffffff');
         // 渲染直径叠加 visualScale（默认1，Boss=1.8）：只放大贴图显示尺寸，

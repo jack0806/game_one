@@ -4,6 +4,8 @@
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { EnemyBase } from './EnemyBase';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
+import { resetLocomotion } from '../core/Locomotion';
+import { resetDirectionalFacing } from '../core/DirectionalFacing';
 
 export class BossController extends EnemyBase {
     phase        = 1;
@@ -35,6 +37,8 @@ export class BossController extends EnemyBase {
         this._skillTimer = 2.5; this._summonTimer = 7; this._chargeCd = 10;
         this.isCharging = false; this.chargeWindup = 0; this.skillWindup = 0;
         this.attackWindup = 0; this._chargeTime = 0;
+        resetLocomotion(this.locomotion);
+        resetDirectionalFacing(this.directionalFacing, 'front');
         this._setupForChapter(this.chapter);
     }
 
@@ -62,12 +66,17 @@ export class BossController extends EnemyBase {
         // 四章各有独立轮廓/材质的 Boss 贴图，不能再靠同一白模染色冒充换装。
         // glowColor 继续承担预警、弹幕和 HUD 主题色，Sprite 本体保持原画色。
         this.spriteKey = `enemy_boss_ch${Math.min(ch, 4)}`;
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = '';
         this.tintColor = '#ffffff';
         // Boss 应该有明显区别于场上最大常规怪(miniboss, radius=30)的体型压迫感，
         // 但 radius 本身被碰撞判定/近战距离/边界clamp直接消费（见 update() 的近战
         // 判定和 clamp 调用），不能直接调大，否则会连带把命中体积也放大破坏平衡。
         // 这里用只影响渲染直径的 visualScale 纯视觉放大，判定范围保持不变。
         this.visualScale = 2.0;
+        // 第1/2章是有脚的巨兽/机甲；第3/4章本体为悬浮晶核与深渊门环，
+        // 使用推进脉冲而不是凭空补两条人腿。
+        this.locomotionKind = ch <= 2 ? 'heavy' : 'hover';
         this.attackWindupMax = 0.42;
     }
 

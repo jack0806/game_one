@@ -5,7 +5,11 @@ import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
-import { applyArtSprite } from '../core/SpriteUtils';
+import { applyArtSprite, preloadArt } from '../core/SpriteUtils';
+import { createLocomotionState, resetLocomotion } from '../core/Locomotion';
+import {
+    createDirectionalFacingState, directionalArtKeys, resetDirectionalFacing,
+} from '../core/DirectionalFacing';
 const { ccclass, property } = _decorator;
 
 export interface PlayerStats extends CharStats {
@@ -49,6 +53,13 @@ export class PlayerController extends Component {
      *  方向性技能（Q冲锋/穿刺弹等）一律沿朝向释放，不再追鼠标。 */
     facingX = 1;
     facingY = 0;
+    /** 渲染层消费的距离驱动步态状态；不参与碰撞、寻路或技能朝向。 */
+    locomotion = createLocomotionState(0.35);
+    spriteKey = 'char_token_kai';
+    moveSpriteKey = 'char_token_kai_move';
+    locomotionFrameKey = '';
+    /** 视觉朝向独立于移动/技能朝向：由 GameManager 用鼠标瞄准向量驱动。 */
+    directionalFacing = createDirectionalFacingState('side');
 
     // timers
     private _shootTimer  = 0;
@@ -90,7 +101,11 @@ export class PlayerController extends Component {
             // 每张图的透明留白，也保证所有角色都以原画比例等比显示。
             this.sprite.trim = false;
         }
-        applyArtSprite(this.sprite, `char_token_${charId}`);
+        this.spriteKey = `char_token_${charId}`;
+        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.locomotionFrameKey = this.spriteKey;
+        preloadArt(directionalArtKeys(this.spriteKey));
+        applyArtSprite(this.sprite, this.spriteKey);
         this.sprite.color = new Color(255, 255, 255, 255);
 
         this.stats = {
@@ -114,6 +129,8 @@ export class PlayerController extends Component {
         this.alive  = true;
         this._buffs = [];
         this._rCharge = 0;
+        resetLocomotion(this.locomotion, this.x, this.y);
+        resetDirectionalFacing(this.directionalFacing, 'side');
 
         if (def.passive) def.passive(this, game);
     }
