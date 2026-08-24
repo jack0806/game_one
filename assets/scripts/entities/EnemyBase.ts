@@ -4,6 +4,7 @@
 import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
+import { getMiniBossDef } from '../data/BossDB';
 
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
@@ -68,6 +69,24 @@ export class EnemyBase {
     buffDmgMult   = 1;
     _buffTimer    = 0;
 
+    /** 无敌（Boss 飞空坠击/水母隐身等）：takeDamage 直接免疫。 */
+    invulnerable = false;
+    /** 隐身可见性标记：渲染层据此降透明度（水母）。 */
+    invisible = false;
+
+    /** 微型冲锋（盾龟高速碰撞等小 Boss 用）：_chargeT>0 时按 _chargeV 直线移动。 */
+    _chargeT = 0;
+    _chargeVx = 0;
+    _chargeVy = 0;
+    private _chargeDmg = 0;
+
+    /** 小 Boss 技能冷却与计时（squid/turtle/shrimp/jelly/drone 系列用）。 */
+    _miniCd1 = 0;
+    _miniCd2 = 0;
+    _miniTimer = 0;
+    /** 小 Boss 已释放技能计数（深海鱿鱼放完一轮后自毁消失）。 */
+    _miniSkillCount = 0;
+
     /** 变异：混沌节拍 — WaveManager 每5秒对随机一批敌人调用此方法施加临时增益。 */
     applyChaosBuff(mult: number, duration: number): void {
         this.buffSpeedMult = mult;
@@ -89,6 +108,25 @@ export class EnemyBase {
     }
 
     private _applyTypeDef(type: string, scale: number, _game: any): void {
+        // 测试房间小 Boss（文档 6 种）：数值来自 MINI_BOSSES 单一数据源
+        const miniDef = getMiniBossDef(type);
+        if (miniDef) {
+            this.isMiniBoss = true;
+            this.color = miniDef.color; this.glowColor = miniDef.glow;
+            this.maxHp = miniDef.maxHp; this.speed = miniDef.speed;
+            this.damage = miniDef.damage; this.armor = miniDef.armor;
+            this.radius = miniDef.radius; this.goldValue = miniDef.goldValue;
+            this.label = miniDef.label; this.attackWindupMax = miniDef.attackWindupMax;
+            this.visualScale = miniDef.visualScale;
+            this.spriteKey = miniDef.spriteKey; this.tintColor = miniDef.tintColor;
+            // 无人机不近战；锯齿剑虾常驻 +50% 移速躲避（buffSpeedMult 被移动分支消费）
+            this.meleeRange = (type === 'drone_a' || type === 'drone_s') ? 0 : 40;
+            if (type === 'shrimp') this.buffSpeedMult = 1.5;
+            // 水母先以现形状态入场，2s 后进入隐身循环
+            this._miniTimer = type === 'jelly' ? 2 : Rng.float(1, 3);
+            this.hp = this.maxHp;
+            return;
+        }
         switch (type) {
             case 'grunt':
                 this.color = '#ff4444'; this.glowColor = '#ff0000';
@@ -159,7 +197,7 @@ export class EnemyBase {
     // ── 伤害处理 ──────────────────────────────────────────
     /** 返回实际扣血量（护盾吸收/护甲减免后），供攻击吸血按真实伤害结算。 */
     takeDamage(rawDmg: number, attacker: any, game: any): number {
-        if (!this.alive) return 0;
+        if (!this.alive || this.invulnerable) return 0;
         // 护盾先扣
         if (this.shieldActive && this.shieldHp > 0) {
             const abs = Math.min(this.shieldHp, rawDmg);
@@ -267,6 +305,24 @@ export class EnemyBase {
         this.knockbackX *= (1 - dt * 8);
         this.knockbackY *= (1 - dt * 8);
 
+        // 微型冲锋（盾龟高速碰撞等）：冲锋期间不执行其他移动/攻击
+        if (this._chargeT > 0) {
+            this._chargeT -= dt;
+            this.x += this._chargeVx * dt;
+            this.y += this._chargeVy * dt;
+            this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
+            this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
+            if (this._chargeDmg > 0 && player.alive &&
+                Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 8) {
+                player.takeDamage(this._chargeDmg, game);
+                this._chargeDmg = 0;
+            }
+            return;
+        }
+
+        // 测试房间小 Boss 专属技能
+        if (this.isMiniBoss) this._updateMiniBoss(dt, player, game);
+
         // 近战攻击先进入清晰前摇。前摇期间敌人停步，玩家能读懂危险并躲开；
         // 只有结束时仍在攻击距离内才命中，避免旧版“贴近即无动画扣血”。
         if (this.attackWindup > 0) {
@@ -274,7 +330,20 @@ export class EnemyBase {
             if (this.attackWindup <= 0 && player.alive) {
                 const atkDist = this.radius + (player.radius ?? 16) + this.meleeRange;
                 const dist = Math.hypot(player.x - this.x, player.y - this.y);
-                if (dist <= atkDist + 10) {
+                if (this.type === 'shrimp') {
+                    // 锯齿剑虾·钳击：面前中等扇形横扫（±~57°），可毁坏主角召唤物/随从/分身
+                    const facing = Math.atan2(this.attackTargetY - this.y, this.attackTargetX - this.x);
+                    const toPlayer = Math.atan2(player.y - this.y, player.x - this.x);
+                    const diff = Math.abs(Math.atan2(Math.sin(toPlayer - facing), Math.cos(toPlayer - facing)));
+                    if (dist <= atkDist + 30 && diff < 1.0) {
+                        game.particles?.meleeSlash?.(this.x, this.y, facing, this.glowColor, this.meleeRange + 10, 1.3);
+                        game.particles?.impact?.(player.x, player.y, facing, 0.8, this.color);
+                        player.takeDamage(this.damage * this.buffDmgMult * 0.55, game); // 25/45
+                        for (const t of (game.turrets || [])) {
+                            if (t.alive && Vec.dist(t.x, t.y, this.x, this.y) < atkDist + 30) t.alive = false;
+                        }
+                    }
+                } else if (dist <= atkDist + 10) {
                     const angle = Math.atan2(player.y - this.y, player.x - this.x);
                     // 前摇结束再挥出剑气并结算伤害，避免贴脸瞬间扣血。
                     game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this.meleeRange, 0.85);
@@ -325,6 +394,225 @@ export class EnemyBase {
                 this.attackTargetY = player.y;
             }
         }
+    }
+
+    // ── 测试房间小 Boss 专属技能（文档 boss.docx） ──────────
+
+    private _updateMiniBoss(dt: number, player: any, game: any): void {
+        switch (this.type) {
+            case 'squid':    this._miniBossSquid(dt, player, game); break;
+            case 'turtle':   this._miniBossTurtle(dt, player, game); break;
+            case 'shrimp':   this._miniBossShrimp(dt, player, game); break;
+            case 'jelly':    this._miniBossJelly(dt, player, game); break;
+            case 'drone_a':  this._miniBossDroneA(dt, player, game); break;
+            case 'drone_s':  this._miniBossDroneS(dt, player, game); break;
+        }
+    }
+
+    /** 深海鱿鱼（史诗）：缠绕 / 深水炸弹 / 分裂水刺；放完一轮技能（累计3个）后自毁消失。 */
+    private _miniBossSquid(dt: number, player: any, game: any): void {
+        this._miniCd1 -= dt; this._miniCd2 -= dt; this._miniTimer -= dt;
+        if (!player.alive) return;
+        // 技能2 深水炸弹：水弹射向主角，命中 20 伤害；反弹 1 次，第二次撞边直接爆炸
+        if (this._miniCd2 <= 0) {
+            this._miniCd2 = 4;
+            this._miniSkillCount++;
+            const a = Math.atan2(player.y - this.y, player.x - this.x);
+            game.enemyBullets?.push({
+                x: this.x, y: this.y, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240,
+                damage: this.damage * 0.5, radius: 12, color: '#33ccff',
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison',
+                bounceLeft: 1, bounceExplode: true,
+            });
+        }
+        // 技能3 分裂水刺：向前 3 发 10 伤害
+        if (this._miniTimer <= 0) {
+            this._miniTimer = 5;
+            this._miniSkillCount++;
+            const base = Math.atan2(player.y - this.y, player.x - this.x);
+            for (let i = -1; i <= 1; i++) {
+                const a = base + i * 0.28;
+                game.enemyBullets?.push({
+                    x: this.x, y: this.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                    damage: this.damage * 0.25, radius: 7, color: '#66ddff',
+                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                });
+            }
+        }
+        // 技能1 缠绕：贴脸触发，控制主角 2 秒
+        if (this._miniCd1 <= 0 &&
+            Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 20) {
+            this._miniCd1 = 8;
+            this._miniSkillCount++;
+            player.applyBuff?.('squid_grab', 2, { noMove: true });
+            game.particles?.hexActivate?.(player.x, player.y, '#33ccff');
+            game.floatingText?.spawn?.(player.x, player.y - 50, '缠绕！', '#33ccff', 18, true);
+        }
+        // 放完一轮技能后自毁消失（消耗水柱召唤的一次性单位，不长期占场）
+        if (this._miniSkillCount >= 3) {
+            this._miniSkillCount = 0;
+            game.particles?.explode?.(this.x, this.y, '#33ccff', 60);
+            game.floatingText?.spawn?.(this.x, this.y - 40, '技能释放完毕', '#33ccff', 14, true);
+            game.audio?.playSfx?.('explode', 0.7);
+            this._die(player, game);
+        }
+    }
+
+    /** 盾龟（普通）：被动护盾 / 高速碰撞。 */
+    private _miniBossTurtle(dt: number, player: any, game: any): void {
+        this._miniTimer -= dt; this._miniCd1 -= dt;
+        // 技能1 被动：附近有其他小兵则生成 100 护盾
+        if (this._miniTimer <= 0) {
+            this._miniTimer = 1;
+            if (this.shieldHp <= 0) {
+                const hasAlly = (game.enemies || []).some((e: any) =>
+                    e !== this && !e.dead && Vec.dist(e.x, e.y, this.x, this.y) < 220);
+                if (hasAlly) {
+                    this.maxShieldHp = 100; this.shieldHp = 100; this.shieldActive = true;
+                    game.particles?.shieldBlock?.(this.x, this.y, false);
+                    game.floatingText?.spawn?.(this.x, this.y - 46, '龟壳护盾', '#55ff77', 14, true);
+                }
+            }
+        }
+        // 技能2 高速碰撞：加速 20% 向主角冲击，命中 10 伤害
+        if (this._miniCd1 <= 0 && player.alive) {
+            this._miniCd1 = 6;
+            const a = Math.atan2(player.y - this.y, player.x - this.x);
+            this._chargeVx = Math.cos(a) * this.speed * 1.2;
+            this._chargeVy = Math.sin(a) * this.speed * 1.2;
+            this._chargeT = 0.6;
+            this._chargeDmg = 10;
+            game.particles?.impact?.(this.x, this.y, a, 0.9, this.glowColor);
+            game.floatingText?.spawn?.(this.x, this.y - 46, '高速碰撞！', '#55ff77', 14, true);
+        }
+    }
+
+    /** 锯齿剑虾（地狱）：扇形钳击在近战前摇分支；尖刺弹/甩击在此。 */
+    private _miniBossShrimp(dt: number, player: any, game: any): void {
+        this._miniCd1 -= dt; this._miniCd2 -= dt;
+        if (!player.alive) return;
+        // 技能2 发射尖刺：可破盾并造成 20 伤害
+        if (this._miniCd1 <= 0) {
+            this._miniCd1 = 4.5;
+            const a = Math.atan2(player.y - this.y, player.x - this.x);
+            game.enemyBullets?.push({
+                x: this.x, y: this.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
+                damage: this.damage * 0.45, radius: 9, color: '#ffaa66',
+                life: 3.5, lifeTime: 3.5, owner: 'enemy', isEnemyBullet: true,
+                pierceShield: true,
+            });
+        }
+        // 技能4 甩击：近身触发，30 伤害 + 主角眩晕 1.5 秒
+        if (this._miniCd2 <= 0 &&
+            Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 16) {
+            this._miniCd2 = 8;
+            const angle = Math.atan2(player.y - this.y, player.x - this.x);
+            game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.meleeRange + 10, 1.4);
+            player.takeDamage(this.damage * this.buffDmgMult * 0.67, game); // 30/45
+            player.applyBuff?.('shrimp_stun', 1.5, { noMove: true });
+            game.floatingText?.spawn?.(player.x, player.y - 50, '眩晕！', '#ffcc66', 18, true);
+        }
+    }
+
+    /** 毒刺鬼水母（普通）：隐身循环 / 毒刺 DoT。 */
+    private _miniBossJelly(dt: number, player: any, game: any): void {
+        this._miniTimer -= dt; this._miniCd1 -= dt;
+        // 技能1 隐身 3 秒并免疫伤害（简化：全免——敌弹无来源过滤做不了只免远程）
+        if (this._miniTimer <= 0) {
+            this.invisible = !this.invisible;
+            this.invulnerable = this.invisible;
+            this._miniTimer = this.invisible ? 3 : 2;
+            if (this.invisible) {
+                game.floatingText?.spawn?.(this.x, this.y - 40, '隐身…', '#cc88ff', 14, true);
+            }
+        }
+        // 技能2 毒刺：命中挂 5 秒 DoT（每秒 3 伤害，可叠加）
+        if (this._miniCd1 <= 0 && player.alive && !this.invisible) {
+            this._miniCd1 = 5;
+            const a = Math.atan2(player.y - this.y, player.x - this.x);
+            game.enemyBullets?.push({
+                x: this.x, y: this.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
+                damage: this.damage * 0.1, radius: 8, color: '#cc66ff',
+                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                dot: { dps: 3, dur: 5, color: '#cc66ff' },
+            });
+        }
+    }
+
+    /** 攻击性无人机（普通）：声波破盾 / 锁定光束 DoT。 */
+    private _miniBossDroneA(dt: number, player: any, game: any): void {
+        this._miniCd1 -= dt; this._miniCd2 -= dt;
+        if (!player.alive) return;
+        // 技能1 声波攻击：让主角护盾失效（破盾）+ 伤害
+        if (this._miniCd1 <= 0) {
+            this._miniCd1 = 3.5;
+            const a = Math.atan2(player.y - this.y, player.x - this.x);
+            game.enemyBullets?.push({
+                x: this.x, y: this.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                damage: this.damage * 0.4, radius: 9, color: '#ff8888',
+                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                pierceShield: true,
+            });
+        }
+        // 技能2 高能光束：锁定弹，命中挂 3 秒 DoT（每秒 4 伤害）
+        if (this._miniCd2 <= 0) {
+            this._miniCd2 = 6;
+            const a = Math.atan2(player.y - this.y, player.x - this.x);
+            game.enemyBullets?.push({
+                x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
+                damage: 1, radius: 7, color: '#ff5555',
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true,
+                dot: { dps: 4, dur: 3, color: '#ff5555' },
+            });
+        }
+    }
+
+    /** 支援型无人机（史诗）：治疗 / 能量盾 / 召唤攻击性无人机。 */
+    private _miniBossDroneS(dt: number, player: any, game: any): void {
+        this._miniCd1 -= dt; this._miniCd2 -= dt; this._miniTimer -= dt;
+        // 技能3 召唤 5 个攻击性无人机（环绕散布）
+        if (this._miniTimer <= 0) {
+            this._miniTimer = 10;
+            for (let i = 0; i < 5; i++) {
+                const a = Rng.float(0, Math.PI * 2);
+                game.spawnEnemy?.('drone_a', this.x + Math.cos(a) * 90, this.y + Math.sin(a) * 90);
+            }
+            game.floatingText?.spawn?.(this.x, this.y - 46, '呼叫无人机支援！', '#ff8888', 16, true);
+        }
+        // 技能1 对附近随机 5~10 个怪物治疗 40~60 血
+        if (this._miniCd1 <= 0) {
+            this._miniCd1 = 6;
+            const targets = this._nearbyAllies(game, 300);
+            const n = Math.min(targets.length, Rng.int(5, 10));
+            for (let i = 0; i < n; i++) {
+                const t = targets[i];
+                t.hp = Math.min(t.maxHp, t.hp + Rng.int(40, 60));
+                game.particles?.heal?.(t.x, t.y);
+            }
+            game.audio?.playSfx?.('heal');
+            game.floatingText?.spawn?.(this.x, this.y - 46, '治疗支援', '#55ff88', 14, true);
+        }
+        // 技能2 对附近随机 5~10 个怪物挂 150 能量盾
+        if (this._miniCd2 <= 0) {
+            this._miniCd2 = 8;
+            const targets = this._nearbyAllies(game, 300);
+            const n = Math.min(targets.length, Rng.int(5, 10));
+            for (let i = 0; i < n; i++) {
+                const t = targets[i];
+                t.maxShieldHp = 150; t.shieldHp = 150; t.shieldActive = true;
+                game.particles?.shieldBlock?.(t.x, t.y, false);
+            }
+            game.floatingText?.spawn?.(this.x, this.y - 46, '能量盾部署', '#66ccff', 14, true);
+        }
+    }
+
+    /** 周围存活友军（支援型无人机治疗/护盾目标）。 */
+    private _nearbyAllies(game: any, radius: number): EnemyBase[] {
+        const out: EnemyBase[] = [];
+        for (const e of (game.enemies || [])) {
+            if (e !== this && !e.dead && Vec.dist(e.x, e.y, this.x, this.y) <= radius) out.push(e);
+        }
+        return out;
     }
 
     // ── 随机边缘刷怪位置 ──────────────────────────────────

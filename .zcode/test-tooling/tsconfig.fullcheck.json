@@ -1,0 +1,26 @@
+// ============================================================
+//  tsconfig.fullcheck.json — 全项目类型检查（等价 npm run typecheck）
+// ============================================================
+// 本机未用 Cocos 编辑器打开过项目，temp/tsconfig.cocos.json 不存在，
+// 无法跑官方 typecheck。此配置直接复用已安装的 Cocos Creator 3.8.8
+// 编辑器自带引擎声明（cc.d.ts）与捆绑 tsc，对 assets/scripts 全量
+// 做 noEmit 检查，语义与编辑器生成的 temp/tsconfig.cocos.json 对齐。
+{
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "isolatedModules": false,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "C:/ProgramData/cocos/editors/Creator/3.8.8/resources/resources/3d/engine/bin/.declarations",
+    "paths": {
+      "cc": ["cc.d.ts"]
+    }
+  },
+  "include": ["D:/yx/assets/scripts/**/*.ts"]
+}

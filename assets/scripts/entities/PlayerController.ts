@@ -6,6 +6,7 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
 import { applyArtSprite } from '../core/SpriteUtils';
+import type { DotEffect } from './EnemyBase';
 const { ccclass, property } = _decorator;
 
 export interface PlayerStats extends CharStats {
@@ -44,6 +45,10 @@ export class PlayerController extends Component {
     x       = 640;
     y       = 360;
     alive   = true;
+    /** 测试房间「玩家无敌」开关：true 时跳过一切伤害结算，便于观察 Boss 技能。 */
+    godMode = false;
+    /** 持续伤害（测试房小boss毒刺/高能光束等）：吃护甲、不吃无敌帧，可叠加。 */
+    dots: DotEffect[] = [];
     color   = '#00ffcc';
     /** 角色朝向（单位向量）：随移动输入更新，站定时保持最后朝向；
      *  方向性技能（Q冲锋/穿刺弹等）一律沿朝向释放，不再追鼠标。 */
@@ -168,8 +173,21 @@ export class PlayerController extends Component {
         return healed;
     }
 
-    takeDamage(amount: number, game: any): void {
-        if (this._iframeTimer > 0 || this._invincible > 0) return;
+    /** 挂持续伤害（毒刺/高能光束等），同一来源可叠加。 */
+    applyDot(dps: number, dur: number, color = '#cc66ff'): void {
+        this.dots.push({ type: 'dot', dps, timeLeft: dur, color });
+    }
+
+    takeDamage(amount: number, game: any, opts?: { ignoreIframe?: boolean }): void {
+        // !alive 守卫：测试房间死亡后到重生前，场上敌人仍会持续攻击，
+        // 不守卫会反复触发 onPlayerDeath 重复调度重生定时器。
+        if (!this.alive || this.godMode) return;
+        // buff 无敌（重生/切换英雄/技能无敌帧）始终生效
+        if (this._invincible > 0) return;
+        // 受击无敌帧只挡常规受击；ignoreIframe（测试房敌弹）跳过——
+        // 0.5s 无敌帧会吞掉逐发水刺(0.35s)/剑气风暴(一次性10~20道)的后续命中，
+        // 表现为"有些攻击对主角不生效"。
+        if (!opts?.ignoreIframe && this._iframeTimer > 0) return;
         // 核心溢出保护
         if (this.stats._coreOverflow && !this.stats._coreUsed && this.hp / this.stats.maxHp < 0.2) {
             this.stats._coreUsed = true;
@@ -194,6 +212,8 @@ export class PlayerController extends Component {
         const mitigation = this.stats.armor / (this.stats.armor + 100);
         amount = Math.max(1, amount * (1 - mitigation));
         this.hp -= amount;
+        // 受击钩子：深海恐惧「海之霸主」期间每受一次伤害 Boss 生成护盾（测试房）
+        game.onPlayerHit?.(this, game);
         this._iframeTimer = 0.5;
         game.audio?.playSfx?.('player_hurt');
         game.screenShake?.shake(4, 0.14);
@@ -232,6 +252,32 @@ export class PlayerController extends Component {
 
     tick(dt: number, input: any, game: any): void {
         if (!this.alive) return;
+
+        // DoT 持续伤害（测试房小boss毒刺/高能光束等）：吃护甲、不吃无敌帧，可叠加。
+        // 浮字每 0.5s 汇总一次，避免逐帧刷屏。
+        for (let i = this.dots.length - 1; i >= 0; i--) {
+            const d = this.dots[i];
+            d.timeLeft -= dt;
+            if (d.timeLeft <= 0) { this.dots.splice(i, 1); continue; }
+            const dotMitigation = (this.stats?.armor ?? 0) / ((this.stats?.armor ?? 0) + 100);
+            const dmg = Math.max(0.1, d.dps * dt * (1 - dotMitigation));
+            this.hp -= dmg;
+            const fx = d as any;
+            fx._acc = (fx._acc ?? 0) + dmg;
+            fx._fxT = (fx._fxT ?? 0) - dt;
+            if (fx._fxT <= 0) {
+                fx._fxT = 0.5;
+                this._game?.floatingText?.spawn?.(this.x, this.y - 34, `-${Math.max(1, Math.round(fx._acc))}`, d.color ?? '#cc66ff', 12, false);
+                fx._acc = 0;
+                this._game?.particles?.toxin?.(this.x, this.y);
+            }
+            if (this.hp <= 0 && this.alive) {
+                this.hp = 0; this.alive = false;
+                // 用 tick 传入的 game（headless 测试不调 init()，this._game 可能为空）
+                game?.onPlayerDeath?.();
+            }
+        }
+
         this._iframeTimer = Math.max(0, this._iframeTimer - dt);
         this._invincible  = Math.max(0, this._invincible - dt);
         this._dashCd      = Math.max(0, this._dashCd - dt);

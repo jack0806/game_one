@@ -9,6 +9,7 @@ import { styleLabel } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
 import { AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS } from '../data/WaveData';
+import { UNIT_CATALOG } from '../data/BossDB';
 import { PlayerController } from '../entities/PlayerController';
 import { EnemyBase }         from '../entities/EnemyBase';
 import { BossController }    from '../entities/BossController';
@@ -26,13 +27,27 @@ import { AugSelectUI }       from '../ui/AugSelectUI';
 import { ShopUI }            from '../ui/ShopUI';
 import { ScreenManager }     from '../ui/ScreenManager';
 import { StatsPanel, StatsPanelData } from '../ui/StatsPanel';
+import { TestRoomUI } from '../ui/TestRoomUI';
 
 const { ccclass, property } = _decorator;
+
+/** 测试房间水体系召唤单位共享上限：水柱 + 水分身 + 深海鱿鱼 合计最多 12。 */
+const MAX_TEST_WATER_UNITS = 12;
+/** 测试房间水柱上限：固定 8 个方位点，每点最多 1 根水柱（常驻不消失）。 */
+const MAX_TEST_PILLARS = 8;
+/** 水柱固定方位点（上/下/左/右 + 两对角线边缘）：所有水柱只在这 8 个位置生成。 */
+const PILLAR_SPOTS: [number, number][] = [
+    [CANVAS_W / 2, 90], [CANVAS_W / 2, PLAYFIELD_BOTTOM - 60],
+    [70, PLAYFIELD_BOTTOM / 2], [CANVAS_W - 70, PLAYFIELD_BOTTOM / 2],
+    [150, 120], [CANVAS_W - 150, 120],
+    [150, PLAYFIELD_BOTTOM - 100], [CANVAS_W - 150, PLAYFIELD_BOTTOM - 100],
+];
 
 export type GameState =
     | 'menu' | 'charSelect' | 'playing'
     | 'augSelect' | 'shop' | 'gameover'
-    | 'chapterClear' | 'paused' | 'stats';
+    | 'chapterClear' | 'paused' | 'stats'
+    | 'testRoom';
 
 /**
  * GameManager — singleton @ccclass component attached to a root Node.
@@ -80,6 +95,7 @@ export class GameManager extends Component {
     private _shopUI!:     ShopUI;
     private _statsUI!:    StatsPanel;
     private _screenMgr!:  ScreenManager;
+    private _testUI!:     TestRoomUI;
 
     // ── game state ────────────────────────────────────────────
     state:             GameState = 'menu';
@@ -89,6 +105,22 @@ export class GameManager extends Component {
     private _mutations: string[] = [];
     private _runId = 0;
     private _visualTime = 0;
+
+    // ── test room state ───────────────────────────────────────
+    /** 暂停前所在的战斗状态，恢复时回到原状态（测试房间不再误回 playing）。 */
+    private _pauseReturn: 'playing' | 'testRoom' = 'playing';
+    /** 测试房间无敌开关状态（切换英雄时保留）。 */
+    private _testInvincible = false;
+    /**
+     * 测试房间水柱（深海恐惧「海之霸主」）：固定 8 个方位点、每点 1 根、常驻不消失，
+     * 与水分身/深海鱿鱼共享 MAX_TEST_WATER_UNITS 上限。状态机：idle 待机 → flash 闪烁 2s →
+     * shoot 依次朝主角逐发水刺（6 发）→ 回 idle；pair 为对立水柱引用。
+     */
+    private _pillars: { x: number; y: number; r: number; spot: number; state: 'idle' | 'flash' | 'shoot'; flashT: number; shootLeft: number; shootCd: number; pair: any; hitCd: number }[] = [];
+    /** 海之霸主对射完成计数（对立两根各射完一次后关闭护盾模式）。 */
+    private _abyssStormShots = 0;
+    /** 测试房间冰冻预告区（深海恐惧）：3s 闪烁后玩家在区内则冰冻 1.5s。 */
+    private _telegraphZones: { x: number; y: number; r: number; timer: number }[] = [];
 
     // ── extra runtime state (turrets / zones / enemy bullets / stats) ──
     private _turrets:      any[] = [];
@@ -130,22 +162,22 @@ export class GameManager extends Component {
         // Hit-stop pauses combat simulation, but movement/input must stay responsive.
         if (this._hitStop.active) {
             this._hitStop.update(rawDt);
-            if (this.state === 'playing' && this._player?.alive) {
+            if (this._inCombat() && this._player?.alive) {
                 this._player.tickMovement(dt, this._input);
-                if (this._input.justPressed('Escape')) this._setState('paused');
+                if (this._input.justPressed('Escape')) this._pauseCombat();
                 if (this._input.isKeyMPressed()) this._openStats();
             }
             this._renderFrame();
             return;
         }
 
-        if (this.state === 'playing') {
+        if (this._inCombat()) {
             this._updatePlaying(dt);
         } else if (this.state === 'stats') {
             // 再按一次 M（或 Esc）从详情面板返回战斗；Esc 直接回战斗而不是
-            // 进暂停菜单，避免"面板→菜单"两层套娃。
+            // 进暂停菜单，避免"面板→菜单"两层套娃。测试房间打开的详情面板同样回到测试房间。
             if (this._input.isKeyMPressed() || this._input.justPressed('Escape')) {
-                this._setState('playing');
+                this._setState(this._pauseReturn);
             }
         }
 
@@ -240,8 +272,12 @@ export class GameManager extends Component {
         const smNode = new Node('ScreenMgr'); smNode.setParent(ul);
         this._screenMgr = smNode.addComponent(ScreenManager);
 
+        const testNode = new Node('TestRoom'); testNode.setParent(ul);
+        this._testUI = testNode.addComponent(TestRoomUI);
+
         // Wire screen callbacks
         this._screenMgr.onPlayPressed     = () => this._setState('charSelect');
+        this._screenMgr.onTestRoomPressed = () => this._startTestRoom();
         this._screenMgr.onCharSelected    = (c) => this._startGame(c);
         this._screenMgr.onRestartPressed  = () => this._restartGame();
         this._screenMgr.onMainMenuPressed = () => {
@@ -249,7 +285,7 @@ export class GameManager extends Component {
             this._setState('menu');
         };
         this._screenMgr.onContinuePressed = () => this._continueAfterChapter();
-        this._screenMgr.onResumePressed   = () => this._setState('playing');
+        this._screenMgr.onResumePressed   = () => this._setState(this._pauseReturn);
         this._screenMgr.onButtonSfx       = () => {
             this._audio.resume();
             this._audio.playSfx('button');
@@ -258,17 +294,33 @@ export class GameManager extends Component {
         this._augUI.onPickSfx    = () => this._audio.playSfx('augment_pick');
         this._shopUI.onButtonSfx = () => this._audio.playSfx('button');
         this._shopUI.onBuySfx    = () => this._audio.playSfx('buy');
+        this._testUI.onButtonSfx      = () => this._audio.playSfx('button');
+        this._testUI.onSpawnUnit      = (id, count) => this.spawnTestUnit(id, count);
+        this._testUI.onClear          = () => this.clearTestField();
+        this._testUI.onToggleInvincible = (on) => this.setPlayerInvincible(on);
+        this._testUI.onSelectHero     = (id) => this.selectTestHero(id);
+        this._testUI.onGetHero        = () => this._char?.id ?? CHARS[0]!.id;
+        this._testUI.onReturnMenu     = () => {
+            this._clearRunEntities();
+            this._setState('menu');
+        };
     }
 
     // ── state machine ─────────────────────────────────────────
 
+    /** playing 与 testRoom 都是"战斗模拟中"状态：渲染、HUD、主循环共用此判定。 */
+    private _inCombat(): boolean {
+        return this.state === 'playing' || this.state === 'testRoom';
+    }
+
     private _setState(s: GameState) {
         this.state = s;
         this._screenMgr.hideAll();
-        this._hud.node.active      = (s === 'playing');
+        this._hud.node.active      = (s === 'playing' || s === 'testRoom');
         this._augUI.node.active    = false;
         this._shopUI.node.active   = false;
         this._statsUI.node.active  = false;
+        this._testUI.node.active   = false;
 
         // 章节结束/结算页必须清空上一帧战斗残影。此前浮字、金币池和粒子只在
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
@@ -302,6 +354,14 @@ export class GameManager extends Component {
             case 'playing':
                 this._audio.playBgm(this._boss ? 'boss' : this._chapterBgm());
                 break;
+            // 测试房间先播章节 BGM，Boss 生成后由 spawnEnemy 切到 boss BGM；
+            // 从暂停恢复时 Boss 仍在场则继续播 boss BGM。
+            // 工具条随 testRoom 状态常驻：_setState 顶部会统一隐藏所有面板，
+            // 暂停/详情面板返回时若不在这里重新点亮，按钮会永久消失。
+            case 'testRoom':
+                this._audio.playBgm(this._boss ? 'boss' : this._chapterBgm());
+                this._testUI.node.active = true;
+                break;
             // 'shop' / 'augSelect' 面板不归 ScreenManager 管理，由调用方
             // 各自 show() 自己的 UI；这里只需确保上一个面板已被 hideAll() 清掉。
             // 'stats' 同理：StatsPanel 由 _openStats() 激活并填充数据。
@@ -309,6 +369,12 @@ export class GameManager extends Component {
             case 'augSelect':    break;
             case 'stats':        break;
         }
+    }
+
+    /** 战斗内 Esc：进入暂停面板并记录返回状态（测试房间回测试房间，不回 playing）。 */
+    private _pauseCombat() {
+        this._pauseReturn = this.state === 'testRoom' ? 'testRoom' : 'playing';
+        this._setState('paused');
     }
 
     private _chapterBgm(): BgmCue {
@@ -391,6 +457,344 @@ export class GameManager extends Component {
         this._startGame(this._char ?? CHARS[0]!);
     }
 
+    // ── test room ─────────────────────────────────────────────
+
+    /**
+     * 测试房间直接进图：空场地 + 玩家 + 底部工具条（沙盒，不写档案、
+     * 不跑波次调度）。单位由工具条按 id 生成，见 UNIT_CATALOG。
+     */
+    private _startTestRoom() {
+        this._clearRunEntities();
+        this._runId++;
+        this._char    = this._char ?? CHARS[0];
+        this._wave    = 0;
+        this._chapter = 0;
+        this._mutations = [];
+        this._enemies   = [];
+        this._turrets    = [];
+        this._deathZones = [];
+        this._iceZones   = [];
+        this._pillars = [];
+        this._telegraphZones = [];
+        this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
+        this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
+        // 清空无尽变异乘区：测试房间要求单位数值精确等于表内数值
+        this._mutationMods = {};
+        this._economy.reset();
+        this._augMgr.reset();
+        this._waveMgr.reset();
+        this._bullets.reset();
+        this._particles.clear();
+        this._updateBgForChapter();
+
+        const pNode = new Node('Player');
+        pNode.setParent(this._gameLayer);
+        this._player = pNode.addComponent(PlayerController);
+        this._player.init(this._char.id, this);
+
+        this._setState('testRoom');
+        // 复位工具条状态（无敌/数量/分类不跨房保留）；工具条点亮由 _setState('testRoom') 统一负责
+        this._testInvincible = false;
+        this._testUI.resetState();
+        this._floatText.spawn(CANVAS_W / 2, 200, '测试房间：点底部工具条生成单位', '#9adcff', 18, true);
+    }
+
+    /** 测试房间切换出战英雄：重建玩家实体（保留无敌开关），清空绑定旧英雄的召唤物。 */
+    selectTestHero(charId: string): void {
+        if (this.state !== 'testRoom') return;
+        const def = CHARS.find(c => c.id === charId) ?? CHARS[0];
+        if (!def || this._char?.id === def.id) return;
+        if (this._player?.node?.isValid) {
+            this._player.node.active = false;
+            this._player.node.destroy();
+        }
+        const pNode = new Node('Player');
+        pNode.setParent(this._gameLayer);
+        const p = pNode.addComponent(PlayerController);
+        p.init(def.id, this);
+        p.godMode = this._testInvincible;
+        p.x = CANVAS_W / 2;
+        p.y = CANVAS_H / 2;
+        p.applyBuff('switch_iframe', 2, { invincible: true });
+        this._player = p;
+        this._char = def;
+        // 场上召唤物/分身持有旧玩家引用，切换后一律清空
+        this._turrets = [];
+        this._particles.hexActivate(CANVAS_W / 2, CANVAS_H / 2, def.color);
+        this._floatText.spawn(CANVAS_W / 2, 200, `已切换英雄：${def.name}`, '#9adcff', 20, true);
+        this._audio.playSfx('augment_pick');
+    }
+
+    /** 测试房间生成单位：id 见 UNIT_CATALOG，count 为生成数量（1~50）。 */
+    spawnTestUnit(id: string, count: number): void {
+        const n = Math.max(1, Math.min(50, count));
+        for (let i = 0; i < n; i++) {
+            if (id === 'boss_mech' || id === 'boss_abyss') {
+                this.spawnEnemy('boss', undefined, undefined, id === 'boss_mech' ? 'mech' : 'abyss');
+            } else if (id.startsWith('boss_ch')) {
+                const ch = Number(id.slice('boss_ch'.length)) - 1;
+                this.spawnEnemy('boss', undefined, undefined, ch);
+            } else if (id === 'squid') {
+                // 深海鱿鱼与水柱/水分身共享 12 上限（工具条直出也不超发）
+                if (this._testWaterCount() >= MAX_TEST_WATER_UNITS) break;
+                this.spawnEnemy(id, undefined, undefined);
+            } else {
+                this.spawnEnemy(id, undefined, undefined);
+            }
+        }
+        const entry = UNIT_CATALOG.find(u => u.id === id);
+        this._floatText.spawn(CANVAS_W / 2, 200, `生成 ${entry?.label ?? id} ×${n}`, '#9adcff', 18, true);
+        this._audio.playSfx('boss_roar', 0.4);
+    }
+
+    /** 测试房间清场：清敌人/弹幕/粒子/水柱/预告区/召唤物。 */
+    clearTestField(): void {
+        for (const e of this._enemies) {
+            if (e.node?.isValid) { e.node.active = false; e.node.destroy(); }
+        }
+        this._enemies = [];
+        this._boss = undefined;
+        this._pillars = [];
+        this._telegraphZones = [];
+        this._turrets = [];
+        this._bullets?.reset();
+        this._particles?.clear();
+        this._floatText?.clear();
+    }
+
+    /** 测试房间无敌开关（工具条）。 */
+    setPlayerInvincible(on: boolean): void {
+        this._testInvincible = on;
+        if (this._player) this._player.godMode = on;
+    }
+
+    /** 受击钩子（PlayerController.takeDamage 调用）：海之霸主期间深海恐惧每次受击生成 20% 血量护盾。 */
+    onPlayerHit(p: PlayerController, _game: GameManager): void {
+        if (this.state !== 'testRoom' || !this._boss || this._boss.dead) return;
+        if (this._boss.bossKind !== 'abyss' || !this._boss.abyssShieldMode) return;
+        const gain = Math.round(this._boss.maxHp * 0.2);
+        this._boss.maxShieldHp = Math.max(this._boss.maxShieldHp, gain);
+        this._boss.shieldHp = Math.min(this._boss.maxShieldHp, this._boss.shieldHp + gain);
+        this._boss.shieldActive = true;
+        this._particles.shieldBlock(this._boss.x, this._boss.y, false);
+        this._floatText.spawn(this._boss.x, this._boss.y - 70, `护盾 +${gain}`, '#66ccff', 16, true);
+    }
+
+    // ── 深海恐惧技能场景系统（水柱 / 冰冻预告区 / 水分身 / 召唤） ──
+
+    /** 水体系召唤单位计数：水柱 + 水分身 + 深海鱿鱼（共享上限 MAX_TEST_WATER_UNITS）。 */
+    private _testWaterCount(): number {
+        let n = this._pillars.length;
+        for (const t of this._turrets) if (t.kind === 'waterClone' && t.alive) n++;
+        for (const e of this._enemies) if (e.type === 'squid' && !e.dead) n++;
+        return n;
+    }
+
+    /** 海之霸主：在固定方位补齐水柱（每点 1 根、常驻不消失，最多 8 根），并挑一对「相对方向」水柱互射形成交叉夹角。 */
+    startPillarStorm(boss: BossController): void {
+        if (this.state !== 'testRoom') return;
+        let waterCount = this._testWaterCount();
+        for (let s = 0; s < PILLAR_SPOTS.length && waterCount < MAX_TEST_WATER_UNITS; s++) {
+            // 水柱位置固定：已有水柱的方位点跳过，第二次使用只补齐空缺点
+            if (this._pillars.some(z => z.spot === s)) continue;
+            const [x, y] = PILLAR_SPOTS[s];
+            this._pillars.push({ x, y, r: 30, spot: s, state: 'idle', flashT: 0, shootLeft: 0, shootCd: 0, pair: null, hitCd: 0 });
+            waterCount++;
+        }
+        // 相对方向的对立水柱对：上↔下 / 左↔右 / 两条对角线（射击在战场中央交叉成夹角）
+        const OPPOSITE_PAIRS: [number, number][] = [[0, 1], [2, 3], [4, 7], [5, 6]];
+        const available = OPPOSITE_PAIRS.filter(([a, b]) =>
+            this._pillars.some(z => z.spot === a) && this._pillars.some(z => z.spot === b));
+        if (available.length === 0) return; // 场上没有可配对的对立水柱
+        const alivePair = Rng.pick(available);
+        const a = this._pillars.find(z => z.spot === alivePair[0])!;
+        const b = this._pillars.find(z => z.spot === alivePair[1])!;
+        a.state = 'flash'; a.flashT = 2; a.pair = b;
+        b.state = 'flash'; b.flashT = 2; b.pair = a;
+        this._abyssStormShots = 0;
+        boss.abyssShieldMode = true;
+        this._audio.playSfx('freeze');
+        this._floatText.spawn(CANVAS_W / 2, 160, '海之霸主！', '#33ccff', 26, true);
+    }
+
+    /** 水柱推进：常驻不消失；碰柱减速 20%；flash 2s 后进入 shoot，依次朝主角逐发水刺（6 发）。 */
+    private _updatePillars(dt: number): void {
+        if (this._pillars.length === 0) return;
+        const p = this._player;
+        for (const z of this._pillars) {
+            // 玩家碰柱 → 减速 50%（2s 刷新冷却；射击中的水柱不判定）
+            if (p && p.alive && z.hitCd <= 0 && z.state !== 'shoot' &&
+                Vec.dist(z.x, z.y, p.x, p.y) < z.r + (p.radius ?? 16)) {
+                z.hitCd = 1;
+                p.applyBuff('pillar_slow', 2, { speed: 0.5 });
+                this._particles.coldImpact(z.x, z.y);
+            }
+            z.hitCd = Math.max(0, z.hitCd - dt);
+
+            if (z.state === 'flash') {
+                // 闪烁 2s 后进入逐发射击
+                z.flashT -= dt;
+                if (z.flashT <= 0) {
+                    z.state = 'shoot';
+                    z.shootLeft = 6;
+                    z.shootCd = 0;
+                }
+            } else if (z.state === 'shoot') {
+                // 依次朝主角当前位置发射水刺（间隔 0.35s，伤害 = 玩家当前生命 5%）
+                z.shootCd -= dt;
+                if (z.shootCd <= 0) {
+                    z.shootCd = 0.35;
+                    z.shootLeft--;
+                    const a = p ? Math.atan2(p.y - z.y, p.x - z.x) : 0;
+                    const dmg = p && p.alive ? Math.max(1, p.hp * 0.05) : 1;
+                    this._bullets.spawn({
+                        x: z.x, y: z.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
+                        damage: dmg, radius: 9, color: '#66ddff',
+                        owner: 'enemy', isEnemyBullet: true, lifeTime: 2.5,
+                        explodeOnExpire: true, // 水刺最后会爆炸：命中即炸，未命中在终点范围爆炸
+                    });
+                    this._particles.explode(z.x, z.y, '#33ccff', 30);
+                    this._audio.playSfx('freeze', 0.4);
+                    // 6 发射完回 idle；对立两根都射完 → 关闭护盾模式
+                    if (z.shootLeft <= 0) {
+                        z.state = 'idle';
+                        this._abyssStormShots++;
+                        if (this._abyssStormShots >= 2 && this._boss?.bossKind === 'abyss') {
+                            this._boss.abyssShieldMode = false;
+                            this._abyssStormShots = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** 在固定方位空缺处生成一道水柱（水分身冲锋失败 / 召唤鱿鱼无水柱时）；固定位置已满则不生成。 */
+    spawnWaterPillar(): void {
+        if (this.state !== 'testRoom' || this._testWaterCount() >= MAX_TEST_WATER_UNITS) return;
+        if (this._pillars.length >= MAX_TEST_PILLARS) return;
+        // 位置固定：找第一个空缺的方位点，不随机
+        for (let s = 0; s < PILLAR_SPOTS.length; s++) {
+            if (this._pillars.some(z => z.spot === s)) continue;
+            const [x, y] = PILLAR_SPOTS[s];
+            this._pillars.push({ x, y, r: 30, spot: s, state: 'idle', flashT: 0, shootLeft: 0, shootCd: 0, pair: null, hitCd: 0 });
+            this._particles.coldImpact(x, y);
+            return;
+        }
+    }
+
+    /** 冰冻区域：随机 4 个预告区，3s 闪烁后玩家在内则冰冻 1.5s。 */
+    startTelegraphZones(boss: BossController): void {
+        if (this.state !== 'testRoom') return;
+        this._telegraphZones.length = 0;
+        for (let i = 0; i < 4; i++) {
+            const x = Rng.float(120, CANVAS_W - 120);
+            const y = Rng.float(110, PLAYFIELD_BOTTOM - 90);
+            this._telegraphZones.push({ x, y, r: 90, timer: 3 });
+        }
+        this._floatText.spawn(CANVAS_W / 2, 160, '危险水域！', '#66ddff', 24, true);
+        this._audio.playSfx('freeze', 0.6);
+    }
+
+    /** 冰冻预告区推进：到期时玩家在区内 → 冰冻 1.5s。 */
+    private _updateTelegraphZones(dt: number): void {
+        if (this._telegraphZones.length === 0) return;
+        const p = this._player;
+        for (let i = this._telegraphZones.length - 1; i >= 0; i--) {
+            const z = this._telegraphZones[i];
+            z.timer -= dt;
+            if (z.timer <= 0) {
+                this._telegraphZones.splice(i, 1);
+                if (p && p.alive && !p.godMode &&
+                    Vec.dist(z.x, z.y, p.x, p.y) < z.r + (p.radius ?? 16)) {
+                    p.applyBuff('abyss_freeze', 1.5, { noMove: true });
+                    this._particles.coldImpact(p.x, p.y);
+                    this._audio.playSfx('freeze');
+                    this._floatText.spawn(p.x, p.y - 50, '冰冻！', '#66ddff', 18, true);
+                }
+            }
+        }
+    }
+
+    /** 水分身：最多 1 个；与本体同尺寸的淡色虚影，3s 引导后向主角位置冲锋，撞到 40 伤+10% 减速，失败则变为水柱。 */
+    spawnWaterClone(boss: BossController, player: any): void {
+        if (this.state !== 'testRoom') return;
+        // 水分身最多 1 个
+        if (this._turrets.some(t => t.kind === 'waterClone' && t.alive)) return;
+        // 与场上水柱/鱿鱼共享上限
+        if (this._testWaterCount() >= MAX_TEST_WATER_UNITS) return;
+        const c: any = {
+            x: boss.x + 90, y: boss.y,
+            r: boss.radius, // 与本体同尺寸（颜色更淡以示区分）
+            alive: true,
+            kind: 'waterClone', _phase: 'windup', _t: 2, // 引导 2 秒后冲锋
+            _vx: 0, _vy: 0, _speed: 460, _aim: 0, owner: boss,
+        };
+        c.update = (dt: number, g: GameManager) => {
+            if (!c.alive) return;
+            if (c._phase === 'windup') {
+                c._t -= dt;
+                c._aim = Math.atan2(player.y - c.y, player.x - c.x);
+                if (c._t <= 0) {
+                    c._phase = 'dash';
+                    c._t = 2.5;
+                    c._vx = Math.cos(c._aim) * c._speed;
+                    c._vy = Math.sin(c._aim) * c._speed;
+                    g.particles?.impact?.(c.x, c.y, c._aim, 1, '#33ccff');
+                    g.floatingText?.spawn?.(c.x, c.y - 40, '冲锋！', '#33ccff', 16, true);
+                }
+                return;
+            }
+            c.x += c._vx * dt;
+            c.y += c._vy * dt;
+            c._t -= dt;
+            // 撞到玩家：40 伤 + 10% 减速 3s
+            if (player.alive && Vec.dist(c.x, c.y, player.x, player.y) < c.r + (player.radius ?? 16) + 6) {
+                player.takeDamage(40, g);
+                player.applyBuff?.('water_slow', 3, { speed: 0.9 });
+                g.particles?.explode?.(c.x, c.y, '#33ccff', 70);
+                g.floatingText?.spawn?.(player.x, player.y - 50, '水冲！', '#33ccff', 18, true);
+                c.alive = false;
+                return;
+            }
+            // 未撞到（出界/超时）→ 消散并在场景边缘生成一道水柱
+            if (c._t <= 0 || c.x < -40 || c.x > CANVAS_W + 40 || c.y < -40 || c.y > PLAYFIELD_BOTTOM + 40) {
+                c.alive = false;
+                g.spawnWaterPillar();
+            }
+        };
+        this._turrets.push(c);
+        this._floatText.spawn(c.x, c.y - 46, '水分身！', '#33ccff', 16, true);
+    }
+
+    /** 召唤深海鱿鱼：消耗至多 3 道空闲水柱并在各自水柱位置生成；无水柱则补一道水柱后在其位置生成（共享上限）。 */
+    abyssSummonSquid(boss: BossController): void {
+        if (this.state !== 'testRoom') return;
+        const spots: { x: number; y: number }[] = [];
+        // 消耗空闲水柱并记录位置（不消耗正在对射的）；消耗→生成是等量替换，总量不变
+        for (let i = this._pillars.length - 1; i >= 0 && spots.length < 3; i--) {
+            if (this._pillars[i].state === 'idle') {
+                spots.push({ x: this._pillars[i].x, y: this._pillars[i].y });
+                this._pillars.splice(i, 1);
+            }
+        }
+        // 没水柱：固定方位有空位则补一道并在该位置生成（净增 1），无空位或已达共享上限则放弃召唤
+        if (spots.length === 0) {
+            if (this._testWaterCount() >= MAX_TEST_WATER_UNITS) return;
+            const emptySpot = PILLAR_SPOTS.findIndex((_, s) => !this._pillars.some(z => z.spot === s));
+            if (emptySpot < 0) return;
+            const [x, y] = PILLAR_SPOTS[emptySpot];
+            spots.push({ x, y });
+        }
+        // 每道被消耗的水柱位置生成一只深海鱿鱼
+        for (const s of spots) {
+            this.spawnEnemy('squid', s.x, s.y);
+            this._particles.coldImpact(s.x, s.y);
+        }
+        this._floatText.spawn(boss.x, boss.y - 90, `深海鱿鱼现身 ×${spots.length}！`, '#33aaff', 20, true);
+        this._audio.playSfx('boss_roar', 0.7);
+    }
+
     private _clearRunEntities() {
         if (this._player?.node?.isValid) {
             this._player.node.active = false;
@@ -407,6 +811,8 @@ export class GameManager extends Component {
         this._turrets = [];
         this._deathZones = [];
         this._iceZones = [];
+        this._pillars = [];
+        this._telegraphZones = [];
         this._bullets?.reset();
         this._fxPool?.releaseAll();
         this._coinPool?.releaseAll();
@@ -519,8 +925,14 @@ export class GameManager extends Component {
             if (z.timer <= 0) this._iceZones.splice(i, 1);
         }
 
-        // Wave manager
-        this._waveMgr.update(dt, this);
+        // Wave manager — 测试房间不跑波次调度，杜绝"清场→章节结算/augSelect"链路
+        if (this.state !== 'testRoom') {
+            this._waveMgr.update(dt, this);
+        }
+
+        // 测试房间场景系统：深海恐惧水柱 / 冰冻预告区
+        this._updatePillars(dt);
+        this._updateTelegraphZones(dt);
 
         // Economy (gold pickups)
         this._economy.update(dt, this._player, this);
@@ -559,8 +971,8 @@ export class GameManager extends Component {
         // 角色详情面板（M）优先于暂停：打开面板时本帧剩余逻辑不再执行
         if (input.isKeyMPressed()) { this._openStats(); return; }
 
-        // Pause toggle
-        if (input.justPressed('Escape')) { this._setState('paused'); }
+        // Pause toggle（暂停返回状态由 _pauseCombat 记录）
+        if (input.justPressed('Escape')) { this._pauseCombat(); }
     }
 
     // ── render loop ───────────────────────────────────────────
@@ -569,7 +981,7 @@ export class GameManager extends Component {
         this._drawEntities();
         this._drawParticles();
         this._drawSpriteFx();
-        if (this.state === 'playing') {
+        if (this._inCombat()) {
             this._hud.refresh(this._buildHudData());
             this._refreshFloatText();
         }
@@ -600,7 +1012,7 @@ export class GameManager extends Component {
 
         // Background is now the _bgSprite layer (bg_chapter<N>, set in _updateBgForChapter()),
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
-        if (this.state !== 'playing') return;
+        if (!this._inCombat()) return;
 
         // Gold drops — 独立六边形金币Sprite + 翻面/漂浮动画；对象池避免掉落密集时GC。
         this._coinPool.releaseAll();
@@ -644,6 +1056,31 @@ export class GameManager extends Component {
             g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
         }
 
+        // 测试房间水柱（深海恐惧·海之霸主）：蓝柱 + flash/shoot 白闪
+        for (const z of this._pillars) {
+            const [zx, zy] = this._toLocal(z.x, z.y);
+            const flash = z.state !== 'idle' ? (Math.sin(this._visualTime * 8) * 0.5 + 0.5) : 0;
+            g.fillColor = new Color(40, 140, 220, 60 + Math.floor(flash * 60));
+            g.circle(zx, zy, z.r); g.fill();
+            g.strokeColor = new Color(90, 200, 255, 190 + Math.floor(flash * 60));
+            g.lineWidth = 3; g.circle(zx, zy, z.r); g.stroke();
+            // 水柱内部高光
+            g.fillColor = new Color(150, 230, 255, 90);
+            g.circle(zx, zy - z.r * 0.15, z.r * 0.45); g.fill();
+        }
+
+        // 测试房间冰冻预告区（深海恐惧）：闪烁蓝圈，越临近越亮
+        for (const z of this._telegraphZones) {
+            const [zx, zy] = this._toLocal(z.x, z.y);
+            const urgent = Math.max(0, z.timer / 3);
+            const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 10);
+            const alpha = Math.floor((60 + (1 - urgent) * 130) * (0.55 + 0.45 * pulse));
+            g.fillColor = new Color(60, 150, 255, Math.floor(alpha * 0.4));
+            g.circle(zx, zy, z.r); g.fill();
+            g.strokeColor = new Color(140, 210, 255, alpha);
+            g.lineWidth = 2.5; g.circle(zx, zy, z.r); g.stroke();
+        }
+
         // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
         for (const t of this._turrets) {
             if (!t.alive) continue;
@@ -651,6 +1088,20 @@ export class GameManager extends Component {
             const r = t.r ?? 10;
             g.fillColor = new Color(0, 0, 0, 100);
             g.ellipse(tx, ty - r * 0.72, r * 1.15, r * 0.34); g.fill();
+
+            if (t.kind === 'waterClone') {
+                // 深海恐惧·水分身：与本体同尺寸的半透明淡蓝虚影 + 蓄力方向线
+                g.fillColor = new Color(90, 180, 255, 110);
+                g.circle(tx, ty, r); g.fill();
+                g.strokeColor = new Color(190, 235, 255, 190);
+                g.lineWidth = 2; g.circle(tx, ty, r); g.stroke();
+                g.strokeColor = new Color(140, 225, 255, 170);
+                g.lineWidth = 2;
+                g.moveTo(tx, ty);
+                g.lineTo(tx + Math.cos(t._aim ?? 0) * 70, ty - Math.sin(t._aim ?? 0) * 70);
+                g.stroke();
+                continue;
+            }
 
             if (t.kind === 'clone') {
                 // 分身使用角形人形剪影，与机械炮台明确区分。
@@ -796,6 +1247,33 @@ export class GameManager extends Component {
                     g.lineWidth = 3;
                     g.circle(tx, ty, 24 - progress * 8); g.stroke();
                 }
+                // 机械高达·横劈蓄力：主角方向高亮大扇形
+                if (e.mechSlashT > 0) {
+                    const prog = 1 - e.mechSlashT / 2;
+                    const pulse = 0.55 + 0.45 * Math.sin(this._visualTime * 14);
+                    const reach = 280;
+                    const a = -e.mechSlashAngle; // 画布角 → 本地角（y 翻转）
+                    g.fillColor = new Color(150, 210, 255, Math.floor((18 + prog * 26) * pulse));
+                    g.moveTo(ex, ey);
+                    g.arc(ex, ey, reach, a - 1.05, a + 1.05, false);
+                    g.close(); g.fill();
+                    g.strokeColor = new Color(210, 240, 255, Math.floor((150 + prog * 90) * pulse));
+                    g.lineWidth = 2.5 + prog * 2;
+                    g.arc(ex, ey, reach, a - 1.05, a + 1.05, false); g.stroke();
+                }
+                // 机械高达·天空坠击：锁定目标圈（飞空期间 Boss 贴图淡出）
+                if (e.mechSkyT > 0) {
+                    const [sx, sy] = this._toLocal(e.mechSkyTargetX, e.mechSkyTargetY);
+                    const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 9);
+                    g.strokeColor = new Color(255, 120, 90, 170 + Math.floor(pulse * 85));
+                    g.lineWidth = 3;
+                    g.circle(sx, sy, 170); g.stroke();
+                    g.fillColor = new Color(255, 80, 60, Math.floor(pulse * 40));
+                    g.circle(sx, sy, 170); g.fill();
+                    g.strokeColor = new Color(255, 230, 200, 220);
+                    g.lineWidth = 2;
+                    g.circle(sx, sy, 24 + pulse * 12); g.stroke();
+                }
             }
 
             // Hit-flash: brief white ring pulse on the sprite's own tint instead of a
@@ -809,7 +1287,12 @@ export class GameManager extends Component {
                     Math.min(255, baseTint.b + (255 - baseTint.b) * t),
                     255);
             } else if (e.sprite) {
-                e.sprite.color = Color.fromHEX(new Color(), e.tintColor ?? '#ffffff');
+                const baseTint = Color.fromHEX(new Color(), e.tintColor ?? '#ffffff');
+                // 隐身（毒刺鬼水母）/ 机械高达飞空：降透明度
+                const faded = e.invisible || (e instanceof BossController && e.mechSkyT > 0);
+                e.sprite.color = faded
+                    ? new Color(baseTint.r, baseTint.g, baseTint.b, 60)
+                    : baseTint;
             }
 
             // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音
@@ -946,7 +1429,7 @@ export class GameManager extends Component {
     private _drawParticles() {
         const g = this._particleGfx;
         g.clear();
-        if (this.state !== 'playing') return;
+        if (!this._inCombat()) return;
 
         for (const p of this._particles.particles) {
             if (p.life <= 0) continue;
@@ -1040,7 +1523,7 @@ export class GameManager extends Component {
      */
     private _drawSpriteFx() {
         this._fxPool.releaseAll();
-        if (this.state !== 'playing') return;
+        if (!this._inCombat()) return;
 
         for (const fx of this._particles.spriteFx) {
             const node = this._fxPool.acquire();
@@ -1137,6 +1620,7 @@ export class GameManager extends Component {
 
     /** M键：暂停战斗并弹出角色属性/词条详情面板。 */
     private _openStats() {
+        this._pauseReturn = this.state === 'testRoom' ? 'testRoom' : 'playing';
         this._setState('stats');
         // 先激活再填充：Graphics 在节点未激活时下发的绘制命令激活后可能丢失
         // （表现为面板只剩文字、底板全透明）；onEnable/refresh 里也会重画兜底。
@@ -1175,8 +1659,12 @@ export class GameManager extends Component {
     // ── public game API (called by systems / augments) ────────
 
 
-    /** Spawn an enemy of the given type. If x/y omitted, spawns just outside a random edge. */
-    spawnEnemy(type: string, x?: number, y?: number): EnemyBase {
+    /**
+     * Spawn an enemy of the given type. If x/y omitted, spawns just outside a random edge.
+     * bossKey 仅对 type==='boss' 生效：number=0-based 章节（正式局/测试房章节 Boss），
+     * 'mech' | 'abyss' = 测试房文档专属 Boss（TEST_BOSSES）。
+     */
+    spawnEnemy(type: string, x?: number, y?: number, bossKey?: string | number): EnemyBase {
         // EnemyBase/BossController are plain TS classes (not cc.Component),
         // so they're constructed with `new`, not addComponent(). Keep the node
         // hidden until its world position and art settings are fully configured;
@@ -1194,7 +1682,8 @@ export class GameManager extends Component {
             const boss = new BossController();
             boss.node = eNode;
             boss.sprite = eSprite;
-            boss.initBoss(this._chapter, this);
+            if (typeof bossKey === 'string') boss.initBossKind(bossKey, this);
+            else boss.initBoss(typeof bossKey === 'number' ? bossKey : this._chapter, this);
             this._boss = boss;
             enemy = boss;
             this._audio.playBgm('boss');
@@ -1301,8 +1790,33 @@ export class GameManager extends Component {
     onPlayerDeath() {
         this._particles.explode(this._player.x, this._player.y, '#40c8ff');
         this._audio.playSfx('player_die');
+        // 测试房间沙盒：不写档案、不进 gameover，3 秒后满血回中央重生
+        if (this.state === 'testRoom') {
+            this._scheduleTestRespawn();
+            return;
+        }
         this._recordRun(false);
         this._setState('gameover');
+    }
+
+    /** 测试房间重生：3s 后满血回中央 + 2s 无敌（runId 校验防止跨局定时器误触发）。 */
+    private _scheduleTestRespawn() {
+        const runId = this._runId;
+        this._floatText.spawn(CANVAS_W / 2, 200, '3 秒后重生…', '#88ccff', 20, true);
+        setTimeout(() => {
+            if (this.state !== 'testRoom' || this._runId !== runId) return;
+            const p = this._player;
+            if (!p) return;
+            p.hp = p.maxHp;
+            p.shield = 0;
+            p.alive = true;
+            p.dots = [];
+            p.x = CANVAS_W / 2;
+            p.y = CANVAS_H / 2;
+            p.applyBuff('respawn_iframe', 2, { invincible: true });
+            this._particles.hexActivate(CANVAS_W / 2, CANVAS_H / 2, '#88ccff');
+            this._floatText.spawn(CANVAS_W / 2, 200, '已重生', '#88ffb0', 20, true);
+        }, 3000);
     }
 
     /** 局末：把本局数据写入玩家档案(SaveSystem)，新解锁成就弹中央浮字。 */
@@ -1624,6 +2138,11 @@ export class GameManager extends Component {
                 isEnemyBullet: true, homing: b.homing ?? false,
                 lifeTime: b.life ?? 3,
                 enemyFx: b.enemyFx,
+                pierceShield: b.pierceShield ?? false,
+                dot: b.dot,
+                bounceLeft: b.bounceLeft ?? 0,
+                bounceExplode: b.bounceExplode ?? false,
+                explodeOnExpire: b.explodeOnExpire ?? false,
             }),
         };
     }

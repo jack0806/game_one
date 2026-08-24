@@ -32,6 +32,7 @@ export class ScreenManager extends Component {
 
     // callbacks set by GameManager
     onPlayPressed?:        BtnCallback;
+    onTestRoomPressed?:    BtnCallback;   // open test room config
     onCharSelected?:       (char: CharDef) => void;
     onRestartPressed?:     BtnCallback;
     onMainMenuPressed?:    BtnCallback;
@@ -107,9 +108,13 @@ export class ScreenManager extends Component {
         const btn = this._mkBtn(menuDeck, '开始游戏', 0, 105, 450, 64, new Color(20, 220, 210, 255));
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
 
-        this._mkBtn(menuDeck, '升级  ·  即将开放', 0, 28, 330, 46, new Color(80, 118, 135, 255), true);
-        this._mkBtn(menuDeck, '设置  ·  即将开放', 0, -40, 330, 46, new Color(80, 118, 135, 255), true);
-        this._mkBtn(menuDeck, '退出  ·  即将开放', 0, -108, 330, 46, new Color(80, 118, 135, 255), true);
+        // 测试房间：主页直达的 Boss 训练场入口，配置面板由 GameManager 弹出
+        const testBtn = this._mkBtn(menuDeck, '测试房间', 0, 24, 330, 46, new Color(190, 120, 255, 255));
+        testBtn.on(Node.EventType.TOUCH_END, () => this.onTestRoomPressed?.(), this);
+
+        this._mkBtn(menuDeck, '升级  ·  即将开放', 0, -36, 330, 46, new Color(80, 118, 135, 255), true);
+        this._mkBtn(menuDeck, '设置  ·  即将开放', 0, -96, 330, 46, new Color(80, 118, 135, 255), true);
+        this._mkBtn(menuDeck, '退出  ·  即将开放', 0, -156, 330, 46, new Color(80, 118, 135, 255), true);
 
         // 左下角成就入口：点击弹出成就墙（不常驻首页）
         const achBtn = this._mkBtn(p, '🏆 成就', -545, -318, 160, 44, new Color(170, 130, 30, 255));

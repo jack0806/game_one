@@ -74,11 +74,61 @@ test('同一颗子弹不会对同一个敌人重复命中(hitEnemies去重)', ()
 test('敌人子弹(updateEnemyBullets)碰到玩家会调用player.takeDamage并释放子弹', () => {
     const pool = new BulletPool(4);
     const game = makeMockGame();
-    const player = makePlayer({ x: 0, y: 0, radius: 16 });
-    pool.spawn({ x: 5, y: 0, vx: 0, vy: 0, damage: 20, radius: 5, isEnemyBullet: true, owner: 'enemy', lifeTime: 5, hitEnemies: new Set() });
+    const player = makePlayer({ x: 20, y: 0, radius: 16 });
+    pool.spawn({ x: 10, y: 0, vx: 100, vy: 0, damage: 12, radius: 5, owner: 'enemy', isEnemyBullet: true, lifeTime: 3 });
     pool.updateEnemyBullets(0.016, player, game);
-    assert.equal(player.hp, 80);
+    assert.equal(player.hp, 88);
     assert.equal(pool.active.length, 0);
+});
+
+test('敌弹带bounceLeft时在屏幕边缘反弹并递减,耗尽后撞边释放', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const player = makePlayer({ x: 600, y: 300, radius: 16 });
+    const b = pool.spawn({ x: 20, y: 300, vx: -400, vy: 0, damage: 5, radius: 6, owner: 'enemy', isEnemyBullet: true, lifeTime: 5, bounceLeft: 1 });
+    pool.updateEnemyBullets(0.05, player, game);
+    assert.ok(pool.active.includes(b), '第一次撞边应反弹不释放');
+    assert.equal(b.bounceLeft, 0, '反弹次数递减');
+    assert.ok(b.vx > 0, '撞边后反向');
+    b.x = -15; b.vx = -400; // 反弹耗尽后再撞边（向左飞出 -30 边界）
+    pool.updateEnemyBullets(0.05, player, game);
+    assert.ok(!pool.active.includes(b), '反弹耗尽后再撞边应释放');
+});
+
+test('explodeOnExpire弹:寿命耗尽后在终点爆炸,范围内玩家受伤;命中玩家也炸', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    // 未命中：寿命耗尽 → 终点爆炸（爆心距玩家 <90 → 受伤）
+    const player = makePlayer({ x: 640, y: 340, radius: 16 });
+    const b = pool.spawn({ x: 600, y: 340, vx: 0, vy: 0, damage: 10, radius: 8, owner: 'enemy', isEnemyBullet: true, lifeTime: 0.3, explodeOnExpire: true });
+    pool.updateEnemyBullets(0.5, player, game);
+    assert.ok(!pool.active.includes(b), '寿命耗尽应爆炸释放');
+    assert.ok(player.hp < 100, '爆炸范围内玩家应受伤');
+
+    // 命中玩家：直接命中伤害 + 爆炸释放
+    const pool2 = new BulletPool(4);
+    const game2 = makeMockGame();
+    const player2 = makePlayer({ x: 20, y: 0, radius: 16 });
+    pool2.spawn({ x: 10, y: 0, vx: 100, vy: 0, damage: 12, radius: 8, owner: 'enemy', isEnemyBullet: true, lifeTime: 3, explodeOnExpire: true });
+    pool2.updateEnemyBullets(0.016, player2, game2);
+    assert.equal(player2.hp, 88, '命中应直接结算伤害');
+    assert.equal(pool2.active.length, 0, '命中后爆炸释放');
+});
+
+test('bounceExplode弹:反弹耗尽后撞边爆炸,爆心附近的玩家受伤', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const player = makePlayer({ x: 12, y: 380, radius: 16 });
+    const b = pool.spawn({ x: 20, y: 300, vx: -400, vy: 0, damage: 20, radius: 12, owner: 'enemy', isEnemyBullet: true, lifeTime: 5, bounceLeft: 1, bounceExplode: true });
+    // 第一次撞边 → 反弹（玩家在反弹点 80px 外，不命中）
+    pool.updateEnemyBullets(0.05, player, game);
+    assert.ok(pool.active.includes(b), '第一次撞边应反弹');
+    assert.equal(b.bounceLeft, 0);
+    // 第二次撞边 → 直接爆炸（爆心距玩家 <100 → 受伤）
+    b.x = -15; b.vx = -400;
+    pool.updateEnemyBullets(0.05, player, game);
+    assert.ok(!pool.active.includes(b), '第二次撞边应爆炸释放');
+    assert.ok(player.hp < 100, '爆炸范围内玩家应受伤');
 });
 
 test('敌方追踪弹会朝玩家修正方向并在越界后释放', () => {

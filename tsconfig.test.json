@@ -17,6 +17,7 @@
     "assets/scripts/core/ArtRemap.ts",
     "assets/scripts/data/WaveData.ts",
     "assets/scripts/data/CharacterDB.ts",
+    "assets/scripts/data/BossDB.ts",
     "assets/scripts/data/AugmentDB.ts",
     "assets/scripts/systems/AugmentManager.ts",
     "assets/scripts/systems/InputManager.ts",

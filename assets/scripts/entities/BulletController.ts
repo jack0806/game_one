@@ -30,6 +30,14 @@ export interface BulletData {
     homing:       boolean;
     /** 敌弹特效标签：boss 按章节弹种附加可辨识尾迹/轮廓（毒球/齿轮/追踪/混沌）。 */
     enemyFx?:     'poison' | 'gear' | 'homing' | 'chaos';
+    /** 敌弹破盾：命中玩家先清空护盾再结算伤害（锯齿剑虾尖刺/无人机声波）。 */
+    pierceShield?: boolean;
+    /** 敌弹 DoT：命中玩家后挂持续伤害（毒刺/高能光束），可叠加。 */
+    dot?:         { dps: number; dur: number; color?: string };
+    /** 敌弹撞边爆炸：bounceLeft 耗尽后再次撞到屏幕边缘直接爆炸（深水炸弹）。 */
+    bounceExplode?: boolean;
+    /** 敌弹终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺），命中玩家时也炸。 */
+    explodeOnExpire?: boolean;
     trailCd?:     number;
     /** Sprite node carrying bullet_<charKey> art; enemy bullets use programmatic threat shapes. */
     node?:        Node;
@@ -69,6 +77,7 @@ function resetBullet(b: BulletData): void {
     b.hitEnemies.clear(); b.isCrit = false; b.onHitCb = null;
     b.novaMode = false; b.infinite = false; b.isEnemyBullet = false; b.homing = false;
     b.enemyFx = undefined; b.trailCd = 0;
+    b.pierceShield = false; b.dot = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -223,11 +232,57 @@ export class BulletPool {
                     game.particles?.enemyProjectileTrail?.(b.x, b.y, b.enemyFx, b.vx, b.vy, b.color, b.radius);
                 }
             }
-            if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30) {
+            // 边界反弹（深海恐惧大水刺反弹2次 / 深水炸弹反弹1次后撞边爆炸）
+            if (b.bounceLeft > 0) {
+                let bounced = false;
+                if (b.x < b.radius || b.x > CANVAS_W - b.radius) {
+                    b.vx *= -1; b.x = clamp(b.x, b.radius, CANVAS_W - b.radius); b.bounceLeft--; bounced = true;
+                }
+                if (b.y < b.radius || b.y > PLAYFIELD_BOTTOM - b.radius) {
+                    b.vy *= -1; b.y = clamp(b.y, b.radius, PLAYFIELD_BOTTOM - b.radius); b.bounceLeft--; bounced = true;
+                }
+                if (bounced) {
+                    game.particles?.explode?.(b.x, b.y, '#66ddff', 26);
+                    game.audio?.playSfx?.('freeze', 0.3);
+                }
+            } else if (b.bounceExplode &&
+                (b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30)) {
+                // 反弹次数耗尽后撞边 → 直接爆炸（范围伤害，玩家在爆心附近受伤）
+                const ex = clamp(b.x, 0, CANVAS_W);
+                const ey = clamp(b.y, 0, PLAYFIELD_BOTTOM);
+                game.particles?.explode?.(ex, ey, '#33ccff', 80);
+                game.audio?.playSfx?.('explode', 0.6);
+                if (player.alive && Vec.dist(ex, ey, player.x, player.y) < 100) {
+                    player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
+                }
+                this._release(b); continue;
+            } else if (b.explodeOnExpire &&
+                (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30)) {
+                // 终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺未命中时）
+                const ex = clamp(b.x, 0, CANVAS_W);
+                const ey = clamp(b.y, 0, PLAYFIELD_BOTTOM);
+                game.particles?.explode?.(ex, ey, '#33ccff', 70);
+                game.audio?.playSfx?.('explode', 0.6);
+                if (player.alive && Vec.dist(ex, ey, player.x, player.y) < 90) {
+                    player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
+                }
+                this._release(b); continue;
+            } else if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30) {
                 this._release(b); continue;
             }
             if (player.alive && Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
-                player.takeDamage(b.damage, game);
+                // 破盾弹：先清空玩家护盾（锯齿剑虾尖刺/无人机声波）
+                if (b.pierceShield && player.shield > 0) {
+                    player.shield = 0;
+                    game.particles?.shieldBlock?.(player.x, player.y, true);
+                    game.floatingText?.spawn?.(player.x, player.y - 42, '护盾失效', '#ff8888', 14, true);
+                }
+                // DoT 弹：命中挂持续伤害（毒刺/高能光束，可叠加）
+                if (b.dot && player.applyDot) player.applyDot(b.dot.dps, b.dot.dur, b.dot.color);
+                // 终点爆炸弹：命中玩家时也炸（水刺，范围溅射特效）
+                if (b.explodeOnExpire) game.particles?.explode?.(player.x, player.y, '#33ccff', 46);
+                // 测试房敌弹穿透受击无敌帧：逐发水刺/剑气等高频弹幕不被 0.5s 无敌帧吞掉
+                player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
                 this._release(b);
             }
         }
