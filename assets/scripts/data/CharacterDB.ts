@@ -54,7 +54,8 @@ export const CHARACTERS: Record<string, CharDef> = {
         qSkill(p: any, game: any) {
             // 方向性技能沿角色朝向释放（facing 随移动输入更新），不再追鼠标
             const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
-            game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 12, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
+            // 弹头放大50%（radius 12 → 18）
+            game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 18, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
             game.particles.explode(p.x, p.y, '#ff8800', 20);
         },
@@ -63,9 +64,10 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
         },
         ultimate(p: any, game: any) {
+            // 弹头自动追踪敌人（homing 由 BulletPool.update 朝最近敌人转向）
             for (let i = 0; i < 30; i++) {
                 const a = Rng.float(0, Math.PI * 2);
-                game.bulletPool.spawn({ x: p.x, y: p.y, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player', charKey: p.charId });
+                game.bulletPool.spawn({ x: p.x, y: p.y, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player', charKey: p.charId, homing: true });
             }
             p.applyBuff('overload', 8, { dmgMult: 2 });
             game.screenShake.shake(15, 0.5);
@@ -76,11 +78,13 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'vivian',
         name: '工程师·薇薇安', icon: '🤖', color: '#00aaff', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 17,
-        desc: '炮台类词条效果×1.5，始终有2个跟随炮台',
+        desc: '炮台类词条效果×1.5',
         skills: { q: '部署炮台 — 召唤强化炮台持续攻击', e: '网络连接 — 所有炮台锁定最近敌人', r: '炮台风暴 — 召唤6座轨道炮台环绕旋转' },
         skillIcons: { q: 'summon', e: 'lightning', r: 'summon' },
         stats: { maxHp: 90, speed: 300, damage: 18, attackSpeed: 1.5, armor: 8, critRate: 0.05, critDmg: 0.5, pierce: 0 },
-        passive(p: any, game: any) { game.spawnTurret(p, 0.6, true); game.spawnTurret(p, 0.6, true); p.stats.turretBonus = 1.5; },
+        // 被动砍掉永久跟随炮台：只保留"炮台类词条效果×1.5"，炮台全部改为
+        // 技能/词条限时召唤（不再开局自带 2 座无限寿命炮台）
+        passive(p: any, _game: any) { p.stats.turretBonus = 1.5; },
         qSkill(p: any, game: any) { game.spawnTurret(p, 1.5); game.particles.hexActivate(p.x, p.y, '#00aaff'); },
         eSkill(p: any, game: any) {
             for (const t of game.turrets) t.focusTarget = game.getNearestEnemy(p.x, p.y);
@@ -100,9 +104,9 @@ export const CHARACTERS: Record<string, CharDef> = {
         name: '狂战士·雷克', icon: '⚔️', color: '#ff4444', unlocked: true,
         attackType: 'melee', attackRange: 70, ultCd: 18,
         desc: '每损失10% HP，伤害+8%（最高+80%）；攻击吸血5%',
-        skills: { q: '怒冲 — 向前冲刺200距离并击飞沿途敌人', e: '战吼 — 10秒攻速+50%/伤害+30%', r: '死亡意志 — 牺牲半血换取10秒无敌' },
+        skills: { q: '怒冲 — 向前冲刺200距离并击飞沿途敌人', e: '战吼 — 10秒攻速+50%/伤害+30%', r: '死亡意志 — 牺牲半血，4秒无敌+45%吸血+50%攻速' },
         skillIcons: { q: 'speed', e: 'fire', r: 'shield' },
-        stats: { maxHp: 200, speed: 300, damage: 30, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
+        stats: { maxHp: 200, speed: 300, damage: 40, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
         passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.05; },
         qSkill(p: any, game: any) {
             // 冲锋方向 = 角色朝向（不再追鼠标）
@@ -135,8 +139,10 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.particles.hexActivate(p.x, p.y, '#ff4444');
         },
         ultimate(p: any, game: any) {
+            // 大招改为4秒：无敌 + 45%伤害吸血 + 50%攻速（吸血由
+            // PlayerController.applyAttackLifesteal 累加 buffs 的 lifestealRate）
             p.hp *= 0.5;
-            p.applyBuff('death_will', 10, { invincible: true });
+            p.applyBuff('death_will', 4, { invincible: true, atkSpd: 1.5, lifestealRate: 0.45 });
             game.particles.hexActivate(p.x, p.y, '#ff0000');
             game.floatingText.spawn(p.x, p.y - 50, '死亡意志！', '#ff0000', 22, true);
             game.screenShake.shake(15, 0.5);

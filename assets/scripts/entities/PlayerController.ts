@@ -410,8 +410,11 @@ export class PlayerController extends Component {
     private _meleeAttack(game: any): void {
         const enemy = game.getNearestEnemy?.(this.x, this.y);
         if (!enemy || !enemy.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > this._charDef.attackRange + this.radius + enemy.radius) return;
-        // 剑气特效：从玩家位置向目标方向斩出，刃长覆盖整个攻击距离
-        game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(enemy.y - this.y, enemy.x - this.x), this.color, this._charDef.attackRange, 1);
+        // 剑气特效：从玩家位置向目标方向斩出，刃长覆盖整个攻击距离；
+        // 命中点追加冲击提示，让攻击范围与落点一眼可读
+        const angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+        game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this._charDef.attackRange, 1);
+        game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
         this.applyAttackDamage(enemy, game);
     }
 
@@ -438,9 +441,11 @@ export class PlayerController extends Component {
         return dmg;
     }
 
-    /** 攻击吸血：按实际扣血回血。lifestealRate 默认0（狂战士被动=0.05），其他角色无感知。 */
+    /** 攻击吸血：按实际扣血回血。lifestealRate 默认0（狂战士被动=0.05），
+     *  大招等 buff 可通过 mods.lifestealRate 叠加（如死亡意志+45%）。 */
     applyAttackLifesteal(actualDamage: number, game: any): void {
-        const rate = this.stats.lifestealRate || 0;
+        let rate = this.stats.lifestealRate || 0;
+        for (const b of this._buffs) if (b.mods.lifestealRate) rate += b.mods.lifestealRate;
         if (rate <= 0 || actualDamage <= 0 || !this.alive) return;
         const heal = actualDamage * rate;
         if (heal < 1) return;
