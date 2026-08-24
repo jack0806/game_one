@@ -94,6 +94,14 @@ export function updateDirectionalFacing(
         state.targetView = desired.view;
         state.targetMirror = desired.mirror;
         state.turnProgress = 1;
+    } else if (desired.view === 'side' && state.view === 'side' &&
+               desired.view === state.targetView && desired.mirror !== state.targetMirror) {
+        // 左右移动反向时必须立即把身体翻到新方向；若仍等到收窄动画中点，
+        // 按下A后的前4帧会继续朝右，操作上像“腿向左、身体向右”。翻面立即
+        // 生效，随后保留短促的轮廓收窄/恢复，让转身仍有重量感。
+        state.mirror = desired.mirror;
+        state.targetMirror = desired.mirror;
+        state.turnProgress = 0;
     } else if (desired.view !== state.targetView || desired.mirror !== state.targetMirror) {
         state.targetView = desired.view;
         state.targetMirror = desired.mirror;

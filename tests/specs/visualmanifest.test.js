@@ -94,6 +94,19 @@ function assertTransparentMargin(png, margin, message) {
     }
 }
 
+function alphaBounds(png, threshold = 16) {
+    let minX = png.width, minY = png.height, maxX = -1, maxY = -1;
+    for (let y = 0; y < png.height; y++) {
+        for (let x = 0; x < png.width; x++) {
+            if (png.pixels[(y * png.width + x) * 4 + 3] < threshold) continue;
+            minX = Math.min(minX, x); minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+        }
+    }
+    assert.ok(maxX >= minX && maxY >= minY, '图片必须包含可见像素');
+    return { width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
 test('五张核心VFX均为512×512透明RGBA且四角完全透明', () => {
     const files = ['fx_heal.png', 'fx_explosion.png', 'fx_cold_arrow.png', 'fx_hex_ring.png', 'fx_poison.png'];
     for (const file of files) {
@@ -129,6 +142,38 @@ test('金币使用透明方形正式美术，而非程序圆点', () => {
     assert.equal(png.width, png.height, '金币贴图应为正方形');
     assert.ok(png.width >= 256, '金币源图至少256px，保证翻面缩放时轮廓清晰');
     assert.deepEqual(cornerAlpha(png), [0, 0, 0, 0], '金币四角必须透明');
+});
+
+test('五个基础怪待机帧使用512方形透明画布，切动作帧时不再被拉伸', () => {
+    const files = [
+        'enemy_grunt.png', 'enemy_shield.png', 'enemy_exploder.png',
+        'enemy_golem.png', 'enemy_boss.png',
+    ];
+    for (const file of files) {
+        const png = parsePng(file, true);
+        assert.deepEqual([png.width, png.height], [512, 512], `${file} 应统一为512×512`);
+        assertTransparentMargin(png, 4, `${file} 必须保留透明安全边距`);
+    }
+
+    for (const base of files.map(file => file.slice(0, -4))) {
+        const idle = alphaBounds(parsePng(`${base}.png`, true));
+        const move = alphaBounds(parsePng(`${base}_move.png`, true));
+        assert.ok(
+            Math.abs(Math.max(idle.width, idle.height) - Math.max(move.width, move.height)) <= 4,
+            `${base} 待机/动作占屏主尺寸必须一致，避免切帧缩放闪烁`,
+        );
+    }
+});
+
+test('六名英雄正面待机与动作帧保持同一身高基准', () => {
+    for (const id of ['kai', 'vivian', 'reik', 'olia', 'graf', 'liana']) {
+        const idle = alphaBounds(parsePng(`char_token_${id}.png`, true));
+        const move = alphaBounds(parsePng(`char_token_${id}_move.png`, true));
+        assert.ok(
+            Math.abs(idle.height - move.height) <= 4,
+            `${id} 正面切帧时身体高度不得突变`,
+        );
+    }
 });
 
 const directionalBases = [

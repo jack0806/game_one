@@ -31,6 +31,8 @@ export class EnemyBase {
     spriteKey   = 'enemy_grunt';
     /** 与静止帧成对的真实动作帧。 */
     moveSpriteKey = 'enemy_grunt_move';
+    /** 无完整方向帧的俯视单位（无人机）仅使用悬浮位移，不请求不存在的资源。 */
+    directionalFrames = true;
     /** 渲染层用于避免每帧重复提交同一资源。 */
     locomotionFrameKey = '';
     /** 按敌人身体结构选择的步态；只影响渲染，不影响速度与碰撞。 */
@@ -112,6 +114,7 @@ export class EnemyBase {
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0;
+        this.directionalFrames = true;
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
         this._applyTypeDef(type, scale, game);
@@ -142,7 +145,9 @@ export class EnemyBase {
                 squid: 'skitter', turtle: 'heavy', shrimp: 'skitter',
                 jelly: 'hover', drone_a: 'hover', drone_s: 'hover',
             } as Record<string, LocomotionKind>)[type] ?? 'biped';
-            this.moveSpriteKey = `${this.spriteKey}_move`;
+            const isDrone = type === 'drone_a' || type === 'drone_s';
+            this.directionalFrames = !isDrone;
+            this.moveSpriteKey = isDrone ? this.spriteKey : `${this.spriteKey}_move`;
             this.locomotionFrameKey = '';
             this.hp = this.maxHp;
             return;
@@ -641,6 +646,25 @@ export class EnemyBase {
             if (e !== this && !e.dead && Vec.dist(e.x, e.y, this.x, this.y) <= radius) out.push(e);
         }
         return out;
+    }
+
+    /**
+     * 渲染朝向与位移方向分开：普通近战锁定英雄，远程后撤时也继续正对英雄；
+     * 攻击前摇则朝锁定点，避免目标横移时身体和危险指示线各指一边。
+     */
+    getVisualFacing(player: any, movementX = 1, movementY = 0): [number, number] {
+        let tx: number | undefined;
+        let ty: number | undefined;
+        if (this.attackWindup > 0) {
+            tx = this.attackTargetX;
+            ty = this.attackTargetY;
+        } else if (player?.alive !== false && player) {
+            tx = player.x;
+            ty = player.y;
+        }
+        if (tx === undefined || ty === undefined) return [movementX, movementY];
+        const [dx, dy] = Vec.normalize(tx - this.x, ty - this.y);
+        return Math.abs(dx) + Math.abs(dy) > 0.0001 ? [dx, dy] : [movementX, movementY];
     }
 
     // ── 随机边缘刷怪位置 ──────────────────────────────────

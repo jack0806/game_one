@@ -82,7 +82,7 @@ export class BossController extends EnemyBase {
         this.tintColor = def.tintColor ?? '#ffffff';
         this.visualScale = def.visualScale;
         this.attackWindupMax = def.attackWindupMax;
-        this.locomotionKind = def.chapter <= 2 ? 'heavy' : 'hover';
+        this.locomotionKind = def.chapter <= 2 ? 'bossHeavy' : 'bossHover';
         this.moveSpriteKey = `${this.spriteKey}_move`;
         this.locomotionFrameKey = '';
     }
@@ -118,8 +118,9 @@ export class BossController extends EnemyBase {
         // 这里用只影响渲染直径的 visualScale 纯视觉放大，判定范围保持不变。
         this.visualScale = t.visualScale;
         this.attackWindupMax = t.attackWindupMax;
-        // 步态：前两章重甲，后两章悬浮；动作帧与静止帧成对
-        this.locomotionKind = ch <= 2 ? 'heavy' : 'hover';
+        // 第1/2章是有脚的巨兽/机甲；第3/4章本体为悬浮晶核与深渊门环。
+        // 大型单位使用专用低频步态，避免高速冲锋时大图换帧闪烁。
+        this.locomotionKind = ch <= 2 ? 'bossHeavy' : 'bossHover';
         this.moveSpriteKey = `${this.spriteKey}_move`;
         this.locomotionFrameKey = '';
     }
@@ -182,12 +183,27 @@ export class BossController extends EnemyBase {
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
             if (this._chargeTime <= 0) this.isCharging = false;
-        } else {
+        } else if (this.attackWindup <= 0) {
             // 普通追逐（对齐 hexblast-py：追逐速度要乘slowMult，之前完全没接线，
             // 导致减速类词条/技能对boss完全无效）
-            const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
-            this.x += dx * this.speed * this.slowMult * dt;
-            this.y += dy * this.speed * this.slowMult * dt;
+            const toPlayerX = player.x - this.x;
+            const toPlayerY = player.y - this.y;
+            const distance = Math.hypot(toPlayerX, toPlayerY);
+            const [dx, dy] = Vec.normalize(toPlayerX, toPlayerY);
+            // 旧逻辑无条件穿过英雄中心，Boss 会在目标点两侧来回越界并每帧
+            // 翻转前/背或左右帧，视觉上就是“一闪一闪”。现在在接触判定内沿
+            // 稳定停步；冲锋结束若重叠，则以较慢速度后撤恢复合理间距。
+            const contactDistance = this.radius + (player.radius ?? 16);
+            const standDistance = Math.max(1, contactDistance - 2);
+            const moveSpeed = this.speed * this.slowMult;
+            let step = 0;
+            if (distance > standDistance + 0.5) {
+                step = Math.min(moveSpeed * dt, distance - standDistance);
+            } else if (distance < standDistance - 6 && distance > 0.0001) {
+                step = -Math.min(moveSpeed * 0.35 * dt, standDistance - distance);
+            }
+            this.x += dx * step;
+            this.y += dy * step;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
@@ -443,6 +459,19 @@ export class BossController extends EnemyBase {
             }
         }
         game.audio?.playSfx?.('freeze', 0.7);
+    }
+
+    override getVisualFacing(player: any, movementX = 1, movementY = 0): [number, number] {
+        // 冲锋时身体必须沿真实速度方向；撞墙反弹后也立即随新速度转向。
+        if (this.isCharging) {
+            const [dx, dy] = Vec.normalize(this._chargeVx, this._chargeVy);
+            if (Math.abs(dx) + Math.abs(dy) > 0.0001) return [dx, dy];
+        }
+        if (this.chargeWindup > 0) {
+            const [dx, dy] = Vec.normalize(this.chargeTargetX - this.x, this.chargeTargetY - this.y);
+            if (Math.abs(dx) + Math.abs(dy) > 0.0001) return [dx, dy];
+        }
+        return super.getVisualFacing(player, movementX, movementY);
     }
 
     /** 用于 HUD 绘制的 HP 信息 */

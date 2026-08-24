@@ -6,7 +6,7 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
 import { applyArtSprite, preloadArt } from '../core/SpriteUtils';
-import { createLocomotionState, resetLocomotion } from '../core/Locomotion';
+import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import {
     createDirectionalFacingState, directionalArtKeys, resetDirectionalFacing,
 } from '../core/DirectionalFacing';
@@ -35,6 +35,15 @@ export interface PlayerStats extends CharStats {
     turretBonus: number;
     freezeBonus: number;
     [key: string]: any;
+}
+
+/** 导出为纯函数，便于 headless 测试逐一覆盖全部英雄。 */
+export function playerLocomotionKind(charId: string): LocomotionKind {
+    const kinds: Record<string, LocomotionKind> = {
+        kai: 'biped', vivian: 'biped', reik: 'heavy',
+        olia: 'hover', graf: 'heavy', liana: 'biped',
+    };
+    return kinds[charId] ?? 'biped';
 }
 
 interface Buff { id: string; duration: number; mods: Record<string, any>; }
@@ -82,9 +91,10 @@ export class PlayerController extends Component {
     moveSpriteKey = 'char_token_kai_move';
     /** 距离驱动步态（前/侧/背 × 静止/动作 六帧矩阵的渲染驱动）。 */
     locomotion = createLocomotionState(0.35);
+    locomotionKind: LocomotionKind = 'biped';
     /** 渲染层用于避免每帧重复提交同一资源。 */
     locomotionFrameKey = '';
-    /** 朝向状态（鼠标驱动，侧面镜像）。 */
+    /** 视觉朝向与方向技能共用最后一次移动输入，保证按左/右时身体立即同向。 */
     directionalFacing = createDirectionalFacingState('side');
 
     // ── 初始化 ───────────────────────────────────────────
@@ -115,6 +125,10 @@ export class PlayerController extends Component {
         preloadArt(directionalArtKeys(this.spriteKey));
         applyArtSprite(this.sprite, this.spriteKey);
         this.sprite.color = new Color(255, 255, 255, 255);
+
+        // 六名英雄按身体结构使用不同重心：狂战士/傀儡重步，时空行者悬浮，
+        // 其余角色保持灵活双足。只改变视觉节奏，不改变实际速度和碰撞。
+        this.locomotionKind = playerLocomotionKind(charId);
 
         this.stats = {
             maxHp: def.stats.maxHp, speed: def.stats.speed,

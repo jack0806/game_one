@@ -8,6 +8,8 @@ const root = path.resolve(__dirname, '..', '..');
 const screenSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ScreenManager.ts'), 'utf8');
 const gameSource = fs.readFileSync(path.join(root, 'assets/scripts/core/GameManager.ts'), 'utf8');
 const playerSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/PlayerController.ts'), 'utf8');
+const enemySource = fs.readFileSync(path.join(root, 'assets/scripts/entities/EnemyBase.ts'), 'utf8');
+const bossSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
 const hudSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/HUD.ts'), 'utf8');
 const shopSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ShopUI.ts'), 'utf8');
 const statsSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/StatsPanel.ts'), 'utf8');
@@ -121,7 +123,7 @@ test('战斗英雄呼吸动画保持等比缩放', () => {
 
 test('英雄、普通怪和Boss接入真实动作帧且不再绘制假腿', () => {
     assert.match(gameSource, /advanceLocomotion\([\s\S]*e\.locomotionKind/);
-    assert.match(gameSource, /advanceLocomotion\([\s\S]*p\.locomotion[\s\S]*'biped'/);
+    assert.match(gameSource, /advanceLocomotion\([\s\S]*p\.locomotion[\s\S]*p\.locomotionKind/);
     assert.match(gameSource, /directionalArtKey\(entity\.spriteKey, facing\.view, pose\.frameIndex\)/);
     assert.match(gameSource, /_syncDirectionalFrame\(e, walkPose, facingPose\)/);
     assert.match(gameSource, /_syncDirectionalFrame\(p, walkPose, facingPose\)/);
@@ -129,14 +131,20 @@ test('英雄、普通怪和Boss接入真实动作帧且不再绘制假腿', () =
     assert.doesNotMatch(gameSource, /new Color\(pCol\.r, pCol\.g, pCol\.b, 185\)/);
 });
 
-test('英雄朝鼠标瞄准，所有敌人与Boss朝英雄而非沿移动方向转脸', () => {
-    assert.match(gameSource, /p\.directionalFacing,[\s\S]*this\._input\.mouse\.x - p\.x,[\s\S]*this\._input\.mouse\.y - p\.y/);
-    assert.match(gameSource, /const faceDx = this\._player \? this\._player\.x - e\.x/);
-    assert.match(gameSource, /const faceDy = this\._player \? this\._player\.y - e\.y/);
+test('英雄朝移动输入转身，敌人按行为状态选择合理朝向', () => {
+    assert.match(gameSource, /p\.directionalFacing,[\s\S]*p\.facingX,[\s\S]*p\.facingY/);
+    assert.doesNotMatch(gameSource, /p\.directionalFacing,[\s\S]*this\._input\.mouse\.x - p\.x/);
+    assert.match(gameSource, /const \[faceDx, faceDy\] = e\.getVisualFacing/);
     assert.match(gameSource, /e\.directionalFacing, faceDx, faceDy/);
     assert.doesNotMatch(gameSource, /const facing = walkPose\.directionX < -0\.025/);
     assert.match(playerSource, /preloadArt\(directionalArtKeys\(this\.spriteKey\)\)/);
-    assert.match(gameSource, /preloadArt\(directionalArtKeys\(enemy\.spriteKey\)\)/);
+    assert.match(gameSource, /enemy\.directionalFrames === false[\s\S]*\[enemy\.spriteKey\][\s\S]*directionalArtKeys\(enemy\.spriteKey\)/);
+    assert.match(enemySource, /const isDrone = type === 'drone_a' \|\| type === 'drone_s'/);
+    assert.match(enemySource, /this\.directionalFrames = !isDrone/);
+    assert.match(bossSource, /if \(this\.isCharging\)[\s\S]*this\._chargeVx, this\._chargeVy/);
+    assert.match(bossSource, /const standDistance = Math\.max\(1, contactDistance - 2\)/);
+    assert.match(bossSource, /bossHeavy/);
+    assert.match(bossSource, /bossHover/);
 });
 
 test('高密金币降低远距亮度并在玩家附近恢复全亮', () => {

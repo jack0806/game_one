@@ -1028,7 +1028,9 @@ export class GameManager extends Component {
         pose: LocomotionPose,
         facing: DirectionalFacingPose,
     ): void {
-        const key = directionalArtKey(entity.spriteKey, facing.view, pose.frameIndex);
+        const key = entity.directionalFrames === false
+            ? entity.spriteKey
+            : directionalArtKey(entity.spriteKey, facing.view, pose.frameIndex);
         if (!entity.sprite || !key || entity.locomotionFrameKey === key) return;
         entity.locomotionFrameKey = key;
         applyArtSprite(entity.sprite, key);
@@ -1206,8 +1208,9 @@ export class GameManager extends Component {
             const walkPose = advanceLocomotion(
                 e.locomotion, e.x, e.y, this._visualDt, visualR * 2, e.locomotionKind,
             );
-            const faceDx = this._player ? this._player.x - e.x : walkPose.directionX;
-            const faceDy = this._player ? this._player.y - e.y : walkPose.directionY;
+            const [faceDx, faceDy] = e.getVisualFacing(
+                this._player, walkPose.directionX, walkPose.directionY,
+            );
             const facingPose = updateDirectionalFacing(
                 e.directionalFacing, faceDx, faceDy, this._visualDt,
             );
@@ -1472,12 +1475,12 @@ export class GameManager extends Component {
             const p = this._player;
             const [px, py] = this._toLocal(p.x, p.y);
             const walkPose = advanceLocomotion(
-                p.locomotion, p.x, p.y, this._visualDt, 82, 'biped',
+                p.locomotion, p.x, p.y, this._visualDt, 82, p.locomotionKind,
             );
             const facingPose = updateDirectionalFacing(
                 p.directionalFacing,
-                this._input.mouse.x - p.x,
-                this._input.mouse.y - p.y,
+                p.facingX,
+                p.facingY,
                 this._visualDt,
             );
             // 只保留无色接触阴影。身份色椭圆会穿过双腿之间，看起来像一根绿线。
@@ -1785,7 +1788,9 @@ export class GameManager extends Component {
 
         // 方向动作帧矩阵预热 + 初始静止帧
         enemy.locomotionFrameKey = enemy.spriteKey;
-        preloadArt(directionalArtKeys(enemy.spriteKey));
+        preloadArt(enemy.directionalFrames === false
+            ? [enemy.spriteKey]
+            : directionalArtKeys(enemy.spriteKey));
         applyArtSprite(eSprite, enemy.spriteKey);
         eSprite.color = Color.fromHEX(new Color(), enemy.tintColor ?? '#ffffff');
         // 渲染直径叠加 visualScale（默认1，Boss=1.8）：只放大贴图显示尺寸，

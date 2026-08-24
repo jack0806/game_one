@@ -2,7 +2,9 @@
 //  Locomotion.ts — 与逻辑坐标解耦的距离驱动换帧状态
 // ============================================================
 
-export type LocomotionKind = 'biped' | 'heavy' | 'skitter' | 'quadruped' | 'hover';
+export type LocomotionKind =
+    | 'biped' | 'heavy' | 'skitter' | 'quadruped' | 'hover'
+    | 'bossHeavy' | 'bossHover';
 
 export interface LocomotionState {
     initialized: boolean;
@@ -46,6 +48,11 @@ const PROFILES: Record<LocomotionKind, LocomotionProfile> = {
     skitter:   { cycleDistance: 0.42, maxCyclesPerSecond: 5.5, stride: 0.120, bodyLift: 0.012, bodyRollDeg: 0.45 },
     quadruped: { cycleDistance: 0.72, maxCyclesPerSecond: 3.2, stride: 0.095, bodyLift: 0.013, bodyRollDeg: 0.55 },
     hover:     { cycleDistance: 0.90, maxCyclesPerSecond: 3.0, stride: 0.060, bodyLift: 0.020, bodyRollDeg: 0.38 },
+    // Boss 的屏幕占用接近普通怪三倍。若继续使用普通单位的换帧上限，冲锋时
+    // 180px 大图会每秒硬切近五次，看起来像闪烁而不是迈步。Boss 专用档让
+    // 位移仍驱动动作，但限制大轮廓的换帧频率与摇摆幅度。
+    bossHeavy: { cycleDistance: 0.96, maxCyclesPerSecond: 1.35, stride: 0.052, bodyLift: 0.008, bodyRollDeg: 0.30 },
+    bossHover: { cycleDistance: 1.12, maxCyclesPerSecond: 1.20, stride: 0.045, bodyLift: 0.011, bodyRollDeg: 0.20 },
 };
 
 const TAU = Math.PI * 2;
