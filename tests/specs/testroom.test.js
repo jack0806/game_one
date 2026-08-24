@@ -146,6 +146,12 @@ test('切换英雄重建玩家并保留无敌状态,清空召唤物', () => {
     assert.match(gameSource, /this\._testInvincible = false;/, '进房复位无敌状态');
 });
 
+test('机械高达横劈扇形与判定区域一致,飞空期间完全消失', () => {
+    assert.match(gameSource, /const half = 1\.05; \/\/ 与 BossController 横劈判定角度一致/, '扇形角度范围与伤害判定一致');
+    assert.match(gameSource, /for \(let k = 0; k <= SEG; k\+\+\) \{[\s\S]*?g\.lineTo\(ex \+ Math\.cos\(ang\) \* reach/, '扇形采样描点绘制(不依赖arc方向语义)');
+    assert.match(gameSource, /e\.invisible \? 60 : 0\)/, '机械高达飞空时贴图完全消失,水母隐身仍半透明');
+});
+
 test('暂停/详情面板返回状态跟随测试房间', () => {
     assert.match(gameSource, /private _pauseCombat\(\) \{[\s\S]*?this\._pauseReturn = this\.state === 'testRoom' \? 'testRoom' : 'playing'/);
     assert.match(gameSource, /this\._screenMgr\.onResumePressed\s*=\s*\(\) => this\._setState\(this\._pauseReturn\)/);

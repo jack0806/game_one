@@ -1284,19 +1284,31 @@ export class GameManager extends Component {
                     g.lineWidth = 3;
                     g.circle(tx, ty, 24 - progress * 8); g.stroke();
                 }
-                // 机械高达·横劈蓄力：主角方向高亮大扇形
+                // 机械高达·横劈蓄力：主角方向高亮大扇形。
+                // 用采样描点画扇面（不依赖 Graphics.arc 的角度方向语义），
+                // 角度范围/半径与 BossController 的横劈伤害判定严格一致。
                 if (e.mechSlashT > 0) {
                     const prog = 1 - e.mechSlashT / 2;
                     const pulse = 0.55 + 0.45 * Math.sin(this._visualTime * 14);
                     const reach = 280;
+                    const half = 1.05; // 与 BossController 横劈判定角度一致
                     const a = -e.mechSlashAngle; // 画布角 → 本地角（y 翻转）
+                    const SEG = 24;
                     g.fillColor = new Color(150, 210, 255, Math.floor((18 + prog * 26) * pulse));
                     g.moveTo(ex, ey);
-                    g.arc(ex, ey, reach, a - 1.05, a + 1.05, false);
+                    for (let k = 0; k <= SEG; k++) {
+                        const ang = a - half + (k / SEG) * (half * 2);
+                        g.lineTo(ex + Math.cos(ang) * reach, ey + Math.sin(ang) * reach);
+                    }
                     g.close(); g.fill();
                     g.strokeColor = new Color(210, 240, 255, Math.floor((150 + prog * 90) * pulse));
                     g.lineWidth = 2.5 + prog * 2;
-                    g.arc(ex, ey, reach, a - 1.05, a + 1.05, false); g.stroke();
+                    g.moveTo(ex + Math.cos(a - half) * reach, ey + Math.sin(a - half) * reach);
+                    for (let k = 1; k <= SEG; k++) {
+                        const ang = a - half + (k / SEG) * (half * 2);
+                        g.lineTo(ex + Math.cos(ang) * reach, ey + Math.sin(ang) * reach);
+                    }
+                    g.stroke();
                 }
                 // 机械高达·天空坠击：锁定目标圈（飞空期间 Boss 贴图淡出）
                 if (e.mechSkyT > 0) {
@@ -1325,10 +1337,10 @@ export class GameManager extends Component {
                     255);
             } else if (e.sprite) {
                 const baseTint = Color.fromHEX(new Color(), e.tintColor ?? '#ffffff');
-                // 隐身（毒刺鬼水母）/ 机械高达飞空：降透明度
+                // 隐身（毒刺鬼水母）降透明度；机械高达飞空期间完全消失（只留锁定圈）
                 const faded = e.invisible || (e instanceof BossController && e.mechSkyT > 0);
                 e.sprite.color = faded
-                    ? new Color(baseTint.r, baseTint.g, baseTint.b, 60)
+                    ? new Color(baseTint.r, baseTint.g, baseTint.b, e.invisible ? 60 : 0)
                     : baseTint;
             }
 
