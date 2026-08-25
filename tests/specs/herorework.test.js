@@ -172,7 +172,7 @@ test('切换形态:攻击形态近战+30%伤害(附加到技能)+50%攻速,可�
     assert.equal(solo.maxHp - solo.hp, 39, 'Q吃形态30%加成');
 });
 
-test('时空奇点:引导2秒→能量球飞向敌群拉取3秒→爆炸200%伤害', () => {
+test('时空奇点:引导2秒→拉扯敌人到球心聚团→按拉取数增伤爆炸', () => {
     const game = makeMockGame();
     game.getEnemyClusterPoint = () => ({ x: 400, y: 300 });
     const p = makePlayer({
@@ -191,14 +191,47 @@ test('时空奇点:引导2秒→能量球飞向敌群拉取3秒→爆炸200%伤�
     orb.update(1.1, game);
     assert.equal(orb._phase, 'active', '引导结束进入拉取阶段');
 
-    // 拉取3秒 → 爆炸：范围内敌人吃 200% 基础伤害(20×2=40)
-    const victim = new EnemyBase(); victim.init('grunt', 1, game);
-    victim.x = 400; victim.y = 300;
-    game.enemies.push(victim);
-    const hp0 = victim.hp;
-    orb.update(3.1, game);
+    // 3只怪：1只在球心附近，2只在100px外（将被拉向球心）
+    const victims = [];
+    for (let i = 0; i < 3; i++) {
+        const v = new EnemyBase(); v.init('grunt', 1, game);
+        v.x = 400 + (i === 0 ? 0 : 100); v.y = 300 + (i === 1 ? 80 : 0);
+        game.enemies.push(v);
+        victims.push(v);
+    }
+    // 推进拉取阶段：外围怪物应被持续拉向球心
+    for (let k = 0; k < 40; k++) orb.update(0.08, game);
+    // 爆炸：3只被拉取 → 增伤 1+3×5%=1.15 → 伤害 20×2×1.15=46
     assert.equal(orb.alive, false, '3秒后能量球消散');
-    assert.equal(hp0 - victim.hp, 40, '爆炸造成200%基础伤害');
+    for (const v of victims) {
+        assert.equal(v.maxHp - v.hp, 46, '每只被拉怪物受 200%×1.15 爆炸伤害');
+    }
+    const d2 = Math.hypot(victims[1].x - 400, victims[1].y - 300);
+    assert.ok(d2 < 60, '外围怪物应被拉向球心聚团');
+});
+
+test('时空奇点增伤上限20%:拉取超过4只按4只计算', () => {
+    const game = makeMockGame();
+    game.getEnemyClusterPoint = () => ({ x: 400, y: 300 });
+    const p = makePlayer({
+        x: 100, y: 100,
+        stats: { ...CHARACTERS.olia.stats },
+        applyBuff() {},
+        applyAttackDamage(enemy, g, base) { enemy.hp -= base; return base; },
+    });
+    CHARACTERS.olia.ultimate(p, game);
+    const orb = game.turrets[0];
+    orb.update(2.1, game); // 进入 active
+    for (let i = 0; i < 6; i++) {
+        const v = new EnemyBase(); v.init('grunt', 1, game);
+        v.x = 400 + (i - 3) * 30; v.y = 300;
+        game.enemies.push(v);
+    }
+    orb.update(3.1, game); // 拉取并爆炸
+    // 6只被拉取但增伤封顶：1+20%=1.2 → 20×2×1.2=48
+    for (const v of game.enemies) {
+        assert.equal(v.maxHp - v.hp, 48, '增伤上限20%(按4只计算)');
+    }
 });
 
 // ── 薇薇安·超频指令 ─────────────────────────────────────────

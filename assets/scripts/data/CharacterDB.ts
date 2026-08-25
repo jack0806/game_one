@@ -170,7 +170,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         skills: {
             q: '时空切割 — 在至多5个敌人间突刺,锁定越少每段伤害越高(30~10),结束回到原位',
             e: '切换形态 — 远程↔攻击形态:近战+30%伤害(附加到所有技能)与+50%攻速',
-            r: '时空奇点 — 引导2秒射出能量球,持续拉取周围敌人,3秒后爆炸造成200%伤害',
+            r: '时空奇点 — 引导2秒射出能量球,把周围敌人拉向球心,3秒后爆炸200%伤害(每拉1只+5%,最高+20%)',
         },
         skillIcons: { q: 'speed', e: 'chaos', r: 'explosion' },
         stats: { maxHp: 100, speed: 320, damage: 20, attackSpeed: 1.0, armor: 20, critRate: 0.10, critDmg: 0.5, pierce: 0 },
@@ -232,12 +232,14 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.particles?.hexActivate?.(p.x, p.y, p.color);
         },
         ultimate(p: any, game: any) {
-            // 时空奇点：引导2秒（站定蓄能）→ 能量球飞向敌群 → 拉取3秒 → 爆炸200%基础伤害
+            // 时空奇点：引导2秒（站定蓄能）→ 能量球飞向敌群 → 每帧把附近敌人
+            // 拉向球心聚团，3秒后爆炸。拉扯的怪物越多伤害越高：每只+5%，最高+20%。
             p.applyBuff?.('singularity_channel', 2, { noMove: true });
             game.floatingText?.spawn(p.x, p.y - 55, '聚集时空能量…', p.color, 16, true);
             const orb: any = {
                 x: p.x, y: p.y, r: 26, alive: true, kind: 'timeOrb',
-                _phase: 'channel', _t: 2, _pull: 0, _tx: 0, _ty: 0, owner: p,
+                _phase: 'channel', _t: 2, _pull: 0, _tx: 0, _ty: 0,
+                _pulled: new Set(), owner: p,
             };
             orb.update = (dt: number, g: any) => {
                 if (!orb.alive) return;
@@ -253,7 +255,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                     }
                     return;
                 }
-                // active：飞向敌群中心悬停，持续拉取周围敌人（步长钳制避免大步长过冲）
+                // active：飞向敌群中心悬停（步长钳制避免大步长过冲）
                 const dx = orb._tx - orb.x, dy = orb._ty - orb.y;
                 const dist = Math.hypot(dx, dy);
                 if (dist > 30) {
@@ -265,25 +267,30 @@ export const CHARACTERS: Record<string, CharDef> = {
                 orb._pull -= dt;
                 if (orb._pull <= 0) {
                     orb._pull = 0.25;
-                    for (const e of (g.enemies || [])) {
-                        if (e.alive && !e.dead) {
-                            const d = Math.hypot(e.x - orb.x, e.y - orb.y);
-                            if (d < 260 && d > 10) {
-                                e.knockbackX += ((orb.x - e.x) / d) * 6;
-                                e.knockbackY += ((orb.y - e.y) / d) * 6;
-                            }
-                        }
-                    }
                     g.particles?.hexActivate?.(orb.x, orb.y, '#aaddff');
+                }
+                // 每帧把附近敌人拉向能量球中心聚团（不再是击退式的轻推）
+                for (const e of (g.enemies || [])) {
+                    if (!e.alive || e.dead) continue;
+                    const d = Math.hypot(e.x - orb.x, e.y - orb.y);
+                    if (d >= 260) continue;
+                    orb._pulled.add(e);
+                    if (d > 4) {
+                        const pull = Math.min(1, dt * 5);
+                        e.x += (orb.x - e.x) * pull;
+                        e.y += (orb.y - e.y) * pull;
+                    }
                 }
                 if (orb._t <= 0) {
                     orb.alive = false;
-                    // 爆炸：200%基础伤害（吃攻击形态加成）
-                    const dmg = p.stats.damage * 2 * (p.formDamageMult ?? 1);
+                    // 拉扯的怪物越多伤害越高：每只+5%，最高+20%
+                    const pulledCount = orb._pulled.size;
+                    const mult = 1 + Math.min(0.20, pulledCount * 0.05);
+                    const dmg = p.stats.damage * 2 * (p.formDamageMult ?? 1) * mult;
                     g.particles?.explode?.(orb.x, orb.y, '#aaddff', 120);
                     g.screenShake?.shake?.(12, 0.4);
                     g.audio?.playSfx?.('explode', 0.9);
-                    g.floatingText?.spawn(orb.x, orb.y - 40, '时空奇点！', p.color, 22, true);
+                    g.floatingText?.spawn(orb.x, orb.y - 40, `时空奇点 ×${mult.toFixed(2)}！`, p.color, 22, true);
                     for (const e of (g.enemies || [])) {
                         if (e.alive && !e.dead && Math.hypot(e.x - orb.x, e.y - orb.y) < 200) {
                             if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmg);
