@@ -1,10 +1,10 @@
 'use strict';
 // ============================================================
-//  artmanifest.test.js â€” èµ„æºæ¸…å•è‡ªæ£€
-//  æ‰«æä»£ç é‡Œæ‰€æœ‰ä¼šè¢«ç”¨ä½œ art key çš„å­—ç¬¦ä¸²ï¼ˆèƒŒæ™¯/æ•Œäºº/è§’è‰²/å­å¼¹/ç‰¹æ•ˆ/
-//  è¯æ¡icon/æŠ€èƒ½iconï¼‰ï¼Œé€ä¸ªèµ° ArtRemap.resolveArtKey() è§£æçœŸå®æ–‡ä»¶åï¼Œ
-//  æ–­è¨€ assets/resources/art/ ä¸‹ç¡®æœ‰å¯¹åº” .pngï¼Œé˜²æ­¢æ‹¼å†™/æ˜ å°„é”™è¯¯å¯¼è‡´
-//  è¿è¡Œæ—¶ resources.load() é™é»˜å¤±è´¥ã€‚
+//  artmanifest.test.js ¡ª ×ÊÔ´Çåµ¥×Ô¼ì
+//  É¨Ãè´úÂëÀïËùÓĞ»á±»ÓÃ×÷ art key µÄ×Ö·û´®£¨±³¾°/µĞÈË/½ÇÉ«/×Óµ¯/ÌØĞ§/
+//  ´ÊÌõicon/¼¼ÄÜicon£©£¬Öğ¸ö×ß ArtRemap.resolveArtKey() ½âÎöÕæÊµÎÄ¼şÃû£¬
+//  ¶ÏÑÔ assets/resources/art/ ÏÂÈ·ÓĞ¶ÔÓ¦ .png£¬·ÀÖ¹Æ´Ğ´/Ó³Éä´íÎóµ¼ÖÂ
+//  ÔËĞĞÊ± resources.load() ¾²Ä¬Ê§°Ü¡£
 // ============================================================
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,9 +46,9 @@ function collectAllArtKeys() {
     return keys;
 }
 
-test('å…¨éƒ¨art keyç»ArtRemapè§£æå,å¯¹åº”.pngæ–‡ä»¶ç¡®å®å­˜åœ¨äºassets/resources/art/', () => {
+test('È«²¿art key¾­ArtRemap½âÎöºó,¶ÔÓ¦.pngÎÄ¼şÈ·Êµ´æÔÚÓÚassets/resources/art/', () => {
     const keys = collectAllArtKeys();
-    assert.ok(keys.size > 0, 'åº”è‡³å°‘æ”¶é›†åˆ°1ä¸ªart key');
+    assert.ok(keys.size > 0, 'Ó¦ÖÁÉÙÊÕ¼¯µ½1¸öart key');
 
     const missing = [];
     for (const key of keys) {
@@ -56,37 +56,38 @@ test('å…¨éƒ¨art keyç»ArtRemapè§£æå,å¯¹åº”.pngæ–‡ä»¶ç¡®å®å­˜åœ¨äºassets/re
         const file = path.join(ART_DIR, resolved + '.png');
         if (!fs.existsSync(file)) missing.push(`${key} -> ${resolved}.png`);
     }
-    assert.deepEqual(missing, [], `ä»¥ä¸‹art keyè§£æåæ‰¾ä¸åˆ°å¯¹åº”æ–‡ä»¶:\n${missing.join('\n')}`);
+    assert.deepEqual(missing, [], `ÒÔÏÂart key½âÎöºóÕÒ²»µ½¶ÔÓ¦ÎÄ¼ş:\n${missing.join('\n')}`);
 });
 
-test('è§’è‰²æ¨¡å‹å’Œå¤´åƒä½¿ç”¨åŒåèµ„æº,ä¸ä¼šè¢«æ—§æ˜ å°„å†æ¬¡ä¸²ä½', () => {
+test('½ÇÉ«Ä£ĞÍºÍÍ·ÏñÊ¹ÓÃÍ¬Ãû×ÊÔ´,²»»á±»¾ÉÓ³ÉäÔÙ´Î´®Î»', () => {
     for (const c of CHARS) {
         assert.equal(resolveArtKey('char_' + c.id), 'char_' + c.id);
         assert.equal(resolveArtKey('char_token_' + c.id), 'char_token_' + c.id);
     }
 });
 
-test('6ä¸ªè§’è‰²çš„skillIcons(q/e/r)å…¨éƒ¨è½åœ¨åˆæ³•çš„ui_icon_*å…±äº«å›¾æ ‡é›†åˆå†…', () => {
+test('6¸ö½ÇÉ«µÄskillIcons(q/e/r)È«²¿ÂäÔÚºÏ·¨µÄui_icon_*¹²ÏíÍ¼±ê¼¯ºÏÄÚ', () => {
     const validIcons = fs.readdirSync(ART_DIR)
         .filter(f => f.startsWith('ui_icon_') && f.endsWith('.png'))
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
-    assert.ok(validIcons.length > 0, 'åº”è‡³å°‘å­˜åœ¨1å¼ ui_icon_*.png');
+    assert.ok(validIcons.length > 0, 'Ó¦ÖÁÉÙ´æÔÚ1ÕÅui_icon_*.png');
 
     for (const c of CHARS) {
         for (const slot of ['q', 'e', 'r']) {
             const icon = c.skillIcons[slot];
-            assert.ok(validIcons.includes(icon), `è§’è‰²${c.id}æŠ€èƒ½${slot}çš„icon '${icon}' ä¸åœ¨åˆæ³•å›¾æ ‡é›†åˆå†…`);
+            assert.ok(validIcons.includes(icon), `½ÇÉ«${c.id}¼¼ÄÜ${slot}µÄicon '${icon}' ²»ÔÚºÏ·¨Í¼±ê¼¯ºÏÄÚ`);
         }
     }
 });
 
-test('50æ¡è¯æ¡çš„iconå­—æ®µå…¨éƒ¨è½åœ¨åˆæ³•çš„ui_icon_*å…±äº«å›¾æ ‡é›†åˆå†…', () => {
+test('49Ìõ´ÊÌõµÄicon×Ö¶ÎÈ«²¿ÂäÔÚºÏ·¨µÄui_icon_*¹²ÏíÍ¼±ê¼¯ºÏÄÚ', () => {
     const validIcons = fs.readdirSync(ART_DIR)
         .filter(f => f.startsWith('ui_icon_') && f.endsWith('.png'))
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
 
-    assert.equal(AUGMENT_DB.length, 50, 'è¯æ¡æ•°é‡åº”ä¸º50');
+    // ³å´Ì¹¦ÄÜ¿³µôºó phase_dash£¨³å´Ì±ä´«ËÍ£©´ÊÌõÒ»²¢É¾³ı£º49Ìõ
+    assert.equal(AUGMENT_DB.length, 49, '´ÊÌõÊıÁ¿Ó¦Îª49£¨³å´ÌÒÆ³ıºóphase_dashÒ»²¢É¾³ı£©');
     for (const a of AUGMENT_DB) {
-        assert.ok(validIcons.includes(a.icon), `è¯æ¡${a.id}çš„icon '${a.icon}' ä¸åœ¨åˆæ³•å›¾æ ‡é›†åˆå†…`);
+        assert.ok(validIcons.includes(a.icon), `´ÊÌõ${a.id}µÄicon '${a.icon}' ²»ÔÚºÏ·¨Í¼±ê¼¯ºÏÄÚ`);
     }
 });

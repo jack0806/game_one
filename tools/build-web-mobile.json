@@ -1,0 +1,30 @@
+{
+  "name": "hexblast",
+  "taskName": "hexblast-web-mobile",
+  "platform": "web-mobile",
+  "debug": false,
+  "md5Cache": true,
+  "buildPath": "project://build",
+  "outputName": "web-mobile",
+  "startScene": "ca59cee9-ed11-4c25-a0a0-19546f5e1835",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/Game.scene",
+      "uuid": "ca59cee9-ed11-4c25-a0a0-19546f5e1835"
+    }
+  ],
+  "designResolution": {
+    "width": 1280,
+    "height": 720,
+    "policy": 4
+  },
+  "packages": {
+    "web-mobile": {
+      "orientation": "landscape",
+      "resolution": {
+        "designWidth": 1280,
+        "designHeight": 720
+      }
+    }
+  }
+}

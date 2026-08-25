@@ -7,6 +7,7 @@ import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/Character
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin } from '../core/UIStyle';
+import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
 
 const { ccclass } = _decorator;
@@ -98,12 +99,14 @@ export class ScreenManager extends Component {
 
         // background — flat color first (fallback while title_screen.png loads / if missing),
         // then a full-screen Sprite drawn on top of it, behind the title text below.
+        // 底板与立绘都按可见宽度铺满（全面屏横屏>1280时无左右黑边）。
         const bg = p.addComponent(Graphics);
         bg.fillColor = new Color(12, 8, 22, 255);
-        bg.fillRect(-640, -360, 1280, 720);
+        bg.fillRect(-1600, -360, 3200, 720);
 
         const bgArtNode = new Node('BgArt'); bgArtNode.setParent(p);
-        bgArtNode.addComponent(UITransform).setContentSize(1280, 720);
+        const menuW = Math.max(1280, visibleDesignWidth());
+        bgArtNode.addComponent(UITransform).setContentSize(menuW, 720);
         const bgArtSprite = bgArtNode.addComponent(Sprite);
         bgArtSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         applyArtSprite(bgArtSprite, 'title_screen');
@@ -151,7 +154,7 @@ export class ScreenManager extends Component {
 
         const bg = p.addComponent(Graphics);
         bg.fillColor = new Color(10, 10, 20, 240);
-        bg.fillRect(-640, -360, 1280, 720);
+        bg.fillRect(-1600, -360, 3200, 720);
 
         const tn = new Node('T'); tn.setParent(p);
         tn.setPosition(new Vec3(0, 280, 0));

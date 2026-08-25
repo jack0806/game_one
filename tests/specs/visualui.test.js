@@ -14,7 +14,11 @@ const bossSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/Boss
 const hudSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/HUD.ts'), 'utf8');
 const shopSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ShopUI.ts'), 'utf8');
 const statsSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/StatsPanel.ts'), 'utf8');
+const touchSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/TouchControls.ts'), 'utf8');
+const inputSource = fs.readFileSync(path.join(root, 'assets/scripts/systems/InputManager.ts'), 'utf8');
+const fitSource = fs.readFileSync(path.join(root, 'assets/scripts/core/ScreenFit.ts'), 'utf8');
 const webBuild = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-desktop.json'), 'utf8'));
+const webBuildMobile = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-mobile.json'), 'utf8'));
 
 test('首页背景已移除烧录按钮，操作区不再绘制不透明遮挡方框', () => {
     assert.match(screenSource, /setContentSize\(568, 410\)/);
@@ -176,6 +180,107 @@ test('炮台使用固定俯视底座与独立旋转炮筒并保留接触阴影',
     assert.match(gameSource, /fanIndex \* 0\.62/);
     assert.doesNotMatch(gameSource, /followOwner \? followSide \* 52 : \(Math\.random\(\) - 0\.5\) \* 100/);
     assert.match(gameSource, /g\.ellipse\(tx, ty - r \* 0\.72, r \* 1\.15, r \* 0\.34\)/);
+});
+
+test('移动端虚拟操控：左下角常驻静态摇杆，触摸可浮动锚定且y轴翻转', () => {
+    // 摇杆区占画布左半（560×580），顶部避开HUD
+    assert.match(touchSource, /new Node\('StickZone'\)/);
+    assert.match(touchSource, /setPosition\(new Vec3\(-360, -70, 0\)\)/);
+    assert.match(touchSource, /setContentSize\(560, 580\)/);
+    // 静态摇杆常驻左下角：onLoad即显示在默认位，松手回到默认位并保持可见
+    assert.match(touchSource, /private _joyHomeX = -450;/);
+    assert.match(touchSource, /private _joyHomeY = -190;/);
+    assert.match(touchSource, /this\._joyRoot\.setPosition\(new Vec3\(this\._joyHomeX, this\._joyHomeY, 0\)\);\s*\n\s*this\._joyRoot\.active = true;\s*\n\s*this\._drawJoyBase\(\);/);
+    assert.match(touchSource, /_onStickEnd[\s\S]*?this\._joyHomeX, this\._joyHomeY[\s\S]*?this\._joyRoot\.active = true;[\s\S]*?this\._input\?\.setStick\(0, 0\);/);
+    assert.match(touchSource, /Node\.EventType\.TOUCH_CANCEL, this\._onStickEnd/);
+    // 拖动钳制在STICK_R内；UI坐标y向上→画布y向下需取负
+    assert.match(touchSource, /this\._input\?\.setStick\(dx \/ this\.STICK_R, -dy \/ this\.STICK_R\);/);
+});
+
+test('技能按钮按参考图排成右下曲线弧,按下即触发且带冷却显示', () => {
+    // 左低右高的曲线弧，锚点相对可见右缘（fromRight），1280宽时为Q(290,-240) E(400,-195) R(530,-170)
+    assert.match(touchSource, /q: \{ fromRight: -350, y: -240, r: 52 \}/);
+    assert.match(touchSource, /e: \{ fromRight: -240, y: -195, r: 52 \}/);
+    assert.match(touchSource, /r: \{ fromRight: -110, y: -170, r: 64 \}/);
+    // 按下(TOUCH_START)即出手，与键盘Q/E/R同一按下沿语义
+    assert.match(touchSource, /this\._input\?\.fireSkillPressed\(slot\);/);
+    // 冷却环与数字：Q/E显示剩余秒数，R显示充能百分比
+    assert.match(touchSource, /btn\.slot === 'r'[\s\S]*Math\.round\(ratio \* 100\)\}%/);
+    assert.match(touchSource, /Math\.max\(1, Math\.ceil\(sk\.cd\)\)/);
+    // 触屏端才显示摇杆与技能按钮
+    assert.match(touchSource, /sys\.hasFeature\(sys\.Feature\.INPUT_TOUCH\)/);
+});
+
+test('移动端默认横屏全屏：竖屏遮罩提示旋转,首次触摸请求全屏并锁定横屏', () => {
+    // 竖屏检测：按物理画布比例每帧切换遮罩
+    assert.match(touchSource, /view\.getFrameSize\(\)/);
+    assert.match(touchSource, /f\.height > f\.width/);
+    assert.match(touchSource, /请横屏游玩/);
+    assert.match(touchSource, /new Node\('RotateHint'\)/);
+    // 首次触摸（全局手势）请求全屏：画布优先、documentElement兜底；成功才置位、失败可重试
+    assert.match(touchSource, /input\.on\(Input\.EventType\.TOUCH_START, this\._tryFullscreen, this\);/);
+    assert.match(touchSource, /tryTarget\(game\?\.canvas\)\.catch\(\(\) => tryTarget\(doc\.documentElement\)\)/);
+    assert.match(touchSource, /t\?\.requestFullscreen \|\| t\?\.webkitRequestFullscreen/);
+    assert.match(touchSource, /\.then\(\(\) => \{\s*this\._fsRequested = true;/);
+    assert.match(touchSource, /lock\?\.\('landscape'\)/);
+    assert.match(touchSource, /this\._fsRequested \|\| !this\._touchMode \|\| !sys\.isBrowser/);
+    // 遮罩逃生口：全屏不可用（微信等）时不会困死在遮罩上
+    assert.match(touchSource, /继续游戏（竖屏小窗）/);
+    assert.match(touchSource, /this\._hintDismissed = true;/);
+    assert.match(touchSource, /!this\._hintDismissed && f\.height > f\.width/);
+    // 黑屏修复：全屏/旋转分多步改视口，跟随窗口尺寸并多档延迟重设适配（动态策略）
+    assert.match(touchSource, /view\.resizeWithBrowserSize\(true\)/);
+    assert.match(touchSource, /applyScreenPolicy\(\);/);
+    assert.match(touchSource, /setTimeout\(apply, 150\);/);
+    assert.match(touchSource, /setTimeout\(apply, 400\);/);
+    assert.match(touchSource, /fullscreenchange/);
+    assert.match(touchSource, /orientationchange/);
+    // Web Mobile构建配置锁定横屏与1280×720
+    assert.equal(webBuildMobile.platform, 'web-mobile');
+    assert.equal(webBuildMobile.packages['web-mobile'].orientation, 'landscape');
+    assert.deepEqual(webBuildMobile.designResolution, { width: 1280, height: 720, policy: 4 });
+});
+
+test('右上角常驻「暂停/属性」按钮,触屏端替代Esc/M键', () => {
+    assert.match(touchSource, /mk\('暂停', new Color\(70, 90, 130, 255\)/);
+    assert.match(touchSource, /mk\('属性', new Color\(40, 150, 190, 255\)/);
+    // GameManager接线：暂停进暂停面板（属性面板开着时则返回战斗）；属性按钮为开关
+    assert.match(gameSource, /this\._touchUI\.onPausePressed = \(\) => \{[\s\S]*?this\._pauseCombat\(\);/);
+    assert.match(gameSource, /if \(this\.state === 'stats'\) this\._setState\(this\._pauseReturn\);/);
+    assert.match(gameSource, /this\._touchUI\.onStatsPressed/);
+    // 战斗/属性面板期间常驻，其它状态隐藏
+    assert.match(gameSource, /this\._touchUI\.node\.active  = \(s === 'playing' \|\| s === 'testRoom' \|\| s === 'stats'\);/);
+    assert.match(gameSource, /this\._touchUI\.refresh\(this\._player\);/);
+    // 触屏端HUD右下技能环由触摸按钮替代
+    assert.match(gameSource, /this\._hud\.setSkillRingsVisible\(!sys\.hasFeature\(sys\.Feature\.INPUT_TOUCH\)\);/);
+});
+
+test('全面屏横屏铺满：宽于16:9用FIXED_HEIGHT横向延展,边缘控件按可见宽度锚定', () => {
+    // 策略动态选择：宽屏FIXED_HEIGHT铺满全宽，更方的屏回退SHOW_ALL保高
+    assert.match(fitSource, /FIXED_HEIGHT : ResolutionPolicy\.SHOW_ALL/);
+    assert.match(fitSource, /export function visibleDesignWidth/);
+    assert.match(gameSource, /applyScreenPolicy\(\);/);
+    // 战斗背景与调色层按可见宽度铺满（resize后由 onViewResized 重新铺）
+    assert.match(gameSource, /private _fitBackgroundToVisible/);
+    assert.match(gameSource, /this\._touchUI\.onViewResized = \(\) => this\._fitBackgroundToVisible\(\);/);
+    // 触控层：摇杆/触摸区贴左缘，技能按钮与右上角按钮贴右缘
+    assert.match(touchSource, /private _layoutByVisible\(\)/);
+    assert.match(touchSource, /this\._joyHomeX = -right \+ 190;/);
+    assert.match(touchSource, /btn\.node\.setPosition\(new Vec3\(right \+ a\.fromRight, a\.y, 0\)\);/);
+    assert.match(touchSource, /this\._topRightBtns\[0\]\.setPosition\(new Vec3\(right - 88, 322, 0\)\);/);
+    // 主菜单立绘按可见宽度铺满，页面底板超宽绘制避免黑边
+    assert.match(screenSource, /const menuW = Math\.max\(1280, visibleDesignWidth\(\)\);/);
+    assert.match(screenSource, /bg\.fillRect\(-1600, -360, 3200, 720\)/);
+});
+
+test('PC端WASD与虚拟摇杆在moveX/moveY合并,键盘优先', () => {
+    assert.match(inputSource, /return k !== 0 \? k : this\._stickX;/);
+    assert.match(inputSource, /return k !== 0 \? k : this\._stickY;/);
+    assert.match(inputSource, /fireSkillPressed\(slot: 'q' \| 'e' \| 'r'\)/);
+    assert.match(inputSource, /isKeyQPressed\(\): boolean \{ return this\.justPressedCode\(KeyCode\.KEY_Q\) \|\| this\._virtualPressedSlot\('q'\); \}/);
+    // 冲刺接口已移除
+    assert.doesNotMatch(inputSource, /isDash/);
+    assert.doesNotMatch(playerSource, /isDash|_dashCd|phaseDash/);
 });
 
 test('Web Desktop发布外壳与设计画布都锁定1280×720', () => {

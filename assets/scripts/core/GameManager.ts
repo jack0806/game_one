@@ -1,8 +1,9 @@
 import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
-    UITransform, director, game, Label, Sprite, view, ResolutionPolicy
+    UITransform, director, game, Label, Sprite, view, sys
 } from 'cc';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
+import { visibleDesignWidth, applyScreenPolicy } from './ScreenFit';
 import { Vec, Rng, clamp } from './MathUtils';
 import { applyArtSprite, preloadArt, SpriteNodePool } from './SpriteUtils';
 import { styleLabel } from './LabelUtils';
@@ -26,6 +27,7 @@ import { HUD, HudData }      from '../ui/HUD';
 import { AugSelectUI }       from '../ui/AugSelectUI';
 import { ShopUI }            from '../ui/ShopUI';
 import { ScreenManager }     from '../ui/ScreenManager';
+import { TouchControls }     from '../ui/TouchControls';
 import { StatsPanel, StatsPanelData } from '../ui/StatsPanel';
 import { TestRoomUI } from '../ui/TestRoomUI';
 import { advanceLocomotion, LocomotionPose } from './Locomotion';
@@ -99,6 +101,7 @@ export class GameManager extends Component {
     private _shopUI!:     ShopUI;
     private _statsUI!:    StatsPanel;
     private _screenMgr!:  ScreenManager;
+    private _touchUI!:    TouchControls;
     private _testUI!:     TestRoomUI;
 
     // ── game state ────────────────────────────────────────────
@@ -150,8 +153,9 @@ export class GameManager extends Component {
 
     onLoad() {
         GameManager.inst = this;
-        // 始终完整显示16:9设计画布；窄窗口采用等比缩放+留边，不能再裁掉HUD/技能区。
-        view.setDesignResolutionSize(CANVAS_W, CANVAS_H, ResolutionPolicy.SHOW_ALL);
+        // 全面屏横屏铺满：宽于16:9的屏用FIXED_HEIGHT横向延展（无左右黑边），
+        // 更方的屏回退SHOW_ALL保高留边，不能裁掉HUD/技能区。
+        applyScreenPolicy();
         this._initLayers();
         this._initSystems();
         this._initUI();
@@ -194,11 +198,13 @@ export class GameManager extends Component {
     // ── init helpers ──────────────────────────────────────────
 
     private _initLayers() {
+        // 全面屏可见宽度可能>1280：容器层按可见宽铺满，游戏世界仍以1280居中
+        const visW = visibleDesignWidth();
         // BgLayer — chapter background image (bg_chapter<N>), sits behind everything.
         // Created first so its sibling index is lowest (drawn first / at the back).
         this._bgLayer = new Node('BgLayer');
         this._bgLayer.setParent(this.node);
-        this._bgLayer.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._bgLayer.addComponent(UITransform).setContentSize(visW, CANVAS_H);
         this._bgSprite = this._bgLayer.addComponent(Sprite);
         // 四章背景资源均为 16:9。固定 CUSTOM 尺寸可确保异步挂载 SpriteFrame 后
         // 仍严格填满 1280×720，不被 TRIMMED 模式恢复成 2560×1440 后过度裁切。
@@ -209,7 +215,7 @@ export class GameManager extends Component {
         // 高饱和裂纹/网格/电路的视觉竞争，同时保留边缘环境主题。
         const bgTone = new Node('BgTone');
         bgTone.setParent(this._bgLayer);
-        bgTone.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        bgTone.addComponent(UITransform).setContentSize(visW, CANVAS_H);
         this._bgToneGfx = bgTone.addComponent(Graphics);
 
         // GameLayer — entity graphics
@@ -282,6 +288,29 @@ export class GameManager extends Component {
         const testNode = new Node('TestRoom'); testNode.setParent(ul);
         this._testUI = testNode.addComponent(TestRoomUI);
 
+        // 移动端虚拟操控：摇杆/技能按钮写入 InputManager，右上角按钮回调这里。
+        // 触屏设备上 HUD 右下技能环与技能按钮重叠，改由触摸按钮展示冷却。
+        const touchNode = new Node('TouchControls'); touchNode.setParent(ul);
+        this._touchUI = touchNode.addComponent(TouchControls);
+        this._touchUI.setInput(this._input);
+        this._touchUI.setPlayerGetter(() => this._player);
+        // 属性面板打开期间点暂停同样只是返回战斗，避免 _pauseReturn 被改写成
+        // playing（测试房间开面板时误回 playing 会错误启动波次调度）
+        this._touchUI.onPausePressed = () => {
+            if (this.state === 'stats') { this._setState(this._pauseReturn); return; }
+            this._pauseCombat();
+        };
+        // 属性按钮做成开关：面板开着时再点直接回到战斗（触屏端没有 M/Esc）
+        this._touchUI.onStatsPressed = () => {
+            if (this.state === 'stats') this._setState(this._pauseReturn);
+            else this._openStats();
+        };
+        this._touchUI.onButtonSfx = () => this._audio.playSfx('button');
+        this._hud.setSkillRingsVisible(!sys.hasFeature(sys.Feature.INPUT_TOUCH));
+        // 全屏/旋转/窗口尺寸变化后：TouchControls 重设适配策略并重排边缘控件，
+        // 这里跟着把战斗背景与调色层铺满新的可见宽度
+        this._touchUI.onViewResized = () => this._fitBackgroundToVisible();
+
         // Wire screen callbacks
         this._screenMgr.onPlayPressed     = () => this._setState('charSelect');
         this._screenMgr.onTestRoomPressed = () => this._startTestRoom();
@@ -324,6 +353,8 @@ export class GameManager extends Component {
         this.state = s;
         this._screenMgr.hideAll();
         this._hud.node.active      = (s === 'playing' || s === 'testRoom');
+        // 虚拟操控在战斗与属性面板期间常驻：属性面板打开时触屏端靠右上按钮返回
+        this._touchUI.node.active  = (s === 'playing' || s === 'testRoom' || s === 'stats');
         this._augUI.node.active    = false;
         this._shopUI.node.active   = false;
         this._statsUI.node.active  = false;
@@ -426,12 +457,20 @@ export class GameManager extends Component {
         const bgKey = CHAPTERS[this._chapter]?.bgKey;
         if (!bgKey) return;
         applyArtSprite(this._bgSprite, bgKey);
-        this._bgLayer.getComponent(UITransform)!.setContentSize(CANVAS_W, CANVAS_H);
+        this._fitBackgroundToVisible();
+    }
+
+    /** 背景/调色层按当前可见宽度铺满（全面屏横屏>1280时横向拉伸，无左右黑边）。 */
+    private _fitBackgroundToVisible() {
+        const visW = visibleDesignWidth();
+        this._bgLayer.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
+        this._bgToneGfx.node.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
         this._applyBackgroundTone(this._chapter);
     }
 
     /** 四章独立背景调色：越靠后原图荧光越强，覆盖强度相应提高。 */
     private _applyBackgroundTone(chapterIndex: number) {
+        const visW = visibleDesignWidth();
         const tones = [
             { tint: new Color(205, 198, 190, 255), overlay: new Color(22, 24, 28, 62), center: 18 },
             { tint: new Color(193, 198, 202, 255), overlay: new Color(20, 24, 30, 82), center: 26 },
@@ -443,7 +482,7 @@ export class GameManager extends Component {
         const g = this._bgToneGfx;
         g.clear();
         g.fillColor = tone.overlay;
-        g.fillRect(-CANVAS_W / 2, -CANVAS_H / 2, CANVAS_W, CANVAS_H);
+        g.fillRect(-visW / 2, -CANVAS_H / 2, visW, CANVAS_H);
         // 中央是主要走位/弹幕区。用三层低透明度矩形逐级收拢，代替单块
         // 硬边遮罩：中心总压暗量不变，边缘主题装饰到战斗区之间过渡更自然。
         const bands = [
@@ -454,8 +493,8 @@ export class GameManager extends Component {
         for (const band of bands) {
             g.fillColor = new Color(12, 18, 28, band.alpha);
             g.fillRect(
-                -CANVAS_W * band.sx / 2, -CANVAS_H * band.sy / 2,
-                CANVAS_W * band.sx, CANVAS_H * band.sy,
+                -visW * band.sx / 2, -CANVAS_H * band.sy / 2,
+                visW * band.sx, CANVAS_H * band.sy,
             );
         }
     }
@@ -1001,6 +1040,7 @@ export class GameManager extends Component {
         this._drawSpriteFx();
         if (this._inCombat()) {
             this._hud.refresh(this._buildHudData());
+            this._touchUI.refresh(this._player);
             this._refreshFloatText();
         }
     }

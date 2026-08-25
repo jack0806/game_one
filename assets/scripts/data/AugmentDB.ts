@@ -232,13 +232,6 @@ export const AUGMENT_DB: AugmentDef[] = [
       _killCount: 0,
       onKill(p, _enemy, _dmg, _game) { this._killCount++; if (this._killCount >= 20) { this._killCount = 0; p.applyBuff('berserk', 10, { atkSpd: 1.6, dmgMult: 1.4 }); } } },
 
-    { id: 'phase_dash', rarity: 'purple', icon: 'speed', name: '相位跳跃', tags: ['dash'], affinity: ['olia'],
-      desc: '冲刺变为传送，瞬移到鼠标位置，无视障碍',
-      onEquip(p, game, _mult = 1) {
-          p.stats.phaseDash = true;
-          game.floatingText?.spawn(p.x, p.y - 45, '相位跳跃已激活：Shift/Space传送', '#cc88ff', 16, true);
-      } },
-
     // ─── 橙色词条 ─────────────────────────────────────────
     { id: 'overload', rarity: 'orange', icon: 'lightning', name: '超载海克斯', tags: ['overload'],
       desc: '持有 5 个词条时，所有词条效果×1.5；移动速度 -8%',

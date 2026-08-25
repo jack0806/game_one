@@ -25,7 +25,6 @@ export interface PlayerStats extends CharStats {
     eliteBonus: number;
     maxAugments: number;
     previewAugments: boolean;
-    phaseDash: boolean;
     _bloodAwakening: boolean;
     _coreOverflow: boolean;
     _coreUsed: boolean;
@@ -70,7 +69,6 @@ export class PlayerController extends Component {
 
     // timers
     private _shootTimer  = 0;
-    private _dashCd      = 0;
     private _qCd         = 0;
     private _eCd         = 0;
     private _iframeTimer = 0;
@@ -139,7 +137,7 @@ export class PlayerController extends Component {
             barrageMode: false, novaMode: false, allInBullets: 0,
             goldPickupRange: 60, cdReduction: 0, ultChargeRate: 1,
             eliteBonus: 0, maxAugments: 6, previewAugments: false,
-            phaseDash: false, _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
+            _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
             _reikPassive: false, chaosBonus: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
             lifestealRate: 0, maxShield: 0,
         };
@@ -315,7 +313,6 @@ export class PlayerController extends Component {
 
         this._iframeTimer = Math.max(0, this._iframeTimer - dt);
         this._invincible  = Math.max(0, this._invincible - dt);
-        this._dashCd      = Math.max(0, this._dashCd - dt);
         this._qCd         = Math.max(0, this._qCd - dt * (1 + this.stats.cdReduction));
         this._eCd         = Math.max(0, this._eCd - dt * (1 + this.stats.cdReduction));
         this._cosmosCd    = Math.max(0, this._cosmosCd - dt);
@@ -335,27 +332,6 @@ export class PlayerController extends Component {
 
         // 移动
         this.tickMovement(dt, input);
-
-        // 冲刺使用按下沿，避免长按在冷却结束后每3秒自动重复传送。
-        if ((input.isDashPressed?.() ?? input.isDash()) && this._dashCd <= 0) {
-            this._dashCd = 3;
-            if (this.stats.phaseDash) {
-                this.x = clamp(input.mouse.x, this.radius, CANVAS_W - this.radius);
-                this.y = clamp(input.mouse.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
-                game.floatingText?.spawn(this.x, this.y - 40, '相位跳跃！', '#cc88ff', 18, true);
-            } else {
-                let dx = input.moveX, dy = input.moveY;
-                if (dx === 0 && dy === 0) {
-                    const a = Math.atan2(input.mouse.y - this.y, input.mouse.x - this.x);
-                    dx = Math.cos(a); dy = Math.sin(a);
-                }
-                this.x = clamp(this.x + dx * 120, this.radius, CANVAS_W - this.radius);
-                this.y = clamp(this.y + dy * 120, this.radius, PLAYFIELD_BOTTOM - this.radius);
-            }
-            this._iframeTimer = 0.3;
-            game.particles?.dashTrail?.(this.x, this.y, this.color);
-            game.augmentManager?.dispatchSkill(this, game);
-        }
 
         // 普攻
         this._shootTimer += dt;
@@ -535,7 +511,6 @@ export class PlayerController extends Component {
     resetCooldowns(): void {
         this._qCd = 0;
         this._eCd = 0;
-        this._dashCd = 0;
         // 大招R已是冷却制，"所有技能CD归零"应把大招也立即充满可用。
         this._rCharge = 1;
     }
@@ -545,7 +520,6 @@ export class PlayerController extends Component {
     getQCdRatio(): number      { return 1 - Math.min(1, this._qCd / 4); }
     getECdRatio(): number      { return 1 - Math.min(1, this._eCd / 10); }
     getUltChargeRatio(): number { return this._rCharge; }
-    getDashCdRatio(): number   { return 1 - Math.min(1, this._dashCd / 3); }
     hasBuff(id: string): boolean { return !!this._buffs.find(b => b.id === id); }
 
     // ── 便捷访问器（GameManager / HUD 直接读取） ─────────
@@ -560,8 +534,8 @@ export class PlayerController extends Component {
     set damageMulti(v: number)  { (this.stats as any).damageMulti = v; }
 
     /**
-     * Returns a skill-state snapshot consumed by HUD.refresh().
-     * Slots: [0]=Q dash, [1]=E skill, [2]=R ultimate.
+     * Returns a skill-state snapshot consumed by HUD.refresh() and TouchControls.
+     * Slots: [0]=Q skill, [1]=E skill, [2]=R ultimate.
      */
     getSkillStates(): { name: string; desc: string; icon: string; cd: number; maxCd: number }[] {
         const cdR = 1 + (this.stats.cdReduction ?? 0);

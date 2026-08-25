@@ -38,6 +38,7 @@ export class HUD extends Component {
     private _bossBarFg!: Graphics;
     private _bossLabel!:  Label;
     private _skillRings:  { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
+    private _skillRingNodes: Node[] = [];
 
     private readonly BAR_W   = 240;
     private readonly BAR_H   = 16;
@@ -175,7 +176,16 @@ export class HUD extends Component {
             styleLabel(desc);
 
             this._skillRings.push({ g, label: lbl, icon: iconSp, desc });
+            this._skillRingNodes.push(n);
         }
+    }
+
+    /**
+     * 触屏端右下技能环与 TouchControls 的技能按钮位置重叠，
+     * 由 GameManager 在启动时按设备隐藏（PC 端保持显示）。
+     */
+    setSkillRingsVisible(v: boolean): void {
+        for (const n of this._skillRingNodes) n.active = v;
     }
 
     // ── refresh (called every frame by GameManager) ────────────

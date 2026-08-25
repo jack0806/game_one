@@ -194,11 +194,6 @@ export class ParticleManager {
         }
     }
 
-    // ── 冲刺残影 ─────────────────────────────────────────
-    dashTrail(x: number, y: number, color: string): void {
-        this.emit({ x, y, count: 10, color, speedMin: 20, speedMax: 60, lifeMin: 0.2, lifeMax: 0.5, sizeMin: 4, sizeMax: 8, glow: true });
-    }
-
     // ── 近战剑气（玩家/怪物近战攻击共用） ──────────────────
     /**
      * 挥斩特效：3 条平行刃线沿攻击方向扫出 + 前方扩散光环 + 扇形火花。
