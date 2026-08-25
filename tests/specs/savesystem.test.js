@@ -83,4 +83,9 @@ test('成就全集12个且id唯一', () => {
     assert.equal(ACHIEVEMENTS.length, 12);
     const ids = ACHIEVEMENTS.map(a => a.id);
     assert.equal(new Set(ids).size, ids.length);
+    for (const a of ACHIEVEMENTS) {
+        assert.ok(a.artKey && a.reward, `${a.id} 应提供成就图片与奖励预览`);
+        assert.ok(['普通', '稀有', '史诗', '传奇'].includes(a.rarity));
+        assert.ok(['挑战', '探索', '收集'].includes(a.category));
+    }
 });

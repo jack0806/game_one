@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..', '..');
 const screenSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ScreenManager.ts'), 'utf8');
+const metaSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/MetaPageUI.ts'), 'utf8');
 const gameSource = fs.readFileSync(path.join(root, 'assets/scripts/core/GameManager.ts'), 'utf8');
 const playerSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/PlayerController.ts'), 'utf8');
 const enemySource = fs.readFileSync(path.join(root, 'assets/scripts/entities/EnemyBase.ts'), 'utf8');
@@ -15,10 +16,47 @@ const shopSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ShopUI.ts'
 const statsSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/StatsPanel.ts'), 'utf8');
 const webBuild = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-desktop.json'), 'utf8'));
 
-test('首页操作台使用不透明遮罩并覆盖原START GAME顶部', () => {
+test('首页背景已移除烧录按钮，操作区不再绘制不透明遮挡方框', () => {
     assert.match(screenSource, /setContentSize\(568, 410\)/);
-    assert.match(screenSource, /new Color\(4, 10, 18, 255\)/);
-    assert.match(screenSource, /fillRect\(-284, -205, 568, 410\)/);
+    assert.match(screenSource, /new Node\('MenuActions'\)/);
+    assert.doesNotMatch(screenSource, /menuActions\.addComponent\(Graphics\)/);
+    assert.doesNotMatch(screenSource, /fillRect\(-284, -205, 568, 410\)/);
+    assert.doesNotMatch(screenSource, /dockG\.fillRect/);
+});
+
+test('首页任务树、图鉴、成就均进入独立全屏页面', () => {
+    assert.match(screenSource, /'任务树'/);
+    assert.match(screenSource, /'图鉴'/);
+    assert.match(screenSource, /'成就档案'/);
+    assert.match(screenSource, /transition\('menu', 'tasks'\)/);
+    assert.match(screenSource, /transition\('menu', 'codex'\)/);
+    assert.match(screenSource, /transition\('menu', 'achievements'\)/);
+    assert.doesNotMatch(screenSource, /_buildAchievementWall/);
+});
+
+test('任务页使用主支线节点链路、状态着色和独立任务详情', () => {
+    assert.match(metaSource, /'主线任务'/);
+    assert.match(metaSource, /'支线任务'/);
+    assert.match(metaSource, /new Node\('Links'\)/);
+    assert.match(metaSource, /completed: '已完成'/);
+    assert.match(metaSource, /active: '进行中'/);
+    assert.match(metaSource, /'奖励预览'/);
+});
+
+test('图鉴显示怪物英雄统计、条目图片和未解锁问号详情', () => {
+    assert.match(metaSource, /'怪物档案'/);
+    assert.match(metaSource, /'英雄档案'/);
+    assert.match(metaSource, /怪物 \$\{monsters/);
+    assert.match(metaSource, /this\._mkLabel\(card, 0, 28, 88, 88, '\?'/);
+    assert.match(metaSource, /未解锁条目使用问号隐藏视觉与身份信息/);
+});
+
+test('成就墙一屏展示数量、稀有度特殊性、图片、进度与奖励', () => {
+    assert.match(metaSource, /ACHIEVEMENTS\.forEach/);
+    assert.match(metaSource, /`ui_icon_\$\{def\.artKey\}`/);
+    assert.match(metaSource, /稀有度代表达成条件的特殊性/);
+    assert.match(metaSource, /`奖励  \$\{def\.reward\}`/);
+    assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{ACHIEVEMENTS\.length\}/);
 });
 
 test('角色介绍卡有统一底板、说明居中且底排解锁提示保留安全边距', () => {
