@@ -2225,8 +2225,13 @@ export class GameManager extends Component {
                 bounceLeft: b.bounceLeft ?? 0,
                 bounceExplode: b.bounceExplode ?? false,
                 explodeOnExpire: b.explodeOnExpire ?? false,
+                srcBossTag: b.srcBossTag,
             }),
         };
+    }
+    /** 清除带来源标记的在场敌弹（Boss 升空"直接消失"时带走自己的弹幕）。 */
+    clearTaggedEnemyBullets(tag: string): void {
+        this._bullets.clearTaggedEnemyBullets(tag);
     }
     get turrets()      { return this._turrets; }
     get input()        { return this._input; }

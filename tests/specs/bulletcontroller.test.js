@@ -116,6 +116,19 @@ test('敌弹带bounceLeft时在屏幕边缘反弹并递减,耗尽后撞边释放
     assert.ok(!pool.active.includes(b), '反弹耗尽后再撞边应释放');
 });
 
+test('clearTaggedEnemyBullets:只清除带来源标记的敌弹,其他敌弹保留', () => {
+    const pool = new BulletPool(8);
+    const game = makeMockGame();
+    const player = makePlayer({ x: 900, y: 500, radius: 16 });
+    const mech1 = pool.spawn({ x: 100, y: 100, vx: 0, vy: 0, damage: 5, radius: 5, owner: 'enemy', isEnemyBullet: true, lifeTime: 5, srcBossTag: 'mech' });
+    const mech2 = pool.spawn({ x: 200, y: 100, vx: 0, vy: 0, damage: 5, radius: 5, owner: 'enemy', isEnemyBullet: true, lifeTime: 5, srcBossTag: 'mech' });
+    const other = pool.spawn({ x: 300, y: 100, vx: 0, vy: 0, damage: 5, radius: 5, owner: 'enemy', isEnemyBullet: true, lifeTime: 5, srcBossTag: 'abyss' });
+    pool.clearTaggedEnemyBullets('mech');
+    assert.ok(!pool.active.includes(mech1), 'mech标记弹1应被清除');
+    assert.ok(!pool.active.includes(mech2), 'mech标记弹2应被清除');
+    assert.ok(pool.active.includes(other), '其他来源敌弹应保留');
+});
+
 test('explodeOnExpire弹:寿命耗尽后在终点爆炸,范围内玩家受伤;命中玩家也炸', () => {
     const pool = new BulletPool(4);
     const game = makeMockGame();

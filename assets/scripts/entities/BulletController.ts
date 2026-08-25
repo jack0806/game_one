@@ -295,6 +295,14 @@ export class BulletPool {
 
     get active(): BulletData[] { return this._active; }
 
+    /** 释放所有带指定来源标记的敌弹（Boss 升空"直接消失"时带走自己的弹幕）。 */
+    clearTaggedEnemyBullets(tag: string): void {
+        for (let i = this._active.length - 1; i >= 0; i--) {
+            const b = this._active[i];
+            if (b.isEnemyBullet && b.srcBossTag === tag) this._release(b);
+        }
+    }
+
     clear(): void {
         while (this._active.length) {
             const b = this._active.pop()!;
