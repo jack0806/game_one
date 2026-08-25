@@ -378,6 +378,7 @@ export class PlayerController extends Component {
         if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
             this._qCd = (this._charDef.qCd ?? 4) * (1 - this.stats.cdReduction);
             game.audio?.playSfx?.('skill_q');
+            this._grantCastShield(game);
             this._charDef.qSkill(this, game);
             const qName = this._charDef.skills.q.split('—')[0].trim();
             game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
@@ -387,6 +388,7 @@ export class PlayerController extends Component {
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
             this._eCd = (this._charDef.eCd ?? 10) * (1 - this.stats.cdReduction);
             game.audio?.playSfx?.('skill_e');
+            this._grantCastShield(game);
             let eName = this._charDef.skills.e.split('—')[0].trim();
             if (this.stats.eSkillUpgrade === 'blackhole') {
                 // 放置类技能：黑洞直接释放在敌人最密集的位置；
@@ -422,11 +424,21 @@ export class PlayerController extends Component {
         if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1) {
             this._rCharge = 0; this.ultReady = false;
             game.audio?.playSfx?.('skill_r');
+            this._grantCastShield(game);
             this._charDef.ultimate(this, game);
             game.hitStop?.trigger(0.1);
         }
         this._rCharge = Math.min(1, this._rCharge);
         if (this._rCharge >= 1) this.ultReady = true;
+    }
+
+    /** 时空行者被动：释放技能获得 castShield 点护盾（护盾上限同步抬高）。 */
+    private _grantCastShield(game: any): void {
+        const v = this.stats.castShield || 0;
+        if (v <= 0) return;
+        if (this.maxShield < v) this.maxShield = v;
+        this.shield = Math.min(this.maxShield, this.shield + v);
+        game.particles?.shieldBlock?.(this.x, this.y, false);
     }
 
     // ── 近战普攻 ────────────────────────────────────────────

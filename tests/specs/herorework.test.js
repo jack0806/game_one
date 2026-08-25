@@ -18,6 +18,45 @@ test('奥莉亚基础属性与被动(15%真实伤害)按文档重做', () => {
     const p = makePlayer({ stats: { ...s } });
     olia.passive(p, makeMockGame());
     assert.equal(p.stats.trueDamageRate, 0.35, '被动:额外35%真实伤害');
+    assert.equal(p.stats.castShield, 20, '被动:释放技能获得20点护盾');
+});
+
+test('施法护盾:释放技能获得castShield点护盾(护盾上限同步抬高)', () => {
+    const { PlayerController } = require('../dist/entities/PlayerController');
+    const p = new PlayerController();
+    p.stats = { maxHp: 100, armor: 0, _coreOverflow: false, trueDamageRate: 0.35, castShield: 20 };
+    p.hp = 100;
+    p.shield = 0;
+    p.maxShield = 0;
+    p._grantCastShield({});
+    assert.equal(p.shield, 20, '施法应获得20点护盾');
+    assert.equal(p.maxShield, 20, '护盾上限同步抬高');
+    p._grantCastShield({});
+    assert.equal(p.shield, 20, '已满盾时不再叠加(受上限约束)');
+});
+
+test('时空奇点引导期间:周围100码每只怪提供10点护盾', () => {
+    const game = makeMockGame();
+    game.getEnemyClusterPoint = () => ({ x: 400, y: 300 });
+    const p = makePlayer({
+        x: 100, y: 100,
+        shield: 0, maxShield: 0,
+        stats: { ...CHARACTERS.olia.stats },
+        applyBuff() {},
+        applyAttackDamage(enemy, g, base) { enemy.hp -= base; return base; },
+    });
+    CHARACTERS.olia.ultimate(p, game);
+    const orb = game.turrets[0];
+    // 玩家(100,100)周围100码内放2只怪
+    for (let i = 0; i < 2; i++) {
+        const e = new EnemyBase(); e.init('grunt', 1, game);
+        e.x = 120 + i * 20; e.y = 110;
+        game.enemies.push(e);
+    }
+    orb.update(0.3, game); // 引导阶段推进
+    assert.equal(p.shield, 20, '2只怪×10=20点护盾');
+    assert.equal(p.maxShield, 20, '护盾上限抬高到20');
+    assert.equal(orb._phase, 'channel', '仍在引导阶段');
 });
 
 test('真实伤害直接扣血:无视护盾/护甲/隐身/无敌,打空正常死亡', () => {
