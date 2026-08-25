@@ -1116,6 +1116,8 @@ export class GameManager extends Component {
         // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
         for (const t of this._turrets) {
             if (!t.alive) continue;
+            // 时空切割突刺序列：无实体渲染，玩家本体的位移就是表现
+            if (t.kind === 'alphaStrike') continue;
             const [tx, ty] = this._toLocal(t.x, t.y);
             const r = t.r ?? 10;
             g.fillColor = new Color(0, 0, 0, 100);

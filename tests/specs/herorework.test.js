@@ -17,7 +17,7 @@ test('奥莉亚基础属性与被动(15%真实伤害)按文档重做', () => {
     assert.equal(olia.qCd, 7, 'Q技能CD 7秒');
     const p = makePlayer({ stats: { ...s } });
     olia.passive(p, makeMockGame());
-    assert.equal(p.stats.trueDamageRate, 0.15, '被动:额外15%真实伤害');
+    assert.equal(p.stats.trueDamageRate, 0.35, '被动:额外35%真实伤害');
 });
 
 test('真实伤害直接扣血:无视护盾/护甲/隐身/无敌,打空正常死亡', () => {
@@ -40,41 +40,102 @@ test('真实伤害直接扣血:无视护盾/护甲/隐身/无敌,打空正常死
     assert.equal(e.alive, false, '真伤致死应结算死亡');
 });
 
-test('时空切割:至多5目标依次突刺,锁定越少每段伤害越高,回到原位', () => {
+test('时空切割:多段延时突刺到敌人脸上,期间无敌不可控,结束回到原位', () => {
     const game = makeMockGame();
-    // 5个敌人 → 每段10伤
-    for (let i = 0; i < 5; i++) {
+    // 2个敌人：每段 30-5=25 伤
+    for (let i = 0; i < 2; i++) {
         const e = new EnemyBase(); e.init('grunt', 1, game);
-        e.x = 100 + i * 60; e.y = 100;
+        e.x = 200 + i * 120; e.y = 100;
         game.enemies.push(e);
     }
+    const buffs = [];
     const p = makePlayer({
         x: 50, y: 50,
         stats: { ...CHARACTERS.olia.stats },
-        applyBuff() {},
+        applyBuff(id, dur, mods) { buffs.push({ id, dur, mods }); },
         applyAttackDamage(enemy, g, base) { enemy.hp -= base; return base; },
     });
     CHARACTERS.olia.qSkill(p, game);
-    for (const e of game.enemies) {
-        assert.ok(e.hp < e.maxHp, '每个锁定敌人都应受伤');
-    }
+    const strike = game.turrets[0];
+    assert.ok(strike, '突刺序列应挂载到场景');
+    assert.equal(strike.kind, 'alphaStrike');
+    // 释放瞬间即获得无敌+禁移动
+    assert.ok(buffs.some(b => b.id === 'alpha_strike' && b.mods.invincible === true && b.mods.noMove === true),
+        '突刺期间应进入无敌且不可移动');
+
+    // 第一段：0.15s 后突刺到第一个敌人脸上（位移+伤害）
+    strike.update(0.16, game);
+    const first = game.enemies[0];
+    assert.ok(first.hp < first.maxHp, '第一段应造成伤害');
+    const distToFirst = Math.hypot(p.x - first.x, p.y - first.y);
+    assert.ok(distToFirst < first.radius + p.radius + 4, '玩家应突刺到第一个敌人脸上');
+    // 无敌 buff 在序列期间持续刷新
+    assert.ok(buffs.filter(b => b.id === 'alpha_strike').length >= 2, '序列每帧刷新无敌');
+
+    // 第二段 + 收尾回起点
+    strike.update(0.16, game);
+    const second = game.enemies[1];
+    assert.ok(second.hp < second.maxHp, '第二段应造成伤害');
+    strike.update(0.16, game);
+    assert.equal(strike.alive, false, '全部目标处理完序列结束');
     assert.equal(p.x, 50, '突刺结束回到原位');
     assert.equal(p.y, 50);
+    assert.equal(first.maxHp - first.hp, 25, '两目标时每段25伤(30-5)');
+});
 
-    // 1个敌人 → 每段30伤（锁定越少伤害越多）
-    const game2 = makeMockGame();
-    const solo = new EnemyBase(); solo.init('grunt', 1, game2);
+test('时空切割:单目标30伤,锁定越少伤害越高;序列中死亡的目标被跳过', () => {
+    const game = makeMockGame();
+    const solo = new EnemyBase(); solo.init('grunt', 1, game);
     solo.x = 150; solo.y = 150;
-    game2.enemies.push(solo);
-    const hp0 = solo.hp;
-    const p2 = makePlayer({
+    game.enemies.push(solo);
+    const p = makePlayer({
         x: 100, y: 100,
         stats: { ...CHARACTERS.olia.stats },
         applyBuff() {},
         applyAttackDamage(enemy, g, base) { enemy.hp -= base; return base; },
     });
-    CHARACTERS.olia.qSkill(p2, game2);
-    assert.equal(hp0 - solo.hp, 30, '单目标每段30伤害');
+    CHARACTERS.olia.qSkill(p, game);
+    const strike = game.turrets[0];
+    strike.update(0.16, game);
+    assert.equal(solo.maxHp - solo.hp, 30, '单目标每段30伤害');
+    // 目标死亡后序列直接收尾回起点
+    strike.update(0.16, game);
+    assert.equal(strike.alive, false);
+    assert.equal(p.x, 100, '无剩余目标时回到原位');
+});
+
+test('所有技能都吃35%真伤:Q/R经applyAttackDamage结算真伤,子弹命中同样结算', () => {
+    // 真实 PlayerController 的 applyAttackDamage 链路（近战/Q/R 共用）
+    const { PlayerController } = require('../dist/entities/PlayerController');
+    const game = makeMockGame();
+    const e = new EnemyBase(); e.init('grunt', 1, game);
+    e.x = 100; e.y = 100; e.armor = 50; // 高护甲也挡不住真伤
+    game.enemies.push(e);
+    const p = new PlayerController();
+    p.stats = { maxHp: 100, armor: 0, critRate: 0, _coreOverflow: false, trueDamageRate: 0.35, damage: 20 };
+    p.hp = 100;
+    p.x = 90; p.y = 100;
+    const hp0 = e.hp;
+    p.applyAttackDamage(e, game, 20); // 技能/近战伤害入口
+    // 常规伤害被护甲减免(<20) + 真伤 20×0.35=7 全额
+    assert.ok(e.hp < hp0, '应造成伤害');
+    const expectedTrue = 20 * 0.35;
+    assert.ok(hp0 - e.hp > expectedTrue - 0.01, `至少包含${expectedTrue}点无视护甲的真伤`);
+
+    // 子弹路径（远程普攻）同样吃真伤
+    const { BulletPool } = require('../dist/entities/BulletController');
+    const pool = new BulletPool(4);
+    const e2 = new EnemyBase(); e2.init('grunt', 1, game);
+    e2.x = 20; e2.y = 0; e2.armor = 0;
+    game.enemies.push(e2);
+    const p2 = new PlayerController();
+    p2.stats = { maxHp: 100, armor: 0, critRate: 0, _coreOverflow: false, trueDamageRate: 0.35 };
+    p2.hp = 100;
+    pool.spawn({ x: 10, y: 0, vx: 0, vy: 0, damage: 20, radius: 5, pierceLeft: 0, hitEnemies: new Set() });
+    const hp2 = e2.hp;
+    pool.update(0.016, game.enemies, p2, game);
+    // 常规 20(无甲全额) + 真伤 7 = 27
+    assert.equal(hp2 - e2.hp, 27, '子弹命中应结算常规伤害+35%真伤');
 });
 
 test('切换形态:攻击形态近战+30%伤害(附加到技能)+50%攻速,可切回', () => {
@@ -94,7 +155,7 @@ test('切换形态:攻击形态近战+30%伤害(附加到技能)+50%攻速,可�
     assert.equal(p.formDamageMult, 1, '切回后伤害加成还原');
     assert.equal(p.formAtkSpdMult, 1, '切回后攻速加成还原');
 
-    // 形态伤害加成附加到Q：单目标近战形态 30×1.3=39
+    // 形态伤害加成附加到Q：单目标近战形态 30×1.3=39（延时序列，推进后结算）
     const game2 = makeMockGame();
     const solo = new EnemyBase(); solo.init('grunt', 1, game2);
     solo.x = 150; solo.y = 150;
@@ -107,6 +168,7 @@ test('切换形态:攻击形态近战+30%伤害(附加到技能)+50%攻速,可�
     });
     p2.attackForm = 'melee'; p2.formDamageMult = 1.3;
     CHARACTERS.olia.qSkill(p2, game2);
+    game2.turrets[0].update(0.16, game2);
     assert.equal(solo.maxHp - solo.hp, 39, 'Q吃形态30%加成');
 });
 

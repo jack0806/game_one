@@ -166,7 +166,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         name: '时空行者·奥莉亚', icon: '🕰️', color: '#aaddff', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 18,
         qCd: 7, // 时空切割 CD 7 秒（文档：英雄重做）
-        desc: '时空之力：对敌人额外造成15%真实伤害（无视护盾/护甲/隐身）',
+        desc: '时空之力：对敌人额外造成35%真实伤害（无视护盾/护甲/隐身）',
         skills: {
             q: '时空切割 — 在至多5个敌人间突刺,锁定越少每段伤害越高(30~10),结束回到原位',
             e: '切换形态 — 远程↔攻击形态:近战+30%伤害(附加到所有技能)与+50%攻速',
@@ -174,9 +174,10 @@ export const CHARACTERS: Record<string, CharDef> = {
         },
         skillIcons: { q: 'speed', e: 'chaos', r: 'explosion' },
         stats: { maxHp: 100, speed: 320, damage: 20, attackSpeed: 1.0, armor: 20, critRate: 0.10, critDmg: 0.5, pierce: 0 },
-        passive(p: any) { p.stats.trueDamageRate = 0.15; },
+        passive(p: any) { p.stats.trueDamageRate = 0.35; },
         qSkill(p: any, game: any) {
-            // 阿尔法突袭式时空切割：锁定最近的至多5个敌人依次突刺，结束后回到原位
+            // 阿尔法突袭式时空切割：锁定最近的至多5个敌人，依次突刺到敌人
+            // 脸上攻击（真实位移表现），全程无敌且不可控，结束后回到起点。
             const alive = (game.enemies || []).filter((e: any) => e.alive && !e.dead);
             if (alive.length === 0) return;
             alive.sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y));
@@ -185,17 +186,41 @@ export const CHARACTERS: Record<string, CharDef> = {
             // 锁定的敌人越少，每段伤害越高：n=1→30 … n=4→15, n=5→10（文档 10~30）
             const dmgPer = (30 - (n - 1) * 5) * (p.formDamageMult ?? 1);
             const startX = p.x, startY = p.y;
-            // 突刺期间不可选中
-            p.applyBuff?.('alpha_strike', 0.6, { invincible: true });
-            for (const e of targets) {
-                const a = Math.atan2(e.y - startY, e.x - startX);
-                game.particles?.meleeSlash?.(e.x, e.y, a, p.color, 70, 1.2);
-                if (p.applyAttackDamage) p.applyAttackDamage(e, game, dmgPer);
-                else e.takeDamage(dmgPer, p, game);
-            }
-            // 回到突刺起点（对齐剑圣阿尔法突袭的表现）
-            p.x = startX; p.y = startY;
-            game.audio?.playSfx?.('skill_q', 0.8);
+            const strike: any = {
+                x: p.x, y: p.y, r: 10, alive: true, kind: 'alphaStrike',
+                _i: 0, _t: 0.15, owner: p,
+            };
+            strike.update = (dt: number, g: any) => {
+                if (!strike.alive) return;
+                // 突刺序列期间：不可选中（无敌）且不可移动（对齐剑圣阿尔法突袭）
+                p.applyBuff?.('alpha_strike', 0.3, { invincible: true, noMove: true });
+                strike._t -= dt;
+                if (strike._t > 0) return;
+                strike._t = 0.15;
+                // 跳过序列期间已死亡的目标
+                while (strike._i < targets.length && (targets[strike._i].dead || !targets[strike._i].alive)) {
+                    strike._i++;
+                }
+                if (strike._i < targets.length) {
+                    const e = targets[strike._i++];
+                    // 突刺到敌人脸上：贴到目标身位边缘（真实位移，渲染层跟随）
+                    const [bx, by] = Vec.normalize(p.x - e.x, p.y - e.y);
+                    p.x = e.x + bx * (e.radius + (p.radius ?? 16));
+                    p.y = e.y + by * (e.radius + (p.radius ?? 16));
+                    g.particles?.meleeSlash?.(e.x, e.y, Math.atan2(by, bx) + Math.PI, p.color, 70, 1.2);
+                    if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmgPer);
+                    else e.takeDamage(dmgPer, p, g);
+                    g.audio?.playSfx?.('skill_q', 0.5);
+                } else {
+                    // 全部目标处理完：回到突刺起点，结束序列
+                    p.x = startX; p.y = startY;
+                    strike.alive = false;
+                }
+            };
+            // 序列启动瞬间先给一格无敌，随后由序列对象每帧刷新
+            p.applyBuff?.('alpha_strike', 0.3, { invincible: true, noMove: true });
+            if (game.turrets) game.turrets.push(strike);
+            else (game as any).turrets = [strike];
         },
         eSkill(p: any, game: any) {
             // 切换形态：远程 ↔ 攻击形态（近战伤害+30% 附加到所有技能、攻速+50%）
