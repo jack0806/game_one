@@ -21,7 +21,7 @@ test('奥莉亚基础属性与被动(15%真实伤害)按文档重做', () => {
     assert.equal(p.stats.castShield, 20, '被动:释放技能获得20点护盾');
 });
 
-test('施法护盾:释放技能获得castShield点护盾(护盾上限同步抬高)', () => {
+test('施法护盾:释放技能获得castShield点临时护盾,2秒后自动回收', () => {
     const { PlayerController } = require('../dist/entities/PlayerController');
     const p = new PlayerController();
     p.stats = { maxHp: 100, armor: 0, _coreOverflow: false, trueDamageRate: 0.35, castShield: 20 };
@@ -29,21 +29,41 @@ test('施法护盾:释放技能获得castShield点护盾(护盾上限同步抬�
     p.shield = 0;
     p.maxShield = 0;
     p._grantCastShield({});
-    assert.equal(p.shield, 20, '施法应获得20点护盾');
+    assert.equal(p.shield, 20, '施法应获得20点临时护盾');
     assert.equal(p.maxShield, 20, '护盾上限同步抬高');
     p._grantCastShield({});
-    assert.equal(p.shield, 20, '已满盾时不再叠加(受上限约束)');
+    assert.equal(p.shield, 40, '连续施法可叠加临时护盾');
+
+    // 2秒后未被消耗的部分自动回收
+    const input = {
+        getAxis: () => [0, 0], isDashPressed: () => false,
+        isKeyQPressed: () => false, isKeyEPressed: () => false,
+        isKeyRPressed: () => false, mouse: { x: 0, y: 0 },
+    };
+    p.tick(2.2, input, {});
+    assert.equal(p.shield, 0, '临时护盾到期应全部回收');
+
+    // 被打掉的部分不返还：先消耗10再等到期,只回收剩余10
+    const p2 = new PlayerController();
+    p2.stats = { maxHp: 100, armor: 0, _coreOverflow: false, castShield: 20 };
+    p2.hp = 100; p2.shield = 0; p2.maxShield = 0;
+    p2._grantCastShield({});
+    p2.shield = 10; // 被打掉10
+    p2.tick(2.2, input, {});
+    assert.equal(p2.shield, 0, '到期只回收未消耗部分(剩余10被回收,不为负)');
 });
 
-test('时空奇点引导期间:周围100码每只怪提供10点护盾', () => {
+test('时空奇点引导期间:周围100码每只怪提供10点临时护盾', () => {
     const game = makeMockGame();
     game.getEnemyClusterPoint = () => ({ x: 400, y: 300 });
+    const grants = [];
     const p = makePlayer({
         x: 100, y: 100,
         shield: 0, maxShield: 0,
         stats: { ...CHARACTERS.olia.stats },
         applyBuff() {},
         applyAttackDamage(enemy, g, base) { enemy.hp -= base; return base; },
+        grantTempShield(amount, dur) { grants.push({ amount, dur }); this.shield += amount; },
     });
     CHARACTERS.olia.ultimate(p, game);
     const orb = game.turrets[0];
@@ -54,9 +74,14 @@ test('时空奇点引导期间:周围100码每只怪提供10点护盾', () => {
         game.enemies.push(e);
     }
     orb.update(0.3, game); // 引导阶段推进
-    assert.equal(p.shield, 20, '2只怪×10=20点护盾');
-    assert.equal(p.maxShield, 20, '护盾上限抬高到20');
+    assert.equal(p.shield, 20, '2只怪×10=20点临时护盾');
+    assert.ok(grants.length >= 1 && grants.every(gg => gg.dur === 2), '护盾为2秒临时份额');
     assert.equal(orb._phase, 'channel', '仍在引导阶段');
+    // 差额补足：已有20盾时不再叠加
+    const grantsBefore = grants.length;
+    orb.update(0.3, game);
+    assert.equal(p.shield, 20, '护盾已达标时差额补足不叠加');
+    assert.equal(grants.length, grantsBefore, '不重复授予');
 });
 
 test('真实伤害直接扣血:无视护盾/护甲/隐身/无敌,打空正常死亡', () => {

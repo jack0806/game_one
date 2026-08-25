@@ -45,3 +45,4 @@ npm run typecheck # tsc -p tsconfig.json --noEmit --skipLibCheck（依赖编辑�
 - 日志只用 `console.warn`，带 `[模块名]` 前缀（见 `SpriteUtils.ts`、`ScreenManager.ts`）。
 - 禁止修改 `.gitignore` 中列出的编辑器生成目录（`library/`、`temp/`、`local/`、`build/` 等）。
 - 帧时间统一经 `DT_MAX`（Constants）钳制，防死亡螺旋；随机一律用 `MathUtils.Rng`。
+- **git 提交规则（用户要求）**：完成代码改动后只做验证（编译/测试/类型检查），停在待提交状态；用户明确说"提交git"后才执行 commit + push，不要自动提交。提交身份：`user.name=Xy`。

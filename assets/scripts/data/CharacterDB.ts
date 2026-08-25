@@ -166,11 +166,11 @@ export const CHARACTERS: Record<string, CharDef> = {
         name: '时空行者·奥莉亚', icon: '🕰️', color: '#aaddff', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 18,
         qCd: 7, // 时空切割 CD 7 秒（文档：英雄重做）
-        desc: '时空之力：对敌人额外造成35%真实伤害；释放技能获得20点护盾',
+        desc: '时空之力：对敌人额外造成35%真实伤害；释放技能获得20点临时护盾(2秒)',
         skills: {
             q: '时空切割 — 在至多5个敌人间突刺,锁定越少每段伤害越高(30~10),结束回到原位',
             e: '切换形态 — 远程↔攻击形态:近战+30%伤害(附加到所有技能)与+50%攻速',
-            r: '时空奇点 — 引导2秒(周围每只怪+10护盾)射出能量球,把敌人拉向球心,3秒后爆炸(每拉1只+5%,最高+20%)',
+            r: '时空奇点 — 引导2秒(周围每只怪+10临时护盾)射出能量球,把敌人拉向球心,3秒后爆炸(每拉1只+5%,最高+20%)',
         },
         skillIcons: { q: 'speed', e: 'chaos', r: 'explosion' },
         stats: { maxHp: 100, speed: 320, damage: 20, attackSpeed: 1.0, armor: 20, critRate: 0.10, critDmg: 0.5, pierce: 0 },
@@ -249,7 +249,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                 if (orb._phase === 'channel') {
                     orb._t -= dt;
                     orb.x = p.x; orb.y = p.y - 60; // 悬浮头顶蓄能
-                    // 引导期间：周围100码内每只怪提供10点护盾（按怪数刷新护盾量）
+                    // 引导期间：周围100码内每只怪提供10点临时护盾（2秒，差额补足不叠加）
                     orb._shieldTick -= dt;
                     if (orb._shieldTick <= 0) {
                         orb._shieldTick = 0.25;
@@ -258,12 +258,8 @@ export const CHARACTERS: Record<string, CharDef> = {
                             if (e.alive && !e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 100) near++;
                         }
                         if (near > 0) {
-                            const want = near * 10;
-                            if (p.maxShield < want) p.maxShield = want;
-                            if (p.shield < want) {
-                                p.shield = want;
-                                g.particles?.shieldBlock?.(p.x, p.y, false);
-                            }
+                            const add = near * 10 - (p.shield ?? 0);
+                            if (add > 0) p.grantTempShield?.(add, 2, g);
                         }
                     }
                     if (orb._t <= 0) {

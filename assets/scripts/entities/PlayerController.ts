@@ -83,6 +83,8 @@ export class PlayerController extends Component {
 
     /** Sprite carrying the character's battle token art (char_<id>), set up in init(). */
     sprite?: Sprite;
+    /** 临时护盾份额（时空行者）：到期自动回收未被消耗的部分。 */
+    private _tempShields: { amount: number; timer: number }[] = [];
     /**
      * 形态切换（时空行者 E）：空=沿用角色默认攻击方式；
      * 'melee'/'ranged' 为当前形态。近战形态伤害+30%（附加到所有技能）、攻速+50%。
@@ -339,6 +341,16 @@ export class PlayerController extends Component {
             if (b.duration <= 0) this._buffs.splice(i, 1);
         }
 
+        // 临时护盾到期回收（只回收未被消耗的部分）
+        for (let i = this._tempShields.length - 1; i >= 0; i--) {
+            const ts = this._tempShields[i];
+            ts.timer -= dt;
+            if (ts.timer <= 0) {
+                this.shield = Math.max(0, this.shield - ts.amount);
+                this._tempShields.splice(i, 1);
+            }
+        }
+
         // 移动
         this.tickMovement(dt, input);
 
@@ -408,13 +420,23 @@ export class PlayerController extends Component {
         if (this._rCharge >= 1) this.ultReady = true;
     }
 
-    /** 时空行者被动：释放技能获得 castShield 点护盾（护盾上限同步抬高）。 */
+    /** 时空行者被动：释放技能获得 castShield 点临时护盾（2 秒后自动回收未消耗部分）。 */
     private _grantCastShield(game: any): void {
         const v = this.stats.castShield || 0;
         if (v <= 0) return;
-        if (this.maxShield < v) this.maxShield = v;
-        this.shield = Math.min(this.maxShield, this.shield + v);
-        game.particles?.shieldBlock?.(this.x, this.y, false);
+        this.grantTempShield(v, 2, game);
+    }
+
+    /**
+     * 临时护盾：立即获得 amount 点护盾（上限同步抬高），dur 秒后自动回收
+     * 未被消耗的部分（已被打掉的不返还）。多次施加各自独立计时。
+     */
+    grantTempShield(amount: number, dur: number, game?: any): void {
+        if (amount <= 0) return;
+        if (this.maxShield < this.shield + amount) this.maxShield = this.shield + amount;
+        this.shield += amount;
+        this._tempShields.push({ amount, timer: dur });
+        game?.particles?.shieldBlock?.(this.x, this.y, false);
     }
 
     // ── 近战普攻 ────────────────────────────────────────────
