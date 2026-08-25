@@ -163,6 +163,14 @@ test('隐形/飞空实体感修复:阴影与血条隐藏,受击显示免疫', ()
     assert.match(playerSource, /'免疫'/, '近战命中无敌目标显示免疫');
 });
 
+test('机械高达升空直接消失:带走自身弹幕,不留残余攻击', () => {
+    assert.match(gameSource, /clearTaggedEnemyBullets\(tag: string\): void/, 'GameManager清除接口');
+    assert.match(gameSource, /srcBossTag: b\.srcBossTag,/, 'shim透传来源标记');
+    const bossSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
+    assert.match(bossSource, /srcBossTag: 'mech', \/\/ 升空时随 Boss 一并带走/, '剑气带来源标记');
+    assert.match(bossSource, /game\.clearTaggedEnemyBullets\?\.\('mech'\);/, '升空瞬间清除自身弹幕');
+});
+
 test('暂停/详情面板返回状态跟随测试房间', () => {
     assert.match(gameSource, /private _pauseCombat\(\) \{[\s\S]*?this\._pauseReturn = this\.state === 'testRoom' \? 'testRoom' : 'playing'/);
     assert.match(gameSource, /this\._screenMgr\.onResumePressed\s*=\s*\(\) => this\._setState\(this\._pauseReturn\)/);

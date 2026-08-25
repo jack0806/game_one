@@ -27,6 +27,9 @@ export interface CharDef {
     unlockHint?: string;
     attackType: 'ranged' | 'melee';
     attackRange: number;
+    /** 可选：Q/E 技能冷却秒数（缺省 Q=4 / E=10，供个别角色定制）。 */
+    qCd?: number;
+    eCd?: number;
     /** 大招R固定冷却秒数。按大招强度分档15-20s：强爆发/全场伤害20s，
      *  功能型18s，持续输出17s，依赖已装备词条(空装弱)15s。 */
     ultCd: number;
@@ -78,8 +81,9 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'vivian',
         name: '工程师·薇薇安', icon: '🤖', color: '#00aaff', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 17,
+        eCd: 12, // 超频指令 CD 12 秒（文档：英雄重做）
         desc: '炮台类词条效果×1.5',
-        skills: { q: '部署炮台 — 召唤强化炮台持续攻击', e: '网络连接 — 所有炮台锁定最近敌人', r: '炮台风暴 — 召唤6座轨道炮台环绕旋转' },
+        skills: { q: '部署炮台 — 召唤强化炮台持续攻击', e: '超频指令 — 8秒内自身与所有炮台伤害+20%/攻速+150%', r: '炮台风暴 — 召唤6座轨道炮台环绕旋转' },
         skillIcons: { q: 'summon', e: 'lightning', r: 'summon' },
         stats: { maxHp: 90, speed: 300, damage: 18, attackSpeed: 1.5, armor: 8, critRate: 0.05, critDmg: 0.5, pierce: 0 },
         // 被动砍掉永久跟随炮台：只保留"炮台类词条效果×1.5"，炮台全部改为
@@ -87,7 +91,16 @@ export const CHARACTERS: Record<string, CharDef> = {
         passive(p: any, _game: any) { p.stats.turretBonus = 1.5; },
         qSkill(p: any, game: any) { game.spawnTurret(p, 1.5); game.particles.hexActivate(p.x, p.y, '#00aaff'); },
         eSkill(p: any, game: any) {
-            for (const t of game.turrets) t.focusTarget = game.getNearestEnemy(p.x, p.y);
+            // 超频指令：自身与场上全部炮台 8 秒内伤害+20%、攻速+150%
+            const DUR = 8;
+            p.applyBuff('overclock', DUR, { dmgMult: 1.2, atkSpd: 2.5 });
+            for (const t of (game.turrets || [])) {
+                if (!t.alive) continue;
+                t.dmgMult = 1.2;
+                t.spdMult = 2.5;
+                t._buffTimer = DUR;
+                game.particles?.hexActivate?.(t.x, t.y, '#00aaff');
+            }
             game.particles.hexActivate(p.x, p.y, '#00aaff');
         },
         ultimate(p: any, game: any) {
@@ -152,29 +165,163 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'olia',
         name: '时空行者·奥莉亚', icon: '🕰️', color: '#aaddff', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 18,
-        desc: '预知直觉：可预览下次词条选项',
-        skills: { q: '时间倒流 — 回到上次记录位置并恢复HP', e: '时间膨胀 — 范围减速敌人+3秒攻速×2', r: '时空裂缝 — 冻结全场敌人5秒' },
-        skillIcons: { q: 'heart', e: 'speed', r: 'ice' },
-        stats: { maxHp: 100, speed: 360, damage: 20, attackSpeed: 2.2, armor: 6, critRate: 0.08, critDmg: 0.5, pierce: 0 },
-        passive(p: any) { p.stats.previewAugments = true; },
+        qCd: 7, // 时空切割 CD 7 秒（文档：英雄重做）
+        desc: '时空之力：对敌人额外造成35%真实伤害；释放技能获得20点护盾',
+        skills: {
+            q: '时空切割 — 在至多5个敌人间突刺,锁定越少每段伤害越高(30~10),结束回到原位',
+            e: '切换形态 — 远程↔攻击形态:近战+30%伤害(附加到所有技能)与+50%攻速',
+            r: '时空奇点 — 引导2秒(周围每只怪+10护盾)射出能量球,把敌人拉向球心,3秒后爆炸(每拉1只+5%,最高+20%)',
+        },
+        skillIcons: { q: 'speed', e: 'chaos', r: 'explosion' },
+        stats: { maxHp: 100, speed: 320, damage: 20, attackSpeed: 1.0, armor: 20, critRate: 0.10, critDmg: 0.5, pierce: 0 },
+        passive(p: any) {
+            p.stats.trueDamageRate = 0.35;
+            p.stats.castShield = 20; // 释放技能获得20点护盾
+        },
         qSkill(p: any, game: any) {
-            const saved = (game as any)._oliaSavedState;
-            if (saved) {
-                p.x = saved.x; p.y = saved.y; p.hp = Math.max(1, saved.hp);
-                game.particles.hexActivate(p.x, p.y, '#aaddff');
-            }
-            (game as any)._oliaSavedState = { x: p.x, y: p.y, hp: p.hp };
+            // 阿尔法突袭式时空切割：锁定最近的至多5个敌人，依次突刺到敌人
+            // 脸上攻击（真实位移表现），全程无敌且不可控，结束后回到起点。
+            const alive = (game.enemies || []).filter((e: any) => e.alive && !e.dead);
+            if (alive.length === 0) return;
+            alive.sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y));
+            const targets = alive.slice(0, Math.min(5, alive.length));
+            const n = targets.length;
+            // 锁定的敌人越少，每段伤害越高：n=1→30 … n=4→15, n=5→10（文档 10~30）
+            const dmgPer = (30 - (n - 1) * 5) * (p.formDamageMult ?? 1);
+            const startX = p.x, startY = p.y;
+            const strike: any = {
+                x: p.x, y: p.y, r: 10, alive: true, kind: 'alphaStrike',
+                _i: 0, _t: 0.15, owner: p,
+            };
+            strike.update = (dt: number, g: any) => {
+                if (!strike.alive) return;
+                // 突刺序列期间：不可选中（无敌）且不可移动（对齐剑圣阿尔法突袭）
+                p.applyBuff?.('alpha_strike', 0.3, { invincible: true, noMove: true });
+                strike._t -= dt;
+                if (strike._t > 0) return;
+                strike._t = 0.15;
+                // 跳过序列期间已死亡的目标
+                while (strike._i < targets.length && (targets[strike._i].dead || !targets[strike._i].alive)) {
+                    strike._i++;
+                }
+                if (strike._i < targets.length) {
+                    const e = targets[strike._i++];
+                    // 突刺到敌人脸上：贴到目标身位边缘（真实位移，渲染层跟随）
+                    const [bx, by] = Vec.normalize(p.x - e.x, p.y - e.y);
+                    p.x = e.x + bx * (e.radius + (p.radius ?? 16));
+                    p.y = e.y + by * (e.radius + (p.radius ?? 16));
+                    g.particles?.meleeSlash?.(e.x, e.y, Math.atan2(by, bx) + Math.PI, p.color, 70, 1.2);
+                    if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmgPer);
+                    else e.takeDamage(dmgPer, p, g);
+                    g.audio?.playSfx?.('skill_q', 0.5);
+                } else {
+                    // 全部目标处理完：回到突刺起点，结束序列
+                    p.x = startX; p.y = startY;
+                    strike.alive = false;
+                }
+            };
+            // 序列启动瞬间先给一格无敌，随后由序列对象每帧刷新
+            p.applyBuff?.('alpha_strike', 0.3, { invincible: true, noMove: true });
+            if (game.turrets) game.turrets.push(strike);
+            else (game as any).turrets = [strike];
         },
         eSkill(p: any, game: any) {
-            game.slowEnemiesAround(p.x, p.y, 300, 0.1, 3);
-            p.applyBuff('time_expand', 3, { atkSpd: 2 });
-            game.particles.hexActivate(p.x, p.y, '#aaddff');
+            // 切换形态：远程 ↔ 攻击形态（近战伤害+30% 附加到所有技能、攻速+50%）
+            // 技能名由 PlayerController 统一显示；形态变化靠攻击方式本身可感知
+            const toMelee = p.attackForm !== 'melee';
+            p.attackForm = toMelee ? 'melee' : 'ranged';
+            p.formDamageMult = toMelee ? 1.3 : 1;
+            p.formAtkSpdMult = toMelee ? 1.5 : 1;
+            game.particles?.hexActivate?.(p.x, p.y, p.color);
         },
         ultimate(p: any, game: any) {
-            game.freezeAllEnemies(5);
-            game.screenShake.shake(10, 0.4);
-            game.particles.hexActivate(p.x, p.y, '#aaddff');
-            game.floatingText.spawn(640, 200, '时空裂缝', '#aaddff', 28, true);
+            // 时空奇点：引导2秒（站定蓄能）→ 能量球飞向敌群 → 每帧把附近敌人
+            // 拉向球心聚团，3秒后爆炸。拉扯的怪物越多伤害越高：每只+5%，最高+20%。
+            p.applyBuff?.('singularity_channel', 2, { noMove: true });
+            game.floatingText?.spawn(p.x, p.y - 55, '聚集时空能量…', p.color, 16, true);
+            const orb: any = {
+                x: p.x, y: p.y, r: 26, alive: true, kind: 'timeOrb',
+                _phase: 'channel', _t: 2, _pull: 0, _tx: 0, _ty: 0,
+                _pulled: new Set(), _shieldTick: 0, owner: p,
+            };
+            orb.update = (dt: number, g: any) => {
+                if (!orb.alive) return;
+                if (orb._phase === 'channel') {
+                    orb._t -= dt;
+                    orb.x = p.x; orb.y = p.y - 60; // 悬浮头顶蓄能
+                    // 引导期间：周围100码内每只怪提供10点护盾（按怪数刷新护盾量）
+                    orb._shieldTick -= dt;
+                    if (orb._shieldTick <= 0) {
+                        orb._shieldTick = 0.25;
+                        let near = 0;
+                        for (const e of (g.enemies || [])) {
+                            if (e.alive && !e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 100) near++;
+                        }
+                        if (near > 0) {
+                            const want = near * 10;
+                            if (p.maxShield < want) p.maxShield = want;
+                            if (p.shield < want) {
+                                p.shield = want;
+                                g.particles?.shieldBlock?.(p.x, p.y, false);
+                            }
+                        }
+                    }
+                    if (orb._t <= 0) {
+                        const c = g.getEnemyClusterPoint?.();
+                        orb._phase = 'active';
+                        orb._t = 3;
+                        orb._tx = c ? c.x : p.x;
+                        orb._ty = c ? c.y : p.y;
+                    }
+                    return;
+                }
+                // active：飞向敌群中心悬停（步长钳制避免大步长过冲）
+                const dx = orb._tx - orb.x, dy = orb._ty - orb.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 30) {
+                    const move = Math.min(260 * dt, Math.max(0, dist - 20));
+                    orb.x += (dx / dist) * move;
+                    orb.y += (dy / dist) * move;
+                }
+                orb._t -= dt;
+                orb._pull -= dt;
+                if (orb._pull <= 0) {
+                    orb._pull = 0.25;
+                    g.particles?.hexActivate?.(orb.x, orb.y, '#aaddff');
+                }
+                // 每帧把附近敌人拉向能量球中心聚团（不再是击退式的轻推）
+                for (const e of (g.enemies || [])) {
+                    if (!e.alive || e.dead) continue;
+                    const d = Math.hypot(e.x - orb.x, e.y - orb.y);
+                    if (d >= 260) continue;
+                    orb._pulled.add(e);
+                    if (d > 4) {
+                        const pull = Math.min(1, dt * 5);
+                        e.x += (orb.x - e.x) * pull;
+                        e.y += (orb.y - e.y) * pull;
+                    }
+                }
+                if (orb._t <= 0) {
+                    orb.alive = false;
+                    // 拉扯的怪物越多伤害越高：每只+5%，最高+20%
+                    const pulledCount = orb._pulled.size;
+                    const mult = 1 + Math.min(0.20, pulledCount * 0.05);
+                    const dmg = p.stats.damage * 2 * (p.formDamageMult ?? 1) * mult;
+                    g.particles?.explode?.(orb.x, orb.y, '#aaddff', 120);
+                    g.screenShake?.shake?.(12, 0.4);
+                    g.audio?.playSfx?.('explode', 0.9);
+                    g.floatingText?.spawn(orb.x, orb.y - 40, `时空奇点 ×${mult.toFixed(2)}！`, p.color, 22, true);
+                    for (const e of (g.enemies || [])) {
+                        if (e.alive && !e.dead && Math.hypot(e.x - orb.x, e.y - orb.y) < 200) {
+                            if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmg);
+                            else e.takeDamage(dmg, p, g);
+                        }
+                    }
+                }
+            };
+            // 能量球作为自定义场景对象挂进 turrets（由 GameManager 每帧驱动与渲染）
+            if (game.turrets) game.turrets.push(orb);
+            else (game as any).turrets = [orb];
         },
     },
     graf: {

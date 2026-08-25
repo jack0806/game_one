@@ -99,9 +99,9 @@ test('英雄介绍弹窗展示被动与Q/E/R详细描述、冷却与基础属性
     assert.match(screenSource, /'charDetail'/);
     // 遮罩拦截触摸，防止点击穿透到背后的选人卡
     assert.match(screenSource, /const block = \(ev: any\) => \{ ev\.propagationStopped = true; \};/);
-    // 技能标题带键位与冷却（数值与 PlayerController 共用常量，防止漂移）
-    assert.match(screenSource, /`Q · \$\{splitSkillText\(def\.skills\.q\)\[0\]\} · 冷却 \$\{SKILL_Q_CD\} 秒`/);
-    assert.match(screenSource, /`E · \$\{splitSkillText\(def\.skills\.e\)\[0\]\} · 冷却 \$\{SKILL_E_CD\} 秒`/);
+    // 技能标题带键位与冷却；冷却支持按角色定制（qCd/eCd），缺省回落共享常量
+    assert.match(screenSource, /`Q · \$\{splitSkillText\(def\.skills\.q\)\[0\]\} · 冷却 \$\{def\.qCd \?\? SKILL_Q_CD\} 秒`/);
+    assert.match(screenSource, /`E · \$\{splitSkillText\(def\.skills\.e\)\[0\]\} · 冷却 \$\{def\.eCd \?\? SKILL_E_CD\} 秒`/);
     assert.match(screenSource, /`R · \$\{splitSkillText\(def\.skills\.r\)\[0\]\} · 充能 \$\{def\.ultCd\} 秒`/);
     // 详细效果说明来自「名称 — 说明」的说明段
     assert.match(screenSource, /splitSkillText\(def\.skills\.q\)\[1\]/);

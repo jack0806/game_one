@@ -461,8 +461,8 @@ export class ScreenManager extends Component {
 
         const headers = [
             '被动天赋',
-            `Q · ${splitSkillText(def.skills.q)[0]} · 冷却 ${SKILL_Q_CD} 秒`,
-            `E · ${splitSkillText(def.skills.e)[0]} · 冷却 ${SKILL_E_CD} 秒`,
+            `Q · ${splitSkillText(def.skills.q)[0]} · 冷却 ${def.qCd ?? SKILL_Q_CD} 秒`,
+            `E · ${splitSkillText(def.skills.e)[0]} · 冷却 ${def.eCd ?? SKILL_E_CD} 秒`,
             `R · ${splitSkillText(def.skills.r)[0]} · 充能 ${def.ultCd} 秒`,
         ];
         this._detailSkillHeaders.forEach((lbl, k) => {

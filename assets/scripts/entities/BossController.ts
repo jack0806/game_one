@@ -388,17 +388,20 @@ export class BossController extends EnemyBase {
                 damage: this.damage * this.buffDmgMult * 0.076, // 5/66
                 radius: 8, color: '#cfe8ff', life: 3, lifeTime: 3,
                 owner: 'enemy', isEnemyBullet: true,
+                srcBossTag: 'mech', // 升空时随 Boss 一并带走
             });
         }
         game.audio?.playSfx?.('skill_e', 0.7);
     }
 
-    /** 天空坠击：举剑飞空（无敌），锁定主角位置，3s 后落地 AoE。 */
+    /** 天空坠击：举剑飞空（无敌+隐身+带走自身弹幕），锁定主角位置，3s 后落地 AoE。 */
     private _mechSkyDive(player: any, game: any): void {
         this.invulnerable = true;
         this.mechSkyT = 3;
         this.mechSkyTargetX = player.x;
         this.mechSkyTargetY = player.y;
+        // 升空瞬间场上残留的剑气一并消失——Boss"直接消失"时不能还留着它的子弹攻击
+        game.clearTaggedEnemyBullets?.('mech');
         game.particles?.hexActivate?.(this.x, this.y, '#88ccff');
         game.floatingText?.spawn?.(this.x, this.y - 90, '升空锁定！', '#88ccff', 20, true);
         game.audio?.playSfx?.('skill_q', 0.8);
