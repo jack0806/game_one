@@ -273,6 +273,18 @@ export class EnemyBase {
         if (this.hp <= 0) this._die(attacker, game);
     }
 
+    /**
+     * 真实伤害（时空行者被动）：直接扣血，无视护盾/护甲/隐身/无敌。
+     * 打空血走正常死亡结算；对已死亡目标不生效。
+     */
+    takeTrueDamage(amount: number, attacker: any, game: any): void {
+        if (!this.alive || amount <= 0) return;
+        this.hp -= amount;
+        game?.floatingText?.spawn?.(this.x, this.y - 26, `${Math.ceil(amount)}真伤`, '#c8a2ff', 12, false);
+        game?.particles?.hit?.(this.x, this.y, '#c8a2ff');
+        if (this.hp <= 0) this._die(attacker, game);
+    }
+
     protected _die(attacker: any, game: any): void {
         // 幂等保护：同帧多段伤害（多子弹/DoT+直伤）抢杀时只结算一次掉落与击杀数
         if (!this.alive) return;

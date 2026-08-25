@@ -1121,6 +1121,18 @@ export class GameManager extends Component {
             g.fillColor = new Color(0, 0, 0, 100);
             g.ellipse(tx, ty - r * 0.72, r * 1.15, r * 0.34); g.fill();
 
+            if (t.kind === 'timeOrb') {
+                // 时空行者·时空奇点能量球：蓝白光球 + 呼吸光环
+                g.fillColor = new Color(170, 221, 255, 150);
+                g.circle(tx, ty, r); g.fill();
+                g.strokeColor = new Color(220, 240, 255, 230);
+                g.lineWidth = 2.5; g.circle(tx, ty, r); g.stroke();
+                g.strokeColor = new Color(170, 221, 255, 120);
+                g.lineWidth = 1.5;
+                g.circle(tx, ty, r + 8 + Math.sin(this._visualTime * 6) * 4); g.stroke();
+                continue;
+            }
+
             if (t.kind === 'waterClone') {
                 // 深海恐惧·水分身：与本体同尺寸的半透明淡蓝虚影 + 蓄力方向线
                 g.fillColor = new Color(90, 180, 255, 110);
@@ -1961,6 +1973,11 @@ export class GameManager extends Component {
             t.update = (dt: number, g: GameManager) => {
                 t._life -= dt; t._timer -= dt;
                 if (t._life <= 0) { t.alive = false; return; }
+                // 超频指令（薇薇安E）：限时伤害/攻速乘区，到期回落
+                if (t._buffTimer > 0) {
+                    t._buffTimer -= dt;
+                    if (t._buffTimer <= 0) { t.dmgMult = 1; t.spdMult = 1; }
+                }
                 if (t.followOwner) {
                     const targetX = player.x + t._followX;
                     const targetY = player.y + t._followY;
@@ -1969,12 +1986,12 @@ export class GameManager extends Component {
                     t.y += (targetY - t.y) * followT;
                 }
                 if (t._timer <= 0) {
-                    t._timer = fireInterval;
+                    t._timer = fireInterval / (t.spdMult ?? 1);
                     const target = (t.focusTarget && !t.focusTarget.dead) ? t.focusTarget : g.getNearestEnemy(t.x, t.y);
                     if (target) {
                         const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
                         t._aim = Math.atan2(dy, dx);
-                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg, {
+                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg * (t.dmgMult ?? 1), {
                             color: '#2af', r: 5, owner: 'turret', charKey: 'vivian',
                         });
                     }
@@ -1999,16 +2016,21 @@ export class GameManager extends Component {
             t.update = (dt: number, g: GameManager) => {
                 t._life -= dt; t._timer -= dt;
                 if (t._life <= 0) { t.alive = false; return; }
+                // 超频指令（薇薇安E）：限时伤害/攻速乘区，到期回落
+                if (t._buffTimer > 0) {
+                    t._buffTimer -= dt;
+                    if (t._buffTimer <= 0) { t.dmgMult = 1; t.spdMult = 1; }
+                }
                 t._angle += t._orbitSpd * dt;
                 t.x = player.x + Math.cos(t._angle) * t._orbitR;
                 t.y = player.y + Math.sin(t._angle) * t._orbitR;
                 if (t._timer <= 0) {
-                    t._timer = 0.4;
+                    t._timer = 0.4 / (t.spdMult ?? 1);
                     const target = g.getNearestEnemy(t.x, t.y);
                     if (target) {
                         const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
                         t._aim = Math.atan2(dy, dx);
-                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg, {
+                        g.bullets.fire(t.x, t.y, dx, dy, t.dmg * (t.dmgMult ?? 1), {
                             color: '#00aaff', r: 4, owner: 'turret', charKey: 'vivian',
                         });
                     }

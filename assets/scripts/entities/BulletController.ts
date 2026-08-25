@@ -198,6 +198,10 @@ export class BulletPool {
                     const actualDamage = e.takeDamage(dmg, player, game);
                     player.applyAttackLifesteal?.(actualDamage === undefined ? dmg : actualDamage, game);
                     if (b.onHitCb) b.onHitCb(b, e);
+                    // 时空行者被动：子弹命中额外结算15%真实伤害（无视护盾/护甲/隐身/无敌）
+                    if (player.stats?.trueDamageRate && e.takeTrueDamage) {
+                        e.takeTrueDamage(dmg * player.stats.trueDamageRate, player, game);
+                    }
                     if (actualDamage > 0) {
                         game.floatingText?.spawn(e.x + Rng.float(-10, 10), e.y - 10, Math.ceil(dmg).toString(), b.isCrit ? '#ffd700' : '#fff', b.isCrit ? 16 : 13, b.isCrit);
                         game.particles?.hit(b.x, b.y, b.color);

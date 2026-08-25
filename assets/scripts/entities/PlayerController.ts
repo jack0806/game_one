@@ -85,6 +85,13 @@ export class PlayerController extends Component {
 
     /** Sprite carrying the character's battle token art (char_<id>), set up in init(). */
     sprite?: Sprite;
+    /**
+     * 形态切换（时空行者 E）：空=沿用角色默认攻击方式；
+     * 'melee'/'ranged' 为当前形态。近战形态伤害+30%（附加到所有技能）、攻速+50%。
+     */
+    attackForm: 'melee' | 'ranged' | '' = '';
+    formDamageMult = 1;
+    formAtkSpdMult = 1;
     /** 战斗贴图基 key（char_token_<id>），init 时按角色设置。 */
     spriteKey = 'char_token_kai';
     /** 与静止帧成对的真实动作帧。 */
@@ -162,6 +169,8 @@ export class PlayerController extends Component {
     getDamage(game?: any): number {
         // damageMulti：商店/词条的攻击力乘区（此前只写不读，是死数据）
         let d = this.stats.damage * this.damageMulti;
+        // 形态加成（时空行者攻击形态等）：附加到所有技能与普攻
+        d *= this.formDamageMult;
         if (this.stats._reikPassive) {
             const lost = 1 - this.hp / this.stats.maxHp;
             // +1e-6 容差：恰好损失 10%/20%…整档时浮点算出 0.0999… 不得掉档
@@ -181,7 +190,7 @@ export class PlayerController extends Component {
     getAtkSpd(): number {
         let s = this.stats.attackSpeed;
         for (const b of this._buffs) if (b.mods.atkSpd) s *= b.mods.atkSpd;
-        return s;
+        return s * this.formAtkSpdMult;
     }
 
     getSpeed(): number {
@@ -365,18 +374,18 @@ export class PlayerController extends Component {
             this._shoot(input, game);
         }
 
-        // 技能 Q
+        // 技能 Q（CD 可按角色定制：qCd ?? 默认4秒）
         if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
-            this._qCd = 4 * (1 - this.stats.cdReduction);
+            this._qCd = (this._charDef.qCd ?? 4) * (1 - this.stats.cdReduction);
             game.audio?.playSfx?.('skill_q');
             this._charDef.qSkill(this, game);
             const qName = this._charDef.skills.q.split('—')[0].trim();
             game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
             game.augmentManager?.dispatchSkill(this, game);
         }
-        // 技能 E
+        // 技能 E（CD 可按角色定制：eCd ?? 默认10秒）
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
-            this._eCd = 10 * (1 - this.stats.cdReduction);
+            this._eCd = (this._charDef.eCd ?? 10) * (1 - this.stats.cdReduction);
             game.audio?.playSfx?.('skill_e');
             let eName = this._charDef.skills.e.split('—')[0].trim();
             if (this.stats.eSkillUpgrade === 'blackhole') {
@@ -422,12 +431,15 @@ export class PlayerController extends Component {
 
     // ── 近战普攻 ────────────────────────────────────────────
     private _meleeAttack(game: any): void {
+        // 远程角色切入近战形态时使用紧凑的形态近战范围（90），近战角色沿用自身攻击距离
+        const range = (this.attackForm === 'melee' && this._charDef.attackType !== 'melee')
+            ? 90 : this._charDef.attackRange;
         const enemy = game.getNearestEnemy?.(this.x, this.y);
-        if (!enemy || !enemy.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > this._charDef.attackRange + this.radius + enemy.radius) return;
+        if (!enemy || !enemy.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > range + this.radius + enemy.radius) return;
         // 剑气特效：从玩家位置向目标方向斩出，刃长覆盖整个攻击距离；
         // 命中点追加冲击提示，让攻击范围与落点一眼可读
         const angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
-        game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this._charDef.attackRange, 1);
+        game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, range, 1);
         game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
         this.applyAttackDamage(enemy, game);
     }
@@ -450,6 +462,10 @@ export class PlayerController extends Component {
         const actualDamage = actual === undefined ? dmg : actual;
         this.applyAttackLifesteal(actualDamage, game);
         game.augmentManager?.dispatchHit(this, enemy, dmg, game);
+        // 时空行者被动：额外造成15%真实伤害（无视护盾/护甲/隐身/无敌）
+        if (this.stats.trueDamageRate && enemy.takeTrueDamage) {
+            enemy.takeTrueDamage(dmg * this.stats.trueDamageRate, this, game);
+        }
         if (actualDamage > 0) {
             game.floatingText?.spawn(enemy.x, enemy.y - 10, Math.ceil(dmg).toString(), isCrit ? '#ffd700' : this.color, isCrit ? 16 : 13, isCrit);
             game.particles?.hit(enemy.x, enemy.y, this.color);
@@ -476,7 +492,9 @@ export class PlayerController extends Component {
 
     // ── 发射子弹 ─────────────────────────────────────────
     private _shoot(input: any, game: any): void {
-        if (this._charDef.attackType === 'melee') {
+        // 形态切换（时空行者E）：attackForm 优先于角色默认攻击方式
+        const form = this.attackForm || this._charDef.attackType;
+        if (form === 'melee') {
             this._meleeAttack(game);
             return;
         }
@@ -542,8 +560,8 @@ export class PlayerController extends Component {
 
     // ── 状态快照（用于 HUD） ─────────────────────────────
     getHPRatio(): number       { return this.hp / (this.stats.maxHp || 1); }
-    getQCdRatio(): number      { return 1 - Math.min(1, this._qCd / 4); }
-    getECdRatio(): number      { return 1 - Math.min(1, this._eCd / 10); }
+    getQCdRatio(): number      { return 1 - Math.min(1, this._qCd / (this._charDef?.qCd ?? 4)); }
+    getECdRatio(): number      { return 1 - Math.min(1, this._eCd / (this._charDef?.eCd ?? 10)); }
     getUltChargeRatio(): number { return this._rCharge; }
     getDashCdRatio(): number   { return 1 - Math.min(1, this._dashCd / 3); }
     hasBuff(id: string): boolean { return !!this._buffs.find(b => b.id === id); }
@@ -568,8 +586,8 @@ export class PlayerController extends Component {
         const icons = this._charDef.skillIcons;
         const skills = this._charDef.skills;
         return [
-            { name: 'Q', desc: skills.q, icon: icons.q, cd: this._qCd,   maxCd: 4  / cdR },
-            { name: 'E', desc: skills.e, icon: icons.e, cd: this._eCd,   maxCd: 10 / cdR },
+            { name: 'Q', desc: skills.q, icon: icons.q, cd: this._qCd,   maxCd: (this._charDef.qCd ?? 4)  / cdR },
+            { name: 'E', desc: skills.e, icon: icons.e, cd: this._eCd,   maxCd: (this._charDef.eCd ?? 10) / cdR },
             { name: 'R', desc: skills.r, icon: icons.r, cd: 1 - this._rCharge, maxCd: 1 },   // rCharge [0‥1]
         ];
     }

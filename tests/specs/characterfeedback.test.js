@@ -16,8 +16,8 @@ test('Q/E技能名称只由PlayerController统一显示一次', () => {
     }
 });
 
-test('薇薇安E技能唯一标准名称为网络连接', () => {
+test('薇薇安E技能唯一标准名称为超频指令(英雄重做后)', () => {
     const vivian = CHARS.find(character => character.id === 'vivian');
     assert.ok(vivian, '应存在工程师薇薇安角色定义');
-    assert.equal(vivian.skills.e.split('—')[0].trim(), '网络连接');
+    assert.equal(vivian.skills.e.split('—')[0].trim(), '超频指令');
 });
