@@ -14,6 +14,8 @@ const { resolveArtKey } = require('../dist/core/ArtRemap');
 const { CHARS } = require('../dist/data/CharacterDB');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 const { CHAPTERS } = require('../dist/data/WaveData');
+const { QUESTS, CODEX_ENTRIES } = require('../dist/data/MetaProgressionDB');
+const { ACHIEVEMENTS } = require('../dist/systems/SaveSystem');
 
 const ART_DIR = path.join(__dirname, '..', '..', 'assets', 'resources', 'art');
 
@@ -38,6 +40,9 @@ function collectAllArtKeys() {
     }
     for (const fx of ['fx_explosion', 'fx_hex_ring', 'fx_poison', 'fx_heal', 'fx_cold_arrow']) keys.add(fx);
     for (const a of AUGMENT_DB) keys.add('ui_icon_' + a.icon);
+    for (const q of QUESTS) keys.add('ui_icon_' + q.rewardIcon);
+    for (const entry of CODEX_ENTRIES) keys.add(entry.artKey);
+    for (const a of ACHIEVEMENTS) keys.add('ui_icon_' + a.artKey);
     return keys;
 }
 

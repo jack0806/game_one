@@ -41,6 +41,13 @@ export interface AchievementDef {
     name: string;
     desc: string;
     icon: string;
+    /** 成就墙使用的现有 ui_icon_* 美术 key（不含 ui_icon_ 前缀）。 */
+    artKey: string;
+    rarity: '普通' | '稀有' | '史诗' | '传奇';
+    category: '挑战' | '探索' | '收集';
+    /** 当前仅展示预览，正式奖励结算接入后可沿用该字段。 */
+    reward: string;
+    hidden?: boolean;
     goal: number;
     /** 当前进度值（达成时 >= goal）。 */
     progress: (p: PlayerProfile) => number;
@@ -48,29 +55,29 @@ export interface AchievementDef {
 
 /** 成就墙全集（12 个），进度函数直接读档案字段。 */
 export const ACHIEVEMENTS: AchievementDef[] = [
-    { id: 'first_run',  name: '初次出击',   desc: '完成第一局战斗',        icon: '🚀', goal: 1,
+    { id: 'first_run',  name: '初次出击',   desc: '完成第一局战斗',        icon: '🚀', artKey: 'speed', rarity: '普通', category: '探索', reward: '核心币 × 50', goal: 1,
       progress: p => p.totalRuns },
-    { id: 'runs_25',    name: '百战不殆',   desc: '累计完成 25 局',        icon: '🎖️', goal: 25,
+    { id: 'runs_25',    name: '百战不殆',   desc: '累计完成 25 局',        icon: '🎖️', artKey: 'shield', rarity: '史诗', category: '挑战', reward: '金色档案框', goal: 25,
       progress: p => p.totalRuns },
-    { id: 'kills_100',  name: '百人斩',     desc: '累计击杀 100 个敌人',   icon: '⚔️', goal: 100,
+    { id: 'kills_100',  name: '百人斩',     desc: '累计击杀 100 个敌人',   icon: '⚔️', artKey: 'crit', rarity: '普通', category: '挑战', reward: '核心币 × 100', goal: 100,
       progress: p => p.totalKills },
-    { id: 'kills_1000', name: '千人斩',     desc: '累计击杀 1000 个敌人',  icon: '💀', goal: 1000,
+    { id: 'kills_1000', name: '千人斩',     desc: '累计击杀 1000 个敌人',  icon: '💀', artKey: 'explosion', rarity: '传奇', category: '挑战', reward: '称号「清场者」', goal: 1000,
       progress: p => p.totalKills },
-    { id: 'boss_10',    name: '屠龙者',     desc: '累计击杀 10 个首领',    icon: '👑', goal: 10,
+    { id: 'boss_10',    name: '屠龙者',     desc: '累计击杀 10 个首领',    icon: '👑', artKey: 'chaos', rarity: '传奇', category: '挑战', reward: '首领猎手徽记', goal: 10,
       progress: p => p.bossKills },
-    { id: 'chapter_2',  name: '初入混沌',   desc: '到达第 2 章',           icon: '🌿', goal: 2,
+    { id: 'chapter_2',  name: '初入混沌',   desc: '到达第 2 章',           icon: '🌿', artKey: 'summon', rarity: '稀有', category: '探索', reward: '核心币 × 160', goal: 2,
       progress: p => p.bestChapter },
-    { id: 'chapter_4',  name: '深渊行者',   desc: '到达第 4 章',           icon: '🌌', goal: 4,
+    { id: 'chapter_4',  name: '深渊行者',   desc: '到达第 4 章',           icon: '🌌', artKey: 'chaos', rarity: '史诗', category: '探索', reward: '紫晶档案框', goal: 4,
       progress: p => p.bestChapter },
-    { id: 'gold_5000',  name: '富甲一方',   desc: '累计获得 5000 金币',    icon: '💰', goal: 5000,
+    { id: 'gold_5000',  name: '富甲一方',   desc: '累计获得 5000 金币',    icon: '💰', artKey: 'gold', rarity: '稀有', category: '收集', reward: '核心币 × 300', goal: 5000,
       progress: p => p.totalGoldEarned },
-    { id: 'combo_50',   name: '连击大师',   desc: '单局连击达到 50',       icon: '🔥', goal: 50,
+    { id: 'combo_50',   name: '连击大师',   desc: '单局连击达到 50',       icon: '🔥', artKey: 'combo', rarity: '史诗', category: '挑战', reward: '动态连击徽记', goal: 50,
       progress: p => p.bestCombo },
-    { id: 'aug_6',      name: '收藏家',     desc: '单局装备 6 个海克斯强化', icon: '🔷', goal: 6,
+    { id: 'aug_6',      name: '收藏家',     desc: '单局装备 6 个海克斯强化', icon: '🔷', artKey: 'summon', rarity: '稀有', category: '收集', reward: '刷新许可 × 1', goal: 6,
       progress: p => p.bestAugmentCount },
-    { id: 'run_150',    name: '战场主宰',   desc: '单局击杀 150 个敌人',   icon: '🌟', goal: 150,
+    { id: 'run_150',    name: '战场主宰',   desc: '单局击杀 150 个敌人',   icon: '🌟', artKey: 'fire', rarity: '史诗', category: '挑战', reward: '核心币 × 400', goal: 150,
       progress: p => p.bestKillsInRun },
-    { id: 'all_chars',  name: '全明星',     desc: '使用过全部 6 名英雄',   icon: '🏆', goal: 6,
+    { id: 'all_chars',  name: '全明星',     desc: '使用过全部 6 名英雄',   icon: '🏆', artKey: 'heart', rarity: '传奇', category: '收集', reward: '称号「六芒星」', goal: 6,
       progress: p => p.charsPlayed.length },
 ];
 

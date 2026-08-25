@@ -177,8 +177,8 @@ test('工具条随testRoom状态常驻:暂停/详情返回后重新点亮', () =
 
 test('主页有测试房间入口且占位钮保持禁用', () => {
     assert.match(screenSource, /onTestRoomPressed\?:/);
-    assert.match(screenSource, /_mkBtn\(menuDeck, '测试房间', 0, 24, 330, 46, new Color\(190, 120, 255, 255\)\)/);
-    assert.match(screenSource, /_mkBtn\(menuDeck, '升级  ·  即将开放', 0, -36, 330, 46, new Color\(80, 118, 135, 255\), true\)/);
+    assert.match(screenSource, /_mkBtn\(menuActions, '测试房间', 0, 24, 330, 46, new Color\(190, 120, 255, 255\)\)/);
+    assert.match(screenSource, /_mkBtn\(menuActions, '升级  ·  即将开放', 0, -36, 330, 46, new Color\(80, 118, 135, 255\), true\)/);
 });
 
 test('玩家具备godMode无敌与DoT持续伤害字段', () => {

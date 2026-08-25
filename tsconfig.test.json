@@ -20,6 +20,7 @@
     "assets/scripts/data/AugmentDB.ts",
     "assets/scripts/data/BossDB.ts",
     "assets/scripts/data/CharacterDB.ts",
+    "assets/scripts/data/MetaProgressionDB.ts",
     "assets/scripts/data/WaveData.ts",
     "assets/scripts/entities/BossController.ts",
     "assets/scripts/entities/BulletController.ts",
