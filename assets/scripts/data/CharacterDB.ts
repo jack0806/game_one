@@ -261,3 +261,15 @@ export const CHARACTERS: Record<string, CharDef> = {
 // Object.keys().map() instead of Object.values() — the project's tsconfig
 // targets ES2015 and doesn't include the ES2017 lib that Object.values needs.
 export const CHARS: CharDef[] = Object.keys(CHARACTERS).map(k => CHARACTERS[k]);
+
+/** Q/E 技能固定冷却秒数（受 cdReduction 缩短；R 大招为各角色 ultCd 充能）。
+ *  PlayerController 的实际冷却与选人页介绍弹窗的展示文案共用，避免两处数值漂移。 */
+export const SKILL_Q_CD = 4;
+export const SKILL_E_CD = 10;
+
+/** 技能描述文案统一为「名称 — 说明」，按首个破折号拆成 [名称, 说明]。 */
+export function splitSkillText(text: string): [string, string] {
+    const idx = text.indexOf('—');
+    if (idx < 0) return [text.trim(), ''];
+    return [text.slice(0, idx).trim(), text.slice(idx + 1).trim()];
+}

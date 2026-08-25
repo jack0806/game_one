@@ -4,7 +4,7 @@
 import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
-import { CHARACTERS, CharDef, CharStats } from '../data/CharacterDB';
+import { CHARACTERS, CharDef, CharStats, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
 import { applyArtSprite, preloadArt } from '../core/SpriteUtils';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import {
@@ -367,7 +367,7 @@ export class PlayerController extends Component {
 
         // 技能 Q
         if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
-            this._qCd = 4 * (1 - this.stats.cdReduction);
+            this._qCd = SKILL_Q_CD * (1 - this.stats.cdReduction);
             game.audio?.playSfx?.('skill_q');
             this._charDef.qSkill(this, game);
             const qName = this._charDef.skills.q.split('—')[0].trim();
@@ -376,7 +376,7 @@ export class PlayerController extends Component {
         }
         // 技能 E
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
-            this._eCd = 10 * (1 - this.stats.cdReduction);
+            this._eCd = SKILL_E_CD * (1 - this.stats.cdReduction);
             game.audio?.playSfx?.('skill_e');
             let eName = this._charDef.skills.e.split('—')[0].trim();
             if (this.stats.eSkillUpgrade === 'blackhole') {

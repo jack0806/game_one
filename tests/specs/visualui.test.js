@@ -59,35 +59,77 @@ test('成就墙一屏展示数量、稀有度特殊性、图片、进度与奖�
     assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{ACHIEVEMENTS\.length\}/);
 });
 
-test('角色介绍卡有统一底板、说明居中且底排解锁提示保留安全边距', () => {
-    assert.match(screenSource, /setContentSize\(360, 270\)/);
-    assert.match(screenSource, /cardG\.fillRect\(-180, -135, 360, 270\)/);
-    assert.match(screenSource, /cardG\.rect\(-180, -135, 360, 270\)/);
+test('角色介绍卡有统一底板，底部为「选择出战/英雄介绍」双按钮', () => {
+    assert.match(screenSource, /setContentSize\(360, 280\)/);
+    assert.match(screenSource, /cardG\.fillRect\(-180, -140, 360, 280\)/);
+    assert.match(screenSource, /cardG\.rect\(-180, -140, 360, 280\)/);
     assert.match(screenSource, /cardG\.lineWidth = locked \? 1 : 2/);
     assert.match(screenSource, /const corner = 18/);
-    assert.match(screenSource, /frameN\.setPosition\(new Vec3\(0, 68, 0\)\)/);
-    assert.match(screenSource, /setContentSize\(112, 112\)/);
-    assert.match(screenSource, /this\._loadPortrait\(card, `char_\$\{charId\}`, 104, 68\)/);
-    assert.match(screenSource, /0, -14, 320, 40/);
-    assert.match(screenSource, /new Node\('InfoDivider'\)/);
-    assert.match(screenSource, /dividerN\.setPosition\(new Vec3\(0, -45, 0\)\)/);
-    assert.match(screenSource, /skN\.setPosition\(new Vec3\(0, -88, 0\)\)/);
-    assert.match(screenSource, /setContentSize\(320, 72\)/);
-    assert.match(screenSource, /skLbl\.verticalAlign = VerticalTextAlignment\.CENTER/);
-    assert.match(screenSource, /const cy = 90 - row \* 285/);
-    assert.match(screenSource, /hintN\.setPosition\(new Vec3\(0, -105, 0\)\)/);
-    assert.match(screenSource, /skLbl\.fontSize = 12/);
-    assert.match(screenSource, /skLbl\.lineHeight = 19/);
-    assert.match(screenSource, /skLbl\.horizontalAlign = HorizontalTextAlignment\.CENTER/);
-    assert.match(screenSource, /const skillName = \(text: string\) => text\.split\('—'\)\[0\]\.trim\(\)/);
+    assert.match(screenSource, /frameN\.setPosition\(new Vec3\(0, 84, 0\)\)/);
+    assert.match(screenSource, /this\._loadPortrait\(card, `char_\$\{charId\}`, 88, 84\)/);
+    assert.match(screenSource, /skN\.setPosition\(new Vec3\(0, -40, 0\)\)/);
+    assert.match(screenSource, /const cy = 100 - row \* 295/);
+    assert.match(screenSource, /hintN\.setPosition\(new Vec3\(0, -110, 0\)\)/);
+    // 选择出战按钮直接开战；整张卡不再绑定开局回调，看介绍时不会误触
+    assert.match(screenSource, /'选择出战'/);
+    assert.match(screenSource, /selBtn\.on\(Node\.EventType\.TOUCH_END,\s*\(\) => this\.onCharSelected\?\.\(CHARS\[idx\]!\), this\);/);
+    assert.doesNotMatch(screenSource, /card\.on\(Node\.EventType\.TOUCH_END/);
+});
+
+test('选人页与英雄介绍文字保持可读字号：速览14px、锁定提示14px', () => {
+    // 卡片速览正文不再使用11/12px小字
+    assert.match(screenSource, /skLbl\.fontSize = 14/);
+    assert.match(screenSource, /skLbl\.lineHeight = 21/);
+    assert.match(screenSource, /hintLbl\.fontSize = 14/);
+    assert.match(screenSource, /lockLbl\.fontSize = 22/);
+    // 双按钮40px高（_mkBtn按0.36比例≈14px字），避免13px以下的按钮小字
+    assert.match(screenSource, /'选择出战', -85, -110, 150, 40/);
+    assert.match(screenSource, /'英雄介绍', 85, -110, 150, 40/);
+    assert.doesNotMatch(screenSource, /skLbl\.fontSize = 1[123]/);
+});
+
+test('英雄介绍弹窗展示被动与Q/E/R详细描述、冷却与基础属性', () => {
+    // 入口：卡片「英雄介绍」按钮打开 charDetail 模态弹窗
+    assert.match(screenSource, /'英雄介绍'/);
+    assert.match(screenSource, /introBtn\.on\(Node\.EventType\.TOUCH_END,\s*\(\) => this\.showCharDetail\(CHARS\[idx\]!\), this\);/);
+    assert.match(screenSource, /'charDetail'/);
+    // 遮罩拦截触摸，防止点击穿透到背后的选人卡
+    assert.match(screenSource, /const block = \(ev: any\) => \{ ev\.propagationStopped = true; \};/);
+    // 技能标题带键位与冷却（数值与 PlayerController 共用常量，防止漂移）
+    assert.match(screenSource, /`Q · \$\{splitSkillText\(def\.skills\.q\)\[0\]\} · 冷却 \$\{SKILL_Q_CD\} 秒`/);
+    assert.match(screenSource, /`E · \$\{splitSkillText\(def\.skills\.e\)\[0\]\} · 冷却 \$\{SKILL_E_CD\} 秒`/);
+    assert.match(screenSource, /`R · \$\{splitSkillText\(def\.skills\.r\)\[0\]\} · 充能 \$\{def\.ultCd\} 秒`/);
+    // 详细效果说明来自「名称 — 说明」的说明段
+    assert.match(screenSource, /splitSkillText\(def\.skills\.q\)\[1\]/);
+    // 基础属性与立绘
+    assert.match(screenSource, /攻击方式  \$\{def\.attackType === 'melee' \? '近战' : '远程'\}/);
+    assert.match(screenSource, /loadArtSprite\(`char_\$\{def\.id\}`/);
+    assert.match(screenSource, /ui_icon_\$\{def\.skillIcons/);
+    // 弹窗内可直接出战或返回
+    assert.match(screenSource, /if \(this\._detailDef\) this\.onCharSelected\?\.\(this\._detailDef\);/);
+    assert.match(screenSource, /\(\) => this\.hide\('charDetail'\), this\);/);
+});
+
+test('英雄介绍弹窗文字放大后保持可读：属性16px、技能标题19px、说明16px', () => {
+    assert.match(screenSource, /this\._detailTitle\.fontSize = 32/);
+    assert.match(screenSource, /this\._detailStats\.fontSize = 16/);
+    assert.match(screenSource, /this\._detailStats\.lineHeight = 27/);
+    assert.match(screenSource, /hl\.fontSize = 19/);
+    assert.match(screenSource, /dl\.fontSize = 16/);
+    assert.match(screenSource, /dl\.lineHeight = 24/);
+    // 底部按钮52px高（≈19px字），返回/出战不再是小字按钮
+    assert.match(screenSource, /'选择出战', -130, -234, 260, 52/);
+    assert.match(screenSource, /'返回', 130, -234, 260, 52/);
+    // 说明文字不再使用13px小字
+    assert.doesNotMatch(screenSource, /dl\.fontSize = 1[345]/);
 });
 
 test('未解锁角色遮罩位于立绘上方,不会再把Portrait推回前景', () => {
     assert.match(screenSource, /const dim = new Node\('LockDim'\); dim\.setParent\(card\)/);
     assert.doesNotMatch(screenSource, /dim\.setSiblingIndex\(1\)/);
     assert.match(screenSource, /dim\.setPosition\(Vec3\.ZERO\)/);
-    assert.match(screenSource, /setContentSize\(360, 270\)/);
-    assert.match(screenSource, /fillRect\(-180, -135, 360, 270\)/);
+    assert.match(screenSource, /setContentSize\(360, 280\)/);
+    assert.match(screenSource, /fillRect\(-180, -140, 360, 280\)/);
 });
 
 test('玩家护盾在粒子上层包住角色，敌人持续护盾仍使用能量壳', () => {

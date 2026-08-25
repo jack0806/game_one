@@ -2,7 +2,7 @@
 // 角色技能调整（炮击手/薇薇安/狂战士）行为单测
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { CHARACTERS } = require('../dist/data/CharacterDB');
+const { CHARACTERS, CHARS, SKILL_Q_CD, SKILL_E_CD, splitSkillText } = require('../dist/data/CharacterDB');
 const { makeMockGame, makePlayer } = require('./mockGame');
 const { PlayerController } = require('../dist/entities/PlayerController');
 
@@ -56,6 +56,20 @@ test('狂战士基础伤害为40,大招4秒无敌+45%吸血+50%攻速且仍牺�
     assert.equal(buff.mods.lifestealRate, 0.45, '增加45%伤害吸血');
     assert.equal(buff.mods.atkSpd, 1.5, '增加50%攻速');
     assert.equal(p.hp, 100, '仍牺牲半血');
+});
+
+test('Q/E冷却常量与技能文案拆分：选人介绍与实际战斗共用一套数值', () => {
+    assert.equal(SKILL_Q_CD, 4, 'Q技能基础冷却4秒');
+    assert.equal(SKILL_E_CD, 10, 'E技能基础冷却10秒');
+    // 全部角色的技能文案都能按「名称 — 说明」拆出两段
+    for (const c of CHARS) {
+        for (const slot of ['q', 'e', 'r']) {
+            const [name, desc] = splitSkillText(c.skills[slot]);
+            assert.ok(name.length > 0, `${c.id} ${slot} 应有技能名`);
+            assert.ok(desc.length > 0, `${c.id} ${slot} 应有说明文字`);
+            assert.ok(!name.includes('—'), `${c.id} ${slot} 名称不应残留破折号`);
+        }
+    }
 });
 
 test('死亡意志的45%吸血通过buff叠加进吸血结算', () => {
