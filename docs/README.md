@@ -14,6 +14,7 @@
 ```
 docs/
 ├── README.md                  # 本文件：总览与索引
+├── 怪物设计与数值.md          # 9 种炮灰、5 个分级小 Boss、3 个五技能大 Boss
 ├── art/
 │   ├── art-inventory.md       # 现有 54 张图清单：key、用途、规格、引用位置
 │   ├── art-needs.md           # 待办美术需求：缺口、可选升级项 + 生成规格
