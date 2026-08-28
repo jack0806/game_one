@@ -60,6 +60,10 @@ test('TEST_BOSSES含既有2只与设计文档3只大Boss', () => {
     assert.deepEqual([abyss.maxHp, abyss.damage, abyss.speed, abyss.armor], [9000, 94, 74, 30], 'abyss取第三章档位');
     assert.ok(mech.tintColor && abyss.tintColor, '测试Boss应有贴图染色');
     assert.ok(mech.spriteKey && abyss.spriteKey, '测试Boss应复用现有贴图');
+    assert.equal(mech.spriteKey, 'enemy_boss_ch2', '机械高达使用高精机械材质族底层');
+    assert.equal(abyss.spriteKey, 'enemy_boss_ch4', '深海恐惧使用高精深渊材质族底层');
+    assert.notEqual(mech.spriteKey, 'enemy_boss', '机械高达不得继续暴露通用占位素体');
+    assert.notEqual(abyss.spriteKey, 'enemy_boss', '深海恐惧不得继续暴露通用占位素体');
 });
 
 test('维斯帕/坩埚/万相严格使用文档数值与独立俯视贴图', () => {
@@ -159,6 +163,7 @@ test('铆甲兽与掠金虫严格使用设计文档数值和独立贴图', () =>
         [230, 9, 34, 18, 1.35, 14],
     );
     assert.equal(rivet.spriteKey, 'enemy_rivet_beast');
+    assert.equal(rivet.visualScale, 1.30, '铆甲兽贴图应收进护盾与正面装甲提示范围');
     assert.deepEqual(
         [gold.maxHp, gold.damage, gold.speed, gold.armor, gold.attackInterval, gold.goldValue],
         [46, 0, 105, 0, 999, 24],

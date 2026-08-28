@@ -361,13 +361,26 @@ export class ParticleManager {
     // ── 敌弹分弹种尾迹（boss 四章弹种可辨识化） ────────────
     /**
      * 按弹种生成尾迹，让玩家一眼分辨威胁类型：
-     * poison 毒球（绿雾） / gear 齿轮（蓝环） / homing 追踪（反向尾焰） / chaos 混沌（紫烟+环）
+     * poison 毒球（绿雾） / toxin_dart 毒镖（细短残光） / gear 齿轮（蓝环） /
+     * homing 追踪（反向尾焰） / chaos 混沌（紫烟+环）
      */
-    enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'gear' | 'homing' | 'chaos' | 'needle' | 'frost' | 'arc', vx: number, vy: number, color = '#fff', radius = 6): void {
+    enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'toxin_dart' | 'gear' | 'homing' | 'chaos' |
+        'needle' | 'frost' | 'arc' | 'rail' | 'water_bomb' | 'water_spike' |
+        'shrimp_spike' | 'venom_sting' | 'sonic' | 'beam' | 'blade', vx: number, vy: number, color = '#fff', radius = 6): void {
         switch (fx) {
             case 'poison':
                 this.emit({ x, y, count: 3, color: '#44ff00', speedMin: 10, speedMax: 40, lifeMin: 0.25, lifeMax: 0.5, sizeMin: 2, sizeMax: 5, glow: true });
                 break;
+            case 'toxin_dart': {
+                const spd = Math.hypot(vx, vy) || 1;
+                this.particles.push({
+                    x, y, vx: 0, vy: 0, life: 0.11, maxLife: 0.11, size: 1,
+                    color: '#9cff45', fade: true, gravity: false, glow: true,
+                    type: 'line', x2: x - vx / spd * 12, y2: y - vy / spd * 12,
+                    alpha: 0.8, lineWidth: 1.25,
+                });
+                break;
+            }
             case 'gear':
                 this.particles.push({ x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, size: 2, color: '#66aaff', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.8, maxRadius: radius * 2.2, alpha: 1 });
                 break;
@@ -402,6 +415,30 @@ export class ParticleManager {
             }
             case 'arc':
                 this.emit({ x, y, count: 2, color: '#7df4ff', speedMin: 5, speedMax: 24, lifeMin: 0.12, lifeMax: 0.25, sizeMin: 1, sizeMax: 3, glow: true });
+                break;
+            case 'water_bomb':
+                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.24, maxLife: 0.24, size: 2, color: '#55dfff', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.45, maxRadius: radius * 1.45, alpha: 0.75 });
+                break;
+            case 'water_spike':
+            case 'beam':
+            case 'blade':
+            case 'rail': {
+                const spd = Math.hypot(vx, vy) || 1;
+                const lengths: Record<string, number> = { water_spike: 16, beam: 26, blade: 22, rail: 30 };
+                const widths: Record<string, number> = { water_spike: 1.8, beam: 2.4, blade: 2.8, rail: 2.2 };
+                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.14, maxLife: 0.14, size: 1,
+                    color, fade: true, gravity: false, glow: true, type: 'line',
+                    x2: x - vx / spd * lengths[fx], y2: y - vy / spd * lengths[fx], alpha: 0.8, lineWidth: widths[fx] });
+                break;
+            }
+            case 'shrimp_spike':
+                this.emit({ x, y, count: 2, color: '#ff9a4c', speedMin: 8, speedMax: 34, lifeMin: 0.12, lifeMax: 0.25, sizeMin: 1, sizeMax: 2.5, glow: true });
+                break;
+            case 'venom_sting':
+                this.emit({ x, y, count: 1, color: '#d36bff', speedMin: 4, speedMax: 16, lifeMin: 0.18, lifeMax: 0.32, sizeMin: 1.5, sizeMax: 2.5, glow: true });
+                break;
+            case 'sonic':
+                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.18, maxLife: 0.18, size: 2, color: '#ff7777', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.6, maxRadius: radius * 2.0, alpha: 0.7 });
                 break;
         }
     }

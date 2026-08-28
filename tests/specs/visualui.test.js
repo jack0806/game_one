@@ -17,6 +17,8 @@ const statsSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/StatsPane
 const touchSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/TouchControls.ts'), 'utf8');
 const inputSource = fs.readFileSync(path.join(root, 'assets/scripts/systems/InputManager.ts'), 'utf8');
 const fitSource = fs.readFileSync(path.join(root, 'assets/scripts/core/ScreenFit.ts'), 'utf8');
+const webShellSource = fs.readFileSync(path.join(root, 'build-templates/web-desktop/index.ejs'), 'utf8');
+const webShellStyle = fs.readFileSync(path.join(root, 'build-templates/web-desktop/style.css'), 'utf8');
 const webBuild = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-desktop.json'), 'utf8'));
 const webBuildMobile = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-mobile.json'), 'utf8'));
 
@@ -286,6 +288,12 @@ test('PC端WASD与虚拟摇杆在moveX/moveY合并,键盘优先', () => {
 test('Web Desktop发布外壳与设计画布都锁定1280×720', () => {
     assert.deepEqual(webBuild.designResolution, { width: 1280, height: 720, policy: 4 });
     assert.deepEqual(webBuild.packages['web-desktop'].resolution, { designWidth: 1280, designHeight: 720 });
+    assert.match(webShellSource, /<title>Hexblast<\/title>/);
+    assert.doesNotMatch(webShellSource, /class="header"|Created with Cocos Creator/);
+    assert.match(webShellStyle, /width: min\(100vw, calc\(100vh \* 16 \/ 9\)\) !important/);
+    assert.match(webShellStyle, /height: min\(100vh, calc\(100vw \* 9 \/ 16\)\) !important/);
+    assert.match(webShellStyle, /overflow: hidden/);
+    assert.match(webShellStyle, /border: 0/);
 });
 
 test('角色详情将十个词条排成2列×5行，长技能说明使用双行阅读单元', () => {
@@ -302,7 +310,8 @@ test('角色详情将十个词条排成2列×5行，长技能说明使用双行�
 
 test('战斗英雄呼吸动画保持等比缩放', () => {
     assert.match(gameSource, /const uniformScale = 1 \+ breathe/);
-    assert.match(gameSource, /facing \* facingPose\.turnScaleX \* uniformScale, uniformScale, 1/);
+    assert.match(gameSource, /facing \* facingPose\.turnScaleX \* uniformScale \* walkPose\.bodyScaleX/);
+    assert.match(gameSource, /uniformScale \* walkPose\.bodyScaleY/);
     assert.doesNotMatch(gameSource, /new Vec3\(facing \* \(1 \+ breathe\), 1 - breathe, 1\)/);
 });
 
@@ -332,6 +341,18 @@ test('英雄朝移动输入转身，敌人按行为状态选择合理朝向', ()
     assert.match(bossSource, /bossHover/);
 });
 
+test('八个旧素材单位叠加独立程序轮廓并随主体移动转向显隐', () => {
+    assert.match(gameSource, /private _attachLegacyCombatSilhouette/);
+    for (const kind of ['miniboss', 'squid', 'shrimp', 'jelly', 'drone_a', 'drone_s', 'boss_mech', 'boss_abyss']) {
+        assert.match(gameSource, new RegExp(`kind === '${kind}'|['\"]${kind}['\"]`), kind);
+    }
+    assert.match(gameSource, /accent\.setParent\(host\)/);
+    assert.match(gameSource, /enemy\.accentNode = accent/);
+    assert.match(gameSource, /this\._attachLegacyCombatSilhouette\(enemy, eNode, diameter\)/);
+    assert.match(gameSource, /if \(e\.accentNode\) e\.accentNode\.active = !hidden/);
+    assert.match(enemySource, /accentNode\?: Node/);
+});
+
 test('高密金币降低远距亮度并在玩家附近恢复全亮', () => {
     assert.match(gameSource, /this\._economy\.drops\.length > 48/);
     assert.match(gameSource, /Vec\.dist\(drop\.x, drop\.y, this\._player\.x, this\._player\.y\) < 150/);
@@ -344,6 +365,11 @@ test('章节结算清空 Boss 阶段浮字与战斗残影', () => {
     assert.match(gameSource, /this\._particles\?\.clear\(\)/);
     assert.match(gameSource, /this\._coinPool\?\.releaseAll\(\)/);
     assert.match(gameSource, /for \(const enemy of this\._enemies\)[\s\S]*enemy\.node\.active = false/);
+});
+
+test('屏幕适配使用新版windowSize API,避免Creator预览控制台持续输出弃用警告', () => {
+    assert.match(fitSource, /screen\.windowSize/);
+    assert.doesNotMatch(fitSource, /view\.getFrameSize\(\)/);
 });
 
 test('属性页清理上一帧浮字但不销毁持续战斗特效', () => {

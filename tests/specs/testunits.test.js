@@ -427,9 +427,10 @@ test('深海鱿鱼周期性发射深水炸弹与3发分裂水刺', () => {
     squid.update(0.1, player, game);
     const bullets = game.enemyBullets;
     assert.ok(bullets.length >= 4, `应发射炸弹+3水刺,实际${bullets.length}`);
-    assert.ok(bullets.some(b => b.radius === 12 && Math.abs(b.damage - squid.damage * 0.5) < 1e-9), '深水炸弹20伤');
+    assert.ok(bullets.some(b => b.radius === 12 && b.enemyFx === 'water_bomb' && Math.abs(b.damage - squid.damage * 0.5) < 1e-9), '深水炸弹20伤且使用水雷轮廓');
     const spikes = bullets.filter(b => b.radius === 7);
     assert.ok(spikes.length >= 3, '分裂水刺应3发');
+    assert.ok(spikes.every(b => b.enemyFx === 'water_spike'), '水刺不可复用毒球或默认圆点');
 });
 
 test('深水炸弹反弹1次后撞边爆炸,大水刺反弹2次', () => {
@@ -459,6 +460,7 @@ test('深水炸弹反弹1次后撞边爆炸,大水刺反弹2次', () => {
     assert.ok(angles.length >= 6, '至少覆盖6个不同方向');
     assert.ok(spikes.every(b => b.bounceLeft === 2), '大水刺应反弹2次');
     assert.ok(spikes.every(b => !b.bounceExplode), '水刺撞边不爆炸,反弹耗尽后自然消散');
+    assert.ok(spikes.every(b => b.enemyFx === 'water_spike'), '深海恐惧水刺应使用独立水晶轮廓');
 });
 
 test('深海鱿鱼放完一轮技能(累计3个)后自毁消失', () => {
@@ -524,6 +526,7 @@ test('锯齿剑虾尖刺弹带破盾标记', () => {
     const player = makePlayer({ x: shrimp.x + 200, y: shrimp.y });
     shrimp.update(0.1, player, game);
     assert.ok(game.enemyBullets.some(b => b.pierceShield === true), '尖刺弹应可破盾');
+    assert.ok(game.enemyBullets.some(b => b.enemyFx === 'shrimp_spike'), '尖刺弹应有锯刃轮廓');
 });
 
 // ── 毒刺鬼水母 ──
@@ -542,6 +545,15 @@ test('毒刺鬼水母隐身循环:隐身3s无敌,到期现形可被击中', () =
     assert.equal(jelly.invulnerable, false);
     const dealt = jelly.takeDamage(50, player, game);
     assert.ok(dealt > 0, '现形后应正常受击');
+});
+
+test('毒刺鬼水母现形时发射独立毒针轮廓', () => {
+    const game = makeMockGame();
+    const jelly = new EnemyBase(); jelly.init('jelly', 1, game);
+    jelly.invisible = false; jelly.invulnerable = false;
+    jelly._miniTimer = 99; jelly._miniCd1 = 0;
+    jelly.update(0.1, makePlayer({ x: jelly.x + 200, y: jelly.y }), game);
+    assert.ok(game.enemyBullets.some(b => b.enemyFx === 'venom_sting' && b.dot?.dps === 3));
 });
 
 // ── 支援型无人机 ──
@@ -571,7 +583,7 @@ test('攻击性无人机发射破盾声波弹与锁定光束DoT弹', () => {
     drone._miniCd1 = 0; drone._miniCd2 = 0;
     const player = makePlayer({ x: drone.x + 200, y: drone.y });
     drone.update(0.1, player, game);
-    assert.ok(game.enemyBullets.some(b => b.pierceShield === true), '声波弹应破盾');
-    assert.ok(game.enemyBullets.some(b => b.dot && b.dot.dps === 4 && b.dot.dur === 3), '光束弹应挂3秒DoT');
+    assert.ok(game.enemyBullets.some(b => b.pierceShield === true && b.enemyFx === 'sonic'), '声波弹应破盾并显示声波环');
+    assert.ok(game.enemyBullets.some(b => b.dot && b.dot.dps === 4 && b.dot.dur === 3 && b.enemyFx === 'beam'), '光束弹应挂3秒DoT并显示束流轮廓');
     assert.ok(game.enemyBullets.some(b => b.homing === true), '光束应为锁定弹');
 });

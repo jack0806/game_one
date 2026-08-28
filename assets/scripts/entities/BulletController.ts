@@ -28,8 +28,10 @@ export interface BulletData {
     infinite:     boolean;
     isEnemyBullet: boolean;
     homing:       boolean;
-    /** 敌弹特效标签：boss 按章节弹种附加可辨识尾迹/轮廓（毒球/齿轮/追踪/混沌）。 */
-    enemyFx?:     'poison' | 'gear' | 'homing' | 'chaos' | 'needle' | 'frost' | 'arc';
+    /** 敌弹特效标签：同色威胁也以轮廓区分（毒镖≠Boss毒球）。 */
+    enemyFx?:     'poison' | 'toxin_dart' | 'gear' | 'homing' | 'chaos' |
+        'needle' | 'frost' | 'arc' | 'rail' | 'water_bomb' | 'water_spike' |
+        'shrimp_spike' | 'venom_sting' | 'sonic' | 'beam' | 'blade';
     /** 敌弹破盾：命中玩家先清空护盾再结算伤害（锯齿剑虾尖刺/无人机声波）。 */
     pierceShield?: boolean;
     /** 敌弹 DoT：命中玩家后挂持续伤害（毒刺/高能光束），可叠加。 */

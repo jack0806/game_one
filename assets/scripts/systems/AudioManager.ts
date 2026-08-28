@@ -41,6 +41,15 @@ const SFX_COOLDOWN_MS: Partial<Record<SfxCue, number>> = {
     hex_activate: 150,
 };
 
+/** 高优先级战斗信息触发短时 BGM 让位；gain 越小压低越明显。 */
+const BGM_DUCK: Partial<Record<SfxCue, { gain: number; hold: number }>> = {
+    boss_roar: { gain: 0.46, hold: 1.05 },
+    player_die: { gain: 0.40, hold: 1.00 },
+    skill_r: { gain: 0.62, hold: 0.42 },
+    freeze: { gain: 0.70, hold: 0.30 },
+    player_hurt: { gain: 0.76, hold: 0.16 },
+};
+
 export class AudioManager {
     private _bgmSource?: AudioSource;
     private _sfxSource?: AudioSource;
@@ -56,6 +65,10 @@ export class AudioManager {
     private _bgmRequestId = 0;
     private _pendingBgm?: { cue: BgmCue; clip: AudioClip };
     private _bgmFade: 'steady' | 'out' | 'in' = 'steady';
+    private _bgmLevel = 1;
+    private _duckGain = 1;
+    private _duckTarget = 1;
+    private _duckHold = 0;
 
     bgmVolume = 0.48;
     sfxVolume = 1;
@@ -119,25 +132,38 @@ export class AudioManager {
         });
     }
 
-    /** 每帧推进短淡出/淡入，消除章节、Boss、商店切换时的硬切爆音。 */
+    /** 每帧推进短淡出/淡入和高优先级 SFX 闪避，避免硬切并保住战斗信息层级。 */
     update(dt: number): void {
         const source = this._bgmSource;
         if (!source || this.muted) return;
         if (this._bgmFade === 'out') {
-            source.volume = Math.max(0, source.volume - this.bgmVolume * dt / 0.18);
-            if (source.volume <= 0.001) {
+            this._bgmLevel = Math.max(0, this._bgmLevel - dt / 0.18);
+            if (this._bgmLevel <= 0.001) {
                 const next = this._pendingBgm;
                 this._pendingBgm = undefined;
                 if (next) this._beginBgm(next.cue, next.clip, true);
-                else { source.stop(); this._bgmFade = 'steady'; }
+                else { source.stop(); this._bgmFade = 'steady'; this._bgmLevel = 0; }
             }
         } else if (this._bgmFade === 'in') {
-            source.volume = Math.min(this.bgmVolume, source.volume + this.bgmVolume * dt / 0.32);
-            if (source.volume >= this.bgmVolume - 0.001) {
-                source.volume = this.bgmVolume;
+            this._bgmLevel = Math.min(1, this._bgmLevel + dt / 0.32);
+            if (this._bgmLevel >= 0.999) {
+                this._bgmLevel = 1;
                 this._bgmFade = 'steady';
             }
         }
+
+        if (this._duckHold > 0) {
+            this._duckHold = Math.max(0, this._duckHold - dt);
+        } else {
+            this._duckTarget = 1;
+        }
+        // 约 60ms 压低、450ms 恢复：预警立即突出，音乐不会出现抽吸感。
+        if (this._duckGain > this._duckTarget) {
+            this._duckGain = Math.max(this._duckTarget, this._duckGain - dt / 0.06);
+        } else if (this._duckGain < this._duckTarget) {
+            this._duckGain = Math.min(this._duckTarget, this._duckGain + dt / 0.45);
+        }
+        source.volume = this.bgmVolume * this._bgmLevel * this._duckGain;
     }
 
     /** 浏览器首次用户手势后重试被自动播放策略拦截的目标 BGM。 */
@@ -151,6 +177,7 @@ export class AudioManager {
         this._playingBgm = undefined;
         this._pendingBgm = undefined;
         this._bgmFade = 'steady';
+        this._bgmLevel = 0;
         this._bgmSource?.stop();
     }
 
@@ -160,6 +187,7 @@ export class AudioManager {
         const last = this._lastPlayed.get(cue) ?? -Infinity;
         if (now - last < (SFX_COOLDOWN_MS[cue] ?? 0)) return false;
         this._lastPlayed.set(cue, now);
+        this._requestDuck(cue);
 
         const asset = SFX_ASSET[cue];
         const cached = this._sfxCache.get(asset);
@@ -184,6 +212,10 @@ export class AudioManager {
             this._playingBgm = undefined;
             this._pendingBgm = undefined;
             this._bgmFade = 'steady';
+            this._bgmLevel = 0;
+            this._duckGain = 1;
+            this._duckTarget = 1;
+            this._duckHold = 0;
         } else {
             this.resume();
         }
@@ -197,10 +229,18 @@ export class AudioManager {
         source.stop();
         source.clip = clip;
         source.loop = true;
-        source.volume = fadeIn ? 0 : this.bgmVolume;
+        this._bgmLevel = fadeIn ? 0 : 1;
+        source.volume = this.bgmVolume * this._bgmLevel * this._duckGain;
         source.play();
         this._playingBgm = cue;
         this._bgmFade = fadeIn ? 'in' : 'steady';
+    }
+
+    private _requestDuck(cue: SfxCue): void {
+        const profile = BGM_DUCK[cue];
+        if (!profile) return;
+        this._duckTarget = Math.min(this._duckTarget, profile.gain);
+        this._duckHold = Math.max(this._duckHold, profile.hold);
     }
 
     private _load(kind: 'bgm' | 'sfx', asset: string, cb: (clip: AudioClip | null) => void): void {

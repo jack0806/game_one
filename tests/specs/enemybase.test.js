@@ -238,7 +238,7 @@ test('archer为远程单位:禁用近战并配置射程/保持距离', () => {
     assert.ok(e.rangedKeepDist > 0, '应配置保持距离');
 });
 
-test('archer在射程内冷却完毕发射poison敌弹,并进入新一轮冷却', () => {
+test('archer在射程内发射小型毒镖而非Boss毒球,并进入新一轮冷却', () => {
     const game = makeMockGame();
     game.enemyBullets = [];
     const e = makeEnemy('archer', 1, game);
@@ -246,7 +246,7 @@ test('archer在射程内冷却完毕发射poison敌弹,并进入新一轮冷却'
     const player = makePlayer({ x: 400, y: 360 });
     // 拉到保持距离的舒适区内(距离300左右),停步开火
     player.x = 400; player.y = 60;
-    const shots = () => game.enemyBullets.filter(b => b.enemyFx === 'poison').length;
+    const shots = () => game.enemyBullets.filter(b => b.enemyFx === 'toxin_dart').length;
 
     e._rangedCd = 0; // 清掉初始随机冷却,第一帧即可开火
     e.update(0.016, player, game);
@@ -254,9 +254,11 @@ test('archer在射程内冷却完毕发射poison敌弹,并进入新一轮冷却'
     // 2.2秒冷却内不应再次开火
     for (let i = 0; i < 100; i++) e.update(0.016, player, game); // ~1.6s
     assert.equal(shots(), 1, '冷却期间不应重复开火');
-    const b = game.enemyBullets.find(x => x.enemyFx === 'poison');
+    const b = game.enemyBullets.find(x => x.enemyFx === 'toxin_dart');
     assert.equal(b.owner, 'enemy');
     assert.equal(b.isEnemyBullet, true);
+    assert.equal(b.radius, 5, '普通攻击毒镖不可沿用巨型毒球尺寸');
+    assert.equal(Math.hypot(b.vx, b.vy), 300, '小型毒镖应有清晰利落的弹速');
 });
 
 test('archer被玩家贴脸时后撤而不是继续接近', () => {

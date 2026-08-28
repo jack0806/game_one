@@ -31,6 +31,11 @@ export interface LocomotionPose {
     footLiftRight: number;
     bodyLift: number;
     bodyRollDeg: number;
+    /** 落脚时极轻的体积压缩，让单帧俯视怪也有受力感；静止恒为1。 */
+    bodyScaleX: number;
+    bodyScaleY: number;
+    /** 身体离地/落脚时接触阴影同步收放，避免贴图在地面上无摩擦滑行。 */
+    shadowScale: number;
     stride: number;
 }
 
@@ -133,6 +138,7 @@ export function advanceLocomotion(
     const profile = PROFILES[kind];
     const swing = Math.sin(state.phase) * state.motion;
     const impact = Math.abs(Math.sin(state.phase * 2)) * state.motion;
+    const squash = impact * profile.stride * 0.18;
     return {
         kind,
         moving: movingNow || state.motion > 0.08,
@@ -146,6 +152,9 @@ export function advanceLocomotion(
         footLiftRight: Math.max(0, -swing),
         bodyLift: impact * safeSize * profile.bodyLift,
         bodyRollDeg: swing * profile.bodyRollDeg,
+        bodyScaleX: 1 + squash,
+        bodyScaleY: 1 - squash * 0.72,
+        shadowScale: 1 - Math.min(0.12, impact * 0.10),
         stride: safeSize * profile.stride,
     };
 }

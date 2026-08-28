@@ -32,6 +32,9 @@ test('AudioManager 合并并发加载并限制未缓存音效首播', () => {
     assert.match(src, /private _pendingSfx = new Set/);
     assert.match(src, /waiters\.push\(cb\)/);
     assert.match(src, /private _bgmFade: 'steady' \| 'out' \| 'in'/);
+    assert.match(src, /const BGM_DUCK/);
+    assert.match(src, /boss_roar: \{ gain: 0\.46, hold: 1\.05 \}/);
+    assert.match(src, /source\.volume = this\.bgmVolume \* this\._bgmLevel \* this\._duckGain/);
 });
 
 test('AudioManager声明的7首BGM和19个SFX资源全部存在', () => {

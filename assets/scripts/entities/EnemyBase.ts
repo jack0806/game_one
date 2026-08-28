@@ -29,6 +29,8 @@ export class EnemyBase {
     glowColor   = '#ff0000';
     /** 美术资源key（走 ArtRemap.artPath() 解析真实文件名），按敌人类型在 _applyTypeDef() 里设置。 */
     spriteKey   = 'enemy_grunt';
+    /** 旧素材单位的程序化轮廓附件；随主体节点移动、转向、步态与显隐同步。 */
+    accentNode?: Node;
     /** 与静止帧成对的真实动作帧。 */
     moveSpriteKey = 'enemy_grunt_move';
     /** 无完整方向帧的俯视单位（无人机）仅使用悬浮位移，不请求不存在的资源。 */
@@ -40,7 +42,7 @@ export class EnemyBase {
     locomotion = createLocomotionState();
     /** 无论追击、横移、后退或站定，视觉上都由“指向玩家”的向量驱动。 */
     directionalFacing = createDirectionalFacingState('front');
-    /** 精英/miniboss没有独立美术，复用基础怪物贴图+这个色调叠加区分（Sprite.color tint）。 */
+    /** 底层位图的色调；旧单位另由 GameManager 叠加独立程序轮廓，不再只靠 tint 区分。 */
     tintColor   = '#ffffff';
     /**
      * 纯视觉缩放系数，只影响 GameManager.spawnEnemy() 里 Sprite 的渲染直径，
@@ -321,7 +323,7 @@ export class EnemyBase {
                 this.maxHp = Math.floor(800 * scale); this.speed = 55; this.damage = 25; this.radius = 30;
                 this.goldValue = 60; this.label = '暗影猎手'; this.attackWindupMax = 0.46;
                 this.visualScale = 1.60;
-                // 没有独立miniboss美术，复用boss贴图+紫色调区分。
+                // 底层暂复用boss位图；渲染层叠加披风、双镰和单眼轮廓。
                 this.spriteKey = 'enemy_boss'; this.tintColor = '#cc88ff'; break;
         }
         this.hp = this.maxHp;
@@ -755,10 +757,10 @@ export class EnemyBase {
                 const a = Math.atan2(player.y - this.y, player.x - this.x);
                 game.enemyBullets?.push({
                     x: this.x, y: this.y,
-                    vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
-                    damage: this.damage * this.buffDmgMult, radius: 9,
-                    color: '#88ff44', life: 3, lifeTime: 3,
-                    owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison',
+                    vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                    damage: this.damage * this.buffDmgMult, radius: 5,
+                    color: '#baff5c', life: 3, lifeTime: 3,
+                    owner: 'enemy', isEnemyBullet: true, enemyFx: 'toxin_dart',
                 });
                 this._rangedCd = 2.2;
             }
@@ -1108,7 +1110,7 @@ export class EnemyBase {
             game.enemyBullets?.push({
                 x: this.x, y: this.y, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240,
                 damage: this.damage * 0.5, radius: 12, color: '#33ccff',
-                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison',
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_bomb',
                 bounceLeft: 1, bounceExplode: true,
             });
         }
@@ -1122,7 +1124,7 @@ export class EnemyBase {
                 game.enemyBullets?.push({
                     x: this.x, y: this.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                     damage: this.damage * 0.25, radius: 7, color: '#66ddff',
-                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_spike',
                 });
             }
         }
@@ -1186,7 +1188,7 @@ export class EnemyBase {
                 x: this.x, y: this.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
                 damage: this.damage * 0.45, radius: 9, color: '#ffaa66',
                 life: 3.5, lifeTime: 3.5, owner: 'enemy', isEnemyBullet: true,
-                pierceShield: true,
+                pierceShield: true, enemyFx: 'shrimp_spike',
             });
         }
         // 技能4 甩击：近身触发，30 伤害 + 主角眩晕 1.5 秒
@@ -1221,7 +1223,7 @@ export class EnemyBase {
                 x: this.x, y: this.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
                 damage: this.damage * 0.1, radius: 8, color: '#cc66ff',
                 life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
-                dot: { dps: 3, dur: 5, color: '#cc66ff' },
+                dot: { dps: 3, dur: 5, color: '#cc66ff' }, enemyFx: 'venom_sting',
             });
         }
     }
@@ -1238,7 +1240,7 @@ export class EnemyBase {
                 x: this.x, y: this.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                 damage: this.damage * 0.4, radius: 9, color: '#ff8888',
                 life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
-                pierceShield: true,
+                pierceShield: true, enemyFx: 'sonic',
             });
         }
         // 技能2 高能光束：锁定弹，命中挂 3 秒 DoT（每秒 4 伤害）
@@ -1248,7 +1250,7 @@ export class EnemyBase {
             game.enemyBullets?.push({
                 x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
                 damage: 1, radius: 7, color: '#ff5555',
-                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true,
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'beam',
                 dot: { dps: 4, dur: 3, color: '#ff5555' },
             });
         }

@@ -24,6 +24,9 @@ test('动作帧由实际位移推进且停住保持静止帧', () => {
     assert.equal(idle.moving, false);
     assert.equal(idle.frameIndex, 0);
     assert.equal(idle.footSwing, 0);
+    assert.equal(idle.bodyScaleX, 1);
+    assert.equal(idle.bodyScaleY, 1);
+    assert.equal(idle.shadowScale, 1);
 
     const walking = advanceLocomotion(state, 106, 100, 1 / 60, 82, 'biped');
     assert.equal(walking.moving, true);
@@ -31,6 +34,9 @@ test('动作帧由实际位移推进且停住保持静止帧', () => {
     assert.ok(walking.phase > idle.phase);
     assert.ok(walking.footLiftLeft === 0 || walking.footLiftRight === 0);
     assert.ok(walking.footLiftLeft > 0 || walking.footLiftRight > 0);
+    assert.ok(walking.bodyScaleX >= 1);
+    assert.ok(walking.bodyScaleY <= 1);
+    assert.ok(walking.shadowScale <= 1);
 });
 
 test('减速后的短位移产生更少步态相位推进', () => {
@@ -73,6 +79,9 @@ test('停步后动作平滑收束并最终回到待机', () => {
     assert.equal(pose.motion, 0);
     assert.equal(pose.bodyLift, 0);
     assert.equal(pose.bodyRollDeg, 0);
+    assert.equal(pose.bodyScaleX, 1);
+    assert.equal(pose.bodyScaleY, 1);
+    assert.equal(pose.shadowScale, 1);
 });
 
 test('不同身体结构使用不同步幅，悬浮体和Boss仍有位移脉冲', () => {

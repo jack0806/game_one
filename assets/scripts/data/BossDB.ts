@@ -43,7 +43,8 @@ export function getBossDef(chapter0Based: number): BossDef {
 // ============================================================
 // 来自设计文档（boss.docx）：第二章「机械高达X-剑」、第三章「深海恐惧」。
 // 文档只给技能描述，无数值——数值按对应章节档位自行定档（mech 取第二章
-// 5500/66/68/20，abyss 取第三章 9000/94/74/30），复用 enemy_boss 素体+染色。
+// 5500/66/68/20，abyss 取第三章 9000/94/74/30）。底层取同材质族的高精章节 Boss，
+// 渲染层再叠加独立机械/深渊程序轮廓，不再暴露通用 enemy_boss 占位素体。
 
 export interface TestBossDef extends BossDef {
     /** 技能集标识：BossController._useSkill 按此分支。 */
@@ -51,8 +52,10 @@ export interface TestBossDef extends BossDef {
 }
 
 export const TEST_BOSSES: TestBossDef[] = [
-    { kind: 'mech',  chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss', tintColor: '#9db8ff', visualScale: 2.0, attackWindupMax: 0.42 },
-    { kind: 'abyss', chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#33aaff', glow: '#00ccff', label: '深海恐惧',       spriteKey: 'enemy_boss', tintColor: '#33ccff', visualScale: 2.0, attackWindupMax: 0.42 },
+    // 机械/深渊各取项目内同材质族的高精底层，再由 GameManager 叠加专属 X 剑、机甲装甲、深海王冠与触腕。
+    // 这样维持全项目的写实废土材质密度，同时避免继续暴露通用 enemy_boss 占位素体。
+    { kind: 'mech',  chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_ch2', tintColor: '#b7d4ff', visualScale: 2.0, attackWindupMax: 0.42 },
+    { kind: 'abyss', chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#33aaff', glow: '#00ccff', label: '深海恐惧',       spriteKey: 'enemy_boss_ch4', tintColor: '#69e0e8', visualScale: 2.0, attackWindupMax: 0.42 },
     // 《怪物设计与数值》5.2~5.4：独立俯视轮廓，逐字使用文档基础数值。
     { kind: 'vespa', chapter: 3, maxHp: 6800, damage: 42, speed: 78, armor: 14, goldValue: 480, radius: 46, color: '#132b4c', glow: '#69ff4a', label: '疫晶跳蛛·维斯帕', spriteKey: 'enemy_boss_vespa', tintColor: '#ffffff', visualScale: 1.85, attackWindupMax: 0.50 },
     { kind: 'crucible_city', chapter: 3, maxHp: 9800, damage: 60, speed: 50, armor: 30, goldValue: 680, radius: 50, color: '#38281f', glow: '#ff8b2c', label: '磁潮铸城兽·坩埚', spriteKey: 'enemy_boss_crucible_city', tintColor: '#ffffff', visualScale: 1.84, attackWindupMax: 0.70 },
@@ -64,7 +67,7 @@ export const TEST_BOSSES: TestBossDef[] = [
 // ============================================================
 // 既有 6 个章节小 Boss 来自 boss.docx；其后追加《怪物设计与数值》的 5 个机制小 Boss。
 // 普通 ≈1200血/30攻、史诗 ≈2200血/40攻、地狱 ≈2800血/45攻。
-// 全部复用现有贴图+染色（同 elite/archer 套路），不新增美术资源。
+// 既有六只的底层位图暂复用现有资源；渲染层为海洋单位和无人机叠加独立轮廓附件。
 
 export type MiniBossTier = '普通' | '史诗' | '地狱';
 
@@ -166,7 +169,7 @@ export const TEST_GRUNTS: TestGruntDef[] = [
         id: 'rivet_beast', label: '铆甲兽', maxHp: 230, damage: 9, speed: 34,
         armor: 18, attackInterval: 1.35, goldValue: 14, radius: 29,
         color: '#46505b', glow: '#a9e5ff', spriteKey: 'enemy_rivet_beast',
-        visualScale: 1.72, attackWindupMax: 0.55,
+        visualScale: 1.30, attackWindupMax: 0.55,
     },
     {
         id: 'arc_leech', label: '闪弧寄生体', maxHp: 82, damage: 5, speed: 68,

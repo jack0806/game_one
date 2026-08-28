@@ -48,11 +48,11 @@ const PILLAR_SPOTS: [number, number][] = [
     [150, 120], [CANVAS_W - 150, 120],
     [150, PLAYFIELD_BOTTOM - 100], [CANVAS_W - 150, PLAYFIELD_BOTTOM - 100],
 ];
-/** 测试房单位验收点：避开顶部生命区和底部工具条，远程怪站定后也能完整看见。 */
+/** 测试房单位验收点：围绕玩家近距离排布，便于低帧率内置浏览器完整验收攻击循环。 */
 const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
-    [190, 180], [CANVAS_W - 190, 180],
-    [190, PLAYFIELD_BOTTOM - 130], [CANVAS_W - 190, PLAYFIELD_BOTTOM - 130],
-    [CANVAS_W / 2, 120], [CANVAS_W / 2, PLAYFIELD_BOTTOM - 130],
+    [CANVAS_W / 2 - 120, 360], [CANVAS_W / 2 + 120, 360],
+    [CANVAS_W / 2 - 80, 260], [CANVAS_W / 2 + 80, 260],
+    [CANVAS_W / 2 - 80, 460], [CANVAS_W / 2 + 80, 460],
 ];
 
 export type GameState =
@@ -2098,8 +2098,27 @@ export class GameManager extends Component {
                     const ox = z.fromX + (z.x - z.fromX) * t;
                     const oy = z.fromY + (z.y - z.fromY) * t - Math.sin(Math.PI * t) * 70;
                     const [px, py] = this._toLocal(ox, oy);
-                    g.fillColor = new Color(95, 255, 35, 65); g.circle(px, py, 15); g.fill();
-                    g.fillColor = new Color(185, 255, 95, 245); g.circle(px, py, 7); g.fill();
+                    const [fx, fy] = this._toLocal(z.fromX, z.fromY);
+                    const fd = Math.hypot(zx - fx, zy - fy) || 1;
+                    const ux = (zx - fx) / fd, uy = (zy - fy) / fd;
+                    const sx = -uy, sy = ux;
+                    // 飞行态是有朝向的囊状毒弹，避免和落地危险区同为绿色圆圈。
+                    g.fillColor = new Color(65, 155, 24, 95);
+                    g.moveTo(px + ux * 13, py + uy * 13);
+                    g.lineTo(px + sx * 8, py + sy * 8);
+                    g.lineTo(px - ux * 10 + sx * 4, py - uy * 10 + sy * 4);
+                    g.lineTo(px - ux * 15, py - uy * 15);
+                    g.lineTo(px - ux * 10 - sx * 4, py - uy * 10 - sy * 4);
+                    g.lineTo(px - sx * 8, py - sy * 8); g.close(); g.fill();
+                    g.strokeColor = new Color(200, 255, 110, 235); g.lineWidth = 2;
+                    g.moveTo(px + ux * 12, py + uy * 12);
+                    g.lineTo(px + sx * 7, py + sy * 7);
+                    g.lineTo(px - ux * 12, py - uy * 12);
+                    g.lineTo(px - sx * 7, py - sy * 7); g.close(); g.stroke();
+                    g.fillColor = new Color(218, 255, 126, 230);
+                    g.circle(px + ux * 5 + sx * 2, py + uy * 5 + sy * 2, 3); g.fill();
+                    g.fillColor = new Color(122, 235, 50, 150);
+                    g.circle(px - ux * 19 + sx * 2, py - uy * 19 + sy * 2, 2.5); g.fill();
                 } else {
                     for (let k = 0; k < 6; k++) {
                         const a = k / 6 * Math.PI * 2 + this._visualTime * 0.35;
@@ -2111,10 +2130,34 @@ export class GameManager extends Component {
                 }
             } else {
                 const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 3.5 + z.x * 0.01);
-                g.fillColor = acid ? new Color(55, 145, 25, 58 + Math.floor(pulse * 24)) : new Color(125, 45, 15, 48 + Math.floor(pulse * 26));
-                g.circle(zx, zy, z.r); g.fill();
-                g.strokeColor = acid ? new Color(112, 230, 58, 150 + Math.floor(pulse * 60)) : new Color(255, 105, 35, 135 + Math.floor(pulse * 70));
-                g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
+                if (acid) {
+                    // 落地态使用不规则腐蚀滩轮廓，与飞行囊弹形成材质和形状差异。
+                    const puddlePoint = (i: number, inner = false) => {
+                        const a = i / 14 * Math.PI * 2 - 0.18;
+                        const jag = i % 2 === 0 ? 1 : 0.78;
+                        const rr = z.r * jag * (inner ? 0.56 : 1) * (0.97 + Math.sin(i * 4.1 + z.x) * 0.04);
+                        return [zx + Math.cos(a) * rr, zy + Math.sin(a) * rr] as [number, number];
+                    };
+                    const [x0, y0] = puddlePoint(0);
+                    g.fillColor = new Color(40, 118, 18, 70 + Math.floor(pulse * 28));
+                    g.moveTo(x0, y0);
+                    for (let i = 1; i < 14; i++) { const [x, y] = puddlePoint(i); g.lineTo(x, y); }
+                    g.close(); g.fill();
+                    g.strokeColor = new Color(128, 238, 62, 170 + Math.floor(pulse * 65));
+                    g.lineWidth = 2.4; g.moveTo(x0, y0);
+                    for (let i = 1; i < 14; i++) { const [x, y] = puddlePoint(i); g.lineTo(x, y); }
+                    g.close(); g.stroke();
+                    const [ix0, iy0] = puddlePoint(0, true);
+                    g.fillColor = new Color(166, 225, 62, 34 + Math.floor(pulse * 22));
+                    g.moveTo(ix0, iy0);
+                    for (let i = 1; i < 14; i++) { const [x, y] = puddlePoint(i, true); g.lineTo(x, y); }
+                    g.close(); g.fill();
+                } else {
+                    g.fillColor = new Color(125, 45, 15, 48 + Math.floor(pulse * 26));
+                    g.circle(zx, zy, z.r); g.fill();
+                    g.strokeColor = new Color(255, 105, 35, 135 + Math.floor(pulse * 70));
+                    g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
+                }
                 for (let bubble = 0; bubble < 5; bubble++) {
                     const a = bubble * 2.399 + z.x * 0.013;
                     const br = z.r * (0.2 + bubble * 0.11);
@@ -2310,13 +2353,15 @@ export class GameManager extends Component {
             // 隐身（毒刺鬼水母）/机械高达飞空：贴图淡出时阴影与血条一并隐藏，
             // 否则地上仍留实影、头顶仍飘血条，看起来"实体还在"
             const hidden = e.invisible || (e instanceof BossController && e.mechSkyT > 0);
+            if (e.accentNode) e.accentNode.active = !hidden;
             // 常驻圆形底盘/描边会让所有单位像棋子。改为低矮接触阴影，只负责
             // 把脚底从背景纹理中分离；危险圆环仅在攻击前摇期间出现。
             if (!hidden) {
                 g.fillColor = new Color(0, 0, 0, e.isBoss ? 125 : 88);
                 g.ellipse(
                     ex, ey - visualR * 0.72,
-                    visualR * (e.isBoss ? 0.72 : 0.62), visualR * 0.18,
+                    visualR * (e.isBoss ? 0.72 : 0.62) * walkPose.shadowScale,
+                    visualR * 0.18 * walkPose.shadowScale,
                 ); g.fill();
             }
             this._syncDirectionalFrame(e, walkPose, facingPose);
@@ -2324,7 +2369,11 @@ export class GameManager extends Component {
             if (e.node) {
                 e.node.setPosition(Math.round(ex), Math.round(ey + walkPose.bodyLift), 0);
                 const facing = facingPose.mirror;
-                e.node.setScale(new Vec3(facing * facingPose.turnScaleX, 1, 1));
+                e.node.setScale(new Vec3(
+                    facing * facingPose.turnScaleX * walkPose.bodyScaleX,
+                    walkPose.bodyScaleY,
+                    1,
+                ));
                 e.node.setRotationFromEuler(
                     0, 0, walkPose.bodyRollDeg * facing + facingPose.turnLeanDeg,
                 );
@@ -2736,6 +2785,97 @@ export class GameManager extends Component {
                         g.strokeColor = new Color(40, 160, 30, 140);
                         g.lineWidth = 3; g.circle(bx, by, r * 1.6); g.stroke();
                         break;
+                    case 'toxin_dart': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd;
+                        const px = -ny, py = nx;
+                        g.fillColor = new Color(205, 255, 112, 250);
+                        g.moveTo(bx + nx * (r + 5), by + ny * (r + 5));
+                        g.lineTo(bx + px * 2.5, by + py * 2.5);
+                        g.lineTo(bx - nx * (r + 3), by - ny * (r + 3));
+                        g.lineTo(bx - px * 2.5, by - py * 2.5); g.close(); g.fill();
+                        g.strokeColor = new Color(76, 156, 34, 220); g.lineWidth = 1.25;
+                        g.moveTo(bx - nx * (r + 5), by - ny * (r + 5));
+                        g.lineTo(bx + nx * (r + 6), by + ny * (r + 6)); g.stroke();
+                        break;
+                    }
+                    case 'water_bomb':
+                        g.fillColor = new Color(22, 86, 116, 235); g.circle(bx, by, r); g.fill();
+                        g.strokeColor = new Color(112, 230, 255, 245); g.lineWidth = 2;
+                        g.circle(bx, by, r + 2); g.stroke();
+                        g.strokeColor = new Color(80, 195, 240, 145); g.lineWidth = 1.5;
+                        g.circle(bx, by, r + 6 + Math.sin(t * 14) * 2); g.stroke();
+                        g.fillColor = new Color(205, 250, 255, 230); g.circle(bx - r * 0.28, by - r * 0.28, 2.2); g.fill();
+                        break;
+                    case 'water_spike': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
+                        g.fillColor = new Color(115, 225, 255, 245);
+                        g.moveTo(bx + nx * (r + 9), by + ny * (r + 9));
+                        g.lineTo(bx + px * (r * 0.48), by + py * (r * 0.48));
+                        g.lineTo(bx - nx * (r + 5), by - ny * (r + 5));
+                        g.lineTo(bx - px * (r * 0.48), by - py * (r * 0.48)); g.close(); g.fill();
+                        g.strokeColor = new Color(215, 250, 255, 245); g.lineWidth = 1.4;
+                        g.moveTo(bx - nx * (r + 5), by - ny * (r + 5));
+                        g.lineTo(bx + nx * (r + 9), by + ny * (r + 9)); g.stroke();
+                        break;
+                    }
+                    case 'shrimp_spike':
+                    case 'venom_sting':
+                    case 'rail': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
+                        const rail = b.enemyFx === 'rail';
+                        const venom = b.enemyFx === 'venom_sting';
+                        const len = rail ? r + 15 : r + 9;
+                        const halfW = rail ? 3.5 : venom ? 2.6 : 4.2;
+                        g.fillColor = rail ? new Color(255, 80, 190, 250)
+                            : venom ? new Color(205, 105, 255, 250) : new Color(255, 154, 76, 250);
+                        g.moveTo(bx + nx * len, by + ny * len);
+                        g.lineTo(bx + px * halfW, by + py * halfW);
+                        g.lineTo(bx - nx * len * 0.7, by - ny * len * 0.7);
+                        g.lineTo(bx - px * halfW, by - py * halfW); g.close(); g.fill();
+                        if (!venom) {
+                            g.strokeColor = rail ? new Color(255, 208, 245, 240) : new Color(255, 226, 170, 235);
+                            g.lineWidth = 1.4;
+                            g.moveTo(bx - nx * len * 0.3 + px * (halfW + 2), by - ny * len * 0.3 + py * (halfW + 2));
+                            g.lineTo(bx - nx * len * 0.55, by - ny * len * 0.55);
+                            g.lineTo(bx - nx * len * 0.3 - px * (halfW + 2), by - ny * len * 0.3 - py * (halfW + 2)); g.stroke();
+                        }
+                        break;
+                    }
+                    case 'sonic':
+                        g.fillColor = new Color(255, 105, 105, 225); g.circle(bx, by, Math.max(2.5, r * 0.38)); g.fill();
+                        g.strokeColor = new Color(255, 170, 155, 225); g.lineWidth = 1.6;
+                        g.circle(bx, by, r * 0.9); g.stroke();
+                        g.strokeColor = new Color(255, 105, 95, 165); g.lineWidth = 2;
+                        g.circle(bx, by, r + 5 + Math.sin(t * 18) * 2); g.stroke();
+                        break;
+                    case 'beam': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
+                        g.strokeColor = new Color(255, 75, 70, 245); g.lineWidth = 4;
+                        g.moveTo(bx - nx * (r + 11), by - ny * (r + 11));
+                        g.lineTo(bx + nx * (r + 11), by + ny * (r + 11)); g.stroke();
+                        g.strokeColor = new Color(255, 225, 215, 250); g.lineWidth = 1.4;
+                        g.moveTo(bx - nx * (r + 12), by - ny * (r + 12));
+                        g.lineTo(bx + nx * (r + 12), by + ny * (r + 12)); g.stroke();
+                        g.moveTo(bx + px * 5, by + py * 5); g.lineTo(bx - px * 5, by - py * 5); g.stroke();
+                        break;
+                    }
+                    case 'blade': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
+                        g.fillColor = new Color(175, 225, 255, 220);
+                        g.moveTo(bx + nx * (r + 12), by + ny * (r + 12));
+                        g.lineTo(bx + px * (r + 3), by + py * (r + 3));
+                        g.lineTo(bx - nx * (r + 7), by - ny * (r + 7));
+                        g.lineTo(bx + px * 2, by + py * 2); g.close(); g.fill();
+                        g.strokeColor = new Color(235, 250, 255, 245); g.lineWidth = 1.6;
+                        g.moveTo(bx - nx * (r + 7), by - ny * (r + 7));
+                        g.lineTo(bx + nx * (r + 12), by + ny * (r + 12)); g.stroke();
+                        break;
+                    }
                     case 'gear': {
                         g.strokeColor = new Color(140, 190, 255, 230);
                         g.lineWidth = 2.5; g.circle(bx, by, r + 1.5); g.stroke();
@@ -2816,7 +2956,7 @@ export class GameManager extends Component {
             );
             // 只保留无色接触阴影。身份色椭圆会穿过双腿之间，看起来像一根绿线。
             g.fillColor = new Color(0, 0, 0, 125);
-            g.ellipse(px, py - 25, 21, 6.5); g.fill();
+            g.ellipse(px, py - 25, 21 * walkPose.shadowScale, 6.5 * walkPose.shadowScale); g.fill();
             this._syncDirectionalFrame(p, walkPose, facingPose);
             p.node.setPosition(Math.round(px), Math.round(py + walkPose.bodyLift), 0);
             // 移动时由完整动作帧和轻微重心倾斜表达步态；静止保留极轻呼吸。
@@ -2826,7 +2966,9 @@ export class GameManager extends Component {
             const facing = facingPose.mirror;
             const uniformScale = 1 + breathe;
             p.node.setScale(new Vec3(
-                facing * facingPose.turnScaleX * uniformScale, uniformScale, 1,
+                facing * facingPose.turnScaleX * uniformScale * walkPose.bodyScaleX,
+                uniformScale * walkPose.bodyScaleY,
+                1,
             ));
             p.node.setRotationFromEuler(
                 0, 0, walkPose.bodyRollDeg * facing + facingPose.turnLeanDeg,
@@ -3083,6 +3225,168 @@ export class GameManager extends Component {
 
     // ── public game API (called by systems / augments) ────────
 
+    /**
+     * 旧位图单位的程序化第二层轮廓。附件跟随主体节点的位移、镜像、步态和转身，
+     * 用剪影与功能结构解决“同一张图换色”的占位感；不改变碰撞体与玩法数值。
+     */
+    private _attachLegacyCombatSilhouette(enemy: EnemyBase, host: Node, diameter: number): void {
+        let kind = enemy.type;
+        if (enemy instanceof BossController && (enemy.bossKind === 'mech' || enemy.bossKind === 'abyss')) {
+            kind = `boss_${enemy.bossKind}`;
+        }
+        const supported = new Set([
+            'miniboss', 'squid', 'shrimp', 'jelly', 'drone_a', 'drone_s', 'boss_mech', 'boss_abyss',
+        ]);
+        if (!supported.has(kind)) return;
+
+        const accent = new Node(`CombatSilhouette_${kind}`);
+        accent.setParent(host);
+        accent.addComponent(UITransform).setContentSize(diameter * 1.65, diameter * 1.65);
+        const g = accent.addComponent(Graphics);
+        const r = diameter * 0.5;
+        const polygon = (points: [number, number][], fill: Color, stroke: Color, width = 1.5) => {
+            const trace = () => {
+                g.moveTo(points[0][0], points[0][1]);
+                for (let i = 1; i < points.length; i++) g.lineTo(points[i][0], points[i][1]);
+                g.close();
+            };
+            g.fillColor = fill; trace(); g.fill();
+            g.strokeColor = stroke; g.lineWidth = width; trace(); g.stroke();
+        };
+        const line = (points: [number, number][], color: Color, width: number) => {
+            g.strokeColor = color; g.lineWidth = width;
+            g.moveTo(points[0][0], points[0][1]);
+            for (let i = 1; i < points.length; i++) g.lineTo(points[i][0], points[i][1]);
+            g.stroke();
+        };
+
+        if (kind === 'miniboss') {
+            // 暗影猎手：不对称披风、双镰与单眼，保持“混沌猎手”而非紫色 Boss 换皮。
+            polygon([
+                [-r * 0.64, r * 0.18], [-r * 0.92, -r * 0.54], [-r * 0.34, -r * 0.38],
+                [0, -r * 0.82], [r * 0.34, -r * 0.38], [r * 0.78, -r * 0.58], [r * 0.58, r * 0.10],
+            ], new Color(19, 8, 31, 178), new Color(178, 82, 255, 220), 2.2);
+            g.strokeColor = new Color(218, 150, 255, 235); g.lineWidth = 3;
+            g.arc(-r * 0.56, r * 0.02, r * 0.43, 1.75, 4.85, false); g.stroke();
+            g.arc(r * 0.52, -r * 0.03, r * 0.38, -1.62, 1.34, false); g.stroke();
+            line([[-r * 0.22, r * 0.28], [r * 0.20, r * 0.24]], new Color(242, 102, 255, 245), 3.4);
+            line([[-r * 0.14, r * 0.28], [r * 0.11, r * 0.26]], new Color(255, 235, 255, 255), 1.1);
+        } else if (kind === 'squid') {
+            // 深海鱿鱼：宽鳍头罩 + 五条带吸盘高光的触腕，轮廓以冷蓝水压能量收边。
+            g.fillColor = new Color(8, 35, 61, 126);
+            g.ellipse(0, r * 0.22, r * 0.68, r * 0.48); g.fill();
+            g.strokeColor = new Color(74, 207, 255, 225); g.lineWidth = 2.4;
+            g.arc(0, r * 0.14, r * 0.70, 0.12, 3.02, false); g.stroke();
+            const ends: [number, number][] = [
+                [-0.92, -0.80], [-0.52, -1.04], [-0.12, -0.90], [0.42, -1.02], [0.88, -0.72],
+            ];
+            for (let i = 0; i < ends.length; i++) {
+                const [ux, uy] = ends[i];
+                g.strokeColor = new Color(5, 25, 48, 230); g.lineWidth = 7;
+                g.moveTo((i - 2) * r * 0.13, -r * 0.12);
+                g.bezierCurveTo((i - 2) * r * 0.18, -r * 0.42, ux * r * 0.72, uy * r * 0.70, ux * r, uy * r); g.stroke();
+                g.strokeColor = new Color(54, 176, 224, 220); g.lineWidth = 2;
+                g.moveTo((i - 2) * r * 0.13, -r * 0.12);
+                g.bezierCurveTo((i - 2) * r * 0.18, -r * 0.42, ux * r * 0.72, uy * r * 0.70, ux * r, uy * r); g.stroke();
+            }
+            for (const x of [-0.38, 0, 0.38]) {
+                g.fillColor = new Color(173, 239, 255, 210); g.circle(x * r, -r * 0.46, r * 0.055); g.fill();
+            }
+        } else if (kind === 'shrimp') {
+            // 锯齿剑虾：两把非对称锯刃钳和背部节甲，快速侧移时仍一眼可辨。
+            const blade = (side: number) => polygon([
+                [side * r * 0.30, r * 0.18], [side * r * 1.06, r * 0.48], [side * r * 0.92, r * 0.18],
+                [side * r * 1.18, -r * 0.02], [side * r * 0.88, -r * 0.10], [side * r * 1.02, -r * 0.38],
+                [side * r * 0.42, -r * 0.22],
+            ], new Color(84, 29, 16, 210), new Color(255, 159, 64, 245), 2.2);
+            blade(-1); blade(1);
+            for (let i = -2; i <= 2; i++) {
+                polygon([
+                    [i * r * 0.18 - r * 0.12, r * (0.38 - Math.abs(i) * 0.04)],
+                    [i * r * 0.18, r * (0.68 - Math.abs(i) * 0.03)],
+                    [i * r * 0.18 + r * 0.12, r * (0.38 - Math.abs(i) * 0.04)],
+                ], new Color(71, 24, 16, 220), new Color(255, 189, 92, 230), 1.4);
+            }
+            line([[-r * 0.42, -r * 0.54], [0, -r * 0.72], [r * 0.42, -r * 0.54]], new Color(255, 118, 48, 230), 3);
+        } else if (kind === 'jelly') {
+            // 毒刺鬼水母：半透明钟罩、毒核和四条刺触须；进入隐身时附件同步消失。
+            g.fillColor = new Color(104, 28, 144, 76);
+            g.moveTo(-r * 0.72, 0); g.arc(0, 0, r * 0.72, Math.PI, 0, false); g.lineTo(r * 0.58, -r * 0.18);
+            g.lineTo(-r * 0.58, -r * 0.18); g.close(); g.fill();
+            g.strokeColor = new Color(224, 112, 255, 235); g.lineWidth = 2.4;
+            g.arc(0, 0, r * 0.72, Math.PI, 0, false); g.stroke();
+            for (const x of [-0.54, -0.18, 0.18, 0.54]) {
+                g.strokeColor = new Color(163, 62, 218, 225); g.lineWidth = 4;
+                g.moveTo(x * r, -r * 0.10);
+                g.bezierCurveTo(x * r * 1.2, -r * 0.42, x * r * 0.72, -r * 0.76, x * r * 1.18, -r); g.stroke();
+                g.strokeColor = new Color(239, 155, 255, 220); g.lineWidth = 1.2;
+                g.moveTo(x * r, -r * 0.10);
+                g.bezierCurveTo(x * r * 1.2, -r * 0.42, x * r * 0.72, -r * 0.76, x * r * 1.18, -r); g.stroke();
+            }
+            g.fillColor = new Color(190, 255, 75, 230); g.circle(0, r * 0.10, r * 0.13); g.fill();
+            g.strokeColor = new Color(232, 255, 170, 250); g.lineWidth = 1.4; g.circle(0, r * 0.10, r * 0.13); g.stroke();
+        } else if (kind === 'drone_a') {
+            // 攻击无人机：前掠红翼、双炮口和菱形火控核心。
+            polygon([[-r * 0.15, r * 0.18], [-r * 1.05, r * 0.58], [-r * 0.78, 0], [-r * 1.12, -r * 0.34], [-r * 0.18, -r * 0.16]],
+                new Color(66, 17, 20, 220), new Color(255, 78, 72, 245), 2.2);
+            polygon([[r * 0.15, r * 0.18], [r * 1.05, r * 0.58], [r * 0.78, 0], [r * 1.12, -r * 0.34], [r * 0.18, -r * 0.16]],
+                new Color(66, 17, 20, 220), new Color(255, 78, 72, 245), 2.2);
+            line([[-r * 0.52, -r * 0.02], [-r * 0.52, -r * 0.66]], new Color(255, 210, 170, 240), 4);
+            line([[r * 0.52, -r * 0.02], [r * 0.52, -r * 0.66]], new Color(255, 210, 170, 240), 4);
+            polygon([[0, r * 0.31], [r * 0.24, 0], [0, -r * 0.31], [-r * 0.24, 0]],
+                new Color(255, 42, 32, 210), new Color(255, 226, 190, 250), 1.6);
+        } else if (kind === 'drone_s') {
+            // 支援无人机：十字维修臂、四枚护盾投射器和医疗核心。
+            for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+                const ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux;
+                polygon([
+                    [ux * r * 0.22 + px * r * 0.13, uy * r * 0.22 + py * r * 0.13],
+                    [ux * r * 0.90 + px * r * 0.17, uy * r * 0.90 + py * r * 0.17],
+                    [ux * r * 0.90 - px * r * 0.17, uy * r * 0.90 - py * r * 0.17],
+                    [ux * r * 0.22 - px * r * 0.13, uy * r * 0.22 - py * r * 0.13],
+                ], new Color(13, 62, 55, 210), new Color(92, 255, 177, 235), 1.7);
+                g.fillColor = new Color(187, 255, 226, 235); g.circle(ux * r * 0.94, uy * r * 0.94, r * 0.11); g.fill();
+            }
+            line([[-r * 0.24, 0], [r * 0.24, 0]], new Color(225, 255, 240, 255), 4.5);
+            line([[0, -r * 0.24], [0, r * 0.24]], new Color(225, 255, 240, 255), 4.5);
+        } else if (kind === 'boss_mech') {
+            // X-剑：双肩装甲、背部推进鳍和跨身能量大剑，补足“高达”剪影。
+            polygon([[-r * 0.28, r * 0.32], [-r * 0.92, r * 0.62], [-r * 1.02, r * 0.12], [-r * 0.42, 0]],
+                new Color(26, 42, 67, 48), new Color(139, 203, 255, 205), 1.8);
+            polygon([[r * 0.28, r * 0.32], [r * 0.92, r * 0.62], [r * 1.02, r * 0.12], [r * 0.42, 0]],
+                new Color(26, 42, 67, 48), new Color(139, 203, 255, 205), 1.8);
+            polygon([[-r * 0.46, r * 0.38], [-r * 0.72, r * 1.03], [-r * 0.20, r * 0.62]],
+                new Color(24, 49, 79, 42), new Color(102, 214, 255, 205), 1.7);
+            polygon([[r * 0.46, r * 0.38], [r * 0.72, r * 1.03], [r * 0.20, r * 0.62]],
+                new Color(24, 49, 79, 42), new Color(102, 214, 255, 205), 1.7);
+            polygon([[-r * 0.34, -r * 0.52], [-r * 0.23, -r * 0.42], [r * 0.86, r * 0.78], [r * 0.68, r * 0.96]],
+                new Color(157, 216, 255, 112), new Color(240, 251, 255, 245), 2.2);
+            line([[-r * 0.29, -r * 0.47], [r * 0.75, r * 0.84]], new Color(77, 181, 255, 255), 2.6);
+            g.fillColor = new Color(95, 207, 255, 145); g.circle(0, 0, r * 0.10); g.fill();
+        } else if (kind === 'boss_abyss') {
+            // 深海恐惧：深渊王冠、八向触腕与中心涡眼，区别于蓝色人形 Boss。
+            for (let i = 0; i < 8; i++) {
+                const a = i * Math.PI / 4;
+                const sx = Math.cos(a) * r * 0.32, sy = Math.sin(a) * r * 0.22;
+                const ex = Math.cos(a) * r * (i % 2 ? 1.12 : 0.98);
+                const ey = Math.sin(a) * r * (i % 2 ? 0.92 : 1.12);
+                g.strokeColor = new Color(4, 30, 54, 235); g.lineWidth = 10;
+                g.moveTo(sx, sy); g.bezierCurveTo(sx * 1.8 - sy * 0.45, sy * 1.8 + sx * 0.35, ex * 0.82, ey * 0.82, ex, ey); g.stroke();
+                g.strokeColor = new Color(38, 169, 221, 220); g.lineWidth = 2.6;
+                g.moveTo(sx, sy); g.bezierCurveTo(sx * 1.8 - sy * 0.45, sy * 1.8 + sx * 0.35, ex * 0.82, ey * 0.82, ex, ey); g.stroke();
+            }
+            polygon([[-r * 0.62, r * 0.40], [-r * 0.48, r * 1.02], [-r * 0.12, r * 0.58], [0, r * 1.13],
+                [r * 0.12, r * 0.58], [r * 0.48, r * 1.02], [r * 0.62, r * 0.40]],
+                new Color(8, 37, 63, 36), new Color(81, 214, 255, 218), 2.0);
+            line([[-r * 0.42, r * 0.18], [0, -r * 0.48], [r * 0.42, r * 0.18]], new Color(39, 137, 185, 120), 1.6);
+            g.fillColor = new Color(2, 12, 28, 62); g.circle(0, 0, r * 0.30); g.fill();
+            g.strokeColor = new Color(85, 222, 255, 245); g.lineWidth = 3.2; g.circle(0, 0, r * 0.30); g.stroke();
+            g.fillColor = new Color(168, 247, 255, 245); g.ellipse(0, 0, r * 0.12, r * 0.055); g.fill();
+        }
+
+        enemy.accentNode = accent;
+    }
+
 
     /**
      * Spawn an enemy of the given type. If x/y omitted, spawns just outside a random edge.
@@ -3145,6 +3449,7 @@ export class GameManager extends Component {
         // 碰撞体积/近战判定距离/边界clamp仍只读 enemy.radius 本身，不受影响。
         const diameter = (enemy.radius ?? 18) * 2 * (enemy.visualScale ?? 1);
         eNode.getComponent(UITransform)!.setContentSize(diameter, diameter);
+        this._attachLegacyCombatSilhouette(enemy, eNode, diameter);
         const [lx, ly] = this._toLocal(ex, ey);
         eNode.setPosition(lx, ly, 0);
         eNode.active = true;

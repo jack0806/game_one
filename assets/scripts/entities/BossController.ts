@@ -453,7 +453,7 @@ export class BossController extends EnemyBase {
                 vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                 damage: this.damage * this.buffDmgMult * 0.076, // 5/66
                 radius: 8, color: '#cfe8ff', life: 3, lifeTime: 3,
-                owner: 'enemy', isEnemyBullet: true,
+                owner: 'enemy', isEnemyBullet: true, enemyFx: 'blade',
                 srcBossTag: 'mech', // 升空时随 Boss 一并带走
             });
         }
@@ -522,7 +522,7 @@ export class BossController extends EnemyBase {
                     vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
                     damage: this.damage * this.buffDmgMult * 0.21, // 20/94
                     radius: 11, color: '#33ccff', life: 3.5, lifeTime: 3.5,
-                    owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison',
+                    owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_spike',
                     bounceLeft: 2, // 水刺遇边缘反弹 2 次
                 });
             }
