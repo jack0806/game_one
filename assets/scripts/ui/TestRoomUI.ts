@@ -1,6 +1,7 @@
 import {
     _decorator, Component, Node, Label, Graphics, Sprite,
-    Color, Vec3, UITransform, HorizontalTextAlignment, VerticalTextAlignment
+    Color, Vec3, UITransform, BlockInputEvents,
+    HorizontalTextAlignment, VerticalTextAlignment
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin } from '../core/UIStyle';
@@ -10,10 +11,11 @@ import { UNIT_CATALOG, UnitCategory } from '../data/BossDB';
 import { CHARS } from '../data/CharacterDB';
 
 const { ccclass } = _decorator;
+const UNIT_PAGE_SIZE = 6;
 
 /**
  * TestRoomUI — 测试房间底部工具条（常驻、非模态，仅 testRoom 状态激活）。
- * 行1：数量 −/+、玩家无敌开关、英雄选择、清场、返回主页；
+ * 行1：数量 −/+、玩家无敌、英雄选择、停火观摩、清场、返回主页、推进Boss阶段；
  * 行2：分类页签（首领/小boss/小兵）+ 单位卡（点卡即按数量生成）。
  * 英雄选择为工具条上的浮层（3×2 角色卡），点击即切换出战英雄。
  */
@@ -23,18 +25,29 @@ export class TestRoomUI extends Component {
     onSpawnUnit?:      (id: string, count: number) => void;
     onClear?:          () => void;
     onToggleInvincible?: (on: boolean) => void;
+    onToggleCeasefire?:   (on: boolean) => void;
     onReturnMenu?:     () => void;
     onButtonSfx?:      () => void;
     onSelectHero?:     (charId: string) => void;
     /** 查询当前出战英雄（浮层高亮用）。 */
     onGetHero?:        () => string;
+    onAdvanceBossPhase?: () => void;
+    /** 轮换测试背景并返回新的1-based章节号。 */
+    onCycleChapter?:   () => number;
+    onToggleTargetPause?: (on: boolean) => void;
 
     private _category: UnitCategory = 'boss';
     private _count = 5;
     private _invincible = false;
+    private _ceasefire = false;
+    private _targetPaused = false;
     private _heroId = 'kai';
+    private _unitPage = 0;
     private _countLbl!: Label;
     private _invLbl!: Label;
+    private _ceasefireLbl!: Label;
+    private _chapterLbl!: Label;
+    private _targetPauseLbl!: Label;
     private _unitCards: Node[] = [];
     private _tabs: { g: Graphics; key: UnitCategory }[] = [];
     private _heroPanel!: Node;
@@ -51,10 +64,16 @@ export class TestRoomUI extends Component {
     /** 每次进入测试房间时复位工具条状态（无敌/数量/分类不跨房保留）。 */
     resetState() {
         this._invincible = false;
+        this._ceasefire = false;
+        this._targetPaused = false;
         this._count = 5;
         this._category = 'boss';
+        this._unitPage = 0;
         this._refreshCount();
         this._refreshInv();
+        this._refreshCeasefire();
+        this._chapterLbl.string = '章节:1';
+        this._refreshTargetPause();
         this._refreshTabs();
         this._rebuildCards();
         this._hideHeroPanel();
@@ -77,7 +96,7 @@ export class TestRoomUI extends Component {
         this._rebuildCards();
     }
 
-    /** 行1：数量 −/+ | 无敌开关 | 清场 | 返回主页 */
+    /** 行1：数量 −/+ | 无敌 | 英雄 | 停火 | 清场 | 返回主页 */
     private _buildRow1() {
         const capN = new Node('Cap'); capN.setParent(this.node);
         capN.setPosition(new Vec3(-600, 20, 0));
@@ -125,20 +144,55 @@ export class TestRoomUI extends Component {
             this._showHeroPanel();
         }, this);
 
-        const clear = this._mkSmallBtn(this.node, '清场', -45, 20, 90, 30, new Color(130, 60, 50, 255));
+        const ceasefire = this._mkSmallBtn(this.node, '', -45, 20, 90, 30, new Color(80, 72, 48, 255));
+        this._ceasefireLbl = ceasefire.getChildByName('L')!.getComponent(Label)!;
+        ceasefire.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._ceasefire = !this._ceasefire;
+            this._refreshCeasefire();
+            this.onToggleCeasefire?.(this._ceasefire);
+        }, this);
+
+        const clear = this._mkSmallBtn(this.node, '清场', 70, 20, 90, 30, new Color(130, 60, 50, 255));
         clear.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
             this.onClear?.();
         }, this);
 
-        const back = this._mkSmallBtn(this.node, '返回主页', 70, 20, 120, 30, new Color(60, 60, 90, 230));
+        const back = this._mkSmallBtn(this.node, '返回主页', 185, 20, 100, 30, new Color(60, 60, 90, 230));
         back.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
             this.onReturnMenu?.();
         }, this);
 
+        const phase = this._mkSmallBtn(this.node, '推进阶段', 295, 20, 96, 30, new Color(92, 48, 118, 245));
+        phase.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this.onAdvanceBossPhase?.();
+        }, this);
+
+        const chapter = this._mkSmallBtn(this.node, '', 397, 20, 96, 30, new Color(45, 82, 115, 245));
+        this._chapterLbl = chapter.getChildByName('L')!.getComponent(Label)!;
+        chapter.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            const value = this.onCycleChapter?.() ?? 1;
+            this._chapterLbl.string = `章节:${value}`;
+        }, this);
+
+        const targetPause = this._mkSmallBtn(this.node, '', 500, 20, 88, 30, new Color(56, 72, 82, 245));
+        this._targetPauseLbl = targetPause.getChildByName('L')!.getComponent(Label)!;
+        targetPause.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._targetPaused = !this._targetPaused;
+            this._refreshTargetPause();
+            this.onToggleTargetPause?.(this._targetPaused);
+        }, this);
+
         this._refreshCount();
         this._refreshInv();
+        this._refreshCeasefire();
+        this._chapterLbl.string = '章节:1';
+        this._refreshTargetPause();
     }
 
     /** 行2：分类页签（首领/小boss/小兵） */
@@ -163,6 +217,7 @@ export class TestRoomUI extends Component {
             tab.on(Node.EventType.TOUCH_END, () => {
                 this.onButtonSfx?.();
                 this._category = cat.key;
+                this._unitPage = 0;
                 this._refreshTabs();
                 this._rebuildCards();
             }, this);
@@ -173,9 +228,21 @@ export class TestRoomUI extends Component {
 
     /** 行2：当前分类的单位卡（点卡即按数量生成） */
     private _rebuildCards() {
-        for (const n of this._unitCards) n.destroy();
+        // destroy() 在Cocos中延迟到帧末；先断事件并脱离树，避免翻页后旧卡仍截获同位置点击。
+        for (const n of this._unitCards) {
+            n.off(Node.EventType.TOUCH_END);
+            n.active = false;
+            n.removeFromParent();
+            n.destroy();
+        }
         this._unitCards = [];
-        const entries = UNIT_CATALOG.filter(u => u.category === this._category);
+        const allEntries = UNIT_CATALOG.filter(u => u.category === this._category);
+        const maxPage = Math.max(0, Math.ceil(allEntries.length / UNIT_PAGE_SIZE) - 1);
+        this._unitPage = clamp(this._unitPage, 0, maxPage);
+        const entries = allEntries.slice(
+            this._unitPage * UNIT_PAGE_SIZE,
+            (this._unitPage + 1) * UNIT_PAGE_SIZE,
+        );
         const startX = -300, stepX = 126;
         entries.forEach((entry, i) => {
             const card = new Node(`Unit_${entry.id}`); card.setParent(this.node);
@@ -206,6 +273,28 @@ export class TestRoomUI extends Component {
             }, this);
             this._unitCards.push(card);
         });
+
+        // 单位超过一行时分页，避免新增怪卡片越过1280画布右边界。
+        if (maxPage > 0) {
+            const prev = this._mkSmallBtn(this.node, '‹', 472, -26, 42, 32, new Color(45, 70, 96, 245));
+            const page = this._mkSmallBtn(
+                this.node, `${this._unitPage + 1}/${maxPage + 1}`,
+                526, -26, 58, 32, new Color(30, 42, 58, 245),
+            );
+            const next = this._mkSmallBtn(this.node, '›', 590, -26, 42, 32, new Color(45, 70, 96, 245));
+            page.off(Node.EventType.TOUCH_END);
+            prev.on(Node.EventType.TOUCH_END, () => {
+                this.onButtonSfx?.();
+                this._unitPage = (this._unitPage - 1 + maxPage + 1) % (maxPage + 1);
+                this._rebuildCards();
+            }, this);
+            next.on(Node.EventType.TOUCH_END, () => {
+                this.onButtonSfx?.();
+                this._unitPage = (this._unitPage + 1) % (maxPage + 1);
+                this._rebuildCards();
+            }, this);
+            this._unitCards.push(prev, page, next);
+        }
     }
 
     // ── refresh ───────────────────────────────────────────────
@@ -218,6 +307,20 @@ export class TestRoomUI extends Component {
         this._invLbl.string = this._invincible ? '无敌:开' : '无敌:关';
         this._invLbl.color = this._invincible
             ? new Color(140, 255, 160, 255)
+            : new Color(160, 168, 180, 220);
+    }
+
+    private _refreshCeasefire() {
+        this._ceasefireLbl.string = this._ceasefire ? '停火:开' : '停火:关';
+        this._ceasefireLbl.color = this._ceasefire
+            ? new Color(255, 218, 120, 255)
+            : new Color(160, 168, 180, 220);
+    }
+
+    private _refreshTargetPause() {
+        this._targetPauseLbl.string = this._targetPaused ? '靶:静' : '靶:动';
+        this._targetPauseLbl.color = this._targetPaused
+            ? new Color(135, 235, 255, 255)
             : new Color(160, 168, 180, 220);
     }
 
@@ -279,6 +382,9 @@ export class TestRoomUI extends Component {
         const box = new Node('Box'); box.setParent(panel);
         box.setPosition(new Vec3(0, 312, 0));
         box.addComponent(UITransform).setContentSize(900, 320);
+        // 面板必须截断输入，避免点击英雄卡时事件穿透到底层 Dim，出现
+        // “浮层关闭但没有换人”的假成功。子卡仍会先收到 TOUCH_END。
+        box.addComponent(BlockInputEvents);
         const bg = box.addComponent(Graphics);
         bg.fillColor = new Color(8, 13, 23, 250);
         bg.fillRect(-450, -160, 900, 320);

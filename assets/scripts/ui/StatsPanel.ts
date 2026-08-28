@@ -108,14 +108,14 @@ export class StatsPanel extends Component {
             this._statCells.push(l);
         }
 
-        // 左栏 — Q/E/R 三行：技能名与说明共享同一阅读基线。名称在上、说明在下
-        // 会让左右两段看起来像互不相关的字段，尤其薇薇安三项技能最明显。
+        // 左栏 — Q/E/R 三个双行阅读单元。技能名在上、完整说明在下；
+        // 单行并排会把奥莉娅等长说明 SHRINK 到接近注脚大小。
         const keys = ['Q', 'E', 'R'];
         for (let i = 0; i < 3; i++) {
-            const y = -62 - i * 46;
+            const y = -56 - i * 54;
 
             const kn = new Node(`SkKey_${i}`); kn.setParent(panel);
-            kn.setPosition(new Vec3(-498, y, 0));
+            kn.setPosition(new Vec3(-498, y + 9, 0));
             kn.addComponent(UITransform).setContentSize(28, 28);
             const kl = kn.addComponent(Label);
             kl.string = keys[i];
@@ -124,8 +124,8 @@ export class StatsPanel extends Component {
             styleLabel(kl);
 
             const nn = new Node(`SkName_${i}`); nn.setParent(panel);
-            nn.setPosition(new Vec3(-410, y, 0));
-            nn.addComponent(UITransform).setContentSize(140, 24);
+            nn.setPosition(new Vec3(-402, y + 9, 0));
+            nn.addComponent(UITransform).setContentSize(164, 24);
             const nl = nn.addComponent(Label);
             nl.fontSize = 16;
             nl.horizontalAlign = HorizontalTextAlignment.LEFT;
@@ -134,16 +134,16 @@ export class StatsPanel extends Component {
             styleLabel(nl);
 
             const dn = new Node(`SkDesc_${i}`); dn.setParent(panel);
-            dn.setPosition(new Vec3(-186, y, 0));
-            dn.addComponent(UITransform).setContentSize(318, 24);
+            dn.setPosition(new Vec3(-270, y - 12, 0));
+            dn.addComponent(UITransform).setContentSize(440, 30);
             const dl = dn.addComponent(Label);
-            dl.fontSize = 14;
-            dl.lineHeight = 16;
+            dl.fontSize = 13;
+            dl.lineHeight = 15;
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
             dl.verticalAlign = VerticalTextAlignment.CENTER;
             dl.color = new Color(165, 175, 195, 235);
             dl.overflow = Label.Overflow.SHRINK;
-            dl.enableWrapText = false;
+            dl.enableWrapText = true;
             styleLabel(dl);
 
             this._skillRows.push({ key: kl, name: nl, desc: dl });

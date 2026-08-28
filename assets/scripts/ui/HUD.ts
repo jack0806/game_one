@@ -39,6 +39,7 @@ export class HUD extends Component {
     private _bossLabel!:  Label;
     private _skillRings:  { g: Graphics; label: Label; icon: Sprite; desc: Label }[] = [];
     private _skillRingNodes: Node[] = [];
+    private _testRoomMode = false;
 
     private readonly BAR_W   = 240;
     private readonly BAR_H   = 16;
@@ -53,6 +54,7 @@ export class HUD extends Component {
         this._buildWaveDisplay();
         this._buildBossBar();
         this._buildSkillRings();
+        this._layoutSkillRings();
     }
 
     // ── builders ──────────────────────────────────────────────
@@ -186,6 +188,19 @@ export class HUD extends Component {
      */
     setSkillRingsVisible(v: boolean): void {
         for (const n of this._skillRingNodes) n.active = v;
+    }
+
+    /** 测试房底部有两行单位工具条，PC端HUD技能环改成右侧上扬弧线，避免遮挡分页。 */
+    setTestRoomMode(on: boolean): void {
+        this._testRoomMode = on;
+        this._layoutSkillRings();
+    }
+
+    private _layoutSkillRings(): void {
+        for (let i = 0; i < this._skillRingNodes.length; i++) {
+            const y = this._testRoomMode ? (-170 + i * 38) : -310;
+            this._skillRingNodes[i].setPosition(new Vec3(440 + i * 70, y, 0));
+        }
     }
 
     // ── refresh (called every frame by GameManager) ────────────

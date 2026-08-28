@@ -266,7 +266,7 @@ test('全面屏横屏铺满：宽于16:9用FIXED_HEIGHT横向延展,边缘控件
     // 触控层：摇杆/触摸区贴左缘，技能按钮与右上角按钮贴右缘
     assert.match(touchSource, /private _layoutByVisible\(\)/);
     assert.match(touchSource, /this\._joyHomeX = -right \+ 190;/);
-    assert.match(touchSource, /btn\.node\.setPosition\(new Vec3\(right \+ a\.fromRight, a\.y, 0\)\);/);
+    assert.match(touchSource, /right \+ a\.fromRight,[\s\S]*a\.y \+ \(this\._testRoomMode \? 110 : 0\)/);
     assert.match(touchSource, /this\._topRightBtns\[0\]\.setPosition\(new Vec3\(right - 88, 322, 0\)\);/);
     // 主菜单立绘按可见宽度铺满，页面底板超宽绘制避免黑边
     assert.match(screenSource, /const menuW = Math\.max\(1280, visibleDesignWidth\(\)\);/);
@@ -288,14 +288,14 @@ test('Web Desktop发布外壳与设计画布都锁定1280×720', () => {
     assert.deepEqual(webBuild.packages['web-desktop'].resolution, { designWidth: 1280, designHeight: 720 });
 });
 
-test('角色详情将十个词条排成2列×5行，技能名与说明保持同行', () => {
+test('角色详情将十个词条排成2列×5行，长技能说明使用双行阅读单元', () => {
     assert.match(statsSource, /const augColX = \[132, 398\]/);
     assert.match(statsSource, /Math\.floor\(i \/ 2\) \* rowH/);
-    assert.match(statsSource, /nn\.setPosition\(new Vec3\(-410, y, 0\)\)/);
-    assert.match(statsSource, /dn\.setPosition\(new Vec3\(-186, y, 0\)\)/);
-    assert.match(statsSource, /dn\.addComponent\(UITransform\)\.setContentSize\(318, 24\)/);
-    assert.match(statsSource, /dl\.fontSize = 14/);
-    assert.match(statsSource, /dl\.enableWrapText = false/);
+    assert.match(statsSource, /nn\.setPosition\(new Vec3\(-402, y \+ 9, 0\)\)/);
+    assert.match(statsSource, /dn\.setPosition\(new Vec3\(-270, y - 12, 0\)\)/);
+    assert.match(statsSource, /dn\.addComponent\(UITransform\)\.setContentSize\(440, 30\)/);
+    assert.match(statsSource, /dl\.fontSize = 13/);
+    assert.match(statsSource, /dl\.enableWrapText = true/);
     assert.match(statsSource, /row\.desc\.string = detail \? `— \$\{detail\}` : ''/);
     assert.match(statsSource, /sk\?\.desc\?\.split\('—'\)/);
 });
@@ -324,8 +324,8 @@ test('英雄朝移动输入转身，敌人按行为状态选择合理朝向', ()
     assert.doesNotMatch(gameSource, /const facing = walkPose\.directionX < -0\.025/);
     assert.match(playerSource, /preloadArt\(directionalArtKeys\(this\.spriteKey\)\)/);
     assert.match(gameSource, /enemy\.directionalFrames === false[\s\S]*\[enemy\.spriteKey\][\s\S]*directionalArtKeys\(enemy\.spriteKey\)/);
-    assert.match(enemySource, /const isDrone = type === 'drone_a' \|\| type === 'drone_s'/);
-    assert.match(enemySource, /this\.directionalFrames = !isDrone/);
+    assert.match(enemySource, /const usesSingleTopdownSprite = type === 'drone_a' \|\| type === 'drone_s'/);
+    assert.match(enemySource, /this\.directionalFrames = !usesSingleTopdownSprite/);
     assert.match(bossSource, /if \(this\.isCharging\)[\s\S]*this\._chargeVx, this\._chargeVy/);
     assert.match(bossSource, /const standDistance = Math\.max\(1, contactDistance - 2\)/);
     assert.match(bossSource, /bossHeavy/);
@@ -344,4 +344,9 @@ test('章节结算清空 Boss 阶段浮字与战斗残影', () => {
     assert.match(gameSource, /this\._particles\?\.clear\(\)/);
     assert.match(gameSource, /this\._coinPool\?\.releaseAll\(\)/);
     assert.match(gameSource, /for \(const enemy of this\._enemies\)[\s\S]*enemy\.node\.active = false/);
+});
+
+test('属性页清理上一帧浮字但不销毁持续战斗特效', () => {
+    assert.match(gameSource, /if \(s === 'stats'\) \{[\s\S]*this\._floatText\?\.clear\(\)/);
+    assert.doesNotMatch(gameSource, /if \(s === 'stats'\) \{[\s\S]{0,180}this\._particles\?\.clear\(\)/);
 });

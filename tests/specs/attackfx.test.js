@@ -137,6 +137,20 @@ test('超杀伤害的冲击粒子倍率钳制为1,避免千像素光环', () => 
     assert.ok(particles.particles.every(p => p.size <= 9));
 });
 
+test('格雷夫Q/E/R使用三套不同轮廓的专属混沌特效', () => {
+    const q = new ParticleManager();
+    q.grafChaosPulse(100, 100, 'lightning');
+    const e = new ParticleManager();
+    e.grafReforge(100, 100);
+    const r = new ParticleManager();
+    r.grafCataclysm(100, 100);
+    assert.equal(q.spriteFx.length, 1, 'Q是单核不稳定脉冲');
+    assert.equal(e.spriteFx.length, 2, 'E必须展开左右两枚新符文');
+    assert.equal(r.spriteFx.length, 3, 'R必须是三层灾变法阵');
+    assert.ok(r.particles.length > e.particles.length);
+    assert.ok(e.particles.length > q.spriteFx.length);
+});
+
 // ---- 剑气 ----------------------------------------------------
 
 test('狂战士近战普攻触发剑气特效(从玩家位置朝目标方向,强度1)', () => {

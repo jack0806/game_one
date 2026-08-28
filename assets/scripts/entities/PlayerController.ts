@@ -85,6 +85,8 @@ export class PlayerController extends Component {
     sprite?: Sprite;
     /** 临时护盾份额（时空行者）：到期自动回收未被消耗的部分。 */
     private _tempShields: { amount: number; timer: number }[] = [];
+    /** 雷克双斧左右手交替计数，只影响表现，不参与伤害与攻速结算。 */
+    private _reikSwingSide = 0;
     /**
      * 形态切换（时空行者 E）：空=沿用角色默认攻击方式；
      * 'melee'/'ranged' 为当前形态。近战形态伤害+30%（附加到所有技能）、攻速+50%。
@@ -297,12 +299,14 @@ export class PlayerController extends Component {
     tick(dt: number, input: any, game: any): void {
         if (!this.alive) return;
 
-        // DoT 持续伤害（测试房小boss毒刺/高能光束等）：吃护甲、不吃无敌帧，可叠加。
+        // DoT 持续伤害（测试房小boss毒刺/高能光束等）：吃护甲、不吃受击无敌帧，可叠加。
+        // 测试房 godMode 代表“跳过一切伤害”，但 DoT 计时仍正常消耗，避免关闭无敌后残留过期效果。
         // 浮字每 0.5s 汇总一次，避免逐帧刷屏。
         for (let i = this.dots.length - 1; i >= 0; i--) {
             const d = this.dots[i];
             d.timeLeft -= dt;
             if (d.timeLeft <= 0) { this.dots.splice(i, 1); continue; }
+            if (this.godMode) continue;
             const dotMitigation = (this.stats?.armor ?? 0) / ((this.stats?.armor ?? 0) + 100);
             const dmg = Math.max(0.1, d.dps * dt * (1 - dotMitigation));
             this.hp -= dmg;
@@ -357,9 +361,11 @@ export class PlayerController extends Component {
         // 普攻
         this._shootTimer += dt;
         const atkInterval = 1 / Math.max(0.1, this.getAtkSpd());
-        if (this._shootTimer >= atkInterval) {
+        if (!game?.testCeasefire && this._shootTimer >= atkInterval) {
             this._shootTimer = 0;
             this._shoot(input, game);
+        } else if (game?.testCeasefire) {
+            this._shootTimer = Math.min(this._shootTimer, atkInterval);
         }
 
         // 技能 Q（CD 可按角色定制：qCd ?? 默认SKILL_Q_CD=4秒）
@@ -449,7 +455,11 @@ export class PlayerController extends Component {
         // 剑气特效：从玩家位置向目标方向斩出，刃长覆盖整个攻击距离；
         // 命中点追加冲击提示，让攻击范围与落点一眼可读
         const angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
-        game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, range, 1);
+        if (this.charId === 'reik' && game.particles?.reikCleave) {
+            game.particles.reikCleave(this.x, this.y, angle, range, 1, this._reikSwingSide++);
+        } else {
+            game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, range, 1);
+        }
         game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
         this.applyAttackDamage(enemy, game);
     }

@@ -20,16 +20,28 @@ test('工具条为底部常驻条(非弹窗),固定在画布底部', () => {
     assert.doesNotMatch(testroomSource, /Boss 已击败/, '不再有胜负结算');
 });
 
-test('行1:数量−/+、玩家无敌开关、清场、返回主页', () => {
+test('行1:数量−/+、玩家无敌、停火观摩、清场、返回主页、推进Boss阶段', () => {
     assert.match(testroomSource, /'数量'/);
     assert.match(testroomSource, /clamp\(this\._count - 1, 1, 50\)/);
     assert.match(testroomSource, /clamp\(this\._count \+ 1, 1, 50\)/);
     assert.match(testroomSource, /'无敌:开'/);
     assert.match(testroomSource, /'无敌:关'/);
     assert.match(testroomSource, /onToggleInvincible\?\.\(this\._invincible\)/);
+    assert.match(testroomSource, /'停火:开'/);
+    assert.match(testroomSource, /'停火:关'/);
+    assert.match(testroomSource, /onToggleCeasefire\?\.\(this\._ceasefire\)/);
     assert.match(testroomSource, /'清场'/);
     assert.match(testroomSource, /'返回主页'/);
     assert.match(testroomSource, /this\.onClear\?\.\(\)/);
+    assert.match(testroomSource, /'推进阶段'/);
+    assert.match(testroomSource, /onCycleChapter/);
+    assert.match(testroomSource, /`章节:\$\{value\}`/);
+    assert.match(gameSource, /this\._chapter = \(this\._chapter \+ 1\) % CHAPTERS\.length/);
+    assert.match(testroomSource, /'靶:静'/);
+    assert.match(testroomSource, /'靶:动'/);
+    assert.match(gameSource, /this\.state === 'testRoom' && this\._testTargetPaused/);
+    assert.match(testroomSource, /onAdvanceBossPhase\?\.\(\)/);
+    assert.match(gameSource, /advanceTestBossPhase\(\): void/);
 });
 
 test('行2:首领/小boss/小兵三页签,单位卡由UNIT_CATALOG驱动', () => {
@@ -37,6 +49,10 @@ test('行2:首领/小boss/小兵三页签,单位卡由UNIT_CATALOG驱动', () =>
     assert.match(testroomSource, /key: 'miniboss', label: '小boss'/);
     assert.match(testroomSource, /key: 'grunt', label: '小兵'/);
     assert.match(testroomSource, /UNIT_CATALOG\.filter\(u => u\.category === this\._category\)/);
+    assert.match(testroomSource, /UNIT_PAGE_SIZE = 6/, '新增单位后工具条应分页而非越过画布');
+    assert.match(testroomSource, /allEntries\.slice\(/, '单位卡只渲染当前页');
+    assert.match(testroomSource, /n\.off\(Node\.EventType\.TOUCH_END\)[\s\S]*n\.removeFromParent\(\)/,
+        '翻页时旧卡必须立即断开事件并脱离节点树');
     assert.match(testroomSource, /this\.onSpawnUnit\?\.\(entry\.id, this\._count\)/);
 });
 
@@ -65,6 +81,42 @@ test('主页按钮直接进图,spawnTestUnit按目录生成/清场/无敌开关'
     assert.match(gameSource, /clearTestField\(\): void/);
     assert.match(gameSource, /setPlayerInvincible\(on: boolean\): void/);
     assert.match(gameSource, /if \(this\._player\) this\._player\.godMode = on/);
+    assert.match(gameSource, /const TEST_UNIT_SPAWN_SPOTS: \[number, number\]\[\]/);
+    assert.match(gameSource, /this\.spawnEnemy\(id, sx, sy\)/, '测试房怪物必须生成在工具条之外的可视验收点');
+});
+
+test('停火观摩只禁用玩家普攻，不改动QER技能处理', () => {
+    assert.match(gameSource, /testCeasefire = false/);
+    assert.match(gameSource, /setTestCeasefire\(on: boolean\)/);
+    assert.match(playerSource, /!game\?\.testCeasefire && this\._shootTimer >= atkInterval/);
+});
+
+test('英雄选择浮层实体面板阻断底层遮罩,点击角色卡不会只关闭不换人', () => {
+    assert.match(testroomSource, /UITransform, BlockInputEvents/);
+    assert.match(testroomSource, /box\.addComponent\(BlockInputEvents\)/);
+    assert.match(testroomSource, /this\.onSelectHero\?\.\(def\.id\)/);
+});
+
+test('酸囊投手地面闭环含0.7秒抛物预告、3秒毒斑、直伤与最多2层酸毒', () => {
+    assert.match(gameSource, /spawnEnemyAcidHazard\(fromX: number, fromY: number, targetX: number, targetY: number\)/);
+    assert.match(gameSource, /phase: 'telegraph', timer: 0\.7, telegraphMax: 0\.7/);
+    assert.match(gameSource, /z\.phase = 'pool'; z\.timer = z\.kind === 'acid' \? 3 : z\.kind === 'ember' \? 1\.5 : z\.kind === 'priest_fire' \? 0\.12 : 5/);
+    assert.match(gameSource, /p\.takeDamage\(z\.kind === 'acid' \? 4 : z\.kind === 'ember' \? 5 : z\.kind === 'priest_fire' \? 18 : 12, this, \{ ignoreIframe: true \}\)/);
+    assert.match(gameSource, /this\._refreshPlayerDot\('#72ff38', 2, 4, 2\)/);
+    assert.match(gameSource, /Math\.sin\(Math\.PI \* t\) \* 70/, '投射物应沿可见抛物弧飞行');
+});
+
+test('烬火侍从地面闭环含0.85秒火圈预警、1.5秒余烬、直伤与单层灼烧', () => {
+    assert.match(gameSource, /spawnEnemyEmberHazard\(targetX: number, targetY: number\)/);
+    assert.match(gameSource, /kind: 'ember'[\s\S]*?phase: 'telegraph', timer: 0\.85, telegraphMax: 0\.85/);
+    assert.match(gameSource, /this\._refreshPlayerDot\('#ff7a24', 2, 4, 1\)/);
+});
+
+test('铆链猎犬捕兽夹含0.8秒六角预警、5秒封路、12伤害与35%减速', () => {
+    assert.match(gameSource, /spawnHoundTraps\(x1: number, y1: number, x2: number, y2: number\)/);
+    assert.match(gameSource, /kind: 'trap'[\s\S]*?timer: 0\.8, telegraphMax: 0\.8/);
+    assert.match(gameSource, /p\.applyBuff\?\.\('hound_trap_slow', 1\.5, \{ speed: 0\.65 \}\)/);
+    assert.match(gameSource, /for \(let tooth = 0; tooth < 6; tooth\+\+\)/, '捕兽夹用六角齿而非普通圆圈表达');
 });
 
 test('spawnEnemy支持bossKey(number章节|string文档Boss),敌弹shim透传破盾与DoT', () => {
@@ -140,6 +192,8 @@ test('水柱/水分身/深海鱿鱼共享12上限,所有生成入口统一计数
 
 test('切换英雄重建玩家并保留无敌状态,清空召唤物', () => {
     assert.match(gameSource, /selectTestHero\(charId: string\): void/);
+    assert.doesNotMatch(gameSource, /this\._char\?\.id === def\.id/, '重复选择当前英雄也必须重置技能冷却');
+    assert.match(gameSource, /p\.resetCooldowns\(\)/, '测试房选择英雄后QER必须全部立即就绪');
     assert.match(gameSource, /p\.godMode = this\._testInvincible;/, '重建玩家保留无敌开关');
     assert.match(gameSource, /this\._turrets = \[\];/, '切换英雄清空绑定旧英雄的召唤物');
     assert.match(gameSource, /this\._testUI\.onSelectHero\s*=\s*\(id\) => this\.selectTestHero\(id\);/);
@@ -179,6 +233,14 @@ test('暂停/详情面板返回状态跟随测试房间', () => {
 test('工具条随testRoom状态常驻:暂停/详情返回后重新点亮', () => {
     assert.match(gameSource, /case 'testRoom':[\s\S]*?this\._testUI\.node\.active = true;/);
     assert.doesNotMatch(gameSource, /this\._testUI\.node\.active = true;\s*this\._floatText\.spawn/, '进房不再单独点亮(统一由_setState负责)');
+});
+
+test('触控摇杆与QER在测试房充分上移,不得覆盖单位分页箭头', () => {
+    const touchSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/TouchControls.ts'), 'utf8');
+    assert.match(gameSource, /setTestRoomMode\(s === 'testRoom'\)/);
+    assert.match(touchSource, /_testRoomMode \? 110 : 0/);
+    assert.match(touchSource, /_testRoomMode \? -80 : -190/);
+    assert.match(gameSource, /this\._hud\.setTestRoomMode\(s === 'testRoom'\)/);
 });
 
 // ── ScreenManager / PlayerController 源码门禁 ──
@@ -237,6 +299,25 @@ test('godMode默认关闭且开启后takeDamage完全免疫', () => {
     p.godMode = false;
     p.takeDamage(50, {});
     assert.ok(p.hp < 100, '关闭godMode后恢复正常扣血');
+});
+
+test('godMode免疫DoT伤害但持续消耗效果时间', () => {
+    const p = new PlayerController();
+    p.stats = { maxHp: 100, armor: 0, _coreOverflow: false };
+    p.hp = 100;
+    p.godMode = true;
+    p.applyDot(10, 2, '#cc66ff');
+    const input = {
+        getAxis: () => [0, 0], isDashPressed: () => false,
+        isKeyQPressed: () => false, isKeyEPressed: () => false,
+        isKeyRPressed: () => false, mouse: { x: 0, y: 0 },
+    };
+    p.tick(1, input, {});
+    assert.equal(p.hp, 100, 'godMode下DoT也不能扣血');
+    assert.equal(p.dots.length, 1, '尚未到期的DoT仍保留');
+    p.tick(1.1, input, {});
+    assert.equal(p.hp, 100, 'DoT到期前后都不应穿透godMode');
+    assert.equal(p.dots.length, 0, 'godMode不会冻结DoT计时');
 });
 
 test('玩家applyDot吃护甲减免掉血、可叠加、到期移除、致死触发onPlayerDeath', () => {

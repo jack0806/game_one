@@ -44,6 +44,13 @@ export class BossController extends EnemyBase {
     private _abyssZoneCd = 12;
     private _abyssCloneCd = 16;
     private _abyssSquidCd = 20;
+    // 《怪物设计与数值》三只新大Boss：固定轮转，便于测试房逐项验收，
+    // 同一时刻只允许一个主机制存在。
+    docSkillIndex = 0;
+    docSkillTimer = 2.4;
+    docBasicTimer = 1.8;
+    docSkillName = '';
+    private _docFinalUsed = false;
 
     override init(type: string, wave: number, game: any): void {
         this.isBoss = true;
@@ -85,6 +92,9 @@ export class BossController extends EnemyBase {
         this.locomotionKind = def.chapter <= 2 ? 'bossHeavy' : 'bossHover';
         this.moveSpriteKey = `${this.spriteKey}_move`;
         this.locomotionFrameKey = '';
+        this.directionalFrames = ['vespa', 'crucible_city', 'manyfold'].indexOf(kind) < 0;
+        this.docSkillIndex = 0; this.docSkillTimer = 2.4; this.docBasicTimer = 1.8;
+        this.docSkillName = ''; this._docFinalUsed = false;
     }
 
     /** 机械高达被动：50% 概率格挡玩家伤害（用剑劈掉攻击，简化实现）。 */
@@ -155,6 +165,7 @@ export class BossController extends EnemyBase {
         // 测试房间专属 Boss 技能状态机（机械高达/深海恐惧，文档 boss.docx）
         if (this.bossKind === 'mech') this._updateMechSkills(dt, player, game);
         else if (this.bossKind === 'abyss') this._updateAbyssSkills(dt, player, game);
+        else if (this._isDocBoss()) this._updateDocBossSkills(dt, player, game);
 
         // Boss技能先给出能量环前摇，再发射弹幕，避免子弹凭空出现。
         if (this.skillWindup > 0) {
@@ -246,10 +257,65 @@ export class BossController extends EnemyBase {
     private _enterPhase(phase: number, game: any): void {
         this.phase   = phase;
         this.enraged = true;
-        this.speed  *= 1.2;
+        // 新设计Boss不靠无提示叠伤或通用20%加速制造难度：只让维斯帕在第三阶段
+        // 按文档获得15%移速，其余通过技能组合与节奏变化升级。
+        if (this.bossKind === 'vespa' && phase === 3) this.speed *= 1.15;
+        else if (!this._isDocBoss()) this.speed *= 1.2;
+        if (this._isDocBoss()) {
+            game.clearDocBossMechanics?.(this);
+            game.clearTaggedEnemyBullets?.(`doc_${this.bossKind}`);
+            this.docSkillTimer = 1.2;
+            if (phase === 3) this.docSkillIndex = 4;
+        }
         game.screenShake?.shake(10, 0.32);
         game.floatingText?.spawn(640, 200, `⚠ PHASE ${phase} ⚠`, this.glowColor, 28, true);
         game.particles?.hexActivate(this.x, this.y, this.glowColor);
+    }
+
+    private _isDocBoss(): boolean {
+        return this.bossKind === 'vespa' || this.bossKind === 'crucible_city' || this.bossKind === 'manyfold';
+    }
+
+    /**
+     * 三只文档大Boss使用可复现的固定轮转，不做随机五技能乱叠。
+     * 阶段I仅教学前两招；阶段II加入三、四招；阶段III先强制第五招。
+     */
+    private _updateDocBossSkills(dt: number, player: any, game: any): void {
+        if (!player?.alive) return;
+        this.docBasicTimer -= dt;
+        if (this.docBasicTimer <= 0 && !game.docBossSkillBusy?.(this)) {
+            this.docBasicTimer = this.bossKind === 'crucible_city' ? 2.1 : this.bossKind === 'manyfold' ? 2.0 : 1.55;
+            game.startDocBossBasic?.(this.bossKind, this, player);
+        }
+        this.docSkillTimer -= dt;
+        if (this.docSkillTimer > 0 || game.docBossSkillBusy?.(this)) return;
+
+        let pool: number[];
+        if (this.phase === 1) pool = [0, 1];
+        else if (this.phase === 2) pool = [0, 1, 2, 3];
+        else if (this.bossKind === 'manyfold') pool = [4, 1];
+        else pool = [0, 1, 2, 3, 4];
+
+        let skill: number;
+        if (this.phase === 3 && !this._docFinalUsed) {
+            skill = 4;
+            this._docFinalUsed = true;
+        } else {
+            const cursor = Math.max(0, pool.indexOf(this.docSkillIndex));
+            skill = pool[cursor >= 0 ? cursor : 0];
+        }
+        const names: Record<string, string[]> = {
+            vespa: ['六角蛛网', '三段弹跳猎杀', '母囊毒雨', '活卵债务', '蜕晶假死'],
+            crucible_city: ['双色磁极铸印', '三臂活塞打桩', '废钢回炉', '铸件列阵', '炉心倒灌'],
+            manyfold: ['对岸缝线', '折面迁跃', '借影裁片', '六面缺口', '边界收针'],
+        };
+        this.docSkillName = names[this.bossKind!][skill];
+        game.floatingText?.spawn?.(this.x, this.y - 100, this.docSkillName, this.glowColor, 18, true);
+        game.startDocBossSkill?.(this.bossKind, skill, this, player);
+        const next = (pool.indexOf(skill) + 1) % pool.length;
+        this.docSkillIndex = pool[next];
+        const pace = this.phase === 3 ? 0.85 : 1;
+        this.docSkillTimer = (this.bossKind === 'manyfold' ? 7.2 : 7.8) * pace;
     }
 
     private _useSkill(player: any, game: any): void {

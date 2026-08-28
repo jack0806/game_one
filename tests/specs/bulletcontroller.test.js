@@ -102,6 +102,23 @@ test('敌人子弹(updateEnemyBullets)碰到玩家会调用player.takeDamage并�
     assert.equal(pool.active.length, 0);
 });
 
+test('冰霜敌弹命中施加25%减速1.6秒', () => {
+    const pool = new BulletPool(2);
+    const game = makeMockGame();
+    const buffs = [];
+    const player = makePlayer({
+        x: 20, y: 0, radius: 16,
+        applyBuff(id, dur, mods) { buffs.push({ id, dur, mods }); },
+    });
+    pool.spawn({
+        x: 10, y: 0, vx: 100, vy: 0, damage: 5, radius: 6,
+        owner: 'enemy', isEnemyBullet: true, lifeTime: 3,
+        enemyFx: 'frost', slow: { mult: 0.75, dur: 1.6 },
+    });
+    pool.updateEnemyBullets(0.016, player, game);
+    assert.deepEqual(buffs, [{ id: 'enemy_frost_slow', dur: 1.6, mods: { speed: 0.75 } }]);
+});
+
 test('敌弹带bounceLeft时在屏幕边缘反弹并递减,耗尽后撞边释放', () => {
     const pool = new BulletPool(4);
     const game = makeMockGame();

@@ -97,6 +97,8 @@ export class TouchControls extends Component {
     private _layoutTimer: any = null;
 
     private _skillBtns: SkillButtonView[] = [];
+    /** 测试房底部有96px单位工具条，触控摇杆与技能弧整体上移避免遮挡/抢事件。 */
+    private _testRoomMode = false;
 
     /** 摇杆最大拖动半径（超出按边缘方向钳制）。 */
     private readonly STICK_R = 84;
@@ -107,6 +109,11 @@ export class TouchControls extends Component {
 
     setInput(bridge: TouchInputBridge): void { this._input = bridge; }
     setPlayerGetter(getter: () => any): void { this._playerGetter = getter; }
+    setTestRoomMode(on: boolean): void {
+        if (this._testRoomMode === on) return;
+        this._testRoomMode = on;
+        this._layoutByVisible();
+    }
 
     onLoad() {
         this.node.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
@@ -171,12 +178,18 @@ export class TouchControls extends Component {
         this._stickZone.getComponent(UITransform)!.setContentSize(right - 80, 580);
         // 摇杆常驻位贴左下角
         this._joyHomeX = -right + 190;
-        this._joyHomeY = -190;
+        this._joyHomeY = this._testRoomMode ? -80 : -190;
         if (!this._joyActive) this._joyRoot.setPosition(new Vec3(this._joyHomeX, this._joyHomeY, 0));
         // 技能按钮贴右缘（左低右高曲线不变）
         for (const btn of this._skillBtns) {
             const a = SKILL_ANCHORS[btn.slot];
-            btn.node.setPosition(new Vec3(right + a.fromRight, a.y, 0));
+            btn.node.setPosition(new Vec3(
+                right + a.fromRight,
+                // Cocos 本地Y轴向上；测试房用+110把整组技能键抬离底栏分页区，
+                // 同时保留右下角弧形层级，不让大招键或冷却环被画布裁切。
+                a.y + (this._testRoomMode ? 110 : 0),
+                0,
+            ));
         }
         // 竖屏遮罩铺满可见区（遮罩矩形绘制时已用超大宽度，无需重画）
         this._rotateHint.getComponent(UITransform)!.setContentSize(right * 2, CANVAS_H);

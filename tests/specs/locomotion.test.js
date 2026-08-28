@@ -10,7 +10,7 @@ const {
 const { EnemyBase } = require('../dist/entities/EnemyBase');
 const { BossController } = require('../dist/entities/BossController');
 const { playerLocomotionKind } = require('../dist/entities/PlayerController');
-const { MINI_BOSSES, TEST_BOSSES, UNIT_CATALOG } = require('../dist/data/BossDB');
+const { MINI_BOSSES, TEST_BOSSES, TEST_GRUNTS, UNIT_CATALOG } = require('../dist/data/BossDB');
 const {
     createDirectionalFacingState,
     updateDirectionalFacing,
@@ -95,13 +95,21 @@ test('所有普通怪、小Boss与正式/测试Boss都有明确的移动结构',
         elite_grunt: 'biped', archer: 'biped', miniboss: 'quadruped',
         squid: 'skitter', turtle: 'heavy', shrimp: 'skitter',
         jelly: 'hover', drone_a: 'hover', drone_s: 'hover',
+        chain_hound: 'quadruped', prism_snail: 'heavy',
+        triune_priest: 'hover', rail_butcher: 'heavy', bell_devourer: 'hover',
+        rust_biter: 'quadruped', needle_gunner: 'skitter', acid_sac: 'quadruped',
+        ember_acolyte: 'biped', frost_acolyte: 'hover',
+        rivet_beast: 'heavy', arc_leech: 'hover',
+        gold_scavenger: 'skitter', blast_tick: 'skitter',
     };
     for (const [type, kind] of Object.entries(expected)) {
         const enemy = new EnemyBase();
         enemy.init(type, 1, game);
         assert.equal(enemy.locomotionKind, kind, `${type} 的步态结构`);
-        if (type.startsWith('drone_')) {
-            assert.equal(enemy.directionalFrames, false, `${type} 仅使用俯视悬浮帧`);
+        if (type.startsWith('drone_') || TEST_GRUNTS.some(m => m.id === type) ||
+            type === 'chain_hound' || type === 'prism_snail' || type === 'triune_priest' ||
+            type === 'rail_butcher' || type === 'bell_devourer') {
+            assert.equal(enemy.directionalFrames, false, `${type} 当前使用完整俯视战斗姿态`);
             assert.equal(enemy.moveSpriteKey, enemy.spriteKey, `${type} 不请求不存在的动作资源`);
         } else {
             assert.equal(enemy.directionalFrames, true, `${type} 使用完整方向帧`);
@@ -129,7 +137,7 @@ test('所有普通怪、小Boss与正式/测试Boss都有明确的移动结构',
         '测试房新增小怪后必须同步纳入移动审计',
     );
     assert.equal(TEST_BOSSES.length + 4, UNIT_CATALOG.filter(unit => unit.category === 'boss').length);
-    assert.equal(MINI_BOSSES.length, 6);
+    assert.equal(MINI_BOSSES.length, 11);
 });
 
 test('六名英雄逐一使用符合身体结构的步态', () => {
@@ -166,8 +174,13 @@ test('全部普通怪和测试房小Boss的移动方式与面向语义逐一合�
         const before = enemy.x;
         enemy.update(1 / 60, player, game);
         const [fx, fy] = enemy.getVisualFacing(player);
-        assert.ok(fx > 0.99 && Math.abs(fy) < 0.01, `${type} 应面向右侧英雄`);
-        if (type === 'archer') assert.equal(enemy.x, before, '射手在300px舒适距离应站定开火');
+        if (type !== 'gold_scavenger') assert.ok(fx > 0.99 && Math.abs(fy) < 0.01, `${type} 应面向右侧英雄`);
+        if (type === 'archer' || type === 'needle_gunner' || type === 'acid_sac' ||
+            type === 'ember_acolyte' || type === 'frost_acolyte' || type === 'arc_leech' ||
+            type === 'triune_priest' || type === 'rail_butcher') {
+            assert.equal(enemy.x, before, `${type} 在300px舒适距离应站定开火`);
+        }
+        else if (type === 'gold_scavenger') assert.ok(enemy.x < before, '掠金虫应先贴近边缘逃跑而非追击英雄');
         else assert.ok(enemy.x > before, `${type} 应向英雄推进`);
     }
 

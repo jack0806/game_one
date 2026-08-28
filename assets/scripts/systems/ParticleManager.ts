@@ -29,6 +29,14 @@ export interface SpriteFx {
     maxLife: number;
     scale:   number;
     color?:  string;   // 可选染色（hex 青色环在青色网格背景下会融化，按符文色染开）
+    /** 贴图自身旋转。Cocos 的画布 Y 轴与逻辑坐标相反，渲染层统一处理角度。 */
+    rotationDeg?: number;
+    /** 跟随战斗实体（持续光环），只读取 x/y/alive，不引入任何 cc.* 类型。 */
+    follow?: { x: number; y: number; alive?: boolean };
+    /** 不同特效需要不同时间曲线：爆发、挥斩、持续光环。 */
+    motion?: 'burst' | 'slash' | 'aura';
+    /** 持续光环不应像爆炸一样满不透明遮住角色。 */
+    baseAlpha?: number;
 }
 
 export class ParticleManager {
@@ -36,7 +44,15 @@ export class ParticleManager {
     spriteFx:  SpriteFx[] = [];
 
     /** 生成一个一次性美术特效（按 key 淡出消失）。 */
-    spawnSpriteFx(x: number, y: number, key: string, life = 0.5, scale = 1, color?: string): void {
+    spawnSpriteFx(
+        x: number,
+        y: number,
+        key: string,
+        life = 0.5,
+        scale = 1,
+        color?: string,
+        opts?: Pick<SpriteFx, 'rotationDeg' | 'follow' | 'motion' | 'baseAlpha'>,
+    ): void {
         if (key === 'fx_explosion') {
             // 连锁爆炸可能在同一帧请求几十张高覆盖率火球。伤害与粒子仍全部结算，
             // 贴图层只保留分散的代表性爆点，避免橙色花瓣叠成不透明色块。
@@ -50,7 +66,7 @@ export class ParticleManager {
             }
             if (activeExplosions >= 8) return;
         }
-        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color });
+        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color, ...opts });
     }
 
     // ── 通用发射 ─────────────────────────────────────────
@@ -226,12 +242,128 @@ export class ParticleManager {
         this.emit({ x, y, count: 4 + Math.floor(strength * 3), color, speedMin: 80, speedMax: 200 + strength * 60, lifeMin: 0.1, lifeMax: 0.3, sizeMin: 2, sizeMax: 4, glow: true, angleMin: angle - 0.45, angleMax: angle + 0.45 });
     }
 
+    // ── 狂战士·雷克专属攻击视觉 ─────────────────────────────
+    /**
+     * 双斧普攻：用真正的交错熔岩弧刃替代通用三条直线。comboSide 让连续攻击
+     * 在左右手之间轻微交替，避免每一下完全重合成静态贴纸。
+     */
+    reikCleave(x: number, y: number, angle: number, reach = 70, strength = 1, comboSide = 0): void {
+        const dirX = Math.cos(angle), dirY = Math.sin(angle);
+        const centerX = x + dirX * reach * 0.44;
+        const centerY = y + dirY * reach * 0.44;
+        const handTilt = comboSide % 2 === 0 ? -8 : 8;
+        const scale = Math.min(2.25, Math.max(1.25, reach / 70 * 1.42 * strength));
+        this.spawnSpriteFx(centerX, centerY, 'fx_reik_cleave', 0.3, scale, undefined, {
+            rotationDeg: -angle * 180 / Math.PI + handTilt,
+            motion: 'slash',
+        });
+        this.emit({
+            x: centerX, y: centerY,
+            count: 8 + Math.floor(strength * 4), color: '#ff5a3c',
+            speedMin: 90, speedMax: 230 + strength * 70,
+            lifeMin: 0.12, lifeMax: 0.32, sizeMin: 2, sizeMax: 5,
+            glow: true, angleMin: angle - 0.7, angleMax: angle + 0.7,
+        });
+    }
+
+    /** 怒冲：三段交错斧痕沿真实位移路径推进，明确表达“冲锋并撕裂沿途”。 */
+    reikChargeCleave(startX: number, startY: number, endX: number, endY: number): void {
+        const angle = Math.atan2(endY - startY, endX - startX);
+        const distance = Math.hypot(endX - startX, endY - startY);
+        for (let i = 0; i < 3; i++) {
+            const t = 0.22 + i * 0.28;
+            const x = startX + (endX - startX) * t;
+            const y = startY + (endY - startY) * t;
+            this.spawnSpriteFx(x, y, 'fx_reik_cleave', 0.34, 1.35 + distance / 500, undefined, {
+                rotationDeg: -angle * 180 / Math.PI + (i % 2 === 0 ? -12 : 12),
+                motion: 'slash',
+                baseAlpha: 0.9 - i * 0.08,
+            });
+        }
+        // 地面撕裂主线比粒子更克制，给玩家一个清楚的冲锋方向与受击走廊。
+        this.particles.push({
+            x: startX, y: startY, vx: 0, vy: 0,
+            life: 0.38, maxLife: 0.38, size: 2, color: '#ff3b24',
+            fade: true, gravity: false, glow: true, type: 'line',
+            x2: endX, y2: endY, alpha: 0.9, lineWidth: 5,
+        });
+    }
+
+    /** 战吼：破甲钢环向外震开，和伤害爆炸/海克斯法阵保持不同轮廓。 */
+    reikWarcry(x: number, y: number): void {
+        this.spawnSpriteFx(x, y, 'fx_reik_warcry', 0.62, 3.0, undefined, {
+            motion: 'burst',
+            baseAlpha: 0.9,
+        });
+        this.emit({ x, y, count: 18, color: '#ff5538', speedMin: 130, speedMax: 330, lifeMin: 0.18, lifeMax: 0.48, sizeMin: 2, sizeMax: 6, glow: true });
+    }
+
+    /** 死亡意志：低遮挡血怒场在整个 4 秒 buff 内跟随雷克。 */
+    reikDeathWill(owner: { x: number; y: number; alive?: boolean }, duration = 4): void {
+        this.spawnSpriteFx(owner.x, owner.y, 'fx_reik_death_will', duration, 2.25, undefined, {
+            follow: owner,
+            motion: 'aura',
+            baseAlpha: 0.56,
+            rotationDeg: 0,
+        });
+        this.reikWarcry(owner.x, owner.y);
+    }
+
+    // ── 混沌傀儡·格雷夫专属技能视觉 ─────────────────────────
+    /** Q：按随机结果改变辅色，但始终保留不稳定脉冲的双环与六向裂光。 */
+    grafChaosPulse(x: number, y: number, effect: string): void {
+        const accent = effect === 'explode' ? '#ff5a3c'
+            : effect === 'lightning' ? '#63e7ff'
+            : effect === 'attract' ? '#ffcf58' : '#d16dff';
+        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.52, 1.75, '#cc44ff', { motion: 'burst', rotationDeg: -18 });
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.44, maxLife: 0.44, size: 2, color: accent,
+            fade: true, gravity: false, glow: true, type: 'ring', radius: 12, maxRadius: 92, alpha: 1, lineWidth: 5 });
+        for (let i = 0; i < 6; i++) {
+            const a = i * Math.PI / 3 + Math.PI / 6;
+            this.particles.push({ x: x + Math.cos(a) * 15, y: y + Math.sin(a) * 15, vx: 0, vy: 0,
+                life: 0.34, maxLife: 0.34, size: 2, color: i % 2 ? accent : '#f2c6ff',
+                fade: true, gravity: false, glow: true, type: 'line',
+                x2: x + Math.cos(a) * 108, y2: y + Math.sin(a) * 108, alpha: 1, lineWidth: 3 });
+        }
+        this.emit({ x, y, count: 22, color: accent, speedMin: 100, speedMax: 310, lifeMin: 0.18, lifeMax: 0.5, sizeMin: 2, sizeMax: 6, glow: true });
+    }
+
+    /** E：中心旧符文破碎，左右两枚新符文展开，直观表达“一拆二”的词条重组。 */
+    grafReforge(x: number, y: number): void {
+        this.spawnSpriteFx(x - 42, y, 'fx_hex_ring', 0.72, 1.05, '#7ee8ff', { motion: 'burst', rotationDeg: -28 });
+        this.spawnSpriteFx(x + 42, y, 'fx_hex_ring', 0.72, 1.05, '#ff75dc', { motion: 'burst', rotationDeg: 28 });
+        for (let i = 0; i < 8; i++) {
+            const a = i * Math.PI / 4;
+            this.particles.push({ x, y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, size: 2,
+                color: i % 2 ? '#7ee8ff' : '#ff75dc', fade: true, gravity: false, glow: true,
+                type: 'line', x2: x + Math.cos(a) * 76, y2: y + Math.sin(a) * 54,
+                alpha: 1, lineWidth: 3.5 });
+        }
+        this.emit({ x, y, count: 26, color: '#d687ff', speedMin: 70, speedMax: 250, lifeMin: 0.25, lifeMax: 0.62, sizeMin: 2, sizeMax: 5, glow: true });
+    }
+
+    /** R：三层反向错位法阵和十二向裂缝，规模必须一眼高于Q/E。 */
+    grafCataclysm(x: number, y: number): void {
+        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.95, 3.7, '#8f32ff', { motion: 'burst', rotationDeg: 0, baseAlpha: 0.82 });
+        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.85, 2.75, '#ff59df', { motion: 'burst', rotationDeg: 30, baseAlpha: 0.75 });
+        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.72, 1.8, '#6fe7ff', { motion: 'burst', rotationDeg: -30, baseAlpha: 0.78 });
+        for (let i = 0; i < 12; i++) {
+            const a = i * Math.PI / 6;
+            this.particles.push({ x: x + Math.cos(a) * 28, y: y + Math.sin(a) * 28, vx: 0, vy: 0,
+                life: 0.65, maxLife: 0.65, size: 2, color: i % 3 === 0 ? '#6fe7ff' : '#d66bff',
+                fade: true, gravity: false, glow: true, type: 'line',
+                x2: x + Math.cos(a) * (150 + (i % 2) * 35), y2: y + Math.sin(a) * (150 + (i % 2) * 35),
+                alpha: 1, lineWidth: i % 2 ? 2.5 : 4.5 });
+        }
+        this.emit({ x, y, count: 40, color: '#cc44ff', speedMin: 120, speedMax: 390, lifeMin: 0.28, lifeMax: 0.82, sizeMin: 3, sizeMax: 8, glow: true });
+    }
+
     // ── 敌弹分弹种尾迹（boss 四章弹种可辨识化） ────────────
     /**
      * 按弹种生成尾迹，让玩家一眼分辨威胁类型：
      * poison 毒球（绿雾） / gear 齿轮（蓝环） / homing 追踪（反向尾焰） / chaos 混沌（紫烟+环）
      */
-    enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'gear' | 'homing' | 'chaos', vx: number, vy: number, color = '#fff', radius = 6): void {
+    enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'gear' | 'homing' | 'chaos' | 'needle' | 'frost' | 'arc', vx: number, vy: number, color = '#fff', radius = 6): void {
         switch (fx) {
             case 'poison':
                 this.emit({ x, y, count: 3, color: '#44ff00', speedMin: 10, speedMax: 40, lifeMin: 0.25, lifeMax: 0.5, sizeMin: 2, sizeMax: 5, glow: true });
@@ -247,6 +379,29 @@ export class ParticleManager {
             case 'chaos':
                 this.emit({ x, y, count: 2, color: '#cc44ff', speedMin: 5, speedMax: 30, lifeMin: 0.2, lifeMax: 0.4, sizeMin: 2, sizeMax: 4, glow: true });
                 this.particles.push({ x, y, vx: 0, vy: 0, life: 0.25, maxLife: 0.25, size: 2, color: '#aa33ee', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.5, maxRadius: radius * 1.6, alpha: 1 });
+                break;
+            case 'needle': {
+                const spd = Math.hypot(vx, vy) || 1;
+                this.particles.push({
+                    x, y, vx: 0, vy: 0, life: 0.13, maxLife: 0.13, size: 1,
+                    color: '#fff3a0', fade: true, gravity: false, glow: true,
+                    type: 'line', x2: x - vx / spd * 22, y2: y - vy / spd * 22,
+                    alpha: 1, lineWidth: 1.4,
+                });
+                break;
+            }
+            case 'frost': {
+                const spd = Math.hypot(vx, vy) || 1;
+                this.particles.push({
+                    x, y, vx: 0, vy: 0, life: 0.16, maxLife: 0.16, size: 1,
+                    color: '#bff6ff', fade: true, gravity: false, glow: true,
+                    type: 'line', x2: x - vx / spd * 18, y2: y - vy / spd * 18,
+                    alpha: 1, lineWidth: 2.5,
+                });
+                break;
+            }
+            case 'arc':
+                this.emit({ x, y, count: 2, color: '#7df4ff', speedMin: 5, speedMax: 24, lifeMin: 0.12, lifeMax: 0.25, sizeMin: 1, sizeMax: 3, glow: true });
                 break;
         }
     }

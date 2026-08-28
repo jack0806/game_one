@@ -178,14 +178,16 @@ test('普通波队列成批编组:每批3-4个且包含近战与远程(archer)',
     wm.startWave(game); // 第1波: 6个
     while (wm.state === 'spawning') { clock += 3.5; wm.update(3.5, game); }
 
-    assert.equal(batches.length, 2, '6个敌人应分成2批');
-    for (const b of batches) {
+    // 5%精英事件会另追加一个单独精英批，不属于基础6只的3~4人编组。
+    const normalBatches = batches.filter(b => !(b.length === 1 && b[0].type === 'elite_grunt'));
+    assert.equal(normalBatches.length, 2, '6个基础敌人应分成2批');
+    for (const b of normalBatches) {
         assert.ok(b.length >= 3 && b.length <= 4, `每批应3-4个,实际${b.length}`);
         assert.ok(b.some(e => e.type === 'archer'), '每批都应含远程archer');
         assert.ok(b.some(e => e.type !== 'archer'), '每批都应含近战');
     }
     // 同批成员应共享同一个边缘锚点(x或y贴近同一边缘,散布在±50内)
-    const first = batches[0];
+    const first = normalBatches[0];
     const xs = first.map(e => e.x), ys = first.map(e => e.y);
     const sameEdge = Math.max(...xs) - Math.min(...xs) <= 130 || Math.max(...ys) - Math.min(...ys) <= 130;
     assert.ok(sameEdge, '同批成员应从同一边缘锚点附近进场');

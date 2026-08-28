@@ -29,11 +29,13 @@ export interface BulletData {
     isEnemyBullet: boolean;
     homing:       boolean;
     /** 敌弹特效标签：boss 按章节弹种附加可辨识尾迹/轮廓（毒球/齿轮/追踪/混沌）。 */
-    enemyFx?:     'poison' | 'gear' | 'homing' | 'chaos';
+    enemyFx?:     'poison' | 'gear' | 'homing' | 'chaos' | 'needle' | 'frost' | 'arc';
     /** 敌弹破盾：命中玩家先清空护盾再结算伤害（锯齿剑虾尖刺/无人机声波）。 */
     pierceShield?: boolean;
     /** 敌弹 DoT：命中玩家后挂持续伤害（毒刺/高能光束），可叠加。 */
     dot?:         { dps: number; dur: number; color?: string };
+    /** 冰流命中后刷新同名减速，不叠层。 */
+    slow?:        { mult: number; dur: number };
     /** 敌弹撞边爆炸：bounceLeft 耗尽后再次撞到屏幕边缘直接爆炸（深水炸弹）。 */
     bounceExplode?: boolean;
     /** 敌弹终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺），命中玩家时也炸。 */
@@ -77,7 +79,7 @@ function resetBullet(b: BulletData): void {
     b.hitEnemies.clear(); b.isCrit = false; b.onHitCb = null;
     b.novaMode = false; b.infinite = false; b.isEnemyBullet = false; b.homing = false;
     b.enemyFx = undefined; b.trailCd = 0;
-    b.pierceShield = false; b.dot = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
+    b.pierceShield = false; b.dot = undefined; b.slow = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -183,7 +185,10 @@ export class BulletPool {
 
             // 碰撞检测 vs 敌人
             let released = false;
-            for (const e of enemies) {
+            const collisionTargets = game.getEnemyMechanismTargets
+                ? enemies.concat(game.getEnemyMechanismTargets())
+                : enemies;
+            for (const e of collisionTargets) {
                 if (!e.alive || b.hitEnemies.has(e)) continue;
                 if (Vec.dist2(b.x, b.y, e.x, e.y) < (b.radius + e.radius) ** 2) {
                     b.hitEnemies.add(e);
@@ -288,6 +293,7 @@ export class BulletPool {
                 }
                 // DoT 弹：命中挂持续伤害（毒刺/高能光束，可叠加）
                 if (b.dot && player.applyDot) player.applyDot(b.dot.dps, b.dot.dur, b.dot.color);
+                if (b.slow && player.applyBuff) player.applyBuff('enemy_frost_slow', b.slow.dur, { speed: b.slow.mult });
                 // 终点爆炸弹：命中玩家时也炸（水刺，范围溅射特效）
                 if (b.explodeOnExpire) game.particles?.explode?.(player.x, player.y, '#33ccff', 46);
                 // 测试房敌弹穿透受击无敌帧：逐发水刺/剑气等高频弹幕不被 0.5s 无敌帧吞掉

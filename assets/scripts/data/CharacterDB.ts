@@ -128,8 +128,9 @@ export const CHARACTERS: Record<string, CharDef> = {
             p.x = clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius);
             p.y = clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius);
             game.screenShake.shake(8, 0.25);
-            // 冲锋剑气：从起点向冲刺方向斩出长刃（覆盖整条冲锋路径）
-            game.particles.meleeSlash?.(startX, startY, Math.atan2(ny, nx), '#ff4444', 200, 1.35);
+            // 冲锋撕裂：三段双斧弧刃沿实际位移路径推进；旧 mock/兼容环境回落通用剑气。
+            if (game.particles.reikChargeCleave) game.particles.reikChargeCleave(startX, startY, p.x, p.y);
+            else game.particles.meleeSlash?.(startX, startY, Math.atan2(ny, nx), '#ff4444', 200, 1.35);
             const mult = p.hp / p.stats.maxHp < 0.5 ? 2 : 1;
             const pathDx = p.x - startX, pathDy = p.y - startY;
             const pathLen2 = pathDx * pathDx + pathDy * pathDy || 1;
@@ -149,14 +150,16 @@ export const CHARACTERS: Record<string, CharDef> = {
         },
         eSkill(p: any, game: any) {
             p.applyBuff('warcry', 10, { atkSpd: 1.5, dmgMult: 1.3 });
-            game.particles.hexActivate(p.x, p.y, '#ff4444');
+            if (game.particles.reikWarcry) game.particles.reikWarcry(p.x, p.y);
+            else game.particles.hexActivate(p.x, p.y, '#ff4444');
         },
         ultimate(p: any, game: any) {
             // 大招改为4秒：无敌 + 45%伤害吸血 + 50%攻速（吸血由
             // PlayerController.applyAttackLifesteal 累加 buffs 的 lifestealRate）
             p.hp *= 0.5;
             p.applyBuff('death_will', 4, { invincible: true, atkSpd: 1.5, lifestealRate: 0.45 });
-            game.particles.hexActivate(p.x, p.y, '#ff0000');
+            if (game.particles.reikDeathWill) game.particles.reikDeathWill(p, 4);
+            else game.particles.hexActivate(p.x, p.y, '#ff0000');
             game.floatingText.spawn(p.x, p.y - 50, '死亡意志！', '#ff0000', 22, true);
             game.screenShake.shake(15, 0.5);
         },
@@ -341,7 +344,8 @@ export const CHARACTERS: Record<string, CharDef> = {
             }
             else if (ef === 'attract') game.attractEnemies(p.x, p.y, 200);
             else if (ef === 'lightning') game.laserSweep(p);
-            game.particles.hexActivate(p.x, p.y, '#cc44ff');
+            if (game.particles.grafChaosPulse) game.particles.grafChaosPulse(p.x, p.y, ef);
+            else game.particles.hexActivate(p.x, p.y, '#cc44ff');
         },
         eSkill(p: any, game: any) {
             // 对齐 hexblast-py data/characters.py 的 _graf_e：移除最后一个词条后，
@@ -352,12 +356,14 @@ export const CHARACTERS: Record<string, CharDef> = {
                 const opts = am.rollOptions(2, game.wave, p.charId);
                 for (const o of opts) am.equip(o, p, game);
             }
-            game.particles.hexActivate(p.x, p.y, '#cc44ff');
+            if (game.particles.grafReforge) game.particles.grafReforge(p.x, p.y);
+            else game.particles.hexActivate(p.x, p.y, '#cc44ff');
         },
         ultimate(p: any, game: any) {
             const am = game.augmentManager;
             if (am) am.active.forEach((a: any) => { if (a.onKill) a.onKill(p, { x: p.x, y: p.y, alive: false }, p.stats.damage * 5, game); });
-            game.particles.hexActivate(p.x, p.y, '#cc44ff');
+            if (game.particles.grafCataclysm) game.particles.grafCataclysm(p.x, p.y);
+            else game.particles.hexActivate(p.x, p.y, '#cc44ff');
             game.screenShake.shake(20, 0.8);
             game.floatingText.spawn(640, 200, '混沌爆发', '#cc44ff', 28, true);
         },

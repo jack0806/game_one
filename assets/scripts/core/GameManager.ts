@@ -8,7 +8,7 @@ import { Vec, Rng, clamp } from './MathUtils';
 import { applyArtSprite, preloadArt, SpriteNodePool } from './SpriteUtils';
 import { styleLabel } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
-import { AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
+import { spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS } from '../data/WaveData';
 import { UNIT_CATALOG } from '../data/BossDB';
 import { PlayerController } from '../entities/PlayerController';
@@ -47,6 +47,12 @@ const PILLAR_SPOTS: [number, number][] = [
     [70, PLAYFIELD_BOTTOM / 2], [CANVAS_W - 70, PLAYFIELD_BOTTOM / 2],
     [150, 120], [CANVAS_W - 150, 120],
     [150, PLAYFIELD_BOTTOM - 100], [CANVAS_W - 150, PLAYFIELD_BOTTOM - 100],
+];
+/** 测试房单位验收点：避开顶部生命区和底部工具条，远程怪站定后也能完整看见。 */
+const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
+    [190, 180], [CANVAS_W - 190, 180],
+    [190, PLAYFIELD_BOTTOM - 130], [CANVAS_W - 190, PLAYFIELD_BOTTOM - 130],
+    [CANVAS_W / 2, 120], [CANVAS_W / 2, PLAYFIELD_BOTTOM - 130],
 ];
 
 export type GameState =
@@ -120,6 +126,9 @@ export class GameManager extends Component {
     private _pauseReturn: 'playing' | 'testRoom' = 'playing';
     /** 测试房间无敌开关状态（切换英雄时保留）。 */
     private _testInvincible = false;
+    private _testTargetPaused = false;
+    /** 观摩模式只停用玩家普攻；移动与Q/E/R保持可用，便于完整看完Boss技能轮转。 */
+    testCeasefire = false;
     /**
      * 测试房间水柱（深海恐惧「海之霸主」）：固定 8 个方位点、每点 1 根、常驻不消失，
      * 与水分身/深海鱿鱼共享 MAX_TEST_WATER_UNITS 上限。状态机：idle 待机 → flash 闪烁 2s →
@@ -135,6 +144,17 @@ export class GameManager extends Component {
     private _turrets:      any[] = [];
     private _deathZones:   { x: number; y: number; r: number; timer: number; dps: number }[] = [];
     private _iceZones:     { x: number; y: number; r: number; timer: number }[] = [];
+    /** 敌方酸囊：0.7秒抛物预告 → 3秒毒斑；与玩家技能地面区分开维护。 */
+    private _enemyHazards: { kind: 'acid' | 'ember' | 'trap' | 'priest_fire'; fromX: number; fromY: number; x: number; y: number; r: number; phase: 'telegraph' | 'pool'; timer: number; telegraphMax: number; tickCd: number }[] = [];
+    /** 三相祭司晶墙、可破坏导体与磁轨屠夫回转锯都使用独立判定对象，避免只画假特效。 */
+    private _priestWalls: { x: number; y: number; vx: number; vy: number; r: number; halfH: number; warn: number; distance: number; hit: boolean }[] = [];
+    private _triuneNetworks: any[] = [];
+    private _railSaws: { cx: number; cy: number; phase: number; dir: number; timer: number; warn: number; x: number; y: number; hitCd: number }[] = [];
+    /** 三只《怪物设计与数值》大Boss的主机制与可破坏目标（测试房先行）。 */
+    private _docBossMechanics: any[] = [];
+    private _docBossTargets: any[] = [];
+    private _docPlayerTrail: { x: number; y: number; age: number }[] = [];
+    private _docTrailSampleCd = 0;
 
     /** Written by EnemyBase._die() / read by combo-related augments & HUD. */
     score       = 0;
@@ -334,8 +354,12 @@ export class GameManager extends Component {
         this._testUI.onSpawnUnit      = (id, count) => this.spawnTestUnit(id, count);
         this._testUI.onClear          = () => this.clearTestField();
         this._testUI.onToggleInvincible = (on) => this.setPlayerInvincible(on);
+        this._testUI.onToggleCeasefire  = (on) => this.setTestCeasefire(on);
         this._testUI.onSelectHero     = (id) => this.selectTestHero(id);
         this._testUI.onGetHero        = () => this._char?.id ?? CHARS[0]!.id;
+        this._testUI.onAdvanceBossPhase = () => this.advanceTestBossPhase();
+        this._testUI.onCycleChapter   = () => this.cycleTestChapter();
+        this._testUI.onToggleTargetPause = (on) => this.setTestTargetPaused(on);
         this._testUI.onReturnMenu     = () => {
             this._clearRunEntities();
             this._setState('menu');
@@ -353,12 +377,21 @@ export class GameManager extends Component {
         this.state = s;
         this._screenMgr.hideAll();
         this._hud.node.active      = (s === 'playing' || s === 'testRoom');
+        this._hud.setTestRoomMode(s === 'testRoom');
         // 虚拟操控在战斗与属性面板期间常驻：属性面板打开时触屏端靠右上按钮返回
         this._touchUI.node.active  = (s === 'playing' || s === 'testRoom' || s === 'stats');
+        this._touchUI.setTestRoomMode(s === 'testRoom');
         this._augUI.node.active    = false;
         this._shopUI.node.active   = false;
         this._statsUI.node.active  = false;
         this._testUI.node.active   = false;
+
+        // 属性页是高密度阅读界面；切换英雄/伤害等上一帧浮字若继续留在 UI 层，
+        // 会穿过不透明面板标题与技能说明。这里只清浮字，不销毁持续战斗特效。
+        if (s === 'stats') {
+            this._floatText?.clear();
+            for (const label of this._floatLabels) label.active = false;
+        }
 
         // 章节结束/结算页必须清空上一帧战斗残影。此前浮字、金币池和粒子只在
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
@@ -429,6 +462,8 @@ export class GameManager extends Component {
         this._enemies   = [];
         this._turrets    = [];
         this._deathZones = [];
+        this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
+        this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
         this._iceZones   = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
@@ -519,6 +554,8 @@ export class GameManager extends Component {
         this._enemies   = [];
         this._turrets    = [];
         this._deathZones = [];
+        this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
+        this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
         this._iceZones   = [];
         this._pillars = [];
         this._telegraphZones = [];
@@ -537,19 +574,22 @@ export class GameManager extends Component {
         pNode.setParent(this._gameLayer);
         this._player = pNode.addComponent(PlayerController);
         this._player.init(this._char.id, this);
+        this._player.resetCooldowns();
 
         this._setState('testRoom');
         // 复位工具条状态（无敌/数量/分类不跨房保留）；工具条点亮由 _setState('testRoom') 统一负责
         this._testInvincible = false;
+        this._testTargetPaused = false;
+        this.testCeasefire = false;
         this._testUI.resetState();
         this._floatText.spawn(CANVAS_W / 2, 200, '测试房间：点底部工具条生成单位', '#9adcff', 18, true);
     }
 
-    /** 测试房间切换出战英雄：重建玩家实体（保留无敌开关），清空绑定旧英雄的召唤物。 */
+    /** 测试房间选择英雄：即使重复选择同一人也重建，用于一键重置技能冷却与战斗状态。 */
     selectTestHero(charId: string): void {
         if (this.state !== 'testRoom') return;
         const def = CHARS.find(c => c.id === charId) ?? CHARS[0];
-        if (!def || this._char?.id === def.id) return;
+        if (!def) return;
         if (this._player?.node?.isValid) {
             this._player.node.active = false;
             this._player.node.destroy();
@@ -558,6 +598,7 @@ export class GameManager extends Component {
         pNode.setParent(this._gameLayer);
         const p = pNode.addComponent(PlayerController);
         p.init(def.id, this);
+        p.resetCooldowns();
         p.godMode = this._testInvincible;
         p.x = CANVAS_W / 2;
         p.y = CANVAS_H / 2;
@@ -575,17 +616,18 @@ export class GameManager extends Component {
     spawnTestUnit(id: string, count: number): void {
         const n = Math.max(1, Math.min(50, count));
         for (let i = 0; i < n; i++) {
-            if (id === 'boss_mech' || id === 'boss_abyss') {
-                this.spawnEnemy('boss', undefined, undefined, id === 'boss_mech' ? 'mech' : 'abyss');
+            const [sx, sy] = TEST_UNIT_SPAWN_SPOTS[i % TEST_UNIT_SPAWN_SPOTS.length];
+            if (id.startsWith('boss_') && id !== 'boss_ch1' && id !== 'boss_ch2' && id !== 'boss_ch3' && id !== 'boss_ch4') {
+                this.spawnEnemy('boss', sx, sy, id.slice('boss_'.length));
             } else if (id.startsWith('boss_ch')) {
                 const ch = Number(id.slice('boss_ch'.length)) - 1;
-                this.spawnEnemy('boss', undefined, undefined, ch);
+                this.spawnEnemy('boss', sx, sy, ch);
             } else if (id === 'squid') {
                 // 深海鱿鱼与水柱/水分身共享 12 上限（工具条直出也不超发）
                 if (this._testWaterCount() >= MAX_TEST_WATER_UNITS) break;
-                this.spawnEnemy(id, undefined, undefined);
+                this.spawnEnemy(id, sx, sy);
             } else {
-                this.spawnEnemy(id, undefined, undefined);
+                this.spawnEnemy(id, sx, sy);
             }
         }
         const entry = UNIT_CATALOG.find(u => u.id === id);
@@ -605,6 +647,8 @@ export class GameManager extends Component {
         this._turrets = [];
         this._bullets?.reset();
         this._particles?.clear();
+        this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
+        this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
         this._floatText?.clear();
     }
 
@@ -773,6 +817,666 @@ export class GameManager extends Component {
         }
     }
 
+    /** 测试房轮换四章场景，便于逐英雄检查技能在不同明暗与色相背景上的可读性。 */
+    cycleTestChapter(): number {
+        if (this.state !== 'testRoom') return this._chapter + 1;
+        this._chapter = (this._chapter + 1) % CHAPTERS.length;
+        this._updateBgForChapter();
+        if (!this._boss) this._audio.playBgm(this._chapterBgm());
+        const chapter = CHAPTERS[this._chapter];
+        this._floatText.spawn(CANVAS_W / 2, 200, `第${chapter.id}章 · ${chapter.name}`, '#9adcff', 17, true);
+        return chapter.id;
+    }
+
+    /** 静止靶模式只停掉测试房敌方AI，仍保留受击、碰撞、血条与玩家技能闭环。 */
+    setTestTargetPaused(on: boolean): void {
+        if (this.state !== 'testRoom') return;
+        this._testTargetPaused = on;
+        if (on) {
+            this._bullets.reset();
+            this._enemyHazards = [];
+            this._docBossMechanics = [];
+            this._docBossTargets = [];
+            this._telegraphZones = [];
+        }
+    }
+
+    setTestCeasefire(on: boolean): void {
+        this.testCeasefire = on;
+    }
+
+    /** 测试房验收工具：不改面板伤害，直接推进到66%/33%阶段门槛以观察完整Boss轮转。 */
+    advanceTestBossPhase(): void {
+        const boss = this._boss;
+        if (!boss?.alive) {
+            this._floatText.spawn(CANVAS_W / 2, 200, '请先生成一只首领', '#ffd080', 16, true);
+            return;
+        }
+        if (boss.phase === 1) boss.hp = Math.min(boss.hp, boss.maxHp * 0.65);
+        else if (boss.phase === 2) boss.hp = Math.min(boss.hp, boss.maxHp * 0.32);
+        else {
+            this._floatText.spawn(CANVAS_W / 2, 200, '首领已进入阶段 III', '#d9a6ff', 16, true);
+            return;
+        }
+        this._floatText.spawn(CANVAS_W / 2, 200, '推进阶段：清理旧机制后留出1.2秒观察窗', '#d9a6ff', 16, true);
+    }
+
+    /** 酸囊投手抛投入口：落点在飞行全程可见，测试房与未来正式波次共用。 */
+    spawnEnemyAcidHazard(fromX: number, fromY: number, targetX: number, targetY: number): void {
+        this._enemyHazards.push({
+            kind: 'acid', fromX, fromY, x: targetX, y: targetY, r: 52,
+            phase: 'telegraph', timer: 0.7, telegraphMax: 0.7, tickCd: 0,
+        });
+        this._audio.playSfx('skill_e', 0.35);
+    }
+
+    /** 焚芯咒仆：锁定玩家当前点，0.85秒后爆燃并留下1.5秒余烬。 */
+    spawnEnemyEmberHazard(targetX: number, targetY: number): void {
+        this._enemyHazards.push({
+            kind: 'ember', fromX: targetX, fromY: targetY, x: targetX, y: targetY, r: 58,
+            phase: 'telegraph', timer: 0.85, telegraphMax: 0.85, tickCd: 0,
+        });
+        this._audio.playSfx('skill_e', 0.32);
+    }
+
+    /** 铆链猎犬：两枚六角捕兽夹先预告0.8秒，再封锁路线5秒。 */
+    spawnHoundTraps(x1: number, y1: number, x2: number, y2: number): void {
+        for (const [x, y] of [[x1, y1], [x2, y2]]) {
+            this._enemyHazards.push({
+                kind: 'trap', fromX: x, fromY: y, x, y, r: 25,
+                phase: 'telegraph', timer: 0.8, telegraphMax: 0.8, tickCd: 0,
+            });
+        }
+        this._audio.playSfx('skill_e', 0.38);
+    }
+
+    /** 三相祭司焚相：三个预测点依次亮起，视觉计时与爆炸判定共用同一对象。 */
+    spawnTriuneFireMarks(points: { x: number; y: number }[]): void {
+        points.slice(0, 3).forEach((pt, i) => this._enemyHazards.push({
+            kind: 'priest_fire', fromX: pt.x, fromY: pt.y, x: pt.x, y: pt.y, r: 50,
+            phase: 'telegraph', timer: 0.85 + i * 0.32, telegraphMax: 0.85 + i * 0.32, tickCd: 0,
+        }));
+        this._audio.playSfx('skill_e', 0.38);
+    }
+
+    /** 三相祭司冻相：五条通道中随机保留两个相邻缺口，其余三段推进420px。 */
+    spawnTriuneIceWall(side: 'left' | 'right'): void {
+        const gapStart = Rng.int(0, 3);
+        const sign = side === 'left' ? 1 : -1;
+        for (let slot = 0; slot < 5; slot++) {
+            if (slot === gapStart || slot === gapStart + 1) continue;
+            const y = 92 + slot * ((PLAYFIELD_BOTTOM - 184) / 4);
+            this._priestWalls.push({
+                x: side === 'left' ? 26 : CANVAS_W - 26, y,
+                vx: sign * 180, vy: 0, r: 22, halfH: 48,
+                warn: 0.9, distance: 0, hit: false,
+            });
+        }
+        this._audio.playSfx('freeze', 0.42);
+    }
+
+    /** 三相祭司雷相：三枚90HP导体是玩家子弹的真实目标；打破任意一枚即拆除全网。 */
+    spawnTriuneConductors(centerX: number, centerY: number): void {
+        const group: any = { activeIn: 1.2, timer: 7.2, hitCd: 0, dead: false, nodes: [] as any[] };
+        for (let i = 0; i < 3; i++) {
+            const a = -Math.PI / 2 + i * Math.PI * 2 / 3;
+            const node: any = {
+                x: clamp(centerX + Math.cos(a) * 88, 22, CANVAS_W - 22),
+                y: clamp(centerY + Math.sin(a) * 88, 22, PLAYFIELD_BOTTOM - 22),
+                radius: 16, hp: 90, maxHp: 90, alive: true,
+                isElite: false, isBoss: false, frozen: 0,
+            };
+            node.takeDamage = (damage: number) => {
+                if (!node.alive || group.dead) return 0;
+                const dealt = Math.min(node.hp, Math.max(0, damage));
+                node.hp -= dealt;
+                if (node.hp <= 0) {
+                    group.dead = true;
+                    for (const n of group.nodes) n.alive = false;
+                    this._economy.spawnDrop(node.x, node.y, 3);
+                    this._particles.hexActivate(node.x, node.y, '#d8f7ff');
+                    this._floatText.spawn(node.x, node.y - 32, '电网瓦解！ +3', '#d8f7ff', 15, true);
+                }
+                return dealt;
+            };
+            node.takeTrueDamage = node.takeDamage;
+            group.nodes.push(node);
+        }
+        this._triuneNetworks.push(group);
+        this._audio.playSfx('lightning', 0.42);
+    }
+
+    /** 磁轨屠夫：两枚锯先完整显示固定椭圆轨道0.75秒，再相向绕行一周。 */
+    spawnRailSaws(centerX: number, centerY: number): void {
+        for (let i = 0; i < 2; i++) {
+            this._railSaws.push({
+                cx: centerX, cy: centerY, phase: i * Math.PI, dir: i === 0 ? 1 : -1,
+                timer: 3.15, warn: 0.75, x: centerX, y: centerY, hitCd: 0,
+            });
+        }
+        this._audio.playSfx('skill_q', 0.4);
+    }
+
+    isInsideRailSawOrbit(x: number, y: number): boolean {
+        return this._railSaws.some(s => s.timer > 0 && s.warn <= 0 &&
+            Math.abs(Math.hypot((x - s.cx) / 145, (y - s.cy) / 80) - 1) <= 0.28);
+    }
+
+    /** Player bullets include these stable objects, so conductors can be aimed, pierced and destroyed normally. */
+    getEnemyMechanismTargets(): any[] {
+        const out: any[] = [];
+        for (const group of this._triuneNetworks) if (!group.dead) {
+            for (const node of group.nodes) if (node.alive) out.push(node);
+        }
+        for (const node of this._docBossTargets) if (node.alive) out.push(node);
+        return out;
+    }
+
+    docBossSkillBusy(boss: BossController): boolean {
+        return this._docBossMechanics.some(m => m.boss === boss && m.timer > 0 && m.main !== false);
+    }
+
+    clearDocBossMechanics(boss?: BossController): void {
+        for (const m of this._docBossMechanics) if (!boss || m.boss === boss) {
+            if (m.boss) m.boss.invulnerable = false;
+            for (const n of (m.nodes || [])) n.alive = false;
+        }
+        this._docBossMechanics = boss ? this._docBossMechanics.filter(m => m.boss !== boss) : [];
+        this._docBossTargets = this._docBossTargets.filter(n => n.alive);
+    }
+
+    /** 可被玩家子弹正常锁定、穿透和摧毁的Boss机制物。 */
+    private _makeDocBossTarget(x: number, y: number, hp: number, kind: string, onBreak?: (n: any) => void): any {
+        const n: any = {
+            x: clamp(x, 22, CANVAS_W - 22), y: clamp(y, 22, PLAYFIELD_BOTTOM - 22),
+            radius: 18, hp, maxHp: hp, alive: true, kind,
+            isElite: false, isBoss: false, frozen: 0,
+        };
+        n.takeDamage = (raw: number) => {
+            if (!n.alive) return 0;
+            const dealt = Math.min(n.hp, Math.max(0, raw));
+            n.hp -= dealt;
+            if (n.hp <= 0) {
+                n.alive = false;
+                this._particles.hexActivate(n.x, n.y, kind.includes('vespa') ? '#72ff3c' : kind.includes('manyfold') ? '#c991ff' : '#ff9c3d');
+                onBreak?.(n);
+            }
+            return dealt;
+        };
+        n.takeTrueDamage = n.takeDamage;
+        this._docBossTargets.push(n);
+        return n;
+    }
+
+    /** 三只新大Boss的基础攻击，独立于五个主动技能。 */
+    startDocBossBasic(kind: string, boss: BossController, player: PlayerController): void {
+        const a = Math.atan2(player.y - boss.y, player.x - boss.x);
+        if (kind === 'vespa') {
+            // 双矛点刺：中线是可穿过的缝，两段各22伤。
+            this._docBossMechanics.push({ kind: 'vespa_stab', boss, timer: 0.75, max: 0.75, angle: a, hits: 0, main: false });
+        } else if (kind === 'crucible_city') {
+            const lead = 34;
+            this._docBossMechanics.push({ kind: 'crucible_mortar', boss, timer: 2.7, max: 2.7,
+                x: clamp(player.x + Math.cos(a) * lead, 42, CANVAS_W - 42),
+                y: clamp(player.y + Math.sin(a) * lead, 42, PLAYFIELD_BOTTOM - 42), fired: false, hitCd: 0, main: false });
+        } else if (kind === 'manyfold') {
+            for (const off of [-0.34, -0.18, 0.12, 0.24, 0.36]) {
+                const aa = a + off;
+                this.enemyBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(aa) * 260, vy: Math.sin(aa) * 260,
+                    damage: 18, radius: 6, color: '#d8b8ff', life: 3, lifeTime: 3,
+                    owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos', srcBossTag: 'doc_manyfold' });
+            }
+        }
+    }
+
+    /** 按文档序号0~4启动主动技能；状态与绘制共用同一对象，避免“只画不判”。 */
+    startDocBossSkill(kind: string, skill: number, boss: BossController, player: PlayerController): void {
+        const add = (m: any) => this._docBossMechanics.push({ boss, timer: 6, max: 6, main: true, ...m });
+        if (kind === 'vespa') {
+            if (skill === 0) {
+                const nodes: any[] = [];
+                for (let i = 0; i < 6; i++) {
+                    const a = i * Math.PI / 3;
+                    nodes.push(this._makeDocBossTarget(player.x + Math.cos(a) * 95, player.y + Math.sin(a) * 95, 100, 'vespa_web_pin', n => {
+                        this._economy.spawnDrop(n.x, n.y, 3);
+                    }));
+                }
+                add({ kind: 'vespa_web', timer: 6.9, max: 6.9, warn: 0.9, nodes, edgeCd: new Array(6).fill(0) });
+            } else if (skill === 1) {
+                const count = boss.phase === 1 ? 1 : 3;
+                const points: any[] = [];
+                for (let i = 0; i < count; i++) {
+                    const x = i === 2 ? CANVAS_W / 2 + Math.cos(this._visualTime) * 70 : player.x + (i === 1 ? Math.cos(this._visualTime * 3) * 75 : 0);
+                    const y = i === 2 ? PLAYFIELD_BOTTOM / 2 + Math.sin(this._visualTime) * 50 : player.y + (i === 1 ? Math.sin(this._visualTime * 3) * 55 : 0);
+                    points.push({ x: clamp(x, 80, CANVAS_W - 80), y: clamp(y, 80, PLAYFIELD_BOTTOM - 80), at: 0.65 + i * 0.55, hit: false });
+                }
+                boss.invulnerable = true;
+                add({ kind: 'vespa_jump', timer: 0.65 + count * 0.55 + 0.25, max: 0.65 + count * 0.55 + 0.25, elapsed: 0, points });
+            } else if (skill === 2) {
+                const drops: any[] = [];
+                for (let i = 0; i < 12; i++) {
+                    const center = i < 8 ? player : boss;
+                    const ring = i < 8 ? 92 + (i % 2) * 54 : 72;
+                    const a = i * 2.399 + 0.3;
+                    drops.push({ x: clamp(center.x + Math.cos(a) * ring, 36, CANVAS_W - 36), y: clamp(center.y + Math.sin(a) * ring, 36, PLAYFIELD_BOTTOM - 36), hit: false });
+                }
+                add({ kind: 'vespa_rain', timer: 1.35, max: 1.35, drops });
+            } else if (skill === 3) {
+                const nodes: any[] = [];
+                for (let i = 0; i < 3; i++) {
+                    const a = -Math.PI / 2 + i * Math.PI * 2 / 3;
+                    nodes.push(this._makeDocBossTarget(CANVAS_W / 2 + Math.cos(a) * 470, PLAYFIELD_BOTTOM / 2 + Math.sin(a) * 220, 180, 'vespa_egg', n => {
+                        this._economy.spawnDrop(n.x, n.y, 8);
+                        if (boss.alive) boss.hp = Math.max(1, boss.hp - boss.hp * 0.03);
+                    }));
+                }
+                add({ kind: 'vespa_eggs', timer: 6, max: 6, nodes });
+            } else {
+                boss.x = boss.x < CANVAS_W / 2 ? CANVAS_W - 90 : 90;
+                const node = this._makeDocBossTarget(player.x, player.y, 450, 'vespa_shell', n => {
+                    this._economy.spawnDrop(n.x, n.y, 15); boss.frozen = Math.max(boss.frozen, 2);
+                    this._floatText.spawn(n.x, n.y - 35, '毒爆取消！ +15', '#b7ff74', 16, true);
+                });
+                add({ kind: 'vespa_shell', timer: 4, max: 4, nodes: [node], exploded: false });
+            }
+        } else if (kind === 'crucible_city') {
+            if (skill === 0) {
+                const nodes: any[] = [];
+                const breakPole = (n: any) => {
+                    this._economy.spawnDrop(n.x, n.y, 5);
+                    for (const p of nodes) p.alive = false;
+                };
+                nodes.push(this._makeDocBossTarget(player.x - 150, player.y, 160, 'crucible_blue_pole', breakPole));
+                nodes.push(this._makeDocBossTarget(player.x + 150, player.y, 160, 'crucible_pink_pole', breakPole));
+                add({ kind: 'crucible_poles', timer: 6, max: 6, warn: 1, nodes, hitCd: 0 });
+            } else if (skill === 1) {
+                const lanes = [-170, 0, 170].map((off, i) => ({ vertical: i === 1, center: (i === 1 ? CANVAS_W / 2 : PLAYFIELD_BOTTOM / 2 + off), at: 1 + i * 0.55, hit: false }));
+                add({ kind: 'crucible_pistons', timer: 3.4, max: 3.4, elapsed: 0, lanes });
+            } else if (skill === 2) {
+                const nodes: any[] = [];
+                for (let i = 0; i < 4; i++) {
+                    const a = Math.PI / 4 + i * Math.PI / 2;
+                    nodes.push(this._makeDocBossTarget(CANVAS_W / 2 + Math.cos(a) * 540, PLAYFIELD_BOTTOM / 2 + Math.sin(a) * 260, 130, 'crucible_scrap', n => this._economy.spawnDrop(n.x, n.y, 6)));
+                }
+                add({ kind: 'crucible_scrap', timer: 4, max: 4, nodes });
+            } else if (skill === 3) {
+                const nodes: any[] = [];
+                for (let row = 0; row < 2; row++) for (let slot = 0; slot < 6; slot++) {
+                    if (slot === (row ? 1 : 2) || slot === (row ? 4 : 5)) continue;
+                    const n = this._makeDocBossTarget(22, 82 + slot * 82, 220, 'crucible_billet');
+                    // 两面错时钢坯墙从战场左侧外进入，每面墙保留两个清晰缺口。
+                    n.x = -50 - row * 145; n.radius = 24; n.vx = 95; nodes.push(n);
+                }
+                add({ kind: 'crucible_billets', timer: 6, max: 6, nodes, hitCd: 0 });
+            } else {
+                boss.x = CANVAS_W / 2; boss.y = PLAYFIELD_BOTTOM / 2;
+                add({ kind: 'crucible_backflow', timer: 6.2, max: 6.2, warn: 1.2, safeAngle: 0, hitCd: 0 });
+            }
+        } else if (kind === 'manyfold') {
+            if (skill === 0) {
+                const lines = [
+                    { ax: 0, ay: 120, bx: CANVAS_W, by: PLAYFIELD_BOTTOM - 80, at: 1, hit: false },
+                    { ax: 0, ay: PLAYFIELD_BOTTOM - 100, bx: CANVAS_W, by: 100, at: 1.5, hit: false },
+                    { ax: CANVAS_W * 0.32, ay: 0, bx: CANVAS_W * 0.68, by: PLAYFIELD_BOTTOM, at: 2, hit: false },
+                ];
+                add({ kind: 'manyfold_lines', timer: 3, max: 3, elapsed: 0, lines });
+            } else if (skill === 1) {
+                const vertical = (Math.floor(this._visualTime) % 2) === 0;
+                add({ kind: 'manyfold_mirror', timer: 1.1, max: 1.1, vertical, done: false,
+                    px: player.x, py: player.y, bx: boss.x, by: boss.y });
+            } else if (skill === 2) {
+                let points = this._docPlayerTrail.map(p => ({ x: p.x, y: p.y }));
+                const spread = points.length ? Math.hypot(points[0].x - points[points.length - 1].x, points[0].y - points[points.length - 1].y) : 0;
+                if (spread < 35) points = Array.from({ length: 18 }, (_, i) => ({ x: player.x + Math.cos(i / 18 * Math.PI * 2) * 55, y: player.y + Math.sin(i / 18 * Math.PI * 2) * 55 }));
+                add({ kind: 'manyfold_shadow', timer: 2.9, max: 2.9, warn: 0.9, points, cursor: 0, hit: false });
+            } else if (skill === 3) {
+                boss.x = CANVAS_W / 2; boss.y = PLAYFIELD_BOTTOM / 2;
+                add({ kind: 'manyfold_sectors', timer: 4.3, max: 4.3, elapsed: 0, safe: 0, round: 0, hitRound: -1 });
+            } else {
+                const nodes: any[] = [];
+                const placements = [
+                    { x: 80, y: PLAYFIELD_BOTTOM / 2, edge: 'left' },
+                    { x: CANVAS_W - 80, y: PLAYFIELD_BOTTOM / 2, edge: 'right' },
+                    { x: 400, y: 58, edge: 'bottom' },
+                    { x: 880, y: 58, edge: 'bottom' },
+                    { x: 400, y: PLAYFIELD_BOTTOM - 58, edge: 'top' },
+                    { x: 880, y: PLAYFIELD_BOTTOM - 58, edge: 'top' },
+                ];
+                for (const spec of placements) {
+                    const n = this._makeDocBossTarget(spec.x, spec.y, 240, 'manyfold_needle', target => this._economy.spawnDrop(target.x, target.y, 8));
+                    n.edge = spec.edge;
+                    nodes.push(n);
+                }
+                add({ kind: 'manyfold_boundary', timer: 8, max: 8, nodes, hitCd: 0, pause: 0, lastDead: 0 });
+            }
+        }
+        this._audio.playSfx('skill_r', 0.55);
+    }
+
+    private _docLineDistance(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+        const vx = bx - ax, vy = by - ay;
+        const len2 = vx * vx + vy * vy || 1;
+        const t = clamp(((px - ax) * vx + (py - ay) * vy) / len2, 0, 1);
+        return Math.hypot(px - (ax + vx * t), py - (ay + vy * t));
+    }
+
+    /** 统一推进所有新大Boss机制：视觉计时、碰撞、可破坏物与阶段清理共享同一真值。 */
+    private _updateDocBossMechanics(dt: number): void {
+        const p = this._player;
+        if (p?.alive) {
+            this._docTrailSampleCd -= dt;
+            if (this._docTrailSampleCd <= 0) {
+                this._docTrailSampleCd = 0.10;
+                this._docPlayerTrail.push({ x: p.x, y: p.y, age: 0 });
+            }
+            for (const q of this._docPlayerTrail) q.age += dt;
+            this._docPlayerTrail = this._docPlayerTrail.filter(q => q.age <= 3.15);
+        }
+        const hurt = (damage: number, label?: string) => {
+            if (!p?.alive || p.godMode) return;
+            p.takeDamage(damage, this, { ignoreIframe: true });
+            if (label) this._floatText.spawn(p.x, p.y - 42, label, '#ffb37b', 14, true);
+        };
+        for (let i = this._docBossMechanics.length - 1; i >= 0; i--) {
+            const m = this._docBossMechanics[i];
+            const boss: BossController = m.boss;
+            if (!boss?.alive) { for (const n of (m.nodes || [])) n.alive = false; this._docBossMechanics.splice(i, 1); continue; }
+            m.timer -= dt;
+            if (m.hitCd > 0) m.hitCd -= dt;
+
+            if (m.kind === 'vespa_stab') {
+                const elapsed = m.max - m.timer;
+                const stage = elapsed >= 0.50 ? (elapsed < 0.75 ? 1 : 2) : 0;
+                if (stage > m.hits) {
+                    m.hits = stage;
+                    const aa = m.angle + (stage === 1 ? -0.24 : 0.24);
+                    if (Vec.dist(boss.x, boss.y, p.x, p.y) <= 150) {
+                        const pa = Math.atan2(p.y - boss.y, p.x - boss.x);
+                        if (Math.abs(Math.atan2(Math.sin(pa - aa), Math.cos(pa - aa))) < 0.25) hurt(22, '晶矛点刺');
+                    }
+                    this._particles.meleeSlash?.(boss.x, boss.y, aa, '#8dff65', 145, 1.25);
+                }
+            } else if (m.kind === 'crucible_mortar') {
+                if (!m.fired && m.timer <= 2) {
+                    m.fired = true;
+                    if (Vec.dist(m.x, m.y, p.x, p.y) < 48 + p.radius) hurt(24, '铸渣迫击');
+                    this._particles.explode(m.x, m.y, '#ff8b2c', 48);
+                }
+                if (m.fired && m.timer > 0 && Vec.dist(m.x, m.y, p.x, p.y) < 38 + p.radius && m.hitCd <= 0) {
+                    m.hitCd = 0.8; hurt(4);
+                }
+            } else if (m.kind === 'vespa_web') {
+                m.warn = Math.max(0, m.warn - dt);
+                for (let e = 0; e < 6; e++) m.edgeCd[e] = Math.max(0, m.edgeCd[e] - dt);
+                if (m.warn <= 0) for (let e = 0; e < 6; e++) {
+                    const a = m.nodes[e], b = m.nodes[(e + 1) % 6];
+                    if (!a.alive || !b.alive || m.edgeCd[e] > 0) continue;
+                    if (this._docLineDistance(p.x, p.y, a.x, a.y, b.x, b.y) < p.radius + 5) {
+                        m.edgeCd[e] = 1; hurt(8, '蛛网减速'); p.applyBuff?.('vespa_web_slow', 1.2, { speed: 0.7 });
+                    }
+                }
+            } else if (m.kind === 'vespa_jump') {
+                m.elapsed += dt;
+                for (const pt of m.points) if (!pt.hit && m.elapsed >= pt.at) {
+                    pt.hit = true; boss.x = pt.x; boss.y = pt.y;
+                    this._particles.explode(pt.x, pt.y, '#71ff42', 76);
+                    if (Vec.dist(pt.x, pt.y, p.x, p.y) < 76 + p.radius) hurt(30, '弹跳猎杀');
+                    if (pt === m.points[m.points.length - 1] && m.points.length === 3) {
+                        this._docBossMechanics.push({ kind: 'vespa_poison_pool', boss, timer: 4, max: 4, x: pt.x, y: pt.y, hitCd: 0, main: false });
+                    }
+                }
+                if (m.timer <= 0) boss.invulnerable = false;
+            } else if (m.kind === 'vespa_poison_pool') {
+                if (Vec.dist(m.x, m.y, p.x, p.y) < 70 + p.radius && m.hitCd <= 0) {
+                    m.hitCd = 1; hurt(3); p.applyDot?.(3, 1.2, '#72ff38');
+                }
+            } else if (m.kind === 'vespa_rain') {
+                if (m.timer <= 0.25) for (const d of m.drops) if (!d.hit) {
+                    d.hit = true; this._particles.explode?.(d.x, d.y, '#72ff38', 34);
+                    if (Vec.dist(d.x, d.y, p.x, p.y) < 34 + p.radius) { hurt(18, '母囊毒雨'); p.applyDot?.(3, 4, '#72ff38'); }
+                }
+            } else if (m.kind === 'vespa_eggs') {
+                if (m.timer <= 0) for (const n of m.nodes) if (n.alive) {
+                    n.alive = false;
+                    for (let k = 0; k < 3; k++) this.spawnEnemy('acid_sac', n.x + Math.cos(k * Math.PI * 2 / 3) * 34, n.y + Math.sin(k * Math.PI * 2 / 3) * 34);
+                }
+            } else if (m.kind === 'vespa_shell') {
+                const n = m.nodes[0];
+                if (m.timer <= 0 && n.alive && !m.exploded) {
+                    m.exploded = true; n.alive = false; hurt(18, '蜕晶毒震');
+                    this._particles.explode(n.x, n.y, '#73ff3f', 160);
+                    this._docBossMechanics.push({ kind: 'vespa_broken_ring', boss, timer: 2.5, max: 2.5, x: n.x, y: n.y, radius: 30, hitCd: 0, main: false });
+                }
+            } else if (m.kind === 'vespa_broken_ring') {
+                m.radius += 115 * dt;
+                const dist = Vec.dist(m.x, m.y, p.x, p.y);
+                const angle = Math.atan2(p.y - m.y, p.x - m.x);
+                    const inGap = Math.abs(Math.sin(angle)) < 0.18;
+                if (!inGap && Math.abs(dist - m.radius) < 13 + p.radius && m.hitCd <= 0) { m.hitCd = 1; hurt(12); }
+            } else if (m.kind === 'crucible_poles') {
+                m.warn = Math.max(0, m.warn - dt);
+                if (m.warn <= 0) for (let n = 0; n < m.nodes.length; n++) {
+                    const pole = m.nodes[n]; if (!pole.alive) continue;
+                    const dist = Vec.dist(pole.x, pole.y, p.x, p.y);
+                    if (dist < 150 && dist > 1) {
+                        const force = (n === 0 ? -1 : 1) * 55 * dt;
+                        p.x = clamp(p.x + (p.x - pole.x) / dist * force, p.radius, CANVAS_W - p.radius);
+                        p.y = clamp(p.y + (p.y - pole.y) / dist * force, p.radius, PLAYFIELD_BOTTOM - p.radius);
+                    }
+                    if (dist < 24 + p.radius && m.hitCd <= 0) { m.hitCd = 1; hurt(10, n === 0 ? '蓝极灼热' : '品红灼热'); }
+                }
+            } else if (m.kind === 'crucible_pistons') {
+                m.elapsed += dt;
+                for (const lane of m.lanes) if (!lane.hit && m.elapsed >= lane.at) {
+                    lane.hit = true;
+                    const inside = lane.vertical ? Math.abs(p.x - lane.center) <= 35 + p.radius : Math.abs(p.y - lane.center) <= 35 + p.radius;
+                    if (inside) hurt(34, '活塞打桩');
+                    this._shake.shake(8, 0.22);
+                }
+                if (m.lanes.every((l: any) => l.hit) && !m.exposed) { m.exposed = true; boss.armor = 0; m.restoreArmor = 30; }
+                if (m.exposed && m.timer <= 1.0) boss.armor = m.restoreArmor;
+            } else if (m.kind === 'crucible_scrap') {
+                for (const n of m.nodes) if (n.alive) {
+                    const [dx, dy] = Vec.normalize(boss.x - n.x, boss.y - n.y);
+                    n.x += dx * 120 * dt; n.y += dy * 120 * dt;
+                    if (Vec.dist(n.x, n.y, p.x, p.y) < n.radius + p.radius && (n.hitCd ?? 0) <= 0) { n.hitCd = 0.8; hurt(20, '废钢撞击'); }
+                    n.hitCd = Math.max(0, (n.hitCd ?? 0) - dt);
+                    if (Vec.dist(n.x, n.y, boss.x, boss.y) < boss.radius + 14) { n.alive = false; boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.025); }
+                }
+            } else if (m.kind === 'crucible_billets') {
+                for (const n of m.nodes) if (n.alive) {
+                    n.x += n.vx * dt;
+                    if (Vec.dist(n.x, n.y, p.x, p.y) < n.radius + p.radius && (n.hitCd ?? 0) <= 0) {
+                        n.hitCd = 1; hurt(26, '铸件列阵'); p.x = clamp(p.x + 45, p.radius, CANVAS_W - p.radius);
+                    }
+                    n.hitCd = Math.max(0, (n.hitCd ?? 0) - dt);
+                    if (n.x > 500) n.alive = false;
+                }
+            } else if (m.kind === 'crucible_backflow') {
+                m.warn = Math.max(0, m.warn - dt); m.safeAngle += dt * 0.72;
+                if (m.warn <= 0 && m.hitCd <= 0 && Vec.dist(boss.x, boss.y, p.x, p.y) < 330) {
+                    const pa = Math.atan2(p.y - boss.y, p.x - boss.x);
+                    const diff = Math.abs(Math.atan2(Math.sin(pa - m.safeAngle), Math.cos(pa - m.safeAngle)));
+                    if (diff > 35 * Math.PI / 180) { m.hitCd = 0.8; hurt(22, '炉心倒灌'); }
+                }
+            } else if (m.kind === 'manyfold_lines') {
+                m.elapsed += dt;
+                for (const line of m.lines) if (!line.hit && m.elapsed >= line.at) {
+                    line.hit = true;
+                    if (this._docLineDistance(p.x, p.y, line.ax, line.ay, line.bx, line.by) < p.radius + 11) hurt(30, '空间切割');
+                }
+            } else if (m.kind === 'manyfold_mirror') {
+                if (!m.done && m.timer <= 0) {
+                    m.done = true;
+                    if (m.vertical) { p.x = CANVAS_W - m.px; boss.x = CANVAS_W - m.bx; }
+                    else { p.y = PLAYFIELD_BOTTOM - m.py; boss.y = PLAYFIELD_BOTTOM - m.by; }
+                    // 折面既是威胁也是解围工具：清除双方落点55px内的地面危险。
+                    const endpoints = [[p.x, p.y], [boss.x, boss.y]];
+                    this._enemyHazards = this._enemyHazards.filter(z => endpoints.every(([x, y]) => Vec.dist(z.x, z.y, x, y) > 55));
+                    for (const q of this._docBossMechanics) if (q.kind === 'vespa_poison_pool' && endpoints.some(([x, y]) => Vec.dist(q.x, q.y, x, y) <= 55)) q.timer = 0;
+                }
+            } else if (m.kind === 'manyfold_shadow') {
+                m.warn = Math.max(0, m.warn - dt);
+                if (m.warn <= 0 && m.points.length) {
+                    m.cursor = Math.min(m.points.length - 1, m.cursor + dt * m.points.length / 2);
+                    const pt = m.points[Math.floor(m.cursor)];
+                    if (!m.hit && Vec.dist(pt.x, pt.y, p.x, p.y) < 24 + p.radius) { m.hit = true; hurt(28, '借影裁片'); }
+                }
+            } else if (m.kind === 'manyfold_sectors') {
+                m.elapsed += dt;
+                const round = Math.min(3, Math.floor(Math.max(0, m.elapsed - 1) / 0.8));
+                if (round > m.round) { m.round = round; m.safe = (m.safe + 1) % 6; }
+                if (m.elapsed >= 1 + round * 0.8 && m.hitRound !== round) {
+                    m.hitRound = round;
+                    const a = Math.atan2(p.y - boss.y, p.x - boss.x);
+                    const sector = ((Math.floor((a + Math.PI) / (Math.PI / 3)) % 6) + 6) % 6;
+                    if (sector !== m.safe) hurt(36, '六面缺口');
+                }
+            } else if (m.kind === 'manyfold_boundary') {
+                const dead = m.nodes.filter((n: any) => !n.alive).length;
+                if (dead >= 4) m.timer = 0;
+                if (dead >= 2 && m.lastDead < 2) m.pause = 2;
+                m.lastDead = dead;
+                if (m.pause > 0) m.pause -= dt;
+                const progress = m.pause > 0 ? m.progress ?? 0 : clamp(1 - m.timer / m.max, 0, 1);
+                m.progress = progress;
+                const insetX = 128 * progress, insetY = 58 * progress;
+                const outside = p.x < insetX || p.x > CANVAS_W - insetX || p.y < insetY || p.y > PLAYFIELD_BOTTOM - insetY;
+                const openPort = m.nodes.some((n: any) => !n.alive && (
+                    (n.edge === 'left' && p.x < insetX && Math.abs(p.y - n.y) <= 75)
+                    || (n.edge === 'right' && p.x > CANVAS_W - insetX && Math.abs(p.y - n.y) <= 75)
+                    || (n.edge === 'bottom' && p.y < insetY && Math.abs(p.x - n.x) <= 75)
+                    || (n.edge === 'top' && p.y > PLAYFIELD_BOTTOM - insetY && Math.abs(p.x - n.x) <= 75)
+                ));
+                if (outside && !openPort && m.hitCd <= 0) {
+                    m.hitCd = 1; hurt(12, '收缩边界');
+                }
+            }
+
+            if (m.timer <= 0) {
+                if (m.kind === 'vespa_jump') boss.invulnerable = false;
+                if (m.kind === 'crucible_pistons' && m.exposed) boss.armor = m.restoreArmor;
+                for (const n of (m.nodes || [])) n.alive = false;
+                this._docBossMechanics.splice(i, 1);
+            }
+        }
+        this._docBossTargets = this._docBossTargets.filter(n => n.alive);
+    }
+
+    private _refreshPlayerDot(color: string, dps: number, duration: number, maxStacks: number): void {
+        const p = this._player;
+        if (!p) return;
+        const matches = (p.dots || []).filter((d: any) => d.color === color);
+        if (matches.length >= maxStacks) {
+            for (const d of matches) d.timeLeft = Math.max(d.timeLeft, duration);
+        } else {
+            p.applyDot(dps, duration, color);
+        }
+    }
+
+    /** 酸囊落地：4点直伤+4秒2DPS；毒斑3秒内每秒刷新，酸毒最多2层。 */
+    private _updateEnemyHazards(dt: number): void {
+        const p = this._player;
+        for (let i = this._enemyHazards.length - 1; i >= 0; i--) {
+            const z = this._enemyHazards[i];
+            z.timer -= dt;
+            if (z.phase === 'telegraph') {
+                if (z.timer > 0) continue;
+                z.phase = 'pool'; z.timer = z.kind === 'acid' ? 3 : z.kind === 'ember' ? 1.5 : z.kind === 'priest_fire' ? 0.12 : 5; z.tickCd = 0;
+                if (z.kind === 'acid') this._particles.toxin(z.x, z.y);
+                else if (z.kind === 'ember') this._particles.ignite(z.x, z.y);
+                else if (z.kind === 'priest_fire') this._particles.explode?.(z.x, z.y, '#ff8a35', z.r);
+                else this._particles.impact(z.x, z.y, 0, 0.35, '#ff5f4a');
+                this._audio.playSfx(z.kind === 'trap' ? 'hit' : 'explode', 0.32);
+                if (p?.alive && Vec.dist(z.x, z.y, p.x, p.y) <= z.r + (p.radius ?? 16)) {
+                    p.takeDamage(z.kind === 'acid' ? 4 : z.kind === 'ember' ? 5 : z.kind === 'priest_fire' ? 18 : 12, this, { ignoreIframe: true });
+                    if (z.kind === 'acid') this._refreshPlayerDot('#72ff38', 2, 4, 2);
+                    else if (z.kind === 'ember') this._refreshPlayerDot('#ff7a24', 2, 4, 1);
+                    else if (z.kind === 'priest_fire') this._refreshPlayerDot('#ff8a35', 2, 3, 1);
+                    else {
+                        p.applyBuff?.('hound_trap_slow', 1.5, { speed: 0.65 });
+                        this._floatText.spawn(p.x, p.y - 42, '捕获！', '#ff7968', 16, true);
+                        this._enemyHazards.splice(i, 1);
+                    }
+                }
+                continue;
+            }
+
+            if (z.timer <= 0) {
+                this._enemyHazards.splice(i, 1);
+                continue;
+            }
+            z.tickCd -= dt;
+            if (z.tickCd <= 0) {
+                z.tickCd = 1;
+                if (p?.alive && Vec.dist(z.x, z.y, p.x, p.y) <= z.r + (p.radius ?? 16)) {
+                    if (z.kind === 'acid') this._refreshPlayerDot('#72ff38', 2, 4, 2);
+                    else if (z.kind === 'ember') this._refreshPlayerDot('#ff7a24', 2, 4, 1);
+                    else {
+                        p.takeDamage(12, this, { ignoreIframe: true });
+                        p.applyBuff?.('hound_trap_slow', 1.5, { speed: 0.65 });
+                        this._floatText.spawn(p.x, p.y - 42, '捕获！', '#ff7968', 16, true);
+                        this._enemyHazards.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        // 冰晶墙：0.9秒预警后移动420px；只结算一次伤害与1.5秒减速。
+        for (let i = this._priestWalls.length - 1; i >= 0; i--) {
+            const w = this._priestWalls[i];
+            if (w.warn > 0) { w.warn = Math.max(0, w.warn - dt); continue; }
+            const step = Math.hypot(w.vx, w.vy) * dt;
+            w.x += w.vx * dt; w.y += w.vy * dt; w.distance += step;
+            if (!w.hit && p?.alive && Math.abs(p.x - w.x) <= w.r + (p.radius ?? 16) &&
+                Math.abs(p.y - w.y) <= w.halfH + (p.radius ?? 16)) {
+                w.hit = true;
+                p.takeDamage(20, this, { ignoreIframe: true });
+                p.applyBuff?.('triune_ice_slow', 1.5, { speed: 0.75 });
+                this._particles.coldImpact(p.x, p.y);
+            }
+            if (w.distance >= 420) { this._particles.coldImpact(w.x, w.y); this._priestWalls.splice(i, 1); }
+        }
+
+        // 三角电网：1.2秒后通电；任意线段接触造成22伤害，1秒内不重复结算。
+        for (let i = this._triuneNetworks.length - 1; i >= 0; i--) {
+            const group = this._triuneNetworks[i];
+            group.activeIn -= dt; group.timer -= dt; group.hitCd = Math.max(0, group.hitCd - dt);
+            if (group.dead || group.timer <= 0) { for (const n of group.nodes) n.alive = false; this._triuneNetworks.splice(i, 1); continue; }
+            if (group.activeIn > 0 || group.hitCd > 0 || !p?.alive) continue;
+            for (let edge = 0; edge < 3; edge++) {
+                const a = group.nodes[edge], b = group.nodes[(edge + 1) % 3];
+                const abx = b.x - a.x, aby = b.y - a.y;
+                const t = clamp(((p.x - a.x) * abx + (p.y - a.y) * aby) / Math.max(1, abx * abx + aby * aby), 0, 1);
+                const qx = a.x + abx * t, qy = a.y + aby * t;
+                if (Vec.dist(qx, qy, p.x, p.y) <= 9 + (p.radius ?? 16)) {
+                    group.hitCd = 1;
+                    p.takeDamage(22, this, { ignoreIframe: true });
+                    this._particles.impact(p.x, p.y, Math.atan2(aby, abx), 0.7, '#d8f7ff');
+                    break;
+                }
+            }
+        }
+
+        // 两枚锯的轨道中心在生成时锁死，Boss后续移动/反冲都不会拖动轨道。
+        for (let i = this._railSaws.length - 1; i >= 0; i--) {
+            const s = this._railSaws[i];
+            s.timer -= dt; s.hitCd = Math.max(0, s.hitCd - dt);
+            if (s.warn > 0) { s.warn = Math.max(0, s.warn - dt); }
+            else {
+                const progress = 1 - Math.max(0, s.timer) / 2.4;
+                const a = s.phase + s.dir * progress * Math.PI * 2;
+                s.x = s.cx + Math.cos(a) * 145; s.y = s.cy + Math.sin(a) * 80;
+                if (s.hitCd <= 0 && p?.alive && Vec.dist(s.x, s.y, p.x, p.y) <= 20 + (p.radius ?? 16)) {
+                    s.hitCd = 0.8;
+                    p.takeDamage(18, this, { ignoreIframe: true });
+                    this._particles.impact(p.x, p.y, a, 0.75, '#ff9b32');
+                }
+            }
+            if (s.timer <= 0) this._railSaws.splice(i, 1);
+        }
+    }
+
     /** 水分身：最多 1 个；与本体同尺寸的淡色虚影，3s 引导后向主角位置冲锋，撞到 40 伤+10% 减速，失败则变为水柱。 */
     spawnWaterClone(boss: BossController, player: any): void {
         if (this.state !== 'testRoom') return;
@@ -868,6 +1572,8 @@ export class GameManager extends Component {
         this._turrets = [];
         this._deathZones = [];
         this._iceZones = [];
+        this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
+        this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
         this._pillars = [];
         this._telegraphZones = [];
         this._bullets?.reset();
@@ -940,7 +1646,7 @@ export class GameManager extends Component {
         // Enemies
         for (let i = this._enemies.length - 1; i >= 0; i--) {
             const e = this._enemies[i];
-            e.update(dt, this._player, this);
+            if (!(this.state === 'testRoom' && this._testTargetPaused)) e.update(dt, this._player, this);
             // Sprite node isn't pooled (spawnEnemy() creates a fresh one each time,
             // like the original Graphics-only version created a fresh Node) — must
             // destroy it here or dead enemies' sprites keep sitting on screen forever.
@@ -980,6 +1686,11 @@ export class GameManager extends Component {
             const z = this._iceZones[i];
             z.timer -= dt;
             if (z.timer <= 0) this._iceZones.splice(i, 1);
+        }
+
+        if (!(this.state === 'testRoom' && this._testTargetPaused)) {
+            this._updateEnemyHazards(dt);
+            this._updateDocBossMechanics(dt);
         }
 
         // Wave manager — 测试房间不跑波次调度，杜绝"清场→章节结算/augSelect"链路
@@ -1076,6 +1787,200 @@ export class GameManager extends Component {
         applyArtSprite(entity.sprite, key);
     }
 
+    private _drawDocBossMechanics(g: Graphics): void {
+        const hex = (x: number, y: number, r: number) => {
+            for (let k = 0; k < 6; k++) {
+                const a0 = k * Math.PI / 3, a1 = (k + 1) * Math.PI / 3;
+                if (k === 0) g.moveTo(x + Math.cos(a0) * r, y + Math.sin(a0) * r);
+                g.lineTo(x + Math.cos(a1) * r, y + Math.sin(a1) * r);
+            }
+            g.close();
+        };
+        const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 8);
+        for (const m of this._docBossMechanics) {
+            const boss = m.boss;
+            if (m.kind === 'vespa_stab') {
+                const [bx, by] = this._toLocal(boss.x, boss.y);
+                for (const off of [-0.24, 0.24]) {
+                    const a = -(m.angle + off);
+                    g.strokeColor = new Color(129, 255, 101, 130 + Math.floor(pulse * 100)); g.lineWidth = 4;
+                    g.moveTo(bx, by); g.lineTo(bx + Math.cos(a) * 145, by + Math.sin(a) * 145); g.stroke();
+                }
+            } else if (m.kind === 'crucible_mortar') {
+                const [x, y] = this._toLocal(m.x, m.y);
+                g.fillColor = new Color(255, 105, 30, m.fired ? 54 : 24); g.circle(x, y, 42); g.fill();
+                g.strokeColor = new Color(255, 164, 64, 210); g.lineWidth = 2.5; g.circle(x, y, 42); g.stroke();
+            } else if (m.kind === 'vespa_web') {
+                g.strokeColor = new Color(117, 255, 75, m.warn > 0 ? 100 : 220); g.lineWidth = m.warn > 0 ? 1.5 : 4;
+                for (let e = 0; e < 6; e++) {
+                    const a = m.nodes[e], b = m.nodes[(e + 1) % 6]; if (!a.alive || !b.alive) continue;
+                    const [ax, ay] = this._toLocal(a.x, a.y), [bx, by] = this._toLocal(b.x, b.y);
+                    g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                }
+            } else if (m.kind === 'vespa_jump') {
+                for (const pt of m.points) if (!pt.hit) {
+                    const [x, y] = this._toLocal(pt.x, pt.y);
+                    const r = 30 + Math.max(0, pt.at - m.elapsed) * 48;
+                    g.fillColor = new Color(105, 255, 65, 28); g.circle(x, y, 76); g.fill();
+                    g.strokeColor = new Color(154, 255, 118, 220); g.lineWidth = 3; g.circle(x, y, r); g.stroke();
+                }
+            } else if (m.kind === 'vespa_poison_pool') {
+                const [x, y] = this._toLocal(m.x, m.y);
+                g.fillColor = new Color(85, 220, 35, 70 + Math.floor(pulse * 30)); g.circle(x, y, 70); g.fill();
+                g.strokeColor = new Color(148, 255, 74, 190); g.lineWidth = 2; g.circle(x, y, 70); g.stroke();
+            } else if (m.kind === 'vespa_rain') {
+                for (const d of m.drops) {
+                    const [x, y] = this._toLocal(d.x, d.y);
+                    g.fillColor = new Color(112, 255, 56, 30); g.circle(x, y, 34); g.fill();
+                    g.strokeColor = new Color(171, 255, 105, 150 + Math.floor(pulse * 90)); g.lineWidth = 2; g.circle(x, y, 34); g.stroke();
+                }
+            } else if (m.kind === 'vespa_shell') {
+                const n = m.nodes[0]; if (n?.alive) {
+                    const [x, y] = this._toLocal(n.x, n.y);
+                    g.fillColor = new Color(79, 210, 44, 72); hex(x, y, 54); g.fill();
+                    g.strokeColor = new Color(179, 255, 125, 230); g.lineWidth = 4; hex(x, y, 54); g.stroke();
+                    g.strokeColor = new Color(255, 100, 120, 220); g.lineWidth = 3; g.circle(x, y, 68 - (1 - m.timer / m.max) * 24); g.stroke();
+                }
+            } else if (m.kind === 'vespa_broken_ring') {
+                const [x, y] = this._toLocal(m.x, m.y);
+                g.strokeColor = new Color(120, 255, 72, 220); g.lineWidth = 7;
+                for (let seg = 0; seg < 24; seg++) if ([0, 1, 12, 13].indexOf(seg) < 0) {
+                    const a0 = seg / 24 * Math.PI * 2, a1 = (seg + 0.8) / 24 * Math.PI * 2;
+                    g.arc(x, y, m.radius, a0, a1, false); g.stroke();
+                }
+            } else if (m.kind === 'crucible_poles') {
+                for (let i = 0; i < m.nodes.length; i++) if (m.nodes[i].alive) {
+                    const n = m.nodes[i], [x, y] = this._toLocal(n.x, n.y);
+                    const c = i === 0 ? new Color(65, 155, 255, 55) : new Color(255, 72, 190, 55);
+                    g.fillColor = c; g.circle(x, y, 150); g.fill();
+                    g.strokeColor = i === 0 ? new Color(92, 190, 255, 230) : new Color(255, 92, 205, 230);
+                    g.lineWidth = 3; g.circle(x, y, 22 + pulse * 4); g.stroke();
+                }
+            } else if (m.kind === 'crucible_pistons') {
+                for (let i = 0; i < m.lanes.length; i++) {
+                    const lane = m.lanes[i];
+                    g.fillColor = new Color(255, 118, 36, lane.hit ? 28 : 18 + i * 14);
+                    g.strokeColor = new Color(255, 174, 76, lane.hit ? 70 : 190 + i * 20); g.lineWidth = lane.hit ? 1.5 : 3;
+                    if (lane.vertical) {
+                        const [x] = this._toLocal(lane.center, 0); g.rect(x - 35, CANVAS_H / 2 - PLAYFIELD_BOTTOM, 70, PLAYFIELD_BOTTOM); g.fill(); g.rect(x - 35, CANVAS_H / 2 - PLAYFIELD_BOTTOM, 70, PLAYFIELD_BOTTOM); g.stroke();
+                    } else {
+                        const [, y] = this._toLocal(0, lane.center); g.rect(-CANVAS_W / 2, y - 35, CANVAS_W, 70); g.fill(); g.rect(-CANVAS_W / 2, y - 35, CANVAS_W, 70); g.stroke();
+                    }
+                }
+            } else if (m.kind === 'crucible_backflow') {
+                const [x, y] = this._toLocal(boss.x, boss.y);
+                for (let k = 0; k < 3; k++) {
+                    g.strokeColor = new Color(255, 104, 30, m.warn > 0 ? 100 : 230); g.lineWidth = m.warn > 0 ? 8 : 22;
+                    // 三层炉环共享同一个70°安全扇区；分段画线避免Graphics.arc跨0°时
+                    // 走长弧/短弧不一致，保证视觉缺口与碰撞判定完全同向。
+                    for (let seg = 0; seg < 72; seg++) {
+                        const w0 = seg / 72 * Math.PI * 2, w1 = (seg + 1) / 72 * Math.PI * 2;
+                        const mid = (w0 + w1) * 0.5;
+                        const diff = Math.abs(Math.atan2(Math.sin(mid - m.safeAngle), Math.cos(mid - m.safeAngle)));
+                        if (diff <= 35 * Math.PI / 180) continue;
+                        const r = 190 + k * 32;
+                        g.moveTo(x + Math.cos(w0) * r, y - Math.sin(w0) * r);
+                        g.lineTo(x + Math.cos(w1) * r, y - Math.sin(w1) * r); g.stroke();
+                    }
+                }
+                g.strokeColor = new Color(100, 205, 255, 210); g.lineWidth = 3;
+                const s0 = m.safeAngle - 35 * Math.PI / 180, s1 = m.safeAngle + 35 * Math.PI / 180;
+                g.moveTo(x + Math.cos(s0) * 272, y - Math.sin(s0) * 272);
+                for (let q = 1; q <= 12; q++) {
+                    const a = s0 + (s1 - s0) * q / 12;
+                    g.lineTo(x + Math.cos(a) * 272, y - Math.sin(a) * 272);
+                }
+                g.stroke();
+            } else if (m.kind === 'manyfold_lines') {
+                for (let i = 0; i < m.lines.length; i++) {
+                    const l = m.lines[i], [ax, ay] = this._toLocal(l.ax, l.ay), [bx, by] = this._toLocal(l.bx, l.by);
+                    g.strokeColor = new Color(212, 172, 255, l.hit ? 45 : 95 + i * 60); g.lineWidth = l.hit ? 1 : (m.elapsed >= l.at ? 8 : 2 + i);
+                    g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                }
+            } else if (m.kind === 'manyfold_mirror') {
+                g.strokeColor = new Color(210, 170, 255, 230); g.lineWidth = 4;
+                if (m.vertical) { const [x] = this._toLocal(CANVAS_W / 2, 0); g.moveTo(x, CANVAS_H / 2); g.lineTo(x, CANVAS_H / 2 - PLAYFIELD_BOTTOM); }
+                else { const [, y] = this._toLocal(0, PLAYFIELD_BOTTOM / 2); g.moveTo(-CANVAS_W / 2, y); g.lineTo(CANVAS_W / 2, y); }
+                g.stroke();
+            } else if (m.kind === 'manyfold_shadow') {
+                if (m.points.length > 1) {
+                    g.strokeColor = new Color(215, 185, 255, m.warn > 0 ? 100 : 220); g.lineWidth = m.warn > 0 ? 2 : 6;
+                    for (let k = 1; k < m.points.length; k++) {
+                        const [ax, ay] = this._toLocal(m.points[k - 1].x, m.points[k - 1].y), [bx, by] = this._toLocal(m.points[k].x, m.points[k].y);
+                        g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                    }
+                }
+            } else if (m.kind === 'manyfold_sectors') {
+                const [x, y] = this._toLocal(boss.x, boss.y);
+                for (let k = 0; k < 6; k++) {
+                    const a0 = k * Math.PI / 3 - Math.PI, a1 = a0 + Math.PI / 3;
+                    g.fillColor = k === m.safe ? new Color(82, 132, 145, 34) : new Color(183, 71, 255, 54 + Math.floor(pulse * 20));
+                    g.moveTo(x, y); g.arc(x, y, 285, a0, a1, false); g.close(); g.fill();
+                    g.strokeColor = k === m.safe ? new Color(110, 220, 230, 170) : new Color(218, 170, 255, 160);
+                    g.lineWidth = 2; g.moveTo(x, y); g.lineTo(x + Math.cos(a0) * 285, y + Math.sin(a0) * 285); g.stroke();
+                }
+            } else if (m.kind === 'manyfold_boundary') {
+                const q = m.progress ?? 0, ix = 128 * q, iy = 58 * q;
+                const dead = m.nodes.filter((n: any) => !n.alive);
+                const spans = (start: number, end: number, gaps: number[]): number[][] => {
+                    let result: number[][] = [[start, end]];
+                    for (const center of gaps) {
+                        const lo = clamp(center - 75, start, end), hi = clamp(center + 75, start, end);
+                        const next: number[][] = [];
+                        for (const [a, b] of result) {
+                            if (hi <= a || lo >= b) next.push([a, b]);
+                            else {
+                                if (lo - a > 1) next.push([a, lo]);
+                                if (b - hi > 1) next.push([hi, b]);
+                            }
+                        }
+                        result = next;
+                    }
+                    return result;
+                };
+                const strokeBoundary = (color: Color, width: number): void => {
+                    g.strokeColor = color; g.lineWidth = width;
+                    const draw = (ax: number, ay: number, bx: number, by: number): void => {
+                        const [x0, y0] = this._toLocal(ax, ay), [x1, y1] = this._toLocal(bx, by);
+                        g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+                    };
+                    for (const [a, b] of spans(iy, PLAYFIELD_BOTTOM - iy, dead.filter((n: any) => n.edge === 'left').map((n: any) => n.y))) draw(ix, a, ix, b);
+                    for (const [a, b] of spans(iy, PLAYFIELD_BOTTOM - iy, dead.filter((n: any) => n.edge === 'right').map((n: any) => n.y))) draw(CANVAS_W - ix, a, CANVAS_W - ix, b);
+                    for (const [a, b] of spans(ix, CANVAS_W - ix, dead.filter((n: any) => n.edge === 'bottom').map((n: any) => n.x))) draw(a, iy, b, iy);
+                    for (const [a, b] of spans(ix, CANVAS_W - ix, dead.filter((n: any) => n.edge === 'top').map((n: any) => n.x))) draw(a, PLAYFIELD_BOTTOM - iy, b, PLAYFIELD_BOTTOM - iy);
+                };
+                strokeBoundary(new Color(255, 75, 200, 80 + Math.floor(pulse * 80)), 12);
+                strokeBoundary(new Color(214, 175, 255, 225), 5);
+                // 已破镜针的位置用青色端点标出，明确告诉玩家这里是可穿越的安全口。
+                g.strokeColor = new Color(100, 235, 255, 235); g.lineWidth = 4;
+                for (const n of dead) {
+                    const horizontal = n.edge === 'top' || n.edge === 'bottom';
+                    for (const side of [-75, 75]) {
+                        const wx = horizontal ? n.x + side : (n.edge === 'left' ? ix : CANVAS_W - ix);
+                        const wy = horizontal ? (n.edge === 'bottom' ? iy : PLAYFIELD_BOTTOM - iy) : n.y + side;
+                        const dx = horizontal ? 0 : (n.edge === 'left' ? 18 : -18);
+                        const dy = horizontal ? (n.edge === 'bottom' ? 18 : -18) : 0;
+                        const [x0, y0] = this._toLocal(wx, wy), [x1, y1] = this._toLocal(wx + dx, wy + dy);
+                        g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+                    }
+                }
+            }
+        }
+
+        // 机制目标统一显示生命比例和材质符号；它们同时存在于真实子弹目标列表。
+        for (const n of this._docBossTargets) if (n.alive) {
+            const [x, y] = this._toLocal(n.x, n.y), ratio = clamp(n.hp / n.maxHp, 0, 1);
+            const isVespa = n.kind.includes('vespa'), isMany = n.kind.includes('manyfold');
+            g.fillColor = isVespa ? new Color(66, 145, 40, 180) : isMany ? new Color(73, 42, 105, 190) : new Color(95, 57, 31, 190);
+            hex(x, y, n.radius + 4); g.fill();
+            g.strokeColor = isVespa ? new Color(148, 255, 88, 245) : isMany ? new Color(210, 177, 255, 245) : new Color(255, 154, 64, 245);
+            g.lineWidth = 2.5; hex(x, y, n.radius + 4); g.stroke();
+            g.fillColor = new Color(15, 20, 28, 215); g.rect(x - 18, y - n.radius - 12, 36, 4); g.fill();
+            g.fillColor = isVespa ? new Color(117, 255, 67, 245) : isMany ? new Color(196, 143, 255, 245) : new Color(255, 135, 42, 245);
+            g.rect(x - 18, y - n.radius - 12, 36 * ratio, 4); g.fill();
+        }
+    }
+
     private _drawEntities() {
         const g = this._gameGfx;
         g.clear();
@@ -1152,6 +2057,139 @@ export class GameManager extends Component {
             g.strokeColor = new Color(140, 210, 255, alpha);
             g.lineWidth = 2.5; g.circle(zx, zy, z.r); g.stroke();
         }
+
+        // 酸囊/焚芯咒仆地面危险区：毒囊带抛物线，火环由暗到亮后留下余烬。
+        for (const z of this._enemyHazards) {
+            const [zx, zy] = this._toLocal(z.x, z.y);
+            if (z.kind === 'trap') {
+                const progress = z.phase === 'telegraph' ? 1 - z.timer / z.telegraphMax : 1;
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 7 + z.x * 0.02);
+                g.fillColor = new Color(120, 28, 22, z.phase === 'telegraph' ? 18 + Math.floor(progress * 32) : 54 + Math.floor(pulse * 18));
+                g.circle(zx, zy, z.r); g.fill();
+                g.strokeColor = new Color(255, 84, 65, z.phase === 'telegraph' ? 130 + Math.floor(progress * 120) : 225);
+                g.lineWidth = z.phase === 'telegraph' ? 2 : 3;
+                for (let tooth = 0; tooth < 6; tooth++) {
+                    const a0 = tooth / 6 * Math.PI * 2;
+                    const a1 = (tooth + 1) / 6 * Math.PI * 2;
+                    const inner = z.r * (z.phase === 'telegraph' ? 0.58 + progress * 0.16 : 0.47);
+                    g.moveTo(zx + Math.cos(a0) * z.r, zy + Math.sin(a0) * z.r);
+                    g.lineTo(zx + Math.cos((a0 + a1) * 0.5) * inner, zy + Math.sin((a0 + a1) * 0.5) * inner);
+                    g.lineTo(zx + Math.cos(a1) * z.r, zy + Math.sin(a1) * z.r);
+                    g.stroke();
+                }
+                g.fillColor = new Color(255, 118, 80, 210);
+                g.circle(zx, zy, 3 + pulse * 2); g.fill();
+                continue;
+            }
+            const acid = z.kind === 'acid';
+            if (z.phase === 'telegraph') {
+                const progress = 1 - z.timer / z.telegraphMax;
+                g.fillColor = acid ? new Color(80, 220, 45, 22) : new Color(255, 75, 20, 20 + Math.floor(progress * 42));
+                g.circle(zx, zy, z.r); g.fill();
+                g.strokeColor = acid ? new Color(125, 255, 70, 220) : new Color(255, 145, 55, 155 + Math.floor(progress * 100));
+                g.lineWidth = 2 + (acid ? 0 : progress * 2.5);
+                for (let seg = 0; seg < 12; seg += 2) {
+                    const a0 = seg / 12 * Math.PI * 2;
+                    const a1 = (seg + 1) / 12 * Math.PI * 2;
+                    g.arc(zx, zy, z.r, a0, a1, false); g.stroke();
+                }
+                if (acid) {
+                    const t = progress;
+                    const ox = z.fromX + (z.x - z.fromX) * t;
+                    const oy = z.fromY + (z.y - z.fromY) * t - Math.sin(Math.PI * t) * 70;
+                    const [px, py] = this._toLocal(ox, oy);
+                    g.fillColor = new Color(95, 255, 35, 65); g.circle(px, py, 15); g.fill();
+                    g.fillColor = new Color(185, 255, 95, 245); g.circle(px, py, 7); g.fill();
+                } else {
+                    for (let k = 0; k < 6; k++) {
+                        const a = k / 6 * Math.PI * 2 + this._visualTime * 0.35;
+                        g.strokeColor = new Color(255, 180, 70, 120 + Math.floor(progress * 120));
+                        g.lineWidth = 1.5;
+                        g.moveTo(zx + Math.cos(a) * 14, zy + Math.sin(a) * 14);
+                        g.lineTo(zx + Math.cos(a) * (z.r - 6), zy + Math.sin(a) * (z.r - 6)); g.stroke();
+                    }
+                }
+            } else {
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 3.5 + z.x * 0.01);
+                g.fillColor = acid ? new Color(55, 145, 25, 58 + Math.floor(pulse * 24)) : new Color(125, 45, 15, 48 + Math.floor(pulse * 26));
+                g.circle(zx, zy, z.r); g.fill();
+                g.strokeColor = acid ? new Color(112, 230, 58, 150 + Math.floor(pulse * 60)) : new Color(255, 105, 35, 135 + Math.floor(pulse * 70));
+                g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
+                for (let bubble = 0; bubble < 5; bubble++) {
+                    const a = bubble * 2.399 + z.x * 0.013;
+                    const br = z.r * (0.2 + bubble * 0.11);
+                    g.fillColor = acid ? new Color(170, 255, 80, 80 + bubble * 15) : new Color(255, 150, 55, 75 + bubble * 13);
+                    g.circle(zx + Math.cos(a) * br, zy + Math.sin(a) * br, 2 + (bubble % 2)); g.fill();
+                }
+            }
+        }
+
+        // 三相祭司晶墙：预警为细长虚框，启动后变成可碰撞的冰晶实体。
+        for (const w of this._priestWalls) {
+            const [wx, wy] = this._toLocal(w.x, w.y);
+            const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 8 + w.y * 0.02);
+            g.fillColor = new Color(90, 205, 255, w.warn > 0 ? 18 + Math.floor(pulse * 16) : 72);
+            g.moveTo(wx - w.r, wy - w.halfH); g.lineTo(wx + w.r, wy - w.halfH + 12);
+            g.lineTo(wx + w.r, wy + w.halfH - 12); g.lineTo(wx - w.r, wy + w.halfH); g.close(); g.fill();
+            g.strokeColor = new Color(175, 238, 255, w.warn > 0 ? 125 + Math.floor(pulse * 80) : 235);
+            g.lineWidth = w.warn > 0 ? 1.8 : 3.2;
+            g.moveTo(wx - w.r, wy - w.halfH); g.lineTo(wx + w.r, wy - w.halfH + 12);
+            g.lineTo(wx + w.r, wy + w.halfH - 12); g.lineTo(wx - w.r, wy + w.halfH); g.close(); g.stroke();
+        }
+
+        // 雷相导体与真实三角电网；节点生命越低，内核越暗。
+        for (const group of this._triuneNetworks) {
+            if (group.dead) continue;
+            if (group.activeIn <= 0) {
+                const arcPulse = 0.5 + 0.5 * Math.sin(this._visualTime * 13);
+                g.strokeColor = new Color(202, 247, 255, 155 + Math.floor(arcPulse * 90));
+                g.lineWidth = 3 + arcPulse * 1.5;
+                for (let edge = 0; edge < 3; edge++) {
+                    const a = group.nodes[edge], b = group.nodes[(edge + 1) % 3];
+                    const [ax, ay] = this._toLocal(a.x, a.y), [bx, by] = this._toLocal(b.x, b.y);
+                    g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                }
+            }
+            for (const n of group.nodes) if (n.alive) {
+                const [nx, ny] = this._toLocal(n.x, n.y);
+                const ratio = Math.max(0, n.hp / n.maxHp);
+                g.fillColor = new Color(45, 100, 125, 105); g.circle(nx, ny, 16); g.fill();
+                g.strokeColor = new Color(205, 250, 255, 160 + Math.floor(ratio * 90)); g.lineWidth = 2.5;
+                for (let side = 0; side < 6; side++) {
+                    const a0 = side / 6 * Math.PI * 2, a1 = (side + 1) / 6 * Math.PI * 2;
+                    g.moveTo(nx + Math.cos(a0) * 16, ny + Math.sin(a0) * 16);
+                    g.lineTo(nx + Math.cos(a1) * 16, ny + Math.sin(a1) * 16); g.stroke();
+                }
+                g.fillColor = new Color(220, 255, 255, 105 + Math.floor(ratio * 145)); g.circle(nx, ny, 5 + ratio * 3); g.fill();
+            }
+        }
+
+        // 磁轨回转锯：轨道在0.75秒预警期间完整可见，随后只保留低亮路径与实体锯片。
+        for (const s of this._railSaws) {
+            const [cx, cy] = this._toLocal(s.cx, s.cy);
+            const warning = s.warn > 0;
+            g.strokeColor = new Color(255, 151, 48, warning ? 215 : 65);
+            g.lineWidth = warning ? 2.4 : 1.3;
+            for (let seg = 0; seg < 24; seg += 2) {
+                const a0 = seg / 24 * Math.PI * 2, a1 = (seg + 1) / 24 * Math.PI * 2;
+                g.moveTo(cx + Math.cos(a0) * 145, cy + Math.sin(a0) * 80);
+                g.lineTo(cx + Math.cos(a1) * 145, cy + Math.sin(a1) * 80); g.stroke();
+            }
+            if (!warning) {
+                const [sx, sy] = this._toLocal(s.x, s.y);
+                const spin = this._visualTime * 18 * s.dir;
+                g.fillColor = new Color(105, 42, 12, 210); g.circle(sx, sy, 18); g.fill();
+                g.strokeColor = new Color(255, 171, 54, 245); g.lineWidth = 3;
+                for (let tooth = 0; tooth < 8; tooth++) {
+                    const a = spin + tooth * Math.PI / 4;
+                    g.moveTo(sx + Math.cos(a) * 10, sy + Math.sin(a) * 10);
+                    g.lineTo(sx + Math.cos(a) * 22, sy + Math.sin(a) * 22); g.stroke();
+                }
+                g.fillColor = new Color(255, 219, 122, 245); g.circle(sx, sy, 5); g.fill();
+            }
+        }
+
+        this._drawDocBossMechanics(g);
 
         // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
         for (const t of this._turrets) {
@@ -1320,15 +2358,226 @@ export class GameManager extends Component {
                 const warning = e.type === 'exploder'
                     ? new Color(255, 150, 25, 255)
                     : new Color(255, 55, 45, 255);
-                g.fillColor = new Color(warning.r, warning.g, warning.b, 28 + Math.floor(progress * 55));
-                g.circle(ex, ey, dangerR + 10); g.fill();
-                g.strokeColor = new Color(warning.r, warning.g, warning.b, 170 + Math.floor(progress * 85));
-                g.lineWidth = 2.5 + progress * 2.5;
-                g.circle(ex, ey, dangerR); g.stroke();
                 const [tx, ty] = this._toLocal(e.attackTargetX, e.attackTargetY);
-                g.strokeColor = new Color(255, 235, 210, 150 + Math.floor(progress * 100));
-                g.lineWidth = 1.5 + progress;
-                g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                if (e.type === 'rust_biter') {
+                    // 锈齿扑兵：0.28秒小扇形明确表达扑击方向与可横移躲避的边界。
+                    const aim = Math.atan2(ty - ey, tx - ex);
+                    const fanR = 58;
+                    const half = 0.58;
+                    g.fillColor = new Color(255, 45, 30, 38 + Math.floor(progress * 70));
+                    g.moveTo(ex, ey);
+                    g.arc(ex, ey, fanR, aim - half, aim + half, false);
+                    g.close(); g.fill();
+                    g.strokeColor = new Color(255, 105, 60, 185 + Math.floor(progress * 70));
+                    g.lineWidth = 2 + progress * 2.5;
+                    g.moveTo(ex, ey);
+                    g.arc(ex, ey, fanR, aim - half, aim + half, false);
+                    g.close(); g.stroke();
+                } else if (e.type === 'rivet_beast' || (e.type === 'chain_hound' && e.miniSkillState === 'chain_charge')) {
+                    // 铆甲兽：宽走廊比圆形危险圈更准确表达100px冲撞与55px击退。
+                    const aim = Math.atan2(ty - ey, tx - ex);
+                    const ux = Math.cos(aim), uy = Math.sin(aim);
+                    const px = -uy, py = ux;
+                    const hound = e.type === 'chain_hound';
+                    const len = hound ? 390 : 132, halfW = hound ? 30 : 25;
+                    const x1 = ex + px * halfW, y1 = ey + py * halfW;
+                    const x2 = ex - px * halfW, y2 = ey - py * halfW;
+                    const x3 = ex + ux * len - px * halfW, y3 = ey + uy * len - py * halfW;
+                    const x4 = ex + ux * len + px * halfW, y4 = ey + uy * len + py * halfW;
+                    g.fillColor = hound
+                        ? new Color(255, 55, 42, 28 + Math.floor(progress * 72))
+                        : new Color(105, 205, 255, 30 + Math.floor(progress * 65));
+                    g.moveTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x4, y4); g.close(); g.fill();
+                    g.strokeColor = hound
+                        ? new Color(255, 126, 92, 170 + Math.floor(progress * 85))
+                        : new Color(190, 238, 255, 170 + Math.floor(progress * 85));
+                    g.lineWidth = 2 + progress * 3;
+                    g.moveTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x4, y4); g.close(); g.stroke();
+                } else {
+                    g.fillColor = new Color(warning.r, warning.g, warning.b, 28 + Math.floor(progress * 55));
+                    g.circle(ex, ey, dangerR + 10); g.fill();
+                    g.strokeColor = new Color(warning.r, warning.g, warning.b, 170 + Math.floor(progress * 85));
+                    g.lineWidth = 2.5 + progress * 2.5;
+                    g.circle(ex, ey, dangerR); g.stroke();
+                    g.strokeColor = new Color(255, 235, 210, 150 + Math.floor(progress * 100));
+                    g.lineWidth = 1.5 + progress;
+                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                }
+            }
+
+            if (e.type === 'prism_snail' && (e.miniSkillState === 'prism_windup' || e.miniSkillState === 'prism_sweep')) {
+                const sweeping = e.miniSkillState === 'prism_sweep';
+                const progress = sweeping ? 1 - e.miniSkillTimer / Math.max(0.01, e.miniSkillMax) : 0;
+                const worldAngle = e.miniSkillAngle + (-75 + 150 * progress) * Math.PI / 180;
+                const [beamX, beamY] = this._toLocal(e.x + Math.cos(worldAngle) * 900, e.y + Math.sin(worldAngle) * 900);
+                const aim = Math.atan2(beamY - ey, beamX - ex);
+                const ux = Math.cos(aim), uy = Math.sin(aim), px = -uy, py = ux;
+                const halfW = sweeping ? 14 : 8;
+                const alpha = sweeping ? 105 : 38 + Math.floor((1 - e.miniSkillTimer / Math.max(0.01, e.miniSkillMax)) * 52);
+                g.fillColor = new Color(125, 225, 255, alpha);
+                g.moveTo(ex + px * halfW, ey + py * halfW);
+                g.lineTo(ex - px * halfW, ey - py * halfW);
+                g.lineTo(ex + ux * 900 - px * halfW, ey + uy * 900 - py * halfW);
+                g.lineTo(ex + ux * 900 + px * halfW, ey + uy * 900 + py * halfW);
+                g.close(); g.fill();
+                g.strokeColor = new Color(220, 250, 255, sweeping ? 245 : 175);
+                g.lineWidth = sweeping ? 3.5 : 1.8;
+                g.moveTo(ex, ey); g.lineTo(ex + ux * 900, ey + uy * 900); g.stroke();
+            }
+            if (e.type === 'prism_snail' && e.miniSkillState === 'prism_shell') {
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 8);
+                g.strokeColor = new Color(255, 244, 202, 175 + Math.floor(pulse * 75));
+                g.lineWidth = 4;
+                const shellR = visualR + 11;
+                for (let side = 0; side < 6; side++) {
+                    const a0 = side / 6 * Math.PI * 2 + Math.PI / 6;
+                    const a1 = (side + 1) / 6 * Math.PI * 2 + Math.PI / 6;
+                    g.moveTo(ex + Math.cos(a0) * shellR, ey + Math.sin(a0) * shellR);
+                    g.lineTo(ex + Math.cos(a1) * shellR, ey + Math.sin(a1) * shellR); g.stroke();
+                }
+            }
+
+            if (e.type === 'triune_priest' && e.miniSkillState !== '') {
+                const phase = e.miniSkillPhase ?? 0;
+                const col = phase === 0 ? new Color(255, 139, 55, 245)
+                    : phase === 1 ? new Color(142, 234, 255, 245) : new Color(216, 247, 255, 245);
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 10);
+                const coreY = ey + (phase - 1) * visualR * 0.44;
+                g.fillColor = new Color(col.r, col.g, col.b, 30 + Math.floor(pulse * 35));
+                g.circle(ex, coreY, 11 + pulse * 5); g.fill();
+                g.strokeColor = col; g.lineWidth = 2.5 + pulse * 1.5;
+                g.circle(ex, coreY, 10 + pulse * 3); g.stroke();
+            }
+
+            if (e.type === 'rail_butcher' && e.miniSkillState === 'rail_windup') {
+                const [endX, endY] = this._toLocal(e.x + Math.cos(e.miniSkillAngle) * 1400, e.y + Math.sin(e.miniSkillAngle) * 1400);
+                const aim = Math.atan2(endY - ey, endX - ex), ux = Math.cos(aim), uy = Math.sin(aim);
+                const px = -uy, py = ux, halfW = 27;
+                const progress = 1 - e.miniSkillTimer / Math.max(0.01, e.miniSkillMax);
+                g.fillColor = new Color(255, 45, 177, 26 + Math.floor(progress * 72));
+                g.moveTo(ex + px * halfW, ey + py * halfW); g.lineTo(ex - px * halfW, ey - py * halfW);
+                g.lineTo(ex + ux * 1400 - px * halfW, ey + uy * 1400 - py * halfW);
+                g.lineTo(ex + ux * 1400 + px * halfW, ey + uy * 1400 + py * halfW); g.close(); g.fill();
+                g.strokeColor = new Color(255, 111, 207, 175 + Math.floor(progress * 80)); g.lineWidth = 2 + progress * 3;
+                g.moveTo(ex, ey); g.lineTo(ex + ux * 1400, ey + uy * 1400); g.stroke();
+            } else if (e.type === 'rail_butcher' && e.miniSkillState === 'rail_drag') {
+                const [px, py] = this._toLocal(this._player.x, this._player.y);
+                const a = Math.atan2(ey - py, ex - px), ux = Math.cos(a), uy = Math.sin(a);
+                const warned = e.miniSkillTimer > 1.8;
+                g.strokeColor = new Color(102, 190, 255, warned ? 225 : 150); g.lineWidth = warned ? 3.5 : 2.5;
+                g.moveTo(px, py); g.lineTo(ex, ey); g.stroke();
+                for (let arrow = 0; arrow < 3; arrow++) {
+                    const d = 50 + arrow * 45, ax = px + ux * d, ay = py + uy * d;
+                    g.moveTo(ax, ay); g.lineTo(ax - ux * 13 - uy * 7, ay - uy * 13 + ux * 7);
+                    g.moveTo(ax, ay); g.lineTo(ax - ux * 13 + uy * 7, ay - uy * 13 - ux * 7); g.stroke();
+                }
+            }
+
+            if (e.type === 'bell_devourer' && e.miniSkillState === 'bell_rings') {
+                const elapsed = e.miniSkillMax - Math.max(0, e.miniSkillTimer);
+                const phase = Math.min(5, Math.floor(elapsed / 0.32));
+                const ringR = (elapsed - phase * 0.32) * 360;
+                const gap = (phase % 2) * Math.PI / 3 + phase * Math.PI / 3;
+                const halfGap = 0.34;
+                g.strokeColor = new Color(255, 240, 166, 225); g.lineWidth = 5;
+                g.arc(ex, ey, Math.max(2, ringR), gap + halfGap, gap + Math.PI * 2 - halfGap, false); g.stroke();
+                g.strokeColor = new Color(181, 131, 216, 90); g.lineWidth = 10;
+                g.arc(ex, ey, Math.max(2, ringR), gap + halfGap, gap + Math.PI * 2 - halfGap, false); g.stroke();
+            }
+            if (e.type === 'bell_devourer' && (e.miniSkillState === 'bell_echo_warn' || e.miniSkillState === 'bell_echo_play')) {
+                const points = e.miniPoints ?? [];
+                g.strokeColor = new Color(189, 115, 255, e.miniSkillState === 'bell_echo_warn' ? 190 : 245);
+                g.lineWidth = e.miniSkillState === 'bell_echo_warn' ? 3 : 7;
+                for (let i = 1; i < points.length; i++) {
+                    const [x0, y0] = this._toLocal(points[i - 1].x, points[i - 1].y);
+                    const [x1, y1] = this._toLocal(points[i].x, points[i].y);
+                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+                }
+            }
+            if (e.type === 'bell_devourer' && e.miniSkillState === 'bell_silence') {
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 4);
+                g.fillColor = new Color(68, 35, 91, 34 + Math.floor(pulse * 18)); g.circle(ex, ey, 165); g.fill();
+                g.strokeColor = new Color(255, 240, 166, 175 + Math.floor(pulse * 70)); g.lineWidth = 3.5;
+                for (let side = 0; side < 6; side++) {
+                    const a0 = side / 6 * Math.PI * 2 + Math.PI / 6;
+                    const a1 = (side + 1) / 6 * Math.PI * 2 + Math.PI / 6;
+                    g.moveTo(ex + Math.cos(a0) * 165, ey + Math.sin(a0) * 165);
+                    g.lineTo(ex + Math.cos(a1) * 165, ey + Math.sin(a1) * 165); g.stroke();
+                }
+            }
+
+            if (e.type === 'rivet_beast') {
+                // 正面120°装甲扇面：蓝白=减伤有效，碎裂灰=撞墙后的侧后方输出窗口。
+                const aim = Math.atan2(e.combatFacingY, e.combatFacingX);
+                const active = e.frontGuardBroken <= 0;
+                g.strokeColor = active ? new Color(175, 230, 255, 205) : new Color(125, 132, 140, 120);
+                g.lineWidth = active ? 3.2 : 1.5;
+                g.arc(ex, ey, visualR + 7, aim - Math.PI / 3, aim + Math.PI / 3, false); g.stroke();
+            } else if (e.type === 'gold_scavenger') {
+                // 极短金色足迹仅用于传达逃跑速度；能量色不覆盖暗铜主体。
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 15 + e.x * 0.02);
+                g.strokeColor = new Color(255, 205, 70, 80 + Math.floor(pulse * 90));
+                g.lineWidth = 2;
+                const bx = ex - e.combatFacingX * (visualR + 5);
+                const by = ey - e.combatFacingY * (visualR + 5);
+                g.moveTo(bx, by); g.lineTo(bx - e.combatFacingX * 13, by - e.combatFacingY * 13); g.stroke();
+            } else if (e.type === 'arc_leech') {
+                for (const linked of e.arcLinks || []) {
+                    if (!linked.alive) continue;
+                    const [lx, ly] = this._toLocal(linked.x, linked.y);
+                    const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 13 + linked.x * 0.03);
+                    g.strokeColor = new Color(90, 235, 255, 105 + Math.floor(pulse * 105));
+                    g.lineWidth = 2.2;
+                    g.moveTo(ex, ey); g.lineTo((ex + lx) * 0.5 + Math.sin(this._visualTime * 19) * 6, (ey + ly) * 0.5); g.lineTo(lx, ly); g.stroke();
+                }
+            } else if (e.type === 'blast_tick' && e.blastCountdown > 0) {
+                const progress = 1 - e.blastCountdown / Math.max(0.01, e.blastCountdownMax);
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * (10 + progress * 18));
+                g.fillColor = new Color(255, 75, 20, 22 + Math.floor(progress * 48));
+                g.circle(ex, ey, 92); g.fill();
+                g.strokeColor = new Color(255, 175, 70, 170 + Math.floor(pulse * 85));
+                g.lineWidth = 2.5 + progress * 4;
+                g.circle(ex, ey, 92); g.stroke();
+            }
+
+            if (e.rangedAimWindup > 0 && e.rangedAimWindupMax > 0) {
+                const progress = 1 - e.rangedAimWindup / e.rangedAimWindupMax;
+                const [tx, ty] = this._toLocal(e.rangedAimTargetX, e.rangedAimTargetY);
+                if (e.type === 'frost_acolyte') {
+                    // 冰棱侍从：三条低饱和冰蓝射界提前展开，与断针射手的黄色校射点形成明确语义区分。
+                    const center = Math.atan2(ty - ey, tx - ex);
+                    for (const off of [-0.16, 0, 0.16]) {
+                        const a = center + off;
+                        const len = 620;
+                        const lx = ex + Math.cos(a) * len;
+                        const ly = ey + Math.sin(a) * len;
+                        g.strokeColor = new Color(75, 205, 245, 24 + Math.floor(progress * 52));
+                        g.lineWidth = 9; g.moveTo(ex, ey); g.lineTo(lx, ly); g.stroke();
+                        g.strokeColor = new Color(185, 247, 255, 105 + Math.floor(progress * 135));
+                        g.lineWidth = 1.4 + progress * 1.6;
+                        g.moveTo(ex, ey); g.lineTo(lx, ly); g.stroke();
+                    }
+                    g.strokeColor = new Color(218, 253, 255, 135 + Math.floor(progress * 110));
+                    g.lineWidth = 2;
+                    g.arc(ex, ey, visualR + 9 + progress * 6, center - 0.18, center + 0.18, false); g.stroke();
+                } else {
+                    // 断针射手：0.55秒逐级点亮的校射线，结束后3发沿同一方向射出。
+                    g.strokeColor = new Color(255, 220, 65, 38 + Math.floor(progress * 58));
+                    g.lineWidth = 6; g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                    g.strokeColor = new Color(255, 250, 205, 145 + Math.floor(progress * 105));
+                    g.lineWidth = 1.3 + progress * 1.2;
+                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                    const lit = Math.min(6, 1 + Math.floor(progress * 6));
+                    for (let seg = 1; seg <= 6; seg++) {
+                        const t = seg / 8;
+                        const sx = ex + (tx - ex) * t;
+                        const sy = ey + (ty - ey) * t;
+                        g.fillColor = seg <= lit
+                            ? new Color(255, 246, 155, 230)
+                            : new Color(70, 78, 88, 150);
+                        g.circle(sx, sy, 2.2 + progress * 0.8); g.fill();
+                    }
+                }
             }
 
             if (e instanceof BossController) {
@@ -1519,6 +2768,34 @@ export class GameManager extends Component {
                         }
                         g.stroke();
                         break;
+                    case 'needle': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd;
+                        g.strokeColor = new Color(255, 252, 205, 255);
+                        g.lineWidth = 3;
+                        g.moveTo(bx - nx * (r + 8), by - ny * (r + 8));
+                        g.lineTo(bx + nx * (r + 8), by + ny * (r + 8));
+                        g.stroke();
+                        g.fillColor = new Color(255, 220, 55, 245);
+                        g.circle(bx, by, 2.5); g.fill();
+                        break;
+                    }
+                    case 'frost': {
+                        const spd = Math.hypot(b.vx, b.vy) || 1;
+                        const nx = b.vx / spd, ny = -b.vy / spd;
+                        const px = -ny, py = nx;
+                        g.fillColor = new Color(195, 248, 255, 250);
+                        g.moveTo(bx + nx * (r + 6), by + ny * (r + 6));
+                        g.lineTo(bx + px * 4, by + py * 4);
+                        g.lineTo(bx - nx * (r + 4), by - ny * (r + 4));
+                        g.lineTo(bx - px * 4, by - py * 4); g.close(); g.fill();
+                        break;
+                    }
+                    case 'arc':
+                        g.strokeColor = new Color(130, 250, 255, 245);
+                        g.lineWidth = 2; g.circle(bx, by, r + 4); g.stroke();
+                        g.moveTo(bx - r - 5, by); g.lineTo(bx, by - 3); g.lineTo(bx + r + 5, by + 2); g.stroke();
+                        break;
                 }
             }
         }
@@ -1663,7 +2940,9 @@ export class GameManager extends Component {
             const sprite = node.getComponent(Sprite)!;
             applyArtSprite(sprite, fx.key);
 
-            const [fx_x, fx_y] = this._toLocal(fx.x, fx.y);
+            const sourceX = fx.follow?.alive === false ? fx.x : (fx.follow?.x ?? fx.x);
+            const sourceY = fx.follow?.alive === false ? fx.y : (fx.follow?.y ?? fx.y);
+            const [fx_x, fx_y] = this._toLocal(sourceX, sourceY);
             node.setPosition(Math.round(fx_x), Math.round(fx_y), 0);
 
             // 播放进度：0=刚生成，1=即将消失。此前直接用 t(=life/maxLife) 线性
@@ -1676,12 +2955,27 @@ export class GameManager extends Component {
             const t = Math.max(0, Math.min(1, fx.life / fx.maxLife));
             const progress = 1 - t; // 0→1，随时间推进
 
-            const popIn = progress < 0.12 ? (progress / 0.12) : 1;
-            const growth = 1 + progress * 0.35;
-            const scaleT = (0.6 + 0.4 * popIn) * growth;
-
-            const fadeT = progress < 0.6 ? 1 : Math.max(0, 1 - (progress - 0.6) / 0.4);
-            const alpha = Math.floor(fadeT * 255);
+            let scaleT: number;
+            let fadeT: number;
+            let rotation = fx.rotationDeg ?? 0;
+            if (fx.motion === 'aura') {
+                // 持续状态：轻微呼吸+缓慢旋转，最后18%才收束，不抢走角色本体。
+                scaleT = 0.96 + Math.sin(progress * Math.PI * 10) * 0.035;
+                fadeT = progress < 0.82 ? 1 : Math.max(0, 1 - (progress - 0.82) / 0.18);
+                rotation += progress * 120;
+            } else if (fx.motion === 'slash') {
+                // 挥斩：更快弹出、更少膨胀，避免弧刃像爆炸一样向四周发胖。
+                const popIn = progress < 0.08 ? progress / 0.08 : 1;
+                scaleT = (0.68 + 0.32 * popIn) * (1 + progress * 0.16);
+                fadeT = progress < 0.52 ? 1 : Math.max(0, 1 - (progress - 0.52) / 0.48);
+            } else {
+                const popIn = progress < 0.12 ? (progress / 0.12) : 1;
+                const growth = 1 + progress * 0.35;
+                scaleT = (0.6 + 0.4 * popIn) * growth;
+                fadeT = progress < 0.6 ? 1 : Math.max(0, 1 - (progress - 0.6) / 0.4);
+            }
+            const alpha = Math.floor(fadeT * (fx.baseAlpha ?? 1) * 255);
+            node.setRotationFromEuler(0, 0, rotation);
 
             // 可选染色（hex_ring 按符文颜色）：与白色 alpha 合成，无 color 时行为不变
             if (fx.color) {

@@ -489,39 +489,55 @@ export class ScreenManager extends Component {
     }
 
     private _buildGameoverPanel() {
-        const p = this._mkPanel('gameover', 800, 480);
+        const p = this._mkPanel('gameover', 620, 360);
 
         const bg = p.addComponent(Graphics);
         bg.fillColor = new Color(20, 8, 8, 240);
-        bg.fillRect(-400, -240, 800, 480);
+        bg.fillRect(-310, -180, 620, 360);
         bg.strokeColor = new Color(180, 30, 30, 200);
-        bg.lineWidth = 3; bg.rect(-400, -240, 800, 480); bg.stroke();
+        bg.lineWidth = 3; bg.rect(-310, -180, 620, 360); bg.stroke();
+        bg.strokeColor = new Color(220, 60, 60, 100);
+        bg.lineWidth = 1;
+        bg.moveTo(-250, 52); bg.lineTo(-150, 52);
+        bg.moveTo(150, 52); bg.lineTo(250, 52); bg.stroke();
 
         const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 160, 0));
+        tn.setPosition(new Vec3(0, 112, 0));
         tn.addComponent(UITransform).setContentSize(400, 56);
         const tl = tn.addComponent(Label);
-        tl.string = '游戏结束';
-        tl.fontSize = 46; tl.color = new Color(220, 50, 50, 255);
+        tl.string = '行动终止';
+        tl.fontSize = 42; tl.color = new Color(235, 65, 65, 255);
         styleLabel(tl);
 
-        const r = this._mkBtn(p, '重新开始', 0,  30, 200, 46, new Color(50, 130, 50, 230));
-        const m = this._mkBtn(p, '返回主菜单', 0, -40, 200, 46, new Color(60, 60, 90, 230));
+        const sub = new Node('Sub'); sub.setParent(p);
+        sub.setPosition(new Vec3(0, 52, 0));
+        sub.addComponent(UITransform).setContentSize(280, 24);
+        const sl = sub.addComponent(Label);
+        sl.string = '战术单元失效 · 本轮记录已归档';
+        sl.fontSize = 15; sl.color = new Color(190, 145, 145, 230);
+        styleLabel(sl);
+
+        const r = this._mkBtn(p, '重新开始', 0,  -8, 200, 46, new Color(50, 130, 50, 230));
+        const m = this._mkBtn(p, '返回主菜单', 0, -78, 200, 46, new Color(60, 60, 90, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onRestartPressed?.(),  this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
     }
 
     private _buildChapterClearPanel() {
-        const p = this._mkPanel('chapterClear', 800, 460);
+        const p = this._mkPanel('chapterClear', 620, 360);
 
         const bg = p.addComponent(Graphics);
         bg.fillColor = new Color(8, 20, 12, 240);
-        bg.fillRect(-400, -230, 800, 460);
+        bg.fillRect(-310, -180, 620, 360);
         bg.strokeColor = new Color(40, 200, 80, 180);
-        bg.lineWidth = 3; bg.rect(-400, -230, 800, 460); bg.stroke();
+        bg.lineWidth = 3; bg.rect(-310, -180, 620, 360); bg.stroke();
+        bg.strokeColor = new Color(80, 230, 120, 100);
+        bg.lineWidth = 1;
+        bg.moveTo(-250, 52); bg.lineTo(-150, 52);
+        bg.moveTo(150, 52); bg.lineTo(250, 52); bg.stroke();
 
         const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 150, 0));
+        tn.setPosition(new Vec3(0, 112, 0));
         tn.addComponent(UITransform).setContentSize(500, 52);
         const tl = tn.addComponent(Label);
         tl.string = '章节通关！';
@@ -529,15 +545,15 @@ export class ScreenManager extends Component {
         styleLabel(tl);
 
         const sub = new Node('Sub'); sub.setParent(p);
-        sub.setPosition(new Vec3(0, 100, 0));
+        sub.setPosition(new Vec3(0, 52, 0));
         sub.addComponent(UITransform).setContentSize(400, 30);
         const sl = sub.addComponent(Label);
         sl.string = '准备进入下一章节…';
         sl.fontSize = 15; sl.color = new Color(160, 200, 160, 200);
         styleLabel(sl);
 
-        const c = this._mkBtn(p, '进入下一章', 0, 20, 200, 46, new Color(40, 150, 220, 230));
-        const m = this._mkBtn(p, '返回主菜单', 0, -50, 200, 46, new Color(60, 60, 90, 230));
+        const c = this._mkBtn(p, '进入下一章', 0, -8, 200, 46, new Color(40, 150, 220, 230));
+        const m = this._mkBtn(p, '返回主菜单', 0, -78, 200, 46, new Color(60, 60, 90, 230));
         c.on(Node.EventType.TOUCH_END, () => this.onContinuePressed?.(),  this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(),  this);
     }
