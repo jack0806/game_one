@@ -221,6 +221,15 @@ export class ParticleManager {
      */
     meleeSlash(x: number, y: number, angle: number, color: string, reach = 70, strength = 1): void {
         const len = Math.max(40, reach * 1.1);
+        // 主体使用带厚度、火花与破口的正式斩痕贴图；程序线只作为短暂运动残影，
+        // 不再让近战技能看起来像调试线段。
+        const centerX = x + Math.cos(angle) * reach * 0.42;
+        const centerY = y + Math.sin(angle) * reach * 0.42;
+        this.spawnSpriteFx(centerX, centerY, 'fx_enemy_claw_slash', 0.26, 0.72 + strength * 0.48, color, {
+            rotationDeg: -angle * 180 / Math.PI,
+            motion: 'slash',
+            baseAlpha: 0.92,
+        });
         for (let i = -1; i <= 1; i++) {
             const off = i * (5 + strength * 3);   // 垂直于攻击方向错开，模拟刃宽
             const ox = Math.cos(angle + Math.PI / 2) * off;
@@ -233,7 +242,7 @@ export class ParticleManager {
                 size: 2, color: i === 0 ? '#ffffff' : color,
                 fade: true, gravity: false, glow: true, type: 'line',
                 x2: x + ox + Math.cos(a2) * len, y2: y + oy + Math.sin(a2) * len,
-                alpha: 1, lineWidth: Math.max(1, 3 + strength * 2 - Math.abs(i) * 1.5),
+                alpha: 0.46, lineWidth: Math.max(1, 2 + strength * 1.2 - Math.abs(i) * 0.8),
             });
         }
         const ringR = Math.max(18, reach) * (0.72 + strength * 0.18);

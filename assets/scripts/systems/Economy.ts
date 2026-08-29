@@ -64,6 +64,9 @@ export class Economy {
 
     get drops(): GoldDrop[] { return this._drops; }
 
+    /** 测试房清场只移除场上掉落，不改测试角色当前金币。 */
+    clearDrops(): void { this._drops = []; }
+
     reset(): void { this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this._drops = []; }
 
     /** Alias used by GameManager / ShopUI. */

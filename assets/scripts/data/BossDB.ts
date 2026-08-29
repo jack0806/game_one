@@ -43,8 +43,8 @@ export function getBossDef(chapter0Based: number): BossDef {
 // ============================================================
 // 来自设计文档（boss.docx）：第二章「机械高达X-剑」、第三章「深海恐惧」。
 // 文档只给技能描述，无数值——数值按对应章节档位自行定档（mech 取第二章
-// 5500/66/68/20，abyss 取第三章 9000/94/74/30）。底层取同材质族的高精章节 Boss，
-// 渲染层再叠加独立机械/深渊程序轮廓，不再暴露通用 enemy_boss 占位素体。
+// 5500/66/68/20，abyss 取第三章 9000/94/74/30）。两者使用专属俯视立绘，
+// 不再借用章节 Boss 后依赖程序线框补轮廓。
 
 export interface TestBossDef extends BossDef {
     /** 技能集标识：BossController._useSkill 按此分支。 */
@@ -52,10 +52,8 @@ export interface TestBossDef extends BossDef {
 }
 
 export const TEST_BOSSES: TestBossDef[] = [
-    // 机械/深渊各取项目内同材质族的高精底层，再由 GameManager 叠加专属 X 剑、机甲装甲、深海王冠与触腕。
-    // 这样维持全项目的写实废土材质密度，同时避免继续暴露通用 enemy_boss 占位素体。
-    { kind: 'mech',  chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_ch2', tintColor: '#b7d4ff', visualScale: 2.0, attackWindupMax: 0.42 },
-    { kind: 'abyss', chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#33aaff', glow: '#00ccff', label: '深海恐惧',       spriteKey: 'enemy_boss_ch4', tintColor: '#69e0e8', visualScale: 2.0, attackWindupMax: 0.42 },
+    { kind: 'mech',  chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
+    { kind: 'abyss', chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#33aaff', glow: '#00ccff', label: '深海恐惧',       spriteKey: 'enemy_boss_abyss', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
     // 《怪物设计与数值》5.2~5.4：独立俯视轮廓，逐字使用文档基础数值。
     { kind: 'vespa', chapter: 3, maxHp: 6800, damage: 42, speed: 78, armor: 14, goldValue: 480, radius: 46, color: '#132b4c', glow: '#69ff4a', label: '疫晶跳蛛·维斯帕', spriteKey: 'enemy_boss_vespa', tintColor: '#ffffff', visualScale: 1.85, attackWindupMax: 0.50 },
     { kind: 'crucible_city', chapter: 3, maxHp: 9800, damage: 60, speed: 50, armor: 30, goldValue: 680, radius: 50, color: '#38281f', glow: '#ff8b2c', label: '磁潮铸城兽·坩埚', spriteKey: 'enemy_boss_crucible_city', tintColor: '#ffffff', visualScale: 1.84, attackWindupMax: 0.70 },
@@ -67,7 +65,7 @@ export const TEST_BOSSES: TestBossDef[] = [
 // ============================================================
 // 既有 6 个章节小 Boss 来自 boss.docx；其后追加《怪物设计与数值》的 5 个机制小 Boss。
 // 普通 ≈1200血/30攻、史诗 ≈2200血/40攻、地狱 ≈2800血/45攻。
-// 既有六只的底层位图暂复用现有资源；渲染层为海洋单位和无人机叠加独立轮廓附件。
+// 既有六只也已补齐专属俯视立绘，避免用章节 Boss、盾兵和炮台换色充数。
 
 export type MiniBossTier = '普通' | '史诗' | '地狱';
 
@@ -91,12 +89,12 @@ export interface MiniBossDef {
 }
 
 export const MINI_BOSSES: MiniBossDef[] = [
-    { id: 'squid',    label: '深海鱿鱼',   tier: '史诗', maxHp: 2200, damage: 40, speed: 50, armor: 15, color: '#33aaff', glow: '#22ccff', spriteKey: 'enemy_boss',       tintColor: '#33aaff', visualScale: 1.5, radius: 30, goldValue: 120, attackWindupMax: 0.5 },
-    { id: 'turtle',   label: '盾龟',       tier: '普通', maxHp: 1400, damage: 28, speed: 40, armor: 30, color: '#55cc66', glow: '#33ff66', spriteKey: 'enemy_shield',    tintColor: '#7dff8f', visualScale: 1.5, radius: 32, goldValue: 90,  attackWindupMax: 0.5 },
-    { id: 'shrimp',   label: '锯齿剑虾',   tier: '地狱', maxHp: 2800, damage: 45, speed: 75, armor: 25, color: '#ff8844', glow: '#ffaa44', spriteKey: 'enemy_boss',       tintColor: '#ff9966', visualScale: 1.5, radius: 30, goldValue: 150, attackWindupMax: 0.45 },
-    { id: 'jelly',    label: '毒刺鬼水母', tier: '普通', maxHp: 1200, damage: 30, speed: 45, armor: 5,  color: '#cc66ff', glow: '#cc44ff', spriteKey: 'enemy_boss',       tintColor: '#cc88ff', visualScale: 1.4, radius: 28, goldValue: 90,  attackWindupMax: 0.5 },
-    { id: 'drone_a',  label: '攻击性无人机', tier: '普通', maxHp: 900,  damage: 24, speed: 90, armor: 10, color: '#ff5555', glow: '#ff3333', spriteKey: 'turret_base_vivian', tintColor: '#ff6666', visualScale: 1.2, radius: 22, goldValue: 70,  attackWindupMax: 0.4 },
-    { id: 'drone_s',  label: '支援型无人机', tier: '史诗', maxHp: 1600, damage: 10, speed: 70, armor: 15, color: '#55ff88', glow: '#44ff88', spriteKey: 'turret_base_vivian', tintColor: '#66ff99', visualScale: 1.2, radius: 24, goldValue: 100, attackWindupMax: 0.4 },
+    { id: 'squid',    label: '深海鱿鱼',   tier: '史诗', maxHp: 2200, damage: 40, speed: 50, armor: 15, color: '#33aaff', glow: '#22ccff', spriteKey: 'enemy_squid',          tintColor: '#ffffff', visualScale: 1.5, radius: 30, goldValue: 120, attackWindupMax: 0.5 },
+    { id: 'turtle',   label: '盾龟',       tier: '普通', maxHp: 1400, damage: 28, speed: 40, armor: 30, color: '#55cc66', glow: '#33ff66', spriteKey: 'enemy_turtle',         tintColor: '#ffffff', visualScale: 1.5, radius: 32, goldValue: 90,  attackWindupMax: 0.5 },
+    { id: 'shrimp',   label: '锯齿剑虾',   tier: '地狱', maxHp: 2800, damage: 45, speed: 75, armor: 25, color: '#ff8844', glow: '#ffaa44', spriteKey: 'enemy_shrimp',         tintColor: '#ffffff', visualScale: 1.5, radius: 30, goldValue: 150, attackWindupMax: 0.45 },
+    { id: 'jelly',    label: '毒刺鬼水母', tier: '普通', maxHp: 1200, damage: 30, speed: 45, armor: 5,  color: '#cc66ff', glow: '#cc44ff', spriteKey: 'enemy_jelly',          tintColor: '#ffffff', visualScale: 1.4, radius: 28, goldValue: 90,  attackWindupMax: 0.5 },
+    { id: 'drone_a',  label: '攻击性无人机', tier: '普通', maxHp: 900,  damage: 24, speed: 90, armor: 10, color: '#ff5555', glow: '#ff3333', spriteKey: 'enemy_drone_attack', tintColor: '#ffffff', visualScale: 1.2, radius: 22, goldValue: 70,  attackWindupMax: 0.4 },
+    { id: 'drone_s',  label: '支援型无人机', tier: '史诗', maxHp: 1600, damage: 10, speed: 70, armor: 15, color: '#55ff88', glow: '#44ff88', spriteKey: 'enemy_drone_support', tintColor: '#ffffff', visualScale: 1.2, radius: 24, goldValue: 100, attackWindupMax: 0.4 },
     { id: 'chain_hound', label: '铆链猎犬·卡扣', tier: '普通', maxHp: 1250, damage: 22, speed: 92, armor: 8, color: '#522722', glow: '#ff4138', spriteKey: 'enemy_chain_hound', tintColor: '#ffffff', visualScale: 1.88, radius: 28, goldValue: 90, attackWindupMax: 0.40 },
     { id: 'prism_snail', label: '棱壳巡灯兽·澜镜', tier: '普通', maxHp: 1450, damage: 18, speed: 46, armor: 14, color: '#2f5961', glow: '#8eeaff', spriteKey: 'enemy_prism_snail', tintColor: '#ffffff', visualScale: 1.98, radius: 32, goldValue: 100, attackWindupMax: 0.55 },
     { id: 'triune_priest', label: '三相祭司·赫黎', tier: '史诗', maxHp: 2300, damage: 34, speed: 58, armor: 16, color: '#394654', glow: '#d8f7ff', spriteKey: 'enemy_triune_priest', tintColor: '#ffffff', visualScale: 1.72, radius: 30, goldValue: 145, attackWindupMax: 0.50 },

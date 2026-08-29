@@ -188,6 +188,55 @@ test('葬钟静默罩只暂停罩内Q/E冷却且Boss移速降低35%', () => {
     assert.equal(player._qCd, 3.5, '走出165px钟罩后立即恢复正常冷却逻辑');
 });
 
+test('葬钟按丧钟→回声→钟罩→丧钟→反震固定轮转且反震45%血以下解锁', () => {
+    const game = makeMockGame();
+    const player = makePlayer({ x: 700, y: 300 });
+    const e = new EnemyBase(); e.init('bell_devourer', 1, game); e.x = 300; e.y = 300;
+    e.hp = e.maxHp * 0.4;
+    const expected = ['bell_rings', 'bell_record', 'bell_silence', 'bell_rings', 'bell_counter'];
+    for (const state of expected) {
+        e.miniSkillState = ''; e._miniTimer = 0; e.attackWindup = 0;
+        e.update(0.01, player, game);
+        assert.equal(e.miniSkillState, state);
+    }
+    assert.equal(e.bellAbsorbHp, 300);
+    assert.equal(e.miniSkillTimer, 2);
+});
+
+test('吞音反震按吸收量释放1~3圈，停火仍只有一圈基础波', () => {
+    const game = makeMockGame();
+    const player = makePlayer({ x: 700, y: 300 });
+    const e = new EnemyBase(); e.init('bell_devourer', 1, game); e.x = 300; e.y = 300;
+    e.hp = e.maxHp * 0.4; e._miniSkillCount = 4; e._miniTimer = 0;
+    e.update(0.01, player, game);
+    e.takeDamage(120, player, game);
+    assert.equal(e.bellAbsorbHp, 180);
+    assert.equal(e.bellAbsorbed, 120);
+    e.update(2, player, game);
+    assert.equal(e.miniSkillState, 'bell_counter_release');
+    assert.equal(e.bellCounterWaves, 2, '120点吸收量应折算两圈');
+
+    const quiet = new EnemyBase(); quiet.init('bell_devourer', 1, game); quiet.x = 300; quiet.y = 300;
+    quiet.hp = quiet.maxHp * 0.4; quiet._miniSkillCount = 4; quiet._miniTimer = 0;
+    quiet.update(0.01, player, game);
+    quiet.update(2, player, game);
+    assert.equal(quiet.bellCounterWaves, 1, '完全停火只需躲一圈基础波');
+});
+
+test('打满300点吸音护盾会取消反震、眩晕1.8秒并额外掉15金币', () => {
+    const drops = [];
+    const game = makeMockGame({ economy: { spawnDrop(_x, _y, amount) { drops.push(amount); } } });
+    const player = makePlayer({ x: 700, y: 300 });
+    const e = new EnemyBase(); e.init('bell_devourer', 1, game); e.x = 300; e.y = 300;
+    e.hp = e.maxHp * 0.4; e._miniSkillCount = 4; e._miniTimer = 0;
+    e.update(0.01, player, game);
+    const dealt = e.takeDamage(300, player, game);
+    assert.equal(dealt, 0);
+    assert.equal(e.miniSkillState, '');
+    assert.equal(e.stunned, 1.8);
+    assert.deepEqual(drops, [15]);
+});
+
 test('锈齿扑兵锁定0.28秒扇形后只沿旧方向扑38px,命中伤害并推18px', () => {
     const impacts = [];
     const game = makeMockGame();

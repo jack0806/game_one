@@ -58,12 +58,24 @@ test('TEST_BOSSES含既有2只与设计文档3只大Boss', () => {
     assert.equal(abyss.label, '深海恐惧');
     assert.deepEqual([mech.maxHp, mech.damage, mech.speed, mech.armor], [5500, 66, 68, 20], 'mech取第二章档位');
     assert.deepEqual([abyss.maxHp, abyss.damage, abyss.speed, abyss.armor], [9000, 94, 74, 30], 'abyss取第三章档位');
-    assert.ok(mech.tintColor && abyss.tintColor, '测试Boss应有贴图染色');
-    assert.ok(mech.spriteKey && abyss.spriteKey, '测试Boss应复用现有贴图');
-    assert.equal(mech.spriteKey, 'enemy_boss_ch2', '机械高达使用高精机械材质族底层');
-    assert.equal(abyss.spriteKey, 'enemy_boss_ch4', '深海恐惧使用高精深渊材质族底层');
+    assert.equal(mech.tintColor, '#ffffff');
+    assert.equal(abyss.tintColor, '#ffffff');
+    assert.equal(mech.spriteKey, 'enemy_boss_mech', '机械高达使用专属机甲俯视立绘');
+    assert.equal(abyss.spriteKey, 'enemy_boss_abyss', '深海恐惧使用专属触腕俯视立绘');
     assert.notEqual(mech.spriteKey, 'enemy_boss', '机械高达不得继续暴露通用占位素体');
     assert.notEqual(abyss.spriteKey, 'enemy_boss', '深海恐惧不得继续暴露通用占位素体');
+});
+
+test('既有六只小Boss全部改用专属立绘且不靠染色换皮', () => {
+    const expected = {
+        squid: 'enemy_squid', turtle: 'enemy_turtle', shrimp: 'enemy_shrimp',
+        jelly: 'enemy_jelly', drone_a: 'enemy_drone_attack', drone_s: 'enemy_drone_support',
+    };
+    for (const [id, spriteKey] of Object.entries(expected)) {
+        const def = MINI_BOSSES.find(m => m.id === id);
+        assert.equal(def.spriteKey, spriteKey, id);
+        assert.equal(def.tintColor, '#ffffff', `${id} 不再靠统一贴图染色冒充`);
+    }
 });
 
 test('维斯帕/坩埚/万相严格使用文档数值与独立俯视贴图', () => {

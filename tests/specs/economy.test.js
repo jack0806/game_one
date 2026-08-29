@@ -82,3 +82,12 @@ test('reset()清空gold/parts/drops', () => {
     assert.equal(eco.parts, 0);
     assert.equal(eco.drops.length, 0);
 });
+
+test('clearDrops只清理测试场掉落且保留当前金币', () => {
+    const eco = new Economy();
+    eco.addGold(42);
+    eco.spawnDrop(300, 200, 8);
+    eco.clearDrops();
+    assert.equal(eco.gold, 42);
+    assert.equal(eco.drops.length, 0);
+});

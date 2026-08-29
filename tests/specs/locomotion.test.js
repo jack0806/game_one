@@ -115,9 +115,8 @@ test('所有普通怪、小Boss与正式/测试Boss都有明确的移动结构',
         const enemy = new EnemyBase();
         enemy.init(type, 1, game);
         assert.equal(enemy.locomotionKind, kind, `${type} 的步态结构`);
-        if (type.startsWith('drone_') || TEST_GRUNTS.some(m => m.id === type) ||
-            type === 'chain_hound' || type === 'prism_snail' || type === 'triune_priest' ||
-            type === 'rail_butcher' || type === 'bell_devourer') {
+        if (MINI_BOSSES.some(m => m.id === type) || TEST_GRUNTS.some(m => m.id === type) ||
+            type === 'elite_grunt' || type === 'archer' || type === 'miniboss') {
             assert.equal(enemy.directionalFrames, false, `${type} 当前使用完整俯视战斗姿态`);
             assert.equal(enemy.moveSpriteKey, enemy.spriteKey, `${type} 不请求不存在的动作资源`);
         } else {
@@ -137,7 +136,8 @@ test('所有普通怪、小Boss与正式/测试Boss都有明确的移动结构',
         const boss = new BossController();
         boss.initBossKind(def.kind, game);
         assert.equal(boss.locomotionKind, def.chapter <= 2 ? 'bossHeavy' : 'bossHover', def.label);
-        assert.equal(boss.moveSpriteKey, `${boss.spriteKey}_move`, `${def.label} 的动作帧`);
+        assert.equal(boss.directionalFrames, false, `${def.label} 使用完整俯视战斗姿态`);
+        assert.equal(boss.moveSpriteKey, boss.spriteKey, `${def.label} 不请求不存在的方向动作帧`);
     }
 
     assert.deepEqual(

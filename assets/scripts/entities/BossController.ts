@@ -90,9 +90,10 @@ export class BossController extends EnemyBase {
         this.visualScale = def.visualScale;
         this.attackWindupMax = def.attackWindupMax;
         this.locomotionKind = def.chapter <= 2 ? 'bossHeavy' : 'bossHover';
-        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.moveSpriteKey = this.spriteKey;
         this.locomotionFrameKey = '';
-        this.directionalFrames = ['vespa', 'crucible_city', 'manyfold'].indexOf(kind) < 0;
+        // 测试房 Boss 都是完整俯视单帧；动作由距离步态、惯性和出手姿态驱动。
+        this.directionalFrames = false;
         this.docSkillIndex = 0; this.docSkillTimer = 2.4; this.docBasicTimer = 1.8;
         this.docSkillName = ''; this._docFinalUsed = false;
     }
@@ -140,6 +141,7 @@ export class BossController extends EnemyBase {
         if (!this.alive) return;
         this._animTime += dt;
         this.flashTimer = Math.max(0, this.flashTimer - dt);
+        this.actionRecoil = Math.max(0, this.actionRecoil - dt);
         this._contactCd = Math.max(0, this._contactCd - dt);
 
         // DoT（对齐 hexblast-py entities/boss.py update()：DoT把血打空时也要触发死亡，
@@ -245,6 +247,7 @@ export class BossController extends EnemyBase {
                 game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.radius + player.radius, 1.8);
                 game.particles?.impact(player.x, player.y, angle, 0.7, this.glowColor);
                 player.takeDamage(this.damage * this.buffDmgMult, game);
+                this.actionRecoil = 0.28;
             }
         } else if (!airborne && Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
             this._contactCd = 0.65;
@@ -286,6 +289,7 @@ export class BossController extends EnemyBase {
         if (this.docBasicTimer <= 0 && !game.docBossSkillBusy?.(this)) {
             this.docBasicTimer = this.bossKind === 'crucible_city' ? 2.1 : this.bossKind === 'manyfold' ? 2.0 : 1.55;
             game.startDocBossBasic?.(this.bossKind, this, player);
+            this.actionRecoil = 0.24;
         }
         this.docSkillTimer -= dt;
         if (this.docSkillTimer > 0 || game.docBossSkillBusy?.(this)) return;
@@ -312,6 +316,7 @@ export class BossController extends EnemyBase {
         this.docSkillName = names[this.bossKind!][skill];
         game.floatingText?.spawn?.(this.x, this.y - 100, this.docSkillName, this.glowColor, 18, true);
         game.startDocBossSkill?.(this.bossKind, skill, this, player);
+        this.actionRecoil = 0.34;
         const next = (pool.indexOf(skill) + 1) % pool.length;
         this.docSkillIndex = pool[next];
         const pace = this.phase === 3 ? 0.85 : 1;
@@ -321,6 +326,7 @@ export class BossController extends EnemyBase {
     private _useSkill(player: any, game: any): void {
         // 正式章节按 chapter 分支；测试房间专属 Boss 按 bossKind 分支
         const kind = this.bossKind ?? `ch${this.chapter}`;
+        this.actionRecoil = 0.30;
         switch (kind) {
             case 'ch1': // 废土：毒液 DOT 圆
                 game.particles?.explode(this.x, this.y, '#44ff00', 100);

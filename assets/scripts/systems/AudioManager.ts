@@ -38,7 +38,9 @@ const SFX_VOLUME: Partial<Record<SfxCue, number>> = {
 const SFX_COOLDOWN_MS: Partial<Record<SfxCue, number>> = {
     shoot: 55, hit: 65, enemy_die: 75, explode: 130,
     player_hurt: 120, gold: 45, lightning: 100, heal: 180,
-    hex_activate: 150,
+    skill_q: 180, skill_e: 180, skill_r: 260, freeze: 180,
+    boss_roar: 400, player_die: 400, levelup: 250, augment_pick: 180,
+    buy: 120, button: 90, hex_activate: 150,
 };
 
 /** 高优先级战斗信息触发短时 BGM 让位；gain 越小压低越明显。 */
@@ -53,6 +55,9 @@ const BGM_DUCK: Partial<Record<SfxCue, { gain: number; hold: number }>> = {
 export class AudioManager {
     private _bgmSource?: AudioSource;
     private _sfxSource?: AudioSource;
+    /** 独立短音通道池：避免 WebAudio playOneShot 每次重建 buffer cache 并刷屏告警。 */
+    private _sfxChannels: AudioSource[] = [];
+    private _sfxCursor = 0;
     private _bgmCache = new Map<string, AudioClip>();
     private _sfxCache = new Map<string, AudioClip>();
     /** 合并同一资源尚未完成的并发请求，避免高攻速首轮播放时重复解码。 */
@@ -84,11 +89,15 @@ export class AudioManager {
         this._bgmSource.loop = true;
         this._bgmSource.volume = this.bgmVolume;
 
-        const sfxNode = new Node('SfxAudio');
-        sfxNode.setParent(parent);
-        this._sfxSource = sfxNode.addComponent(AudioSource);
-        this._sfxSource.loop = false;
-        this._sfxSource.volume = 1;
+        for (let i = 0; i < 8; i++) {
+            const sfxNode = new Node(`SfxAudio${i}`);
+            sfxNode.setParent(parent);
+            const source = sfxNode.addComponent(AudioSource);
+            source.loop = false;
+            source.volume = 1;
+            this._sfxChannels.push(source);
+        }
+        this._sfxSource = this._sfxChannels[0];
 
         this.preloadAll();
     }
@@ -192,7 +201,7 @@ export class AudioManager {
         const asset = SFX_ASSET[cue];
         const cached = this._sfxCache.get(asset);
         if (cached) {
-            this._sfxSource.playOneShot(cached, Math.max(0, Math.min(1, volume * this.sfxVolume)));
+            this._playSfxClip(cached, volume);
             return true;
         }
         if (this._pendingSfx.has(asset)) return false;
@@ -200,7 +209,7 @@ export class AudioManager {
         this._load('sfx', asset, (clip) => {
             this._pendingSfx.delete(asset);
             if (!clip || this.muted || !this._sfxSource) return;
-            this._sfxSource.playOneShot(clip, Math.max(0, Math.min(1, volume * this.sfxVolume)));
+            this._playSfxClip(clip, volume);
         });
         return true;
     }
@@ -209,6 +218,7 @@ export class AudioManager {
         this.muted = muted;
         if (muted) {
             this._bgmSource?.stop();
+            for (const source of this._sfxChannels) source.stop();
             this._playingBgm = undefined;
             this._pendingBgm = undefined;
             this._bgmFade = 'steady';
@@ -241,6 +251,20 @@ export class AudioManager {
         if (!profile) return;
         this._duckTarget = Math.min(this._duckTarget, profile.gain);
         this._duckHold = Math.max(this._duckHold, profile.hold);
+    }
+
+    private _playSfxClip(clip: AudioClip, volume: number): void {
+        if (this._sfxChannels.length <= 0) return;
+        let source = this._sfxChannels.find(channel => !channel.playing);
+        if (!source) {
+            source = this._sfxChannels[this._sfxCursor % this._sfxChannels.length];
+            this._sfxCursor++;
+            source.stop();
+        }
+        source.clip = clip;
+        source.loop = false;
+        source.volume = Math.max(0, Math.min(1, volume * this.sfxVolume));
+        source.play();
     }
 
     private _load(kind: 'bgm' | 'sfx', asset: string, cb: (clip: AudioClip | null) => void): void {

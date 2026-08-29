@@ -11,6 +11,7 @@ const gameSource = fs.readFileSync(path.join(root, 'assets/scripts/core/GameMana
 const playerSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/PlayerController.ts'), 'utf8');
 const enemySource = fs.readFileSync(path.join(root, 'assets/scripts/entities/EnemyBase.ts'), 'utf8');
 const bossSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
+const particleSource = fs.readFileSync(path.join(root, 'assets/scripts/systems/ParticleManager.ts'), 'utf8');
 const hudSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/HUD.ts'), 'utf8');
 const shopSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ShopUI.ts'), 'utf8');
 const statsSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/StatsPanel.ts'), 'utf8');
@@ -333,7 +334,7 @@ test('英雄朝移动输入转身，敌人按行为状态选择合理朝向', ()
     assert.doesNotMatch(gameSource, /const facing = walkPose\.directionX < -0\.025/);
     assert.match(playerSource, /preloadArt\(directionalArtKeys\(this\.spriteKey\)\)/);
     assert.match(gameSource, /enemy\.directionalFrames === false[\s\S]*\[enemy\.spriteKey\][\s\S]*directionalArtKeys\(enemy\.spriteKey\)/);
-    assert.match(enemySource, /const usesSingleTopdownSprite = type === 'drone_a' \|\| type === 'drone_s'/);
+    assert.match(enemySource, /const usesSingleTopdownSprite = true/);
     assert.match(enemySource, /this\.directionalFrames = !usesSingleTopdownSprite/);
     assert.match(bossSource, /if \(this\.isCharging\)[\s\S]*this\._chargeVx, this\._chargeVy/);
     assert.match(bossSource, /const standDistance = Math\.max\(1, contactDistance - 2\)/);
@@ -341,16 +342,22 @@ test('英雄朝移动输入转身，敌人按行为状态选择合理朝向', ()
     assert.match(bossSource, /bossHover/);
 });
 
-test('八个旧素材单位叠加独立程序轮廓并随主体移动转向显隐', () => {
-    assert.match(gameSource, /private _attachLegacyCombatSilhouette/);
-    for (const kind of ['miniboss', 'squid', 'shrimp', 'jelly', 'drone_a', 'drone_s', 'boss_mech', 'boss_abyss']) {
-        assert.match(gameSource, new RegExp(`kind === '${kind}'|['\"]${kind}['\"]`), kind);
-    }
-    assert.match(gameSource, /accent\.setParent\(host\)/);
-    assert.match(gameSource, /enemy\.accentNode = accent/);
-    assert.match(gameSource, /this\._attachLegacyCombatSilhouette\(enemy, eNode, diameter\)/);
-    assert.match(gameSource, /if \(e\.accentNode\) e\.accentNode\.active = !hidden/);
-    assert.match(enemySource, /accentNode\?: Node/);
+test('专属敌人彻底移除旧程序线框附件', () => {
+    assert.doesNotMatch(gameSource, /_attachLegacyCombatSilhouette|CombatSilhouette|legacy_art_fallback/);
+    assert.doesNotMatch(enemySource, /accentNode/);
+});
+
+test('敌方技能使用材质资源池覆盖弹体、陷阱、近战与钟波', () => {
+    for (const key of [
+        'fx_enemy_needle', 'fx_enemy_frost', 'fx_enemy_toxic', 'fx_enemy_water_bomb',
+        'fx_enemy_saw', 'fx_enemy_void_blade', 'fx_enemy_bell_wave', 'fx_enemy_ember_brand',
+        'fx_enemy_claw_slash', 'fx_enemy_web', 'fx_enemy_arc', 'fx_enemy_rail',
+    ]) assert.match(gameSource + enemySource + particleSource, new RegExp(key), key);
+    assert.match(gameSource, /new SpriteNodePool\(this\._particleLayer, 220, 'EnemyArt'/);
+    assert.match(gameSource, /this\._enemyArtPool\.releaseAll\(\)/);
+    assert.match(gameSource, /ENEMY_PROJECTILE_ART\[b\.enemyFx\]/);
+    assert.match(enemySource, /actionRecoil/);
+    assert.match(bossSource, /actionRecoil/);
 });
 
 test('高密金币降低远距亮度并在玩家附近恢复全亮', () => {

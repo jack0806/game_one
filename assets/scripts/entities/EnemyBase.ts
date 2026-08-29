@@ -30,7 +30,6 @@ export class EnemyBase {
     /** 美术资源key（走 ArtRemap.artPath() 解析真实文件名），按敌人类型在 _applyTypeDef() 里设置。 */
     spriteKey   = 'enemy_grunt';
     /** 旧素材单位的程序化轮廓附件；随主体节点移动、转向、步态与显隐同步。 */
-    accentNode?: Node;
     /** 与静止帧成对的真实动作帧。 */
     moveSpriteKey = 'enemy_grunt_move';
     /** 无完整方向帧的俯视单位（无人机）仅使用悬浮位移，不请求不存在的资源。 */
@@ -85,6 +84,8 @@ export class EnemyBase {
     attackTargetX   = 0;
     attackTargetY   = 0;
     private _atkCd = 0;
+    /** 近战命中/远程开火后的纯视觉后坐计时，由渲染层转成回拉与回正。 */
+    actionRecoil = 0;
 
     /** 混沌节拍变异（chaos_beat）：由 WaveManager 定时随机施加的临时增益，到期自动回落到1。 */
     buffSpeedMult = 1;
@@ -137,6 +138,10 @@ export class EnemyBase {
     miniSkillHits = 0;
     miniSkillPhase = 0;
     miniPoints: { x: number; y: number }[] = [];
+    /** 葬钟吞噬者“吞音反震”的公开护盾/蓄能数据，供伤害逻辑与渲染共用。 */
+    bellAbsorbHp = 0;
+    bellAbsorbed = 0;
+    bellCounterWaves = 0;
 
     /** 变异：混沌节拍 — WaveManager 每5秒对随机一批敌人调用此方法施加临时增益。 */
     applyChaosBuff(mult: number, duration: number): void {
@@ -151,7 +156,7 @@ export class EnemyBase {
         const scale  = 1 + (wave - 1) * 0.08;
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
-        this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0;
+        this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0; this.actionRecoil = 0;
         this.rangedAimWindup = 0; this.rangedAimTargetX = 0; this.rangedAimTargetY = 0;
         this._rangedBurstLeft = 0; this._rangedBurstCd = 0;
         this.combatFacingX = 1; this.combatFacingY = 0; this.frontGuardBroken = 0;
@@ -161,6 +166,7 @@ export class EnemyBase {
         this.miniSkillState = ''; this.miniSkillTimer = 0; this.miniSkillMax = 0;
         this.miniSkillAngle = 0; this.miniSkillHit = false; this.miniSkillHits = 0;
         this.miniSkillPhase = 0; this.miniPoints = [];
+        this.bellAbsorbHp = 0; this.bellAbsorbed = 0; this.bellCounterWaves = 0;
         this.directionalFrames = true;
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
@@ -263,9 +269,7 @@ export class EnemyBase {
                 chain_hound: 'quadruped', prism_snail: 'heavy',
                 triune_priest: 'hover', rail_butcher: 'heavy', bell_devourer: 'hover',
             } as Record<string, LocomotionKind>)[type] ?? 'biped';
-            const usesSingleTopdownSprite = type === 'drone_a' || type === 'drone_s' ||
-                type === 'chain_hound' || type === 'prism_snail' || type === 'triune_priest' ||
-                type === 'rail_butcher' || type === 'bell_devourer';
+            const usesSingleTopdownSprite = true;
             this.directionalFrames = !usesSingleTopdownSprite;
             this.moveSpriteKey = usesSingleTopdownSprite ? this.spriteKey : `${this.spriteKey}_move`;
             this.locomotionFrameKey = '';
@@ -305,8 +309,8 @@ export class EnemyBase {
                 this.maxHp = Math.floor(200 * scale); this.speed = 75; this.damage = 18; this.radius = 22;
                 this.goldValue = 30; this.label = '精英'; this.attackWindupMax = 0.30;
                 this.visualScale = 1.25;
-                // 没有独立精英美术，复用grunt贴图+粉紫色调区分。
-                this.spriteKey = 'enemy_grunt'; this.tintColor = '#ff88ff'; break;
+                this.spriteKey = 'enemy_elite'; this.tintColor = '#ffffff';
+                this.directionalFrames = false; break;
             case 'archer':
                 this.color = '#88ff44'; this.glowColor = '#44cc00';
                 this.maxHp = Math.floor(70 * scale); this.speed = 60; this.damage = 12; this.radius = 18;
@@ -315,16 +319,16 @@ export class EnemyBase {
                 this.rangedRange = 460; this.rangedKeepDist = 300;
                 this._rangedCd = Rng.float(0.8, 1.6);
                 this.visualScale = 1.20;
-                // 无独立美术：复用grunt贴图+绿色调区分（与elite/miniboss同套路）。
-                this.spriteKey = 'enemy_grunt'; this.tintColor = '#7dff5f'; break;
+                this.spriteKey = 'enemy_archer'; this.tintColor = '#ffffff';
+                this.directionalFrames = false; break;
             case 'miniboss':
                 this.isMiniBoss = true;
                 this.color = '#aa44ff'; this.glowColor = '#6600cc';
                 this.maxHp = Math.floor(800 * scale); this.speed = 55; this.damage = 25; this.radius = 30;
                 this.goldValue = 60; this.label = '暗影猎手'; this.attackWindupMax = 0.46;
                 this.visualScale = 1.60;
-                // 底层暂复用boss位图；渲染层叠加披风、双镰和单眼轮廓。
-                this.spriteKey = 'enemy_boss'; this.tintColor = '#cc88ff'; break;
+                this.spriteKey = 'enemy_shadow_hunter'; this.tintColor = '#ffffff';
+                this.directionalFrames = false; break;
         }
         this.hp = this.maxHp;
         // 步态映射（只影响渲染，与数值/碰撞无关）
@@ -333,7 +337,7 @@ export class EnemyBase {
             elite_grunt: 'biped', archer: 'biped', miniboss: 'quadruped',
         };
         this.locomotionKind = GAIT[type] ?? this.locomotionKind;
-        this.moveSpriteKey = `${this.spriteKey}_move`;
+        this.moveSpriteKey = this.directionalFrames ? `${this.spriteKey}_move` : this.spriteKey;
         this.locomotionFrameKey = '';
     }
 
@@ -351,6 +355,30 @@ export class EnemyBase {
     /** 返回实际扣血量（护盾吸收/护甲减免后），供攻击吸血按真实伤害结算。 */
     takeDamage(rawDmg: number, attacker: any, game: any): number {
         if (!this.alive || this.invulnerable) return 0;
+        // 吞音反震先吸收玩家火力。打满300点会破钟、返还15金币并取消全部反震；
+        // 未打满的吸收量只决定两秒后波数，不让吸收护盾偷偷吃到护甲减免。
+        if (this.type === 'bell_devourer' && this.miniSkillState === 'bell_counter' && this.bellAbsorbHp > 0) {
+            const absorbed = Math.min(this.bellAbsorbHp, rawDmg);
+            this.bellAbsorbHp -= absorbed;
+            this.bellAbsorbed += absorbed;
+            rawDmg -= absorbed;
+            game.particles?.shieldBlock?.(this.x, this.y, this.bellAbsorbHp <= 0);
+            if (this.bellAbsorbHp <= 0) {
+                this.miniSkillState = '';
+                this.bellCounterWaves = 0;
+                this.stunned = Math.max(this.stunned, 1.8);
+                this._miniTimer = 15;
+                game.economy?.spawnDrop?.(this.x, this.y, 15);
+                game.floatingText?.spawn?.(this.x, this.y - 58, '破钟！反震取消 +15', '#fff0a6', 17, true);
+                game.particles?.spawnSpriteFx?.(this.x, this.y, 'fx_enemy_bell_wave', 0.55, 1.9, undefined, {
+                    motion: 'burst', baseAlpha: 0.9,
+                });
+            }
+            if (rawDmg <= 0) {
+                this.flashTimer = Math.max(this.flashTimer, 0.09);
+                return 0;
+            }
+        }
         // 铆甲兽正前方120°承伤-45%；撞墙破甲窗口内完全失效，侧后方也不减伤。
         if (this.type === 'rivet_beast' && this.frontGuardBroken <= 0 && attacker) {
             const [ax, ay] = Vec.normalize(attacker.x - this.x, attacker.y - this.y);
@@ -375,6 +403,9 @@ export class EnemyBase {
             // 击杀会提前引爆而非删掉实体；0.45秒预警完整保留，击退仍可改爆点。
             this.hp = 1; this.invulnerable = true;
             this.blastCountdown = 0.45; this.blastCountdownMax = 0.45;
+            game.particles?.spawnSpriteFx?.(this.x, this.y, 'fx_enemy_ember_brand', 0.45, 1.4, undefined, {
+                follow: this, motion: 'aura', baseAlpha: 0.9,
+            });
             game.floatingText?.spawn?.(this.x, this.y - 28, '提前引爆！', '#ff9b46', 14, true);
         }
         this.flashTimer = Math.min(0.22, 0.07 + (dmg / this.maxHp) * 0.9);
@@ -464,6 +495,7 @@ export class EnemyBase {
     update(dt: number, player: any, game: any): void {
         if (!this.alive) return;
         this.flashTimer = Math.max(0, this.flashTimer - dt);
+        this.actionRecoil = Math.max(0, this.actionRecoil - dt);
         if (this._atkCd > 0) this._atkCd -= dt;
         if (this.frontGuardBroken > 0) this.frontGuardBroken = Math.max(0, this.frontGuardBroken - dt);
         if (this.scavengerHitBoost > 0) this.scavengerHitBoost = Math.max(0, this.scavengerHitBoost - dt);
@@ -568,6 +600,7 @@ export class EnemyBase {
             if (this.attackWindup <= 0 && player.alive) {
                 const atkDist = this.radius + (player.radius ?? 16) + this.meleeRange;
                 const dist = Math.hypot(player.x - this.x, player.y - this.y);
+                this.actionRecoil = this.isMiniBoss ? 0.24 : 0.17;
                 if (this.type === 'rust_biter') {
                     // 锁定前摇时记录的方向，不在扑击瞬间重新追踪玩家。
                     const [lx, ly] = Vec.normalize(this.attackTargetX - this.x, this.attackTargetY - this.y);
@@ -696,6 +729,7 @@ export class EnemyBase {
                         color: '#fff06a', life: 3, lifeTime: 3,
                         owner: 'enemy', isEnemyBullet: true, enemyFx: 'needle',
                     });
+                    this.actionRecoil = 0.13;
                     this._rangedBurstLeft--;
                     this._rangedBurstCd = 0.12;
                     if (this._rangedBurstLeft <= 0) this._rangedCd = 1.65;
@@ -714,6 +748,7 @@ export class EnemyBase {
                             enemyFx: 'frost', slow: { mult: 0.75, dur: 1.6 },
                         });
                     }
+                    this.actionRecoil = 0.18;
                     this._rangedCd = 2.6;
                 }
             } else if (this._rangedCd > 0) {
@@ -734,10 +769,12 @@ export class EnemyBase {
                 const ty = clamp(player.y + (player.facingY ?? 0) * 45, 52, PLAYFIELD_BOTTOM - 52);
                 game.spawnEnemyAcidHazard?.(this.x, this.y, tx, ty);
                 game.particles?.toxin?.(this.x, this.y);
+                this.actionRecoil = 0.20;
                 this._rangedCd = 2.2;
             } else if (this.type === 'ember_acolyte' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
                 game.spawnEnemyEmberHazard?.(player.x, player.y);
                 game.particles?.ignite?.(this.x, this.y);
+                this.actionRecoil = 0.22;
                 this._rangedCd = 2.4;
             } else if (this.type === 'frost_acolyte' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
                 const a = Math.atan2(player.y - this.y, player.x - this.x);
@@ -752,6 +789,7 @@ export class EnemyBase {
                     damage: this.damage * this.buffDmgMult, radius: 8, color: '#7df4ff',
                     life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'arc',
                 });
+                this.actionRecoil = 0.16;
                 this._rangedCd = 2.0;
             } else if (player.alive && dist <= this.rangedRange && this.frozen <= 0) {
                 const a = Math.atan2(player.y - this.y, player.x - this.x);
@@ -762,6 +800,7 @@ export class EnemyBase {
                     color: '#baff5c', life: 3, lifeTime: 3,
                     owner: 'enemy', isEnemyBullet: true, enemyFx: 'toxin_dart',
                 });
+                this.actionRecoil = 0.16;
                 this._rangedCd = 2.2;
             }
         }
@@ -775,6 +814,9 @@ export class EnemyBase {
             this.blastCountdown = 0.80;
             this.blastCountdownMax = 0.80;
             this.combatFacingX = dx; this.combatFacingY = dy;
+            game.particles?.spawnSpriteFx?.(this.x, this.y, 'fx_enemy_ember_brand', 0.8, 1.25, undefined, {
+                follow: this, motion: 'aura', baseAlpha: 0.8,
+            });
             return;
         }
 
@@ -1016,7 +1058,7 @@ export class EnemyBase {
         this._miniSkillCount++;
     }
 
-    /** 葬钟吞噬者（地狱）：声圈、旧轨迹回放与可走出的静默钟罩。 */
+    /** 葬钟吞噬者（地狱）：声圈、旧轨迹回放、静默钟罩与可反制的吞音反震。 */
     private _miniBossBellDevourer(dt: number, player: any, game: any): void {
         this._miniTimer -= dt;
         if (!player.alive) return;
@@ -1079,9 +1121,52 @@ export class EnemyBase {
             if (this.miniSkillTimer <= 0) { this.miniSkillState = ''; this.buffSpeedMult = 1; }
             return;
         }
+        if (this.miniSkillState === 'bell_counter') {
+            this.miniSkillTimer -= dt;
+            if (this.miniSkillTimer <= 0) {
+                // 停火仍有一圈基础波；每吸收满100点再增加一圈，最多三圈。
+                this.bellCounterWaves = Math.max(1, Math.min(3, Math.ceil(this.bellAbsorbed / 100)));
+                this.miniSkillState = 'bell_counter_release';
+                this.miniSkillTimer = this.bellCounterWaves * 0.34 + 0.46;
+                this.miniSkillMax = this.miniSkillTimer;
+                this.miniSkillPhase = -1;
+                this.miniSkillHit = false;
+                this.bellAbsorbHp = 0;
+                game.floatingText?.spawn?.(this.x, this.y - 58, `反震 ×${this.bellCounterWaves}`, '#fff0a6', 16, true);
+            }
+            return;
+        }
+        if (this.miniSkillState === 'bell_counter_release') {
+            this.miniSkillTimer -= dt;
+            const elapsed = this.miniSkillMax - Math.max(0, this.miniSkillTimer);
+            const phase = Math.floor(elapsed / 0.34);
+            if (phase !== this.miniSkillPhase) {
+                this.miniSkillPhase = phase;
+                this.miniSkillHit = false;
+            }
+            if (phase >= 0 && phase < this.bellCounterWaves) {
+                const ringR = (elapsed - phase * 0.34) * 390;
+                const dist = Vec.dist(this.x, this.y, player.x, player.y);
+                if (!this.miniSkillHit && Math.abs(dist - ringR) <= 16 + (player.radius ?? 16)) {
+                    this.miniSkillHit = true;
+                    player.takeDamage(20, game, { ignoreIframe: game?.state === 'testRoom' });
+                    game.particles?.impact?.(player.x, player.y, Math.atan2(player.y - this.y, player.x - this.x), 0.8, '#fff0a6');
+                }
+            }
+            if (this.miniSkillTimer <= 0) {
+                this.miniSkillState = '';
+                this.bellCounterWaves = 0;
+                this.bellAbsorbed = 0;
+            }
+            return;
+        }
         if (this._miniTimer > 0 || this.attackWindup > 0) return;
 
-        const phase = this._miniSkillCount % 3;
+        // 固定教学循环：丧钟 → 回声 → 钟罩 → 丧钟 → 反震。
+        // 反震在45%血量前尚未解锁时回落为丧钟，仍保持其他技能次序稳定。
+        const sequence = [0, 1, 2, 0, 3];
+        let phase = sequence[this._miniSkillCount % sequence.length];
+        if (phase === 3 && this.hp / this.maxHp > 0.45) phase = 0;
         if (phase === 0) {
             this.miniSkillState = 'bell_rings'; this.miniSkillTimer = 2.3; this.miniSkillMax = 2.3;
             this.miniSkillPhase = 0; this.miniSkillHits = 0; this.miniSkillHit = false; this._miniTimer = 6;
@@ -1090,9 +1175,14 @@ export class EnemyBase {
             this.miniSkillState = 'bell_record'; this.miniSkillTimer = 2.5; this.miniSkillMax = 2.5;
             this.miniPoints = [{ x: player.x, y: player.y }]; this._miniTimer = 9;
             game.floatingText?.spawn?.(this.x, this.y - 58, '迟到的回声', '#bd73ff', 16, true);
-        } else {
+        } else if (phase === 2) {
             this.miniSkillState = 'bell_silence'; this.miniSkillTimer = 4; this.miniSkillMax = 4; this._miniTimer = 12;
             game.floatingText?.spawn?.(this.x, this.y - 58, '静默钟罩', '#f5e6a8', 16, true);
+        } else {
+            this.miniSkillState = 'bell_counter'; this.miniSkillTimer = 2; this.miniSkillMax = 2;
+            this.bellAbsorbHp = 300; this.bellAbsorbed = 0; this.bellCounterWaves = 0;
+            this._miniTimer = 15;
+            game.floatingText?.spawn?.(this.x, this.y - 58, '吞音反震：停火或破钟', '#fff0a6', 16, true);
         }
         this._miniSkillCount++;
         game.particles?.hexActivate?.(this.x, this.y, phase === 1 ? '#bd73ff' : '#fff0a6');

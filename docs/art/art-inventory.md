@@ -1,6 +1,6 @@
 # 现有美术资源清单（assets/resources/art/）
 
-共 131 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 与 `visualmanifest.test.js` 自检通过）。
+共 174 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 与 `visualmanifest.test.js` 自检通过）。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。
 
@@ -66,19 +66,19 @@
 
 ## 4. 角色子弹（6 张）
 
-玩家、分身和薇薇安炮台的子弹贴图，按 `bullet_<id>` 加载（`BulletController.spawn`）；敌方子弹仍使用按危险类型区分的程序轮廓。六张素材统一为 256×128 真透明横向弹体，枪口朝右：运行时保持 2:1 以上显示比例、使用素材原色并随速度方向旋转。六名角色分别是轨道枪栓、微型导弹、冲击斧刃、时空针、混沌长矛与冰晶狙击弹，不再使用各向同性圆球。
+玩家、分身和薇薇安炮台的子弹贴图，按 `bullet_<id>` 加载（`BulletController.spawn`）。敌方子弹由危险判定轮廓和 `fx_enemy_*` 材质图叠加：轮廓只负责碰撞边界、阵营色和方向判读，技能本体不再是圆、矩形或长线。六张玩家素材统一为 256×128 真透明横向弹体，枪口朝右：运行时保持 2:1 以上显示比例、使用素材原色并随速度方向旋转。六名角色分别是轨道枪栓、微型导弹、冲击斧刃、时空针、混沌长矛与冰晶狙击弹，不再使用各向同性圆球。
 
 `bullet_kai` / `bullet_vivian` / `bullet_reik` / `bullet_olia` / `bullet_graf` / `bullet_liana`
 
-## 5. 敌人（60 张，9 个美术族 × 3 个方向 × 2 个步态帧，含复用类型）
+## 5. 敌人（82 张：54 张方向步态帧 + 28 张独立俯视资源）
 
-正方形 CUSTOM 显示，显示直径=碰撞半径×2×视觉缩放（普通怪约 44–62px，Boss 180px）。五个基础怪待机帧已统一为 512×512 透明画布并与动作帧对齐，避免旧非正方形源图被节点强行拉伸；精英怪仍复用 grunt 图染粉紫，miniboss 继续使用浅色 `enemy_boss` 素体。四章正式 Boss 使用独立原色贴图，不再用一张白模染四种颜色。
+正方形 CUSTOM 显示，显示直径=碰撞半径×2×视觉缩放（普通怪约 44–62px，Boss 180px）。grunt、shield、exploder、golem、旧通用 boss 与四章正式 Boss 共 9 个美术族保留三方向双帧矩阵。精英、射手、暗影猎手、旧六类小 Boss、测试房机械/深渊 Boss 已全部换成独立原色俯视资源；连锁猎犬、棱镜蜗牛、三相祭司、磁轨屠夫、群钟吞噬者、胡蜂之巢、熔炉之城、多相集合等原有专属图继续使用。运行时不再给专属资源强行套旧白模线条附件。
 
 移动表现由 `core/Locomotion.ts` 按实际位移驱动静止帧/`_move` 帧切换：grunt/精英/毒射手蹒跚前冲，shield 盾墙重步，exploder 六足爬行，golem 石像重踏，miniboss 四足斜跨；第1章 Boss 肉山重踏，第2章机械活塞步，第3章晶体尾流推进，第4章触手牵引。每个美术族另有 `_side` / `_side_move` / `_back` / `_back_move`。普通怪正对英雄，射手后撤时仍盯住英雄，攻击前摇朝锁定点；Boss 普通接近在接触距离稳定停步，冲锋时沿真实速度转向。Boss 使用专用低频大轮廓步态，避免冲锋时高频硬切造成闪烁。步态和朝向不修改碰撞半径或基础移动速度，静止时不会原地踏步。
 
 | 文件名（key） | 敌人类型 | 引用位置 |
 |---|---|---|
-| `enemy_grunt` | 腐肉行者（杂兵主力，精英染色复用） | `EnemyBase.ts:83` |
+| `enemy_grunt` | 腐肉行者（杂兵主力） | `EnemyBase.ts` |
 | `enemy_shield` | 护盾兵 | `EnemyBase.ts:88` |
 | `enemy_exploder` | 自爆怪 | `EnemyBase.ts:94` |
 | `enemy_golem` | 石像鬼（重甲坦克） | `EnemyBase.ts:100` |
@@ -87,6 +87,11 @@
 | `enemy_boss_ch2` | 第2章钢铁之王·熔炉（熔炉重装） | 同上 |
 | `enemy_boss_ch3` | 第3章海克斯异变体·无限核（悬浮晶核） | 同上 |
 | `enemy_boss_ch4` | 第4章混沌深渊·终焉之门（深渊门环） | 同上 |
+| `enemy_boss_mech` / `enemy_boss_abyss` | 测试房机械巨像 / 深渊首领 | `BossDB.ts` |
+| `enemy_squid` / `enemy_turtle` / `enemy_shrimp` / `enemy_jelly` | 旧资料小 Boss 四种生物体 | `BossDB.ts`、`EnemyBase.ts` |
+| `enemy_drone_attack` / `enemy_drone_support` | 攻击 / 支援无人机 | 同上 |
+| `enemy_elite` / `enemy_archer` / `enemy_shadow_hunter` | 精英腐肉、针刺射手、暗影猎手 | `EnemyBase.ts` |
+| 其余 `enemy_*` 独立资源 | 第五章文档敌人、资料 Boss 与特殊杂兵 | `EnemyBase.ts`、`BossDB.ts` |
 
 规格参考：抠图后约 512×500（白/银素体，透明背景）。
 
@@ -96,7 +101,7 @@
 |---|---|
 | `ui_gold_coin` | 透明六边形厚边金币；战斗中以 25–34px 翻面/悬浮显示 |
 
-## 7. 特效 FX（5 张）
+## 7. 特效 FX（20 张）
 
 一次性播放的特效贴图，由 `ParticleManager` 驱动、`GameManager.ts` 渲染（三段式弹出/膨胀/淡出动画）。
 **2026-08-20 已全部重新生成**为俯视战斗一次性 VFX：512×512 RGBA、四角 Alpha=0，治疗/毒素分色，爆炸/寒冰强调方向冲击，六角环使用双层错位能量结构。`tests/specs/visualmanifest.test.js` 会阻止黑底或尺寸错误资源重新入库。
@@ -108,6 +113,23 @@
 | `fx_poison` | 中毒 |
 | `fx_heal` | 治疗 |
 | `fx_cold_arrow` | 寒冰箭 |
+| `fx_reik_cleave` / `fx_reik_death_will` / `fx_reik_warcry` | 雷克劈砍、死战、战吼 |
+| `fx_enemy_needle` | 针刺、剑虾尖刺与高速实体弹 |
+| `fx_enemy_frost` | 冰流、水刺的冰蓝晶体材质 |
+| `fx_enemy_toxic` | 毒镖、毒球、酸囊与毒池材质 |
+| `fx_enemy_water_bomb` | 深水炸弹与海洋能量弹 |
+| `fx_enemy_saw` | 齿轮、锯刃与机械危险物 |
+| `fx_enemy_void_blade` | 混沌刃、虚空弹与深渊攻击 |
+| `fx_enemy_bell_wave` | 声波、钟罩吸收与反震波 |
+| `fx_enemy_ember_brand` | 熔火印记、自爆倒计时与火池 |
+| `fx_enemy_claw_slash` | 近战爪击、冲撞命中与重劈 |
+| `fx_enemy_web` | 蛛网、减速区与束缚材质 |
+| `fx_enemy_arc` | 电弧、追踪电荷与能量束 |
+| `fx_enemy_rail` | 磁轨弹、激光束与高能直线攻击 |
+
+> ✅ 2026-08-29 敌方视觉专项：新增 11 张独立敌人本体和 12 张敌方技能材质。
+> 实机逐一回归 16 种小兵、11 种小 Boss、9 种首领及其全部攻击阶段；危险判定几何仍保留低透明度边界，
+> 但所有关键弹体、近战、陷阱、护盾和反震都由材质图表达。160 枚同屏压力场景下仍能按轮廓与色相区分技能。
 
 ## 8. 薇薇安战场炮台（2 张）
 
