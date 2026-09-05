@@ -1,0 +1,87 @@
+{
+  "source": "exec-92506147-7a4c-44a4-a861-6f616020858d.png",
+  "output": "anim_exploder_back_hit.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        80,
+        155,
+        358,
+        387
+      ],
+      "transparentRatio": 0.7909,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        79,
+        159,
+        355,
+        388
+      ],
+      "transparentRatio": 0.7846,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        67,
+        159,
+        343,
+        387
+      ],
+      "transparentRatio": 0.791,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        71,
+        151,
+        348,
+        387
+      ],
+      "transparentRatio": 0.7815,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      744
+    ],
+    "baselines": [
+      555
+    ],
+    "scale": 0.58,
+    "targetBaseline": 378,
+    "columnCuts": {
+      "0": [
+        0,
+        529,
+        1058,
+        1586,
+        2115
+      ]
+    },
+    "isolatedRows": [
+      0
+    ],
+    "note": "爆炸怪背面四帧受击；挤压、反弹、过冲、恢复。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

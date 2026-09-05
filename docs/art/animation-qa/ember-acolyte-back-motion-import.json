@@ -1,0 +1,256 @@
+{
+  "source": "exec-68211e1e-553a-482a-9f27-1539e15ea54a.png",
+  "output": "anim_ember_acolyte_back_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        113,
+        131,
+        363,
+        403
+      ],
+      "transparentRatio": 0.7908,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        88,
+        133,
+        337,
+        410
+      ],
+      "transparentRatio": 0.7932,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        79,
+        134,
+        337,
+        405
+      ],
+      "transparentRatio": 0.7983,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        66,
+        129,
+        332,
+        405
+      ],
+      "transparentRatio": 0.7889,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        109,
+        120,
+        372,
+        403
+      ],
+      "transparentRatio": 0.8065,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        76,
+        120,
+        339,
+        404
+      ],
+      "transparentRatio": 0.8004,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        68,
+        120,
+        330,
+        399
+      ],
+      "transparentRatio": 0.7943,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        62,
+        121,
+        321,
+        400
+      ],
+      "transparentRatio": 0.8072,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        66,
+        117,
+        385,
+        361
+      ],
+      "transparentRatio": 0.8061,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        42,
+        113,
+        373,
+        377
+      ],
+      "transparentRatio": 0.8012,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        44,
+        94,
+        338,
+        343
+      ],
+      "transparentRatio": 0.7939,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        43,
+        107,
+        346,
+        383
+      ],
+      "transparentRatio": 0.8027,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        51,
+        113,
+        376,
+        370
+      ],
+      "transparentRatio": 0.7794,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        54,
+        43,
+        378,
+        376
+      ],
+      "transparentRatio": 0.7627,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        52,
+        35,
+        356,
+        303
+      ],
+      "transparentRatio": 0.7609,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        28,
+        78,
+        363,
+        388
+      ],
+      "transparentRatio": 0.7502,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      273,
+      546,
+      818,
+      1091
+    ],
+    "baselines": [
+      258,
+      531,
+      803,
+      1076
+    ],
+    "scale": 1.15,
+    "targetBaseline": 410,
+    "columnCuts": {
+      "0": [
+        0,
+        360,
+        720,
+        1081,
+        1441
+      ],
+      "1": [
+        0,
+        360,
+        720,
+        1081,
+        1441
+      ],
+      "2": [
+        0,
+        360,
+        720,
+        1081,
+        1441
+      ],
+      "3": [
+        0,
+        360,
+        720,
+        1081,
+        1441
+      ]
+    },
+    "note": "烬火侍从4x4动作小批次；按整张连通主体归属跨横纵等分线的法杖、火焰与缆线，再以共同逻辑脚底装箱，不逐帧缩放或补画。",
+    "isolatedGrid": true
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

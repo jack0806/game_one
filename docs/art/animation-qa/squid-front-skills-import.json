@@ -1,0 +1,142 @@
+{
+  "source": "exec-fbff8450-459c-4fac-9ddc-9fd16a04b267.png",
+  "output": "anim_squid_front_skills.png",
+  "size": [
+    1792,
+    896
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        90,
+        22,
+        374,
+        391
+      ],
+      "transparentRatio": 0.7493,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        80,
+        24,
+        372,
+        399
+      ],
+      "transparentRatio": 0.7319,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        63,
+        27,
+        356,
+        420
+      ],
+      "transparentRatio": 0.7239,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        60,
+        29,
+        353,
+        384
+      ],
+      "transparentRatio": 0.75,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        88,
+        63,
+        370,
+        417
+      ],
+      "transparentRatio": 0.7601,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        105,
+        64,
+        349,
+        369
+      ],
+      "transparentRatio": 0.8141,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        116,
+        65,
+        302,
+        407
+      ],
+      "transparentRatio": 0.8124,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        70,
+        67,
+        342,
+        420
+      ],
+      "transparentRatio": 0.7637,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      512,
+      1024
+    ],
+    "baselines": [
+      483,
+      942
+    ],
+    "scale": 0.92,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ],
+      "1": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼正面技能按整图连通主体保留三枚水刺与缠绕触手，统一动作基线且不裁断特效。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

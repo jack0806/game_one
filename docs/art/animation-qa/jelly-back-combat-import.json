@@ -1,0 +1,258 @@
+{
+  "source": "exec-c79ad189-002f-40be-a3f1-495d301ab49f.png",
+  "output": "anim_jelly_back_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        111,
+        89,
+        383,
+        420
+      ],
+      "transparentRatio": 0.8057,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        110,
+        90,
+        367,
+        418
+      ],
+      "transparentRatio": 0.809,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        95,
+        87,
+        348,
+        419
+      ],
+      "transparentRatio": 0.8149,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        82,
+        118,
+        350,
+        418
+      ],
+      "transparentRatio": 0.8032,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        103,
+        133,
+        382,
+        408
+      ],
+      "transparentRatio": 0.7958,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        103,
+        128,
+        375,
+        411
+      ],
+      "transparentRatio": 0.7978,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        92,
+        131,
+        353,
+        420
+      ],
+      "transparentRatio": 0.8044,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        79,
+        135,
+        345,
+        418
+      ],
+      "transparentRatio": 0.7983,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        103,
+        165,
+        380,
+        339
+      ],
+      "transparentRatio": 0.8332,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        108,
+        159,
+        373,
+        329
+      ],
+      "transparentRatio": 0.8514,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        97,
+        163,
+        350,
+        331
+      ],
+      "transparentRatio": 0.8617,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        76,
+        170,
+        349,
+        334
+      ],
+      "transparentRatio": 0.845,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        104,
+        133,
+        374,
+        420
+      ],
+      "transparentRatio": 0.7872,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        104,
+        135,
+        431,
+        416
+      ],
+      "transparentRatio": 0.8249,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        128,
+        139,
+        345,
+        418
+      ],
+      "transparentRatio": 0.9535,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        77,
+        131,
+        342,
+        416
+      ],
+      "transparentRatio": 0.794,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      361,
+      667,
+      975,
+      1217
+    ],
+    "targetBaseline": 420,
+    "scale": 0.96,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      2
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

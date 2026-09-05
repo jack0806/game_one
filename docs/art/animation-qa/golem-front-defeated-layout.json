@@ -1,0 +1,11 @@
+{
+  "rowCuts": [0, 793],
+  "baselines": [692],
+  "scale": 0.57,
+  "targetBaseline": 330,
+  "columnCuts": {
+    "0": [0, 496, 992, 1487, 1983]
+  },
+  "isolatedRows": [0],
+  "note": "石像鬼正面独立碎裂倒下4帧；保持原始碎石与熄灭符文，不合成补画。"
+}

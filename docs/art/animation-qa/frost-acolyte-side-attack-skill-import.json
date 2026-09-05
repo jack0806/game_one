@@ -1,0 +1,142 @@
+{
+  "source": "exec-1684e2a2-1f9b-450a-8b29-4bec06b6bfad.png",
+  "output": "anim_frost_acolyte_side_attack_skill.png",
+  "size": [
+    1792,
+    896
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        95,
+        50,
+        437,
+        372
+      ],
+      "transparentRatio": 0.835,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        97,
+        50,
+        421,
+        374
+      ],
+      "transparentRatio": 0.8434,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        87,
+        51,
+        417,
+        380
+      ],
+      "transparentRatio": 0.8329,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        68,
+        50,
+        386,
+        378
+      ],
+      "transparentRatio": 0.8443,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        94,
+        3,
+        437,
+        339
+      ],
+      "transparentRatio": 0.8294,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        97,
+        5,
+        427,
+        338
+      ],
+      "transparentRatio": 0.8358,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        91,
+        3,
+        423,
+        341
+      ],
+      "transparentRatio": 0.8181,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        67,
+        6,
+        391,
+        335
+      ],
+      "transparentRatio": 0.8409,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      561,
+      1122
+    ],
+    "baselines": [
+      500,
+      1000
+    ],
+    "scale": 1.1,
+    "targetBaseline": 410,
+    "columnCuts": {
+      "0": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "1": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ]
+    },
+    "note": "冰棱侍从按整图连通主体保留三枚主晶体和跨格短特效，以共同悬浮根装箱，不逐帧缩放或补画。",
+    "isolatedGrid": true
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

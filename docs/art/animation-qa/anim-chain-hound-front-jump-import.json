@@ -1,0 +1,86 @@
+{
+  "source": "exec-5f2ef263-8f3c-416a-bf83-bd3d59b5c2c8.png",
+  "output": "anim_chain_hound_front_jump.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        162,
+        110,
+        311,
+        350
+      ],
+      "transparentRatio": 0.9242,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        161,
+        78,
+        302,
+        335
+      ],
+      "transparentRatio": 0.9253,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        161,
+        41,
+        290,
+        345
+      ],
+      "transparentRatio": 0.9239,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        105,
+        82,
+        292,
+        353
+      ],
+      "transparentRatio": 0.9213,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      887
+    ],
+    "baselines": [
+      887
+    ],
+    "targetBaseline": 388,
+    "scale": 0.46,
+    "isolatedRows": [
+      0
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        444,
+        887,
+        1331,
+        1774
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

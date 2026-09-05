@@ -1,0 +1,198 @@
+{
+  "source": "exec-43d55639-77fc-400d-b212-2a62798ce5e3.png",
+  "output": "anim_kai_skill3.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        129,
+        59,
+        338,
+        418
+      ],
+      "transparentRatio": 0.7892,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        131,
+        58,
+        341,
+        418
+      ],
+      "transparentRatio": 0.7876,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        115,
+        66,
+        335,
+        418
+      ],
+      "transparentRatio": 0.7841,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        96,
+        58,
+        305,
+        418
+      ],
+      "transparentRatio": 0.788,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        111,
+        69,
+        369,
+        395
+      ],
+      "transparentRatio": 0.8101,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        96,
+        69,
+        351,
+        395
+      ],
+      "transparentRatio": 0.8092,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        102,
+        76,
+        355,
+        395
+      ],
+      "transparentRatio": 0.7955,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        80,
+        69,
+        336,
+        395
+      ],
+      "transparentRatio": 0.8101,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        128,
+        51,
+        310,
+        381
+      ],
+      "transparentRatio": 0.8228,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        119,
+        51,
+        298,
+        381
+      ],
+      "transparentRatio": 0.8232,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        105,
+        53,
+        335,
+        380
+      ],
+      "transparentRatio": 0.8146,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        97,
+        51,
+        277,
+        381
+      ],
+      "transparentRatio": 0.8232,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "正/侧/背四帧专属技能已复核：身份、脚底基线、炮管完整性与技能峰值通过。"
+}

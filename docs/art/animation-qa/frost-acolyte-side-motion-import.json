@@ -1,0 +1,256 @@
+{
+  "source": "exec-4e0bd959-6785-4671-94bc-daedd963f081.png",
+  "output": "anim_frost_acolyte_side_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        91,
+        145,
+        400,
+        407
+      ],
+      "transparentRatio": 0.8769,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        86,
+        148,
+        394,
+        409
+      ],
+      "transparentRatio": 0.8788,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        78,
+        154,
+        385,
+        407
+      ],
+      "transparentRatio": 0.8823,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        71,
+        159,
+        375,
+        403
+      ],
+      "transparentRatio": 0.8858,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        83,
+        154,
+        400,
+        422
+      ],
+      "transparentRatio": 0.8803,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        74,
+        161,
+        392,
+        421
+      ],
+      "transparentRatio": 0.8847,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        66,
+        170,
+        385,
+        419
+      ],
+      "transparentRatio": 0.888,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        56,
+        179,
+        371,
+        414
+      ],
+      "transparentRatio": 0.8923,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        84,
+        142,
+        411,
+        362
+      ],
+      "transparentRatio": 0.8822,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        71,
+        164,
+        414,
+        345
+      ],
+      "transparentRatio": 0.8904,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        57,
+        183,
+        411,
+        330
+      ],
+      "transparentRatio": 0.8925,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        53,
+        192,
+        395,
+        322
+      ],
+      "transparentRatio": 0.902,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        91,
+        98,
+        390,
+        360
+      ],
+      "transparentRatio": 0.8834,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        87,
+        101,
+        384,
+        362
+      ],
+      "transparentRatio": 0.8839,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        78,
+        105,
+        376,
+        361
+      ],
+      "transparentRatio": 0.8848,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        71,
+        111,
+        368,
+        363
+      ],
+      "transparentRatio": 0.8861,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      280,
+      561,
+      842,
+      1122
+    ],
+    "baselines": [
+      265,
+      546,
+      827,
+      1107
+    ],
+    "scale": 1.12,
+    "targetBaseline": 410,
+    "columnCuts": {
+      "0": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "1": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "2": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "3": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ]
+    },
+    "note": "冰棱侍从按整图连通主体保留三枚主晶体和跨格短特效，以共同悬浮根装箱，不逐帧缩放或补画。",
+    "isolatedGrid": true
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

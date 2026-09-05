@@ -1,0 +1,198 @@
+{
+  "source": "exec-38fbc931-ce9f-4fb1-b569-e42cde7f7a05.png",
+  "output": "anim_boss_mech_side_skills.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        150,
+        185,
+        359,
+        329
+      ],
+      "transparentRatio": 0.9334,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        131,
+        103,
+        283,
+        329
+      ],
+      "transparentRatio": 0.9069,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        103,
+        187,
+        362,
+        330
+      ],
+      "transparentRatio": 0.898,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        131,
+        190,
+        333,
+        330
+      ],
+      "transparentRatio": 0.9371,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        138,
+        151,
+        340,
+        293
+      ],
+      "transparentRatio": 0.9296,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        124,
+        123,
+        331,
+        293
+      ],
+      "transparentRatio": 0.9162,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        111,
+        112,
+        347,
+        294
+      ],
+      "transparentRatio": 0.8843,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        100,
+        153,
+        332,
+        293
+      ],
+      "transparentRatio": 0.934,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        135,
+        121,
+        337,
+        260
+      ],
+      "transparentRatio": 0.9338,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        118,
+        151,
+        317,
+        288
+      ],
+      "transparentRatio": 0.9328,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        70,
+        190,
+        334,
+        312
+      ],
+      "transparentRatio": 0.9145,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        84,
+        168,
+        321,
+        307
+      ],
+      "transparentRatio": 0.9384,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      418,
+      836,
+      1254
+    ],
+    "baselines": [
+      418,
+      836,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.78,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "浏览器逐帧检查通过：方向、共同基线、格间隔离和技能峰值均符合运行时用途"
+}

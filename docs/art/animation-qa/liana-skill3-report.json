@@ -1,0 +1,199 @@
+{
+  "source": "exec-47ccc6c9-282c-43b8-be77-1d7ecbad6de5.png",
+  "output": "anim_liana_skill3.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        150,
+        156,
+        368,
+        391
+      ],
+      "transparentRatio": 0.9011,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        123,
+        159,
+        308,
+        388
+      ],
+      "transparentRatio": 0.9057,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        72,
+        137,
+        329,
+        385
+      ],
+      "transparentRatio": 0.8885,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        62,
+        169,
+        284,
+        389
+      ],
+      "transparentRatio": 0.9061,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        140,
+        140,
+        387,
+        333
+      ],
+      "transparentRatio": 0.9171,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        121,
+        142,
+        325,
+        332
+      ],
+      "transparentRatio": 0.9198,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        86,
+        116,
+        300,
+        336
+      ],
+      "transparentRatio": 0.9094,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        42,
+        150,
+        282,
+        333
+      ],
+      "transparentRatio": 0.9247,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        144,
+        86,
+        349,
+        288
+      ],
+      "transparentRatio": 0.9139,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        133,
+        86,
+        309,
+        288
+      ],
+      "transparentRatio": 0.9132,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        109,
+        69,
+        294,
+        284
+      ],
+      "transparentRatio": 0.9116,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        58,
+        97,
+        263,
+        290
+      ],
+      "transparentRatio": 0.9194,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "discardDetachedComponentsUnder": 100,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "R绝对零度：长枪抬升与贴身寒霜过载，三方向四帧通过复核。"
+}

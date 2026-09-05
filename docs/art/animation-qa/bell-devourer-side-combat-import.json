@@ -1,0 +1,255 @@
+{
+  "source": "exec-dbc12238-9aa5-465c-939b-41d13d055f99.png",
+  "output": "anim_bell_devourer_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        132,
+        155,
+        347,
+        375
+      ],
+      "transparentRatio": 0.8784,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        133,
+        157,
+        342,
+        376
+      ],
+      "transparentRatio": 0.8847,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        110,
+        159,
+        331,
+        377
+      ],
+      "transparentRatio": 0.8904,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        89,
+        162,
+        325,
+        379
+      ],
+      "transparentRatio": 0.8878,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        125,
+        178,
+        351,
+        392
+      ],
+      "transparentRatio": 0.8831,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        133,
+        186,
+        350,
+        399
+      ],
+      "transparentRatio": 0.8882,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        126,
+        189,
+        327,
+        401
+      ],
+      "transparentRatio": 0.8892,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        109,
+        187,
+        317,
+        403
+      ],
+      "transparentRatio": 0.8832,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        130,
+        192,
+        335,
+        363
+      ],
+      "transparentRatio": 0.8957,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        123,
+        209,
+        314,
+        359
+      ],
+      "transparentRatio": 0.9068,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        141,
+        213,
+        292,
+        372
+      ],
+      "transparentRatio": 0.9176,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        131,
+        227,
+        281,
+        381
+      ],
+      "transparentRatio": 0.9205,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        136,
+        154,
+        339,
+        366
+      ],
+      "transparentRatio": 0.8892,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        124,
+        154,
+        326,
+        366
+      ],
+      "transparentRatio": 0.8899,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        113,
+        154,
+        314,
+        366
+      ],
+      "transparentRatio": 0.8886,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        114,
+        156,
+        313,
+        365
+      ],
+      "transparentRatio": 0.8928,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.86,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

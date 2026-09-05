@@ -1,0 +1,256 @@
+{
+  "source": "exec-4d19c4da-2e26-4ee2-af9b-c6e4f7b8c829.png",
+  "output": "anim_turtle_side_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        70,
+        201,
+        398,
+        420
+      ],
+      "transparentRatio": 0.7638,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        69,
+        197,
+        389,
+        420
+      ],
+      "transparentRatio": 0.7714,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        57,
+        200,
+        377,
+        420
+      ],
+      "transparentRatio": 0.773,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        48,
+        201,
+        357,
+        420
+      ],
+      "transparentRatio": 0.7915,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        71,
+        214,
+        399,
+        416
+      ],
+      "transparentRatio": 0.7861,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        68,
+        215,
+        385,
+        417
+      ],
+      "transparentRatio": 0.8023,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        56,
+        219,
+        377,
+        420
+      ],
+      "transparentRatio": 0.7998,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        40,
+        223,
+        355,
+        416
+      ],
+      "transparentRatio": 0.8038,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        74,
+        231,
+        406,
+        415
+      ],
+      "transparentRatio": 0.8125,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        80,
+        235,
+        400,
+        418
+      ],
+      "transparentRatio": 0.8127,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        67,
+        229,
+        404,
+        420
+      ],
+      "transparentRatio": 0.8009,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        66,
+        232,
+        384,
+        418
+      ],
+      "transparentRatio": 0.8148,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        76,
+        240,
+        371,
+        420
+      ],
+      "transparentRatio": 0.8308,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        82,
+        146,
+        371,
+        381
+      ],
+      "transparentRatio": 0.818,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        58,
+        143,
+        367,
+        330
+      ],
+      "transparentRatio": 0.8223,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        59,
+        240,
+        361,
+        420
+      ],
+      "transparentRatio": 0.8246,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      312,
+      602,
+      891,
+      1194
+    ],
+    "scale": 1.1,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "盾龟按整图连通主体保留四肢、反应炉与贴壳能量边，以每行动作最低点作为共同基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

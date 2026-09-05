@@ -1,0 +1,256 @@
+{
+  "source": "exec-1d31a519-e092-4169-8ea4-f6988e67e416.png",
+  "output": "anim_jelly_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        71,
+        57,
+        407,
+        388
+      ],
+      "transparentRatio": 0.7152,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        75,
+        59,
+        381,
+        418
+      ],
+      "transparentRatio": 0.7129,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        53,
+        60,
+        381,
+        407
+      ],
+      "transparentRatio": 0.7078,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        45,
+        57,
+        383,
+        379
+      ],
+      "transparentRatio": 0.7115,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        74,
+        104,
+        405,
+        405
+      ],
+      "transparentRatio": 0.706,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        71,
+        95,
+        389,
+        407
+      ],
+      "transparentRatio": 0.7175,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        53,
+        91,
+        379,
+        417
+      ],
+      "transparentRatio": 0.6661,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        49,
+        90,
+        381,
+        409
+      ],
+      "transparentRatio": 0.6986,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        82,
+        126,
+        393,
+        414
+      ],
+      "transparentRatio": 0.7218,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        76,
+        163,
+        375,
+        396
+      ],
+      "transparentRatio": 0.7547,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        53,
+        177,
+        381,
+        408
+      ],
+      "transparentRatio": 0.7505,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        53,
+        192,
+        378,
+        365
+      ],
+      "transparentRatio": 0.7969,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        62,
+        93,
+        402,
+        416
+      ],
+      "transparentRatio": 0.7038,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        63,
+        91,
+        397,
+        417
+      ],
+      "transparentRatio": 0.6983,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        54,
+        99,
+        380,
+        415
+      ],
+      "transparentRatio": 0.7187,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        49,
+        94,
+        382,
+        412
+      ],
+      "transparentRatio": 0.6841,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      304,
+      609,
+      914,
+      1218
+    ],
+    "baselines": [
+      349,
+      636,
+      907,
+      1202
+    ],
+    "scale": 1.1,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        323,
+        646,
+        968,
+        1291
+      ],
+      "1": [
+        0,
+        323,
+        646,
+        968,
+        1291
+      ],
+      "2": [
+        0,
+        323,
+        646,
+        968,
+        1291
+      ],
+      "3": [
+        0,
+        323,
+        646,
+        968,
+        1291
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "毒刺鬼水母按整图连通主体保留六条长触手、毒囊与半透明隐身轮廓，以每行动作最低点统一基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

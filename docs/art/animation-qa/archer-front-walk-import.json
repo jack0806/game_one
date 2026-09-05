@@ -1,0 +1,75 @@
+{
+  "source": "exec-906be6e7-914d-45dd-854e-17ed557a5803.png",
+  "output": "anim_archer_front_walk.png",
+  "size": [
+    1280,
+    320
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        130,
+        84,
+        251,
+        287
+      ],
+      "transparentRatio": 0.8751,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        100,
+        78,
+        221,
+        287
+      ],
+      "transparentRatio": 0.875,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        86,
+        83,
+        206,
+        287
+      ],
+      "transparentRatio": 0.876,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        65,
+        80,
+        190,
+        286
+      ],
+      "transparentRatio": 0.8682,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      465
+    ],
+    "baselines": [
+      392
+    ],
+    "scale": 0.52,
+    "targetBaseline": 256,
+    "note": "只取姿势参考生成稿的前四格左支撑/换步/右支撑/换步；后四格换腿顺序不合格不入库，尚待中间帧加密。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

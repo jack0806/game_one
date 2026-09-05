@@ -1,0 +1,256 @@
+{
+  "source": "exec-d8840643-52b4-4f8d-8114-c3066b7ea1c5.png",
+  "output": "anim_squid_side_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        67,
+        240,
+        362,
+        417
+      ],
+      "transparentRatio": 0.8446,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        56,
+        242,
+        348,
+        420
+      ],
+      "transparentRatio": 0.8409,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        47,
+        241,
+        336,
+        417
+      ],
+      "transparentRatio": 0.8424,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        41,
+        244,
+        331,
+        420
+      ],
+      "transparentRatio": 0.8431,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        74,
+        229,
+        366,
+        403
+      ],
+      "transparentRatio": 0.8405,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        55,
+        233,
+        357,
+        394
+      ],
+      "transparentRatio": 0.8489,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        55,
+        237,
+        347,
+        402
+      ],
+      "transparentRatio": 0.8441,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        41,
+        236,
+        342,
+        420
+      ],
+      "transparentRatio": 0.8343,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        80,
+        259,
+        418,
+        420
+      ],
+      "transparentRatio": 0.836,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        77,
+        264,
+        409,
+        409
+      ],
+      "transparentRatio": 0.8508,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        64,
+        253,
+        381,
+        395
+      ],
+      "transparentRatio": 0.8588,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        50,
+        240,
+        372,
+        395
+      ],
+      "transparentRatio": 0.854,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        86,
+        247,
+        395,
+        393
+      ],
+      "transparentRatio": 0.8625,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        119,
+        253,
+        358,
+        420
+      ],
+      "transparentRatio": 0.8775,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        65,
+        208,
+        329,
+        405
+      ],
+      "transparentRatio": 0.8633,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        61,
+        214,
+        326,
+        405
+      ],
+      "transparentRatio": 0.868,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      281,
+      561,
+      842,
+      1122
+    ],
+    "baselines": [
+      248,
+      525,
+      776,
+      1038
+    ],
+    "scale": 1.1,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "1": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "2": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "3": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼右侧移动按整图连通主体保留长触手，以每行动作最低点作为共同基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

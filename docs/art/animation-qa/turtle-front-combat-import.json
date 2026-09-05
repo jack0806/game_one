@@ -1,0 +1,256 @@
+{
+  "source": "exec-8a441aa6-d200-426c-b14c-fdefc3fa72fd.png",
+  "output": "anim_turtle_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        84,
+        56,
+        393,
+        401
+      ],
+      "transparentRatio": 0.692,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        41,
+        56,
+        410,
+        402
+      ],
+      "transparentRatio": 0.6699,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        56,
+        57,
+        401,
+        420
+      ],
+      "transparentRatio": 0.6118,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        58,
+        57,
+        386,
+        407
+      ],
+      "transparentRatio": 0.703,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        73,
+        93,
+        374,
+        420
+      ],
+      "transparentRatio": 0.7146,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        68,
+        83,
+        382,
+        414
+      ],
+      "transparentRatio": 0.7029,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        55,
+        94,
+        386,
+        417
+      ],
+      "transparentRatio": 0.7231,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        79,
+        84,
+        366,
+        414
+      ],
+      "transparentRatio": 0.7165,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        70,
+        149,
+        378,
+        420
+      ],
+      "transparentRatio": 0.7615,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        62,
+        181,
+        384,
+        411
+      ],
+      "transparentRatio": 0.7881,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        66,
+        193,
+        383,
+        411
+      ],
+      "transparentRatio": 0.8077,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        94,
+        204,
+        343,
+        401
+      ],
+      "transparentRatio": 0.8397,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        82,
+        114,
+        364,
+        418
+      ],
+      "transparentRatio": 0.7375,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        79,
+        114,
+        362,
+        418
+      ],
+      "transparentRatio": 0.7373,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        80,
+        113,
+        364,
+        417
+      ],
+      "transparentRatio": 0.7299,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        74,
+        118,
+        358,
+        420
+      ],
+      "transparentRatio": 0.7362,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      352,
+      680,
+      957,
+      1241
+    ],
+    "scale": 1.1,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "盾龟按整图连通主体保留四肢、反应炉与贴壳能量边，以每行动作最低点作为共同基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

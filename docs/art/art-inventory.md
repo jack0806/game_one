@@ -1,5 +1,7 @@
 # 现有美术资源清单（assets/resources/art/）
 
+> 2026-09-03新增逐帧图集的清单、来源和状态单独维护于[动画重做记录](animation-rebuild-2026-09-03.md)及[覆盖矩阵](animation-qa/coverage.json)。下面的张数为此前静态素材基线，不包含本轮制作稿。
+
 共 174 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 与 `visualmanifest.test.js` 自检通过）。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。

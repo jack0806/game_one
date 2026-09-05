@@ -1,0 +1,255 @@
+{
+  "source": "exec-87451caf-1119-4fd3-b7cf-a8b8c298bbef.png",
+  "output": "anim_boss_manyfold_side_skills.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        199,
+        198,
+        256,
+        358
+      ],
+      "transparentRatio": 0.9757,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        159,
+        198,
+        262,
+        358
+      ],
+      "transparentRatio": 0.9634,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        150,
+        197,
+        274,
+        358
+      ],
+      "transparentRatio": 0.9591,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        149,
+        201,
+        276,
+        362
+      ],
+      "transparentRatio": 0.9491,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        150,
+        199,
+        274,
+        358
+      ],
+      "transparentRatio": 0.9552,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        133,
+        199,
+        280,
+        358
+      ],
+      "transparentRatio": 0.9481,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        134,
+        199,
+        289,
+        358
+      ],
+      "transparentRatio": 0.9479,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        148,
+        199,
+        287,
+        358
+      ],
+      "transparentRatio": 0.9543,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        163,
+        200,
+        286,
+        362
+      ],
+      "transparentRatio": 0.9564,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        148,
+        199,
+        281,
+        361
+      ],
+      "transparentRatio": 0.957,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        150,
+        198,
+        288,
+        361
+      ],
+      "transparentRatio": 0.9553,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        147,
+        198,
+        287,
+        361
+      ],
+      "transparentRatio": 0.9549,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        148,
+        201,
+        287,
+        362
+      ],
+      "transparentRatio": 0.945,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        148,
+        201,
+        289,
+        362
+      ],
+      "transparentRatio": 0.9518,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        169,
+        201,
+        286,
+        361
+      ],
+      "transparentRatio": 0.9607,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        168,
+        201,
+        276,
+        362
+      ],
+      "transparentRatio": 0.963,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      940,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "已核对六针肢身份、三方向朝向、技能语义、透明背景、共同基线与单格完整性；Playwright逐动作页面复核通过"
+}

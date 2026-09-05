@@ -1,0 +1,258 @@
+{
+  "source": "exec-cf14c2a5-f1bb-401d-a789-311caf1fd80b.png",
+  "output": "anim_chain_hound_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        128,
+        150,
+        334,
+        388
+      ],
+      "transparentRatio": 0.8814,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        101,
+        151,
+        305,
+        389
+      ],
+      "transparentRatio": 0.8831,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        80,
+        152,
+        285,
+        406
+      ],
+      "transparentRatio": 0.8794,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        95,
+        151,
+        300,
+        388
+      ],
+      "transparentRatio": 0.882,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        127,
+        168,
+        322,
+        390
+      ],
+      "transparentRatio": 0.8764,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        101,
+        181,
+        327,
+        390
+      ],
+      "transparentRatio": 0.8835,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        60,
+        188,
+        291,
+        391
+      ],
+      "transparentRatio": 0.8856,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        102,
+        164,
+        284,
+        390
+      ],
+      "transparentRatio": 0.8761,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        113,
+        196,
+        328,
+        353
+      ],
+      "transparentRatio": 0.9018,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        89,
+        202,
+        310,
+        351
+      ],
+      "transparentRatio": 0.9066,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        73,
+        225,
+        309,
+        352
+      ],
+      "transparentRatio": 0.9096,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        68,
+        230,
+        311,
+        351
+      ],
+      "transparentRatio": 0.9135,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        127,
+        135,
+        325,
+        373
+      ],
+      "transparentRatio": 0.8837,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        94,
+        145,
+        320,
+        375
+      ],
+      "transparentRatio": 0.87,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        85,
+        131,
+        326,
+        374
+      ],
+      "transparentRatio": 0.8743,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        95,
+        137,
+        295,
+        374
+      ],
+      "transparentRatio": 0.8845,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 388,
+    "scale": 0.86,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      2
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

@@ -1,0 +1,13 @@
+{
+  "rowCuts": [0, 362, 724, 1086],
+  "baselines": [342, 705, 1066],
+  "targetBaseline": 410,
+  "scale": 1.1,
+  "cellInset": 2,
+  "discardDetachedComponentsUnder": 100,
+  "columnCuts": {
+    "0": [0, 362, 724, 1086, 1448],
+    "1": [0, 362, 724, 1086, 1448],
+    "2": [0, 362, 724, 1086, 1448]
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "source": "exec-d34d92ac-2696-4eb5-9fa3-994d79148177.png",
+  "output": "anim_boss_ch3_side_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        135,
+        151,
+        271,
+        407
+      ],
+      "transparentRatio": 0.9134,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        128,
+        150,
+        268,
+        407
+      ],
+      "transparentRatio": 0.9125,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        119,
+        151,
+        262,
+        407
+      ],
+      "transparentRatio": 0.9134,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        114,
+        150,
+        254,
+        407
+      ],
+      "transparentRatio": 0.9144,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        126,
+        183,
+        279,
+        439
+      ],
+      "transparentRatio": 0.9144,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        101,
+        184,
+        266,
+        439
+      ],
+      "transparentRatio": 0.9132,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        92,
+        184,
+        265,
+        439
+      ],
+      "transparentRatio": 0.9141,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        99,
+        184,
+        267,
+        439
+      ],
+      "transparentRatio": 0.9141,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        123,
+        203,
+        319,
+        400
+      ],
+      "transparentRatio": 0.9197,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        95,
+        203,
+        301,
+        392
+      ],
+      "transparentRatio": 0.9196,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        99,
+        203,
+        307,
+        388
+      ],
+      "transparentRatio": 0.9219,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        83,
+        203,
+        307,
+        391
+      ],
+      "transparentRatio": 0.9189,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        173,
+        183,
+        268,
+        370
+      ],
+      "transparentRatio": 0.944,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        169,
+        169,
+        256,
+        369
+      ],
+      "transparentRatio": 0.9447,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        153,
+        144,
+        240,
+        368
+      ],
+      "transparentRatio": 0.9401,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        136,
+        183,
+        229,
+        370
+      ],
+      "transparentRatio": 0.9444,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.86,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

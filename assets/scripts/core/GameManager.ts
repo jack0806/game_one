@@ -5,7 +5,13 @@ import {
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
 import { visibleDesignWidth, applyScreenPolicy } from './ScreenFit';
 import { Vec, Rng, clamp } from './MathUtils';
-import { applyArtSprite, preloadArt, SpriteNodePool } from './SpriteUtils';
+import { worldToLocal, entityVisualPose, entityHealthBar, animationFrameTopOffset } from './EntityVisual';
+import { applyArtSprite, applyAnimationFrame, preloadArt, SpriteNodePool } from './SpriteUtils';
+import { ActorAnimation } from './ActorAnimation';
+import { ActorCorpses } from './ActorCorpses';
+import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
+import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
+import { animationAlphaTop } from '../data/AnimationBoundsDB';
 import { styleLabel } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
 import { spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
@@ -21,7 +27,7 @@ import { Economy, ShopItem } from '../systems/Economy';
 import { SaveSystem }        from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
-import { ParticleManager }   from '../systems/ParticleManager';
+import { ParticleManager, spriteFxFrame } from '../systems/ParticleManager';
 import { AudioManager, BgmCue } from '../systems/AudioManager';
 import { HUD, HudData }      from '../ui/HUD';
 import { AugSelectUI }       from '../ui/AugSelectUI';
@@ -32,7 +38,8 @@ import { StatsPanel, StatsPanelData } from '../ui/StatsPanel';
 import { TestRoomUI } from '../ui/TestRoomUI';
 import { advanceLocomotion, LocomotionPose } from './Locomotion';
 import {
-    directionalArtKey, directionalArtKeys, DirectionalFacingPose, updateDirectionalFacing,
+    createDirectionalFacingState, directionalArtKey, directionalArtKeys,
+    DirectionalFacingPose, updateDirectionalFacing,
 } from './DirectionalFacing';
 
 const { ccclass, property } = _decorator;
@@ -104,6 +111,7 @@ export class GameManager extends Component {
     private _coinPool!:      SpriteNodePool;
     private _turretBasePool!:   SpriteNodePool;
     private _turretBarrelPool!: SpriteNodePool;
+    private _summonArtPool!:     SpriteNodePool;
     /** One-shot art FX (explosion/heal/poison/cold_arrow/hex_ring), synced from ParticleManager.spriteFx each frame. */
     private _fxPool!:        SpriteNodePool;
     /** 持续敌方弹体/区域机制材质层；容量按后期弹幕密度预分配。 */
@@ -142,6 +150,8 @@ export class GameManager extends Component {
     private _visualTime = 0;
     /** 视觉帧 dt（方向动画/步态驱动用，与逻辑帧 dt 同步）。 */
     private _visualDt = 0;
+    private _playerDeathPending = false;
+    private _corpses = new ActorCorpses<EnemyBase>(actor => actor.node?.destroy());
 
     // ── test room state ───────────────────────────────────────
     /** 暂停前所在的战斗状态，恢复时回到原状态（测试房间不再误回 playing）。 */
@@ -149,6 +159,7 @@ export class GameManager extends Component {
     /** 测试房间无敌开关状态（切换英雄时保留）。 */
     private _testInvincible = false;
     private _testTargetPaused = false;
+    private _testVisualGuides = false;
     /** 观摩模式只停用玩家普攻；移动与Q/E/R保持可用，便于完整看完Boss技能轮转。 */
     testCeasefire = false;
     /**
@@ -202,6 +213,9 @@ export class GameManager extends Component {
         this._initSystems();
         this._initUI();
         this._initFloatTextPool();
+        // Cocos 的 Web 构建会把 `[...set]` 降级成 `[].concat(set)`，导致 Set
+        // 本身被当成单个资源 key。显式使用 Array.from 保证构建产物仍是字符串数组。
+        preloadArt(Array.from(new Set(Object.keys(EFFECT_ANIMATIONS).map(key => EFFECT_ANIMATIONS[key].sheet))));
         this._setState('menu');
 
     }
@@ -269,6 +283,7 @@ export class GameManager extends Component {
         this._coinPool = new SpriteNodePool(this._gameLayer, 80, 'GoldCoin', [30, 30]);
         this._turretBasePool = new SpriteNodePool(this._gameLayer, 24, 'TurretBase', [52, 52]);
         this._turretBarrelPool = new SpriteNodePool(this._gameLayer, 24, 'TurretBarrel', [72, 48]);
+        this._summonArtPool = new SpriteNodePool(this._gameLayer, 16, 'SummonArt', [82, 82]);
 
         // ParticleLayer — on top of entities
         this._particleLayer = new Node('ParticleLayer');
@@ -375,6 +390,7 @@ export class GameManager extends Component {
         this._shopUI.onBuySfx    = () => this._audio.playSfx('buy');
         this._testUI.onButtonSfx      = () => this._audio.playSfx('button');
         this._testUI.onSpawnUnit      = (id, count) => this.spawnTestUnit(id, count);
+        this._testUI.onToggleVisualGuides = on => { this._testVisualGuides = on; };
         this._testUI.onClear          = () => this.clearTestField();
         this._testUI.onToggleInvincible = (on) => this.setPlayerInvincible(on);
         this._testUI.onToggleCeasefire  = (on) => this.setTestCeasefire(on);
@@ -603,6 +619,7 @@ export class GameManager extends Component {
         // 复位工具条状态（无敌/数量/分类不跨房保留）；工具条点亮由 _setState('testRoom') 统一负责
         this._testInvincible = false;
         this._testTargetPaused = false;
+        this._testVisualGuides = false;
         this.testCeasefire = false;
         this._testUI.resetState();
         this._floatText.spawn(CANVAS_W / 2, 200, '测试房间：点底部工具条生成单位', '#9adcff', 18, true);
@@ -660,6 +677,7 @@ export class GameManager extends Component {
 
     /** 测试房间清场：清敌人/弹幕/粒子/水柱/预告区/召唤物。 */
     clearTestField(): void {
+        this._corpses.clear();
         for (const e of this._enemies) {
             if (e.node?.isValid) { e.node.active = false; e.node.destroy(); }
         }
@@ -1515,6 +1533,7 @@ export class GameManager extends Component {
             kind: 'waterClone', _phase: 'windup', _t: 2, // 引导 2 秒后冲锋
             _vx: 0, _vy: 0, _speed: 460, _aim: 0, owner: boss,
         };
+        this._initSummonActor(c, 'enemy_boss_abyss', boss.radius * 4, '#bfefff', 165);
         c.update = (dt: number, g: GameManager) => {
             if (!c.alive) return;
             if (c._phase === 'windup') {
@@ -1581,6 +1600,8 @@ export class GameManager extends Component {
     }
 
     private _clearRunEntities() {
+        this._corpses.clear();
+        this._playerDeathPending = false;
         if (this._player?.node?.isValid) {
             this._player.node.active = false;
             this._player.node.destroy();
@@ -1605,6 +1626,7 @@ export class GameManager extends Component {
         this._coinPool?.releaseAll();
         this._turretBasePool?.releaseAll();
         this._turretBarrelPool?.releaseAll();
+        this._summonArtPool?.releaseAll();
         this._floatText?.clear();
     }
 
@@ -1663,33 +1685,50 @@ export class GameManager extends Component {
 
     private _updatePlaying(dt: number) {
         const input = this._input;
+        this._corpses.update(dt);
+
+        if (this._playerDeathPending) {
+            this._player.updateVisualAnimation(dt);
+            this._particles.update(dt);
+            if (!this._player.actorAnimation.clip || this._player.actorAnimation.finished) {
+                this._playerDeathPending = false;
+                this._setState('gameover');
+            }
+            return;
+        }
 
         // Player
         this._player.tick(dt, input, this);
+        if (this._playerDeathPending) return;
 
         // Enemies
         for (let i = this._enemies.length - 1; i >= 0; i--) {
             const e = this._enemies[i];
-            if (!(this.state === 'testRoom' && this._testTargetPaused)) e.update(dt, this._player, this);
-            // Sprite node isn't pooled (spawnEnemy() creates a fresh one each time,
-            // like the original Graphics-only version created a fresh Node) — must
-            // destroy it here or dead enemies' sprites keep sitting on screen forever.
+            if (!(this.state === 'testRoom' && this._testTargetPaused)) {
+                e.update(dt, this._player, this);
+                e.updateVisualAnimation(dt, this._player);
+            }
+            // 先退出碰撞/寻敌列表，尸体单独播放；没有动作稿的单位保留即时回收。
             if (e.dead) {
                 if (e === this._boss) this._boss = undefined;
-                e.node?.destroy();
+                this._corpses.add(e);
                 this._enemies.splice(i, 1);
             }
         }
 
+        if (this._playerDeathPending) return;
+
         // Bullets
         this._bullets.update(dt, this._enemies, this._player, this);
         this._bullets.updateEnemyBullets(dt, this._player, this);
+        if (this._playerDeathPending) return;
 
         // Turrets / clones
         for (let i = this._turrets.length - 1; i >= 0; i--) {
             const t = this._turrets[i];
             if (!t.alive) { this._turrets.splice(i, 1); continue; }
             t.update?.(dt, this);
+            this._updateSummonActor(t, dt);
         }
 
         // Death zones (持续伤害区域)
@@ -1716,6 +1755,7 @@ export class GameManager extends Component {
             this._updateEnemyHazards(dt);
             this._updateDocBossMechanics(dt);
         }
+        if (this._playerDeathPending) return;
 
         // Wave manager — 测试房间不跑波次调度，杜绝"清场→章节结算/augSelect"链路
         if (this.state !== 'testRoom') {
@@ -1787,7 +1827,7 @@ export class GameManager extends Component {
      * upward, so every world-space draw call must go through this transform.
      */
     private _toLocal(x: number, y: number): [number, number] {
-        return [x - CANVAS_W / 2, CANVAS_H / 2 - y];
+        return worldToLocal(x, y);
     }
 
     /** Same transform, but for a canvas-space rect (x,y,w,h) → local (x,y,w,h). */
@@ -1803,6 +1843,13 @@ export class GameManager extends Component {
         pose: LocomotionPose,
         facing: DirectionalFacingPose,
     ): void {
+        const animation = entity.actorAnimation;
+        if (animation?.clip && animation.currentFrame && entity.sprite) {
+            applyAnimationFrame(entity.sprite, animation.clip, animation.currentFrame);
+            entity.locomotionFrameKey = '';
+            return;
+        }
+        entity.sprite?.node?.getComponent(UITransform)?.setAnchorPoint(0.5, 0.5);
         const key = entity.directionalFrames === false
             ? entity.spriteKey
             : directionalArtKey(entity.spriteKey, facing.view, pose.frameIndex);
@@ -2029,6 +2076,7 @@ export class GameManager extends Component {
         g.clear();
         this._turretBasePool.releaseAll();
         this._turretBarrelPool.releaseAll();
+        this._summonArtPool.releaseAll();
         this._enemyArtPool.releaseAll();
 
         // Background is now the _bgSprite layer (bg_chapter<N>, set in _updateBgForChapter()),
@@ -2298,6 +2346,38 @@ export class GameManager extends Component {
             g.fillColor = new Color(0, 0, 0, 100);
             g.ellipse(tx, ty - r * 0.72, r * 1.15, r * 0.34); g.fill();
 
+            // 水分身蓄力时仍保留冲锋方向线；身体本身由深海恐惧的逐帧动作绘制。
+            if (t.kind === 'waterClone' && t._phase === 'windup') {
+                g.strokeColor = new Color(140, 225, 255, 170);
+                g.lineWidth = 2;
+                g.moveTo(tx, ty);
+                g.lineTo(tx + Math.cos(t._aim ?? 0) * 70, ty - Math.sin(t._aim ?? 0) * 70);
+                g.stroke();
+            }
+
+            if (t._actorAnimation?.clip && t._actorAnimation.currentFrame) {
+                const summon = this._summonArtPool.acquire();
+                if (!summon) continue;
+                summon.getComponent(UITransform)!.setContentSize(t._actorDisplaySize, t._actorDisplaySize);
+                const sprite = summon.getComponent(Sprite)!;
+                sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+                sprite.trim = false;
+                applyAnimationFrame(sprite, t._actorAnimation.clip, t._actorAnimation.currentFrame);
+                const tint = Color.fromHEX(new Color(), t._actorTint ?? '#ffffff');
+                tint.a = t._actorAlpha ?? 255;
+                sprite.color = tint;
+                summon.setPosition(Math.round(tx), Math.round(ty), 0);
+                const facing = t._actorFacingPose;
+                const scale = t._actorAnimation.clip.displayScale ?? 1;
+                summon.setScale(new Vec3(
+                    (facing?.mirror ?? 1) * (facing?.turnScaleX ?? 1) * scale,
+                    scale,
+                    1,
+                ));
+                summon.setRotationFromEuler(0, 0, facing?.turnLeanDeg ?? 0);
+                continue;
+            }
+
             if (t.kind === 'timeOrb') {
                 // 时空行者·时空奇点能量球：蓝白光球 + 呼吸光环
                 g.fillColor = new Color(170, 221, 255, 150);
@@ -2307,44 +2387,6 @@ export class GameManager extends Component {
                 g.strokeColor = new Color(170, 221, 255, 120);
                 g.lineWidth = 1.5;
                 g.circle(tx, ty, r + 8 + Math.sin(this._visualTime * 6) * 4); g.stroke();
-                continue;
-            }
-
-            if (t.kind === 'waterClone') {
-                // 深海恐惧·水分身：与本体同尺寸的半透明淡蓝虚影 + 蓄力方向线
-                g.fillColor = new Color(90, 180, 255, 110);
-                g.circle(tx, ty, r); g.fill();
-                g.strokeColor = new Color(190, 235, 255, 190);
-                g.lineWidth = 2; g.circle(tx, ty, r); g.stroke();
-                g.strokeColor = new Color(140, 225, 255, 170);
-                g.lineWidth = 2;
-                g.moveTo(tx, ty);
-                g.lineTo(tx + Math.cos(t._aim ?? 0) * 70, ty - Math.sin(t._aim ?? 0) * 70);
-                g.stroke();
-                continue;
-            }
-
-            if (t.kind === 'clone') {
-                // 分身使用角形人形剪影，与机械炮台明确区分。
-                const drawCloneBody = () => {
-                    g.moveTo(tx, ty + r * 1.15);
-                    g.lineTo(tx + r * 0.58, ty + r * 0.38);
-                    g.lineTo(tx + r * 0.42, ty - r * 0.75);
-                    g.lineTo(tx, ty - r * 1.05);
-                    g.lineTo(tx - r * 0.42, ty - r * 0.75);
-                    g.lineTo(tx - r * 0.58, ty + r * 0.38);
-                    g.close();
-                };
-                g.fillColor = new Color(52, 20, 82, 225);
-                drawCloneBody(); g.fill();
-                g.strokeColor = new Color(205, 120, 255, 235);
-                g.lineWidth = 2; drawCloneBody(); g.stroke();
-                g.fillColor = new Color(235, 200, 255, 240);
-                g.moveTo(tx, ty + r * 0.58);
-                g.lineTo(tx + r * 0.25, ty + r * 0.18);
-                g.lineTo(tx, ty - r * 0.12);
-                g.lineTo(tx - r * 0.25, ty + r * 0.18);
-                g.close(); g.fill();
                 continue;
             }
 
@@ -2376,7 +2418,10 @@ export class GameManager extends Component {
             barrelSp.sizeMode = Sprite.SizeMode.CUSTOM;
             barrelSp.trim = false;
             barrelSp.color = tint;
-            applyArtSprite(barrelSp, 'turret_barrel_vivian');
+            const turretClip = EFFECT_ANIMATIONS.fx_turret_barrel_fire;
+            const fireElapsed = Math.max(0, 0.18 - (t._fireAnimT ?? 0));
+            const fireIndex = t._fireAnimT > 0 ? Math.min(3, 1 + Math.floor(fireElapsed / 0.06)) : 0;
+            applyAnimationFrame(barrelSp, turretClip, turretClip.frames[fireIndex]);
             const barrelTransform = barrel.getComponent(UITransform)!;
             barrelTransform.setContentSize(barrelW, barrelH);
             // 生成图的机械枢轴位于原画宽度约36%，把锚点放到枢轴后旋转时
@@ -2386,17 +2431,35 @@ export class GameManager extends Component {
             barrel.setRotationFromEuler(0, 0, -(t._aim ?? 0) * 180 / Math.PI);
         }
 
+        // 尸体不参与下方活体条/攻击预警绘制，也不会再执行AI。
+        for (const entry of this._corpses.entries) {
+            const e = entry.actor, clip = e.actorAnimation.clip, frame = e.actorAnimation.currentFrame;
+            if (!e.node || !e.sprite || !clip || !frame) continue;
+            applyAnimationFrame(e.sprite, clip, frame);
+            const [x, y] = this._toLocal(e.x, e.y);
+            e.node.setPosition(x, y, 0);
+            const scale = clip.displayScale ?? 1;
+            e.node.setScale(new Vec3(e.animationMirror * scale, scale, 1));
+            e.node.setRotationFromEuler(0, 0, 0);
+            e.sprite.color = new Color(255, 255, 255, Math.round(entry.alpha * 255));
+        }
+
         // Enemies — Sprite node carries the visual, Graphics only draws the HP bar
         // and the hit-flash overlay (flashTimer, previously a dead field, now used here).
         for (const e of this._enemies) {
             if (e.dead) continue;
             const r = e.radius ?? 18;
             const visualR = r * (e.visualScale ?? 1);
-            const [rawEx, rawEy] = this._toLocal(e.x, e.y);
-            // 大轮廓的碰撞仍按设计半径结算，但视觉主体不能被场边裁掉一半。
-            const edgePad = Math.min(76, visualR * 0.72);
-            const ex = clamp(rawEx, edgePad, CANVAS_W - edgePad);
-            const ey = clamp(rawEy, CANVAS_H - PLAYFIELD_BOTTOM + edgePad, CANVAS_H - edgePad);
+            // 贴图、阴影与碰撞共用同一逻辑根。场外出生必须保留真实位置。
+            const [ex, ey] = this._toLocal(e.x, e.y);
+            const showGuides = this.state === 'testRoom' && this._testVisualGuides;
+            if (showGuides) {
+                g.strokeColor = new Color(65, 245, 232, 210);
+                g.lineWidth = 1;
+                g.circle(ex, ey, r); g.stroke();
+                g.moveTo(ex - 7, ey); g.lineTo(ex + 7, ey);
+                g.moveTo(ex, ey - 7); g.lineTo(ex, ey + 7); g.stroke();
+            }
             // 方向动作帧：距离驱动步态 + 脸始终朝向玩家（远程怪后撤/Boss横移不背对）
             const walkPose = advanceLocomotion(
                 e.locomotion, e.x, e.y, this._visualDt, visualR * 2, e.locomotionKind,
@@ -2423,15 +2486,22 @@ export class GameManager extends Component {
             }
             this._syncDirectionalFrame(e, walkPose, facingPose);
 
-            if (e.node) {
+            let bodyX = ex, bodyY = ey;
+            if (e.node && e.actorAnimation.clip) {
+                e.node.setPosition(ex, ey, 0);
+                const scale = e.actorAnimation.clip.displayScale ?? 1;
+                e.node.setScale(new Vec3(e.animationMirror * scale, scale, 1));
+                e.node.setRotationFromEuler(0, 0, 0);
+            } else if (e.node) {
                 const singleSpriteSway = e.directionalFrames ? 0 : walkPose.footSwing * visualR * 0.045;
                 const recoil = Math.sin(Math.min(1, e.actionRecoil / 0.24) * Math.PI) * visualR * 0.10;
                 const windupProgress = e.attackWindup > 0 && e.attackWindupMax > 0
                     ? 1 - e.attackWindup / e.attackWindupMax : 0;
                 const windupPull = Math.sin(windupProgress * Math.PI * 0.5) * visualR * 0.07;
-                const poseX = ex - faceDx * (recoil + windupPull) - faceDy * singleSpriteSway;
-                const poseY = ey + walkPose.bodyLift + faceDy * (recoil + windupPull) - faceDx * singleSpriteSway;
-                e.node.setPosition(Math.round(poseX), Math.round(poseY), 0);
+                const pose = entityVisualPose(e.x, e.y, faceDx, faceDy,
+                    walkPose.bodyLift, recoil + windupPull, singleSpriteSway);
+                bodyX = Math.round(pose.x); bodyY = Math.round(pose.y);
+                e.node.setPosition(bodyX, bodyY, 0);
                 const facing = facingPose.mirror;
                 e.node.setScale(new Vec3(
                     facing * facingPose.turnScaleX * walkPose.bodyScaleX * (1 - windupProgress * 0.035),
@@ -2804,9 +2874,19 @@ export class GameManager extends Component {
             }
 
             // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音；隐身/飞空时隐藏
-            if (!e.isBoss && e.hp < e.maxHp && !hidden) {
-                const bw = Math.max(r * 2.2, visualR * 1.55), bh = 6;
-                const [rx, ry, rw, rh] = this._toLocalRect(e.x - bw / 2, e.y - visualR - 10, bw, bh);
+            if (((!e.isBoss && e.hp < e.maxHp) || showGuides) && !hidden) {
+                const clip = e.actorAnimation.clip;
+                const frame = e.actorAnimation.currentFrame;
+                const actorScale = clip?.displayScale ?? 1;
+                const displayedVisualR = visualR * actorScale;
+                const topOffset = frame
+                    ? animationFrameTopOffset(
+                        visualR * 2, frame.pivot[1], actorScale,
+                        animationAlphaTop(clip.sheet, frame.index),
+                    )
+                    : displayedVisualR;
+                const bar = entityHealthBar(bodyX, bodyY, r, displayedVisualR, topOffset);
+                const { x: rx, y: ry, width: rw, height: rh } = bar;
                 g.fillColor = new Color(40, 40, 40, 180);
                 g.fillRect(rx, ry, rw, rh);
                 g.fillColor = new Color(220, 60, 60, 230);
@@ -2814,9 +2894,8 @@ export class GameManager extends Component {
                 // 护盾剩余：血条上方细蓝条
                 if (e.shieldActive && e.shieldHp > 0 && e.maxShieldHp > 0) {
                     const sh = 3;
-                    const [sx, sy, sw, shh] = this._toLocalRect(e.x - bw / 2, e.y - visualR - 10 - sh, bw, sh);
                     g.fillColor = new Color(90, 170, 255, 220);
-                    g.fillRect(sx, sy, sw * (e.shieldHp / e.maxShieldHp), shh);
+                    g.fillRect(rx, ry + rh, rw * (e.shieldHp / e.maxShieldHp), sh);
                 }
             }
         }
@@ -3038,7 +3117,7 @@ export class GameManager extends Component {
 
         // Player — Sprite node (char_<id> battle token, set up in PlayerController.init)
         // carries the visual; Graphics only draws the shield ring overlay.
-        if (this._player && !this._player.dead) {
+        if (this._player && (!this._player.dead || this._player.actorAnimation.action === 'defeated')) {
             const p = this._player;
             const [px, py] = this._toLocal(p.x, p.y);
             const walkPose = advanceLocomotion(
@@ -3054,6 +3133,13 @@ export class GameManager extends Component {
             g.fillColor = new Color(0, 0, 0, 125);
             g.ellipse(px, py - 25, 21 * walkPose.shadowScale, 6.5 * walkPose.shadowScale); g.fill();
             this._syncDirectionalFrame(p, walkPose, facingPose);
+            if (p.actorAnimation.clip) {
+                p.node.setPosition(px, py, 0);
+                const scale = p.actorAnimation.clip.displayScale ?? 1;
+                p.node.setScale(new Vec3(p.animationMirror * scale, scale, 1));
+                p.node.setRotationFromEuler(0, 0, 0);
+                return;
+            }
             p.node.setPosition(Math.round(px), Math.round(py + walkPose.bodyLift), 0);
             // 移动时由完整动作帧和轻微重心倾斜表达步态；静止保留极轻呼吸。
             // 呼吸只允许等比缩放。旧版横向放大时纵向同时缩小，角色会周期性
@@ -3176,7 +3262,14 @@ export class GameManager extends Component {
             if (!node) break; // pool exhausted — extremely unlikely at 24 slots, just skip the rest
 
             const sprite = node.getComponent(Sprite)!;
-            applyArtSprite(sprite, fx.key);
+            const frame = spriteFxFrame(fx);
+            if (frame && fx.animation) applyAnimationFrame(sprite, fx.animation, frame);
+            else {
+                // 同一池节点可能上一帧还在画偏心枪口特效，旧图必须恢复中心锚点。
+                node.getComponent(UITransform)!.setAnchorPoint(0.5, 0.5);
+                sprite.trim = true;
+                applyArtSprite(sprite, fx.key);
+            }
 
             const sourceX = fx.follow?.alive === false ? fx.x : (fx.follow?.x ?? fx.x);
             const sourceY = fx.follow?.alive === false ? fx.y : (fx.follow?.y ?? fx.y);
@@ -3196,7 +3289,11 @@ export class GameManager extends Component {
             let scaleT: number;
             let fadeT: number;
             let rotation = fx.rotationDeg ?? 0;
-            if (fx.motion === 'aura') {
+            if (frame) {
+                // 形变和消散由真实帧提供；旋转仅确定发射朝向，不随时间转动。
+                scaleT = 1;
+                fadeT = 1;
+            } else if (fx.motion === 'aura') {
                 // 持续状态：轻微呼吸+缓慢旋转，最后18%才收束，不抢走角色本体。
                 scaleT = 0.96 + Math.sin(progress * Math.PI * 10) * 0.035;
                 fadeT = progress < 0.82 ? 1 : Math.max(0, 1 - (progress - 0.82) / 0.18);
@@ -3372,6 +3469,13 @@ export class GameManager extends Component {
             [ex, ey] = EnemyBase.randomEdgePos(enemy.radius);
         }
         enemy.x = ex; enemy.y = ey;
+        enemy.updateVisualAnimation(0, this._player);
+        const animationSheets = new Set<string>();
+        const set = ACTOR_ANIMATIONS[enemy.spriteKey] ?? {};
+        for (const view of Object.keys(set)) for (const action of Object.keys(set[view])) {
+            animationSheets.add(set[view][action].sheet);
+        }
+        preloadArt(Array.from(animationSheets));
 
         // 方向动作帧矩阵预热 + 初始静止帧
         enemy.locomotionFrameKey = enemy.spriteKey;
@@ -3395,7 +3499,11 @@ export class GameManager extends Component {
     /** Remove a dead / destroyed enemy from the list. */
     removeEnemy(e: EnemyBase) {
         const idx = this._enemies.indexOf(e);
-        if (idx >= 0) this._enemies.splice(idx, 1);
+        if (idx >= 0) {
+            this._enemies.splice(idx, 1);
+            if (e.dead) this._corpses.add(e);
+            else e.node?.destroy();
+        }
         if (e === this._boss) {
             this._boss = undefined;
             if (this.state === 'playing') this._audio.playBgm(this._chapterBgm());
@@ -3457,6 +3565,8 @@ export class GameManager extends Component {
 
     /** Called by PlayerController when HP reaches 0. */
     onPlayerDeath() {
+        if (this._playerDeathPending) return;
+        this._player.beginDefeat();
         this._particles.explode(this._player.x, this._player.y, '#40c8ff');
         this._audio.playSfx('player_die');
         // 测试房间沙盒：不写档案、不进 gameover，3 秒后满血回中央重生
@@ -3465,7 +3575,8 @@ export class GameManager extends Component {
             return;
         }
         this._recordRun(false);
-        this._setState('gameover');
+        if (this._player.actorAnimation.clip) this._playerDeathPending = true;
+        else this._setState('gameover');
     }
 
     /** 测试房间重生：3s 后满血回中央 + 2s 无敌（runId 校验防止跨局定时器误触发）。 */
@@ -3482,6 +3593,7 @@ export class GameManager extends Component {
             p.dots = [];
             p.x = CANVAS_W / 2;
             p.y = CANVAS_H / 2;
+            p.resetVisualAnimation();
             p.applyBuff('respawn_iframe', 2, { invincible: true });
             this._particles.hexActivate(CANVAS_W / 2, CANVAS_H / 2, '#88ccff');
             this._floatText.spawn(CANVAS_W / 2, 200, '已重生', '#88ffb0', 20, true);
@@ -3509,6 +3621,63 @@ export class GameManager extends Component {
     }
 
     // ── turret / clone summon system ────────────────────────────
+
+    /** 召唤单位复用正式角色动作集；只保存轻量时钟/朝向，不创建独立实体节点。 */
+    private _initSummonActor(
+        summon: any, actorKey: string, displaySize: number, tint: string, alpha: number,
+    ): void {
+        summon._actorKey = actorKey;
+        summon._actorAnimation = new ActorAnimation();
+        summon._actorFacing = createDirectionalFacingState('side');
+        summon._actorFacingPose = updateDirectionalFacing(summon._actorFacing, 1, 0, 0);
+        summon._actorDisplaySize = displaySize;
+        summon._actorTint = tint;
+        summon._actorAlpha = alpha;
+        summon._actorLastX = summon.x;
+        summon._actorLastY = summon.y;
+
+        const sheets = new Set<string>();
+        const set = ACTOR_ANIMATIONS[actorKey];
+        for (const viewKey in (set ?? {})) {
+            const view = (set as any)[viewKey];
+            for (const actionKey in (view ?? {})) {
+                const clip = view[actionKey];
+                if (clip?.sheet) sheets.add(clip.sheet);
+            }
+        }
+        preloadArt(Array.from(sheets));
+    }
+
+    private _updateSummonActor(summon: any, dt: number): void {
+        const animation: ActorAnimation | undefined = summon._actorAnimation;
+        const state = summon._actorFacing;
+        const set = ACTOR_ANIMATIONS[summon._actorKey];
+        if (!animation || !state || !set) return;
+
+        const moveX = summon.x - (summon._actorLastX ?? summon.x);
+        const moveY = summon.y - (summon._actorLastY ?? summon.y);
+        let faceX = moveX;
+        let faceY = moveY;
+        if (Number.isFinite(summon._aim)) {
+            faceX = Math.cos(summon._aim);
+            faceY = Math.sin(summon._aim);
+        }
+        summon._actorFacingPose = updateDirectionalFacing(state, faceX, faceY, dt);
+        const view = summon._actorFacingPose.view;
+        if (summon._actorRequested === 'attack') {
+            animation.play('attack', set[view]?.attack, true);
+            summon._actorRequested = undefined;
+        } else if (!animation.locked) {
+            const moving = Math.hypot(moveX, moveY) > 0.15;
+            const action: 'idle' | 'walk' | 'run' = summon.kind === 'waterClone' && summon._phase === 'dash'
+                ? 'run'
+                : moving ? 'walk' : 'idle';
+            animation.play(action, set[view]?.[action]);
+        }
+        animation.update(dt);
+        summon._actorLastX = summon.x;
+        summon._actorLastY = summon.y;
+    }
 
     spawnTurret(player: any, dmgMult = 1, followOwner = false): void {
         // 被动：炮台类词条效果×1.5（对齐 CharacterDB.ts vivian 的 desc 描述）
@@ -3547,6 +3716,7 @@ export class GameManager extends Component {
             };
             t.update = (dt: number, g: GameManager) => {
                 t._life -= dt; t._timer -= dt;
+                t._fireAnimT = Math.max(0, (t._fireAnimT ?? 0) - dt);
                 if (t._life <= 0) { t.alive = false; return; }
                 // 超频指令（薇薇安E）：限时伤害/攻速乘区，到期回落
                 if (t._buffTimer > 0) {
@@ -3566,6 +3736,7 @@ export class GameManager extends Component {
                     if (target) {
                         const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
                         t._aim = Math.atan2(dy, dx);
+                        t._fireAnimT = 0.18;
                         g.bullets.fire(t.x, t.y, dx, dy, t.dmg * (t.dmgMult ?? 1), {
                             color: '#2af', r: 5, owner: 'turret', charKey: 'vivian',
                         });
@@ -3590,6 +3761,7 @@ export class GameManager extends Component {
             };
             t.update = (dt: number, g: GameManager) => {
                 t._life -= dt; t._timer -= dt;
+                t._fireAnimT = Math.max(0, (t._fireAnimT ?? 0) - dt);
                 if (t._life <= 0) { t.alive = false; return; }
                 // 超频指令（薇薇安E）：限时伤害/攻速乘区，到期回落
                 if (t._buffTimer > 0) {
@@ -3605,6 +3777,7 @@ export class GameManager extends Component {
                     if (target) {
                         const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
                         t._aim = Math.atan2(dy, dx);
+                        t._fireAnimT = 0.18;
                         g.bullets.fire(t.x, t.y, dx, dy, t.dmg * (t.dmgMult ?? 1), {
                             color: '#00aaff', r: 4, owner: 'turret', charKey: 'vivian',
                         });
@@ -3621,6 +3794,7 @@ export class GameManager extends Component {
             x: player.x + 80, y: player.y, r: player.radius,
             alive: true, _timer: 0, _life: 8, owner: player, kind: 'clone',
         };
+        this._initSummonActor(c, player.spriteKey ?? `char_token_${player.charId}`, 82, '#d8a6ff', 205);
         c.update = (dt: number, g: GameManager) => {
             c._life -= dt; c._timer -= dt;
             if (c._life <= 0) { c.alive = false; return; }
@@ -3633,6 +3807,7 @@ export class GameManager extends Component {
                     const [dx, dy] = Vec.normalize(target.x - c.x, target.y - c.y);
                     const dmg = player.getDamage(this) * 0.6;
                     c._aim = Math.atan2(dy, dx);
+                    c._actorRequested = 'attack';
                     g.bullets.fire(c.x, c.y, dx, dy, dmg, {
                         color: '#aa66ff', r: 6, owner: 'clone', charKey: player.charId,
                     });

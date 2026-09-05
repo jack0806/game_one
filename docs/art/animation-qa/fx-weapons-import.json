@@ -1,0 +1,207 @@
+{
+  "source": "exec-5137344c-905c-451e-9c6c-9ad048e12aa2.png",
+  "output": "anim_fx_weapons.png",
+  "size": [
+    1024,
+    1024
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        80,
+        93,
+        157,
+        157
+      ],
+      "transparentRatio": 0.956,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        69,
+        70,
+        224,
+        179
+      ],
+      "transparentRatio": 0.8355,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        76,
+        98,
+        192,
+        156
+      ],
+      "transparentRatio": 0.9329,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        78,
+        108,
+        144,
+        143
+      ],
+      "transparentRatio": 0.9861,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        68,
+        83,
+        141,
+        152
+      ],
+      "transparentRatio": 0.9481,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        55,
+        33,
+        235,
+        188
+      ],
+      "transparentRatio": 0.7512,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        73,
+        82,
+        191,
+        157
+      ],
+      "transparentRatio": 0.8981,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        82,
+        91,
+        164,
+        141
+      ],
+      "transparentRatio": 0.966,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        70,
+        59,
+        186,
+        178
+      ],
+      "transparentRatio": 0.8627,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        48,
+        27,
+        219,
+        210
+      ],
+      "transparentRatio": 0.6669,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        49,
+        34,
+        220,
+        202
+      ],
+      "transparentRatio": 0.7293,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        63,
+        41,
+        198,
+        193
+      ],
+      "transparentRatio": 0.9225,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        73,
+        76,
+        151,
+        153
+      ],
+      "transparentRatio": 0.9515,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        64,
+        48,
+        237,
+        178
+      ],
+      "transparentRatio": 0.7912,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        76,
+        73,
+        186,
+        147
+      ],
+      "transparentRatio": 0.9254,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        93,
+        95,
+        165,
+        140
+      ],
+      "transparentRatio": 0.9791,
+      "edgePixels": 0
+    }
+  ],
+  "layout": null,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

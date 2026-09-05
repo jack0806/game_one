@@ -1,0 +1,141 @@
+{
+  "source": "exec-0e0f56d5-c38a-4e69-b7a2-0cccde2a5ff9.png",
+  "output": "anim_archer_front_run8.png",
+  "size": [
+    1280,
+    640
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        138,
+        107,
+        217,
+        256
+      ],
+      "transparentRatio": 0.9435,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        125,
+        109,
+        205,
+        255
+      ],
+      "transparentRatio": 0.9419,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        111,
+        108,
+        191,
+        254
+      ],
+      "transparentRatio": 0.9423,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        98,
+        109,
+        178,
+        254
+      ],
+      "transparentRatio": 0.9426,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        138,
+        111,
+        217,
+        254
+      ],
+      "transparentRatio": 0.9409,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        125,
+        111,
+        204,
+        254
+      ],
+      "transparentRatio": 0.9427,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        111,
+        111,
+        191,
+        254
+      ],
+      "transparentRatio": 0.9411,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        98,
+        111,
+        178,
+        254
+      ],
+      "transparentRatio": 0.939,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      510,
+      1024
+    ],
+    "baselines": [
+      469,
+      954
+    ],
+    "scale": 0.36,
+    "targetBaseline": 256,
+    "columnCuts": {
+      "0": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ],
+      "1": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ]
+    },
+    "note": "正面8帧奔跑制作稿；接触/压缩/腾空/伸腿顺序，统一脚底基线和身体比例。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

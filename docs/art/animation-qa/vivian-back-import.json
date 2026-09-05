@@ -1,0 +1,432 @@
+{
+  "source": "exec-6651ba18-a020-4d1c-9399-bd3e6eb3bffd.png",
+  "output": "anim_vivian_back.png",
+  "size": [
+    1024,
+    2048
+  ],
+  "columns": 4,
+  "rows": 8,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        48,
+        39,
+        205,
+        232
+      ],
+      "transparentRatio": 0.8155,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        43,
+        38,
+        199,
+        232
+      ],
+      "transparentRatio": 0.8141,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        40,
+        39,
+        198,
+        232
+      ],
+      "transparentRatio": 0.815,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        37,
+        40,
+        195,
+        233
+      ],
+      "transparentRatio": 0.8158,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        47,
+        46,
+        205,
+        229
+      ],
+      "transparentRatio": 0.8301,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        45,
+        47,
+        201,
+        229
+      ],
+      "transparentRatio": 0.8231,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        42,
+        47,
+        199,
+        233
+      ],
+      "transparentRatio": 0.827,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        41,
+        50,
+        199,
+        234
+      ],
+      "transparentRatio": 0.8267,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        47,
+        51,
+        203,
+        235
+      ],
+      "transparentRatio": 0.825,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        46,
+        52,
+        196,
+        220
+      ],
+      "transparentRatio": 0.829,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        45,
+        53,
+        198,
+        220
+      ],
+      "transparentRatio": 0.8351,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        43,
+        55,
+        197,
+        224
+      ],
+      "transparentRatio": 0.8377,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        48,
+        96,
+        202,
+        232
+      ],
+      "transparentRatio": 0.8494,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        44,
+        59,
+        188,
+        215
+      ],
+      "transparentRatio": 0.8453,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        47,
+        39,
+        187,
+        189
+      ],
+      "transparentRatio": 0.8512,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        42,
+        96,
+        196,
+        232
+      ],
+      "transparentRatio": 0.8499,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 0,
+      "bounds": [
+        40,
+        44,
+        206,
+        232
+      ],
+      "transparentRatio": 0.8201,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "bounds": [
+        29,
+        44,
+        211,
+        232
+      ],
+      "transparentRatio": 0.8184,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 2,
+      "bounds": [
+        25,
+        44,
+        211,
+        232
+      ],
+      "transparentRatio": 0.8178,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "bounds": [
+        24,
+        45,
+        200,
+        232
+      ],
+      "transparentRatio": 0.8174,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 0,
+      "bounds": [
+        46,
+        43,
+        200,
+        231
+      ],
+      "transparentRatio": 0.8238,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 1,
+      "bounds": [
+        40,
+        47,
+        193,
+        231
+      ],
+      "transparentRatio": 0.833,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 2,
+      "bounds": [
+        43,
+        47,
+        201,
+        231
+      ],
+      "transparentRatio": 0.8315,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 3,
+      "bounds": [
+        39,
+        43,
+        200,
+        233
+      ],
+      "transparentRatio": 0.8175,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 0,
+      "bounds": [
+        83,
+        100,
+        177,
+        232
+      ],
+      "transparentRatio": 0.8845,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 1,
+      "bounds": [
+        59,
+        118,
+        203,
+        232
+      ],
+      "transparentRatio": 0.8603,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 2,
+      "bounds": [
+        36,
+        145,
+        226,
+        232
+      ],
+      "transparentRatio": 0.8626,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 3,
+      "bounds": [
+        24,
+        156,
+        233,
+        223
+      ],
+      "transparentRatio": 0.8703,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 0,
+      "bounds": [
+        47,
+        28,
+        204,
+        228
+      ],
+      "transparentRatio": 0.8128,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 1,
+      "bounds": [
+        44,
+        41,
+        207,
+        231
+      ],
+      "transparentRatio": 0.8143,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 2,
+      "bounds": [
+        41,
+        42,
+        207,
+        232
+      ],
+      "transparentRatio": 0.8151,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 3,
+      "bounds": [
+        40,
+        43,
+        198,
+        232
+      ],
+      "transparentRatio": 0.8175,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      241,
+      470,
+      684,
+      905,
+      1130,
+      1360,
+      1529,
+      1774
+    ],
+    "baselines": [
+      228,
+      451,
+      675,
+      890,
+      1116,
+      1342,
+      1515,
+      1755
+    ],
+    "scale": 0.96,
+    "columnCuts": {
+      "6": [
+        0,
+        200,
+        413,
+        643,
+        887
+      ]
+    },
+    "targetBaseline": 232
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

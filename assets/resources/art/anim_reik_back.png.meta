@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "cf006674-f5b5-4ba5-aed8-db16b917d08b",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "cf006674-f5b5-4ba5-aed8-db16b917d08b@6c48a",
+      "displayName": "anim_reik_back",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "cf006674-f5b5-4ba5-aed8-db16b917d08b",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "cf006674-f5b5-4ba5-aed8-db16b917d08b@f9941",
+      "displayName": "anim_reik_back",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 2,
+        "offsetY": -18.5,
+        "trimX": 47,
+        "trimY": 66,
+        "width": 934,
+        "height": 1953,
+        "rawWidth": 1024,
+        "rawHeight": 2048,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": false,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -467,
+            -976.5,
+            0,
+            467,
+            -976.5,
+            0,
+            -467,
+            976.5,
+            0,
+            467,
+            976.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            47,
+            1982,
+            981,
+            1982,
+            47,
+            29,
+            981,
+            29
+          ],
+          "nuv": [
+            0.0458984375,
+            0.01416015625,
+            0.9580078125,
+            0.01416015625,
+            0.0458984375,
+            0.9677734375,
+            0.9580078125,
+            0.9677734375
+          ],
+          "minPos": [
+            -467,
+            -976.5,
+            0
+          ],
+          "maxPos": [
+            467,
+            976.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "cf006674-f5b5-4ba5-aed8-db16b917d08b@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "cf006674-f5b5-4ba5-aed8-db16b917d08b@6c48a"
+  }
+}

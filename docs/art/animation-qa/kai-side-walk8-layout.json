@@ -1,0 +1,6 @@
+{
+  "rowCuts": [0, 443, 887],
+  "baselines": [430, 874],
+  "scale": 0.50,
+  "targetBaseline": 232
+}

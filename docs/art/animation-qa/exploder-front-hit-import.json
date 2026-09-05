@@ -1,0 +1,84 @@
+{
+  "source": "exec-7412e20c-1ca2-4a5b-b1bc-4439552ae9de.png",
+  "output": "anim_exploder_front_hit.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        117,
+        170,
+        337,
+        365
+      ],
+      "transparentRatio": 0.8466,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        124,
+        176,
+        324,
+        365
+      ],
+      "transparentRatio": 0.8779,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        122,
+        165,
+        326,
+        363
+      ],
+      "transparentRatio": 0.8566,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        113,
+        172,
+        319,
+        365
+      ],
+      "transparentRatio": 0.8599,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      887
+    ],
+    "baselines": [
+      730
+    ],
+    "scale": 0.48,
+    "targetBaseline": 378,
+    "columnCuts": {
+      "0": [
+        0,
+        473,
+        889,
+        1313,
+        1774
+      ]
+    },
+    "note": "爆炸怪正面四帧受击；统一0.48比例与待机体积对齐，不逐帧缩放。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

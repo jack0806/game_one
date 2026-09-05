@@ -1,0 +1,87 @@
+{
+  "source": "exec-a919a1b4-20c6-4e84-a031-fb79624d1891.png",
+  "output": "anim_acid_sac_back_hit.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        94,
+        29,
+        354,
+        331
+      ],
+      "transparentRatio": 0.7771,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        68,
+        31,
+        390,
+        330
+      ],
+      "transparentRatio": 0.7805,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        88,
+        29,
+        350,
+        331
+      ],
+      "transparentRatio": 0.7818,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        98,
+        29,
+        354,
+        331
+      ],
+      "transparentRatio": 0.7823,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      887
+    ],
+    "baselines": [
+      760
+    ],
+    "scale": 0.75,
+    "targetBaseline": 400,
+    "columnCuts": {
+      "0": [
+        0,
+        444,
+        887,
+        1331,
+        1774
+      ]
+    },
+    "isolatedRows": [
+      0
+    ],
+    "note": "酸囊投手背面受击修正版；四帧保持站立并回到准备姿势，不误用塌落动作。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

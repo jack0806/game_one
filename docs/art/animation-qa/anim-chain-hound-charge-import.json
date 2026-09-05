@@ -1,0 +1,197 @@
+{
+  "source": "exec-e7343541-1508-4c2c-8a09-43f4a25e26c4.png",
+  "output": "anim_chain_hound_charge.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        142,
+        87,
+        293,
+        375
+      ],
+      "transparentRatio": 0.8921,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        142,
+        77,
+        309,
+        390
+      ],
+      "transparentRatio": 0.8838,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        128,
+        78,
+        304,
+        394
+      ],
+      "transparentRatio": 0.8684,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        108,
+        147,
+        334,
+        377
+      ],
+      "transparentRatio": 0.8916,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        101,
+        162,
+        355,
+        302
+      ],
+      "transparentRatio": 0.9325,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        91,
+        165,
+        353,
+        301
+      ],
+      "transparentRatio": 0.9333,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        89,
+        151,
+        350,
+        302
+      ],
+      "transparentRatio": 0.926,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        98,
+        182,
+        344,
+        302
+      ],
+      "transparentRatio": 0.9379,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        158,
+        53,
+        298,
+        326
+      ],
+      "transparentRatio": 0.9052,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        126,
+        53,
+        292,
+        325
+      ],
+      "transparentRatio": 0.9159,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        123,
+        43,
+        301,
+        325
+      ],
+      "transparentRatio": 0.901,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        120,
+        75,
+        289,
+        312
+      ],
+      "transparentRatio": 0.9138,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      418,
+      836,
+      1254
+    ],
+    "baselines": [
+      418,
+      836,
+      1254
+    ],
+    "targetBaseline": 402,
+    "scale": 0.86,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

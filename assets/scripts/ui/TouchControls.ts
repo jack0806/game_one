@@ -38,6 +38,7 @@ const { ccclass } = _decorator;
 export interface TouchInputBridge {
     setStick(x: number, y: number): void;
     fireSkillPressed(slot: 'q' | 'e' | 'r'): void;
+    fireJumpPressed(): void;
 }
 
 type SkillSlot = 'q' | 'e' | 'r';
@@ -86,6 +87,7 @@ export class TouchControls extends Component {
     private _joyHomeY = -190;
     /** 右上角系统按钮（随可见宽度重排）。 */
     private _topRightBtns: Node[] = [];
+    private _jumpButton?: Node;
     /** 竖屏提示遮罩（触屏端）。 */
     private _rotateHint!: Node;
     /** 用户点「继续游戏」后不再弹竖屏遮罩（本局会话内）。 */
@@ -128,6 +130,7 @@ export class TouchControls extends Component {
         if (this._touchMode) {
             this._buildStickZone();
             this._buildSkillButtons();
+            this._buildJumpButton();
             this._buildRotateHint();
             // 移动端浏览器：首次触摸请求全屏并锁定横屏（需在用户手势内触发）
             input.on(Input.EventType.TOUCH_START, this._tryFullscreen, this);
@@ -192,6 +195,7 @@ export class TouchControls extends Component {
             ));
         }
         // 竖屏遮罩铺满可见区（遮罩矩形绘制时已用超大宽度，无需重画）
+        this._jumpButton?.setPosition(new Vec3(right - 140, -292 + (this._testRoomMode ? 110 : 0), 0));
         this._rotateHint.getComponent(UITransform)!.setContentSize(right * 2, CANVAS_H);
     }
 
@@ -321,6 +325,15 @@ export class TouchControls extends Component {
         lbl.color = new Color(225, 240, 250, 255);
         styleLabel(lbl);
         return n;
+    }
+
+    private _buildJumpButton(): void {
+        const n = this._mkHintButton(this.node, '跳跃', 0, 0, 96, 48);
+        this._jumpButton = n;
+        n.on(Node.EventType.TOUCH_START, () => {
+            this._input?.fireJumpPressed();
+            this.onButtonSfx?.();
+        }, this);
     }
 
     /**

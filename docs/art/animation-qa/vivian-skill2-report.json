@@ -1,0 +1,198 @@
+{
+  "source": "exec-68cbaf10-173c-4860-b116-fd95b8de35d0.png",
+  "output": "anim_vivian_skill2.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        123,
+        92,
+        393,
+        391
+      ],
+      "transparentRatio": 0.8291,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        102,
+        92,
+        366,
+        391
+      ],
+      "transparentRatio": 0.8335,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        69,
+        92,
+        338,
+        392
+      ],
+      "transparentRatio": 0.8235,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        51,
+        92,
+        314,
+        391
+      ],
+      "transparentRatio": 0.8305,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        135,
+        73,
+        355,
+        369
+      ],
+      "transparentRatio": 0.8696,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        108,
+        73,
+        325,
+        369
+      ],
+      "transparentRatio": 0.8704,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        75,
+        74,
+        295,
+        369
+      ],
+      "transparentRatio": 0.8653,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        58,
+        74,
+        276,
+        368
+      ],
+      "transparentRatio": 0.8721,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        130,
+        56,
+        388,
+        346
+      ],
+      "transparentRatio": 0.8421,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        105,
+        56,
+        362,
+        346
+      ],
+      "transparentRatio": 0.8418,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        74,
+        56,
+        331,
+        346
+      ],
+      "transparentRatio": 0.8408,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        54,
+        56,
+        309,
+        345
+      ],
+      "transparentRatio": 0.8426,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "E 超频指令：三向四帧，遥控器与无人机同步亮起，透明边缘及基线通过人工复核。"
+}\n

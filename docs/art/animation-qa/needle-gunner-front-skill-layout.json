@@ -1,0 +1,11 @@
+{
+  "rowCuts": [0, 724],
+  "baselines": [600],
+  "scale": 0.5,
+  "targetBaseline": 330,
+  "columnCuts": {
+    "0": [0, 543, 1086, 1629, 2172]
+  },
+  "isolatedRows": [0],
+  "note": "断针射手正面高功率修正版；第三帧短束完整收在格内，炮口留有透明边界。"
+}

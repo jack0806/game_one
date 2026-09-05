@@ -1,0 +1,84 @@
+{
+  "source": "exec-ee73e495-556f-4f2d-82d0-ccdde0d06d5e.png",
+  "output": "anim_blast_tick_back_skill.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        79,
+        11,
+        386,
+        401
+      ],
+      "transparentRatio": 0.6406,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        63,
+        11,
+        379,
+        401
+      ],
+      "transparentRatio": 0.6477,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        65,
+        11,
+        386,
+        401
+      ],
+      "transparentRatio": 0.6438,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        63,
+        5,
+        370,
+        401
+      ],
+      "transparentRatio": 0.6385,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      1024
+    ],
+    "baselines": [
+      748
+    ],
+    "scale": 0.84,
+    "targetBaseline": 400,
+    "columnCuts": {
+      "0": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ]
+    },
+    "note": "熔爆蜱严格背面独立过热条；全局基线保留三排气口和递增亮度，无正面传感器。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

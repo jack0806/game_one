@@ -35,12 +35,14 @@ export class TestRoomUI extends Component {
     /** 轮换测试背景并返回新的1-based章节号。 */
     onCycleChapter?:   () => number;
     onToggleTargetPause?: (on: boolean) => void;
+    onToggleVisualGuides?: (on: boolean) => void;
 
     private _category: UnitCategory = 'boss';
     private _count = 5;
     private _invincible = false;
     private _ceasefire = false;
     private _targetPaused = false;
+    private _visualGuides = false;
     private _heroId = 'kai';
     private _unitPage = 0;
     private _countLbl!: Label;
@@ -48,6 +50,7 @@ export class TestRoomUI extends Component {
     private _ceasefireLbl!: Label;
     private _chapterLbl!: Label;
     private _targetPauseLbl!: Label;
+    private _guideLbl!: Label;
     private _unitCards: Node[] = [];
     private _tabs: { g: Graphics; key: UnitCategory }[] = [];
     private _heroPanel!: Node;
@@ -66,6 +69,8 @@ export class TestRoomUI extends Component {
         this._invincible = false;
         this._ceasefire = false;
         this._targetPaused = false;
+        this._visualGuides = false;
+        this._guideLbl.string = '定位:关';
         this._count = 5;
         this._category = 'boss';
         this._unitPage = 0;
@@ -186,6 +191,14 @@ export class TestRoomUI extends Component {
             this._targetPaused = !this._targetPaused;
             this._refreshTargetPause();
             this.onToggleTargetPause?.(this._targetPaused);
+        }, this);
+
+        const guides = this._mkSmallBtn(this.node, '定位:关', 588, 20, 78, 30, new Color(38, 96, 104, 245));
+        this._guideLbl = guides.getChildByName('L')!.getComponent(Label)!;
+        guides.on(Node.EventType.TOUCH_END, () => {
+            this._visualGuides = !this._visualGuides;
+            this._guideLbl.string = this._visualGuides ? '定位:开' : '定位:关';
+            this.onToggleVisualGuides?.(this._visualGuides);
         }, this);
 
         this._refreshCount();

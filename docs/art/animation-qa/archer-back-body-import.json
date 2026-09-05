@@ -1,0 +1,312 @@
+{
+  "source": "exec-bf8c5dad-b43d-46eb-a673-f71cccdcc448.png",
+  "output": "anim_archer_back_body.png",
+  "size": [
+    1280,
+    1600
+  ],
+  "columns": 4,
+  "rows": 5,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        143,
+        94,
+        242,
+        256
+      ],
+      "transparentRatio": 0.9072,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        108,
+        93,
+        208,
+        258
+      ],
+      "transparentRatio": 0.9076,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        98,
+        88,
+        202,
+        258
+      ],
+      "transparentRatio": 0.9045,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        80,
+        92,
+        181,
+        258
+      ],
+      "transparentRatio": 0.906,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        134,
+        129,
+        236,
+        258
+      ],
+      "transparentRatio": 0.925,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        103,
+        92,
+        212,
+        244
+      ],
+      "transparentRatio": 0.9197,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        104,
+        91,
+        204,
+        236
+      ],
+      "transparentRatio": 0.9177,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        69,
+        127,
+        171,
+        256
+      ],
+      "transparentRatio": 0.9259,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        128,
+        107,
+        244,
+        252
+      ],
+      "transparentRatio": 0.9143,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        102,
+        107,
+        208,
+        256
+      ],
+      "transparentRatio": 0.9183,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        106,
+        104,
+        202,
+        256
+      ],
+      "transparentRatio": 0.9155,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        70,
+        105,
+        165,
+        255
+      ],
+      "transparentRatio": 0.9174,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        133,
+        133,
+        227,
+        252
+      ],
+      "transparentRatio": 0.9337,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        101,
+        146,
+        212,
+        255
+      ],
+      "transparentRatio": 0.9364,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        94,
+        167,
+        249,
+        254
+      ],
+      "transparentRatio": 0.9325,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        54,
+        197,
+        220,
+        261
+      ],
+      "transparentRatio": 0.9389,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 0,
+      "bounds": [
+        137,
+        100,
+        227,
+        255
+      ],
+      "transparentRatio": 0.9183,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "bounds": [
+        104,
+        97,
+        194,
+        254
+      ],
+      "transparentRatio": 0.9118,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 2,
+      "bounds": [
+        103,
+        100,
+        192,
+        257
+      ],
+      "transparentRatio": 0.9127,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "bounds": [
+        76,
+        100,
+        167,
+        259
+      ],
+      "transparentRatio": 0.9177,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      268,
+      519,
+      765,
+      971,
+      1254
+    ],
+    "baselines": [
+      259,
+      502,
+      742,
+      949,
+      1207
+    ],
+    "scale": 0.72,
+    "targetBaseline": 256,
+    "columnCuts": {
+      "0": [
+        0,
+        348,
+        622,
+        895,
+        1254
+      ],
+      "1": [
+        0,
+        348,
+        622,
+        895,
+        1254
+      ],
+      "2": [
+        0,
+        348,
+        622,
+        895,
+        1254
+      ],
+      "3": [
+        0,
+        348,
+        622,
+        895,
+        1254
+      ],
+      "4": [
+        0,
+        348,
+        622,
+        895,
+        1254
+      ]
+    },
+    "note": "五行依次待机、跳跃、受击、倒下、装填；背包、枪尖与倒下身体完整保留。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

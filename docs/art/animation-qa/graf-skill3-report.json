@@ -1,0 +1,198 @@
+{
+  "source": "exec-1ee778a2-f942-40cb-911a-a5fb50a87749.png",
+  "output": "anim_graf_skill3.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        96,
+        106,
+        359,
+        414
+      ],
+      "transparentRatio": 0.7506,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        89,
+        104,
+        358,
+        414
+      ],
+      "transparentRatio": 0.7878,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        28,
+        99,
+        414,
+        414
+      ],
+      "transparentRatio": 0.7847,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        83,
+        106,
+        351,
+        414
+      ],
+      "transparentRatio": 0.7559,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        145,
+        98,
+        278,
+        389
+      ],
+      "transparentRatio": 0.866,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        127,
+        98,
+        296,
+        389
+      ],
+      "transparentRatio": 0.8498,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        127,
+        92,
+        399,
+        388
+      ],
+      "transparentRatio": 0.8385,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        129,
+        106,
+        265,
+        389
+      ],
+      "transparentRatio": 0.8657,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        102,
+        65,
+        353,
+        356
+      ],
+      "transparentRatio": 0.7758,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        106,
+        64,
+        340,
+        357
+      ],
+      "transparentRatio": 0.8078,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        31,
+        58,
+        409,
+        357
+      ],
+      "transparentRatio": 0.7977,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        97,
+        64,
+        336,
+        357
+      ],
+      "transparentRatio": 0.7822,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "三方向四帧动作已通过装箱、透明边缘、共同基线与Playwright峰值帧复核。"
+}\n

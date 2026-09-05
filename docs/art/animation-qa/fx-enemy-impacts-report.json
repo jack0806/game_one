@@ -1,0 +1,208 @@
+{
+  "source": "exec-f183aad7-05fa-4b46-968c-72447432577b.png",
+  "output": "anim_fx_enemy_impacts.png",
+  "size": [
+    1024,
+    1024
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        80,
+        94,
+        176,
+        190
+      ],
+      "transparentRatio": 0.9191,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        33,
+        42,
+        222,
+        237
+      ],
+      "transparentRatio": 0.6827,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        0,
+        6,
+        256,
+        256
+      ],
+      "transparentRatio": 0.3185,
+      "edgePixels": 69
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        0,
+        26,
+        241,
+        251
+      ],
+      "transparentRatio": 0.7032,
+      "edgePixels": 5
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        58,
+        51,
+        200,
+        213
+      ],
+      "transparentRatio": 0.8906,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        35,
+        25,
+        222,
+        233
+      ],
+      "transparentRatio": 0.6763,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        24,
+        0,
+        235,
+        255
+      ],
+      "transparentRatio": 0.5043,
+      "edgePixels": 47
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        49,
+        12,
+        212,
+        232
+      ],
+      "transparentRatio": 0.6964,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        102,
+        79,
+        162,
+        157
+      ],
+      "transparentRatio": 0.9522,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        19,
+        1,
+        233,
+        256
+      ],
+      "transparentRatio": 0.6188,
+      "edgePixels": 13
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        22,
+        2,
+        236,
+        256
+      ],
+      "transparentRatio": 0.6278,
+      "edgePixels": 49
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        47,
+        45,
+        202,
+        256
+      ],
+      "transparentRatio": 0.9165,
+      "edgePixels": 23
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        84,
+        64,
+        171,
+        168
+      ],
+      "transparentRatio": 0.8954,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        50,
+        0,
+        203,
+        214
+      ],
+      "transparentRatio": 0.6476,
+      "edgePixels": 11
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        8,
+        0,
+        225,
+        239
+      ],
+      "transparentRatio": 0.4272,
+      "edgePixels": 51
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        51,
+        0,
+        212,
+        225
+      ],
+      "transparentRatio": 0.6448,
+      "edgePixels": 18
+    }
+  ],
+  "layout": null,
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

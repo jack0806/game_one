@@ -1,0 +1,87 @@
+{
+  "source": "exec-995aeb69-a498-4d32-8651-238a425411d8.png",
+  "output": "anim_acid_sac_back_defeated.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        76,
+        53,
+        373,
+        388
+      ],
+      "transparentRatio": 0.7621,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        68,
+        91,
+        364,
+        387
+      ],
+      "transparentRatio": 0.7685,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        48,
+        180,
+        388,
+        400
+      ],
+      "transparentRatio": 0.8168,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        44,
+        287,
+        386,
+        401
+      ],
+      "transparentRatio": 0.8922,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      724
+    ],
+    "baselines": [
+      648
+    ],
+    "scale": 0.7,
+    "targetBaseline": 400,
+    "columnCuts": {
+      "0": [
+        0,
+        543,
+        1086,
+        1629,
+        2172
+      ]
+    },
+    "isolatedRows": [
+      0
+    ],
+    "note": "酸囊投手背面死亡修正版；四帧逐步塌落，最终低矮残骸无正脸。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

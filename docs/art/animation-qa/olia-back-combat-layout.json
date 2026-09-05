@@ -1,0 +1,37 @@
+{
+  "rowCuts": [
+    0,
+    453,
+    887
+  ],
+  "baselines": [
+    412,
+    827
+  ],
+  "scale": 0.7,
+  "targetBaseline": 300,
+  "isolatedRows": [
+    1
+  ],
+  "sourceColumns": {
+    "1": 5
+  },
+  "columnSelection": {
+    "1": [
+      0,
+      2,
+      3,
+      4
+    ]
+  },
+  "columnCuts": {
+    "1": [
+      0,
+      390,
+      800,
+      1100,
+      1440,
+      1774
+    ]
+  }
+}

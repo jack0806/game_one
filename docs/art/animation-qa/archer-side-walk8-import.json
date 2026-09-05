@@ -1,0 +1,141 @@
+{
+  "source": "exec-690ab83f-aac6-4052-a24f-b01541d5b96e.png",
+  "output": "anim_archer_side_walk8.png",
+  "size": [
+    1280,
+    640
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        102,
+        98,
+        287,
+        257
+      ],
+      "transparentRatio": 0.8814,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        69,
+        99,
+        250,
+        257
+      ],
+      "transparentRatio": 0.8854,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        72,
+        99,
+        252,
+        256
+      ],
+      "transparentRatio": 0.8889,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        73,
+        99,
+        256,
+        256
+      ],
+      "transparentRatio": 0.8855,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        97,
+        99,
+        281,
+        256
+      ],
+      "transparentRatio": 0.8857,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        68,
+        99,
+        248,
+        257
+      ],
+      "transparentRatio": 0.8881,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        72,
+        99,
+        249,
+        257
+      ],
+      "transparentRatio": 0.8893,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        72,
+        100,
+        254,
+        257
+      ],
+      "transparentRatio": 0.886,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      440,
+      887
+    ],
+    "baselines": [
+      377,
+      805
+    ],
+    "scale": 0.52,
+    "targetBaseline": 256,
+    "columnCuts": {
+      "0": [
+        0,
+        541,
+        944,
+        1345,
+        1774
+      ],
+      "1": [
+        0,
+        541,
+        944,
+        1345,
+        1774
+      ]
+    },
+    "note": "原稿共同脚底基线，保留各帧膝踝高度；骨盆横坐标在动作数据中标定，不逐格包围盒居中。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

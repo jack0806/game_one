@@ -1,0 +1,256 @@
+{
+  "source": "exec-5cd80bff-760a-4318-899b-ce196638f2d6.png",
+  "output": "anim_squid_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        88,
+        244,
+        384,
+        420
+      ],
+      "transparentRatio": 0.8426,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        66,
+        247,
+        425,
+        412
+      ],
+      "transparentRatio": 0.8351,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        57,
+        247,
+        400,
+        419
+      ],
+      "transparentRatio": 0.8338,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        34,
+        246,
+        321,
+        420
+      ],
+      "transparentRatio": 0.8485,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        88,
+        233,
+        395,
+        417
+      ],
+      "transparentRatio": 0.8415,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        72,
+        248,
+        352,
+        420
+      ],
+      "transparentRatio": 0.8488,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        84,
+        252,
+        337,
+        416
+      ],
+      "transparentRatio": 0.8679,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        37,
+        243,
+        323,
+        419
+      ],
+      "transparentRatio": 0.8478,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        89,
+        248,
+        403,
+        420
+      ],
+      "transparentRatio": 0.8502,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        67,
+        285,
+        398,
+        419
+      ],
+      "transparentRatio": 0.8657,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        65,
+        284,
+        386,
+        418
+      ],
+      "transparentRatio": 0.8692,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        41,
+        324,
+        357,
+        416
+      ],
+      "transparentRatio": 0.9082,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        89,
+        248,
+        387,
+        418
+      ],
+      "transparentRatio": 0.8516,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        71,
+        247,
+        376,
+        420
+      ],
+      "transparentRatio": 0.8509,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        58,
+        243,
+        387,
+        416
+      ],
+      "transparentRatio": 0.846,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        40,
+        246,
+        325,
+        419
+      ],
+      "transparentRatio": 0.8504,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      281,
+      561,
+      842,
+      1122
+    ],
+    "baselines": [
+      254,
+      505,
+      771,
+      1038
+    ],
+    "scale": 1.1,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "1": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "2": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ],
+      "3": [
+        0,
+        350,
+        701,
+        1052,
+        1402
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼右侧战斗按整图连通主体保留攻击触手与喙前水弹光点，以动作最低点装箱。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

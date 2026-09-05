@@ -1,0 +1,231 @@
+{
+  "source": "exec-b2a60e84-260e-4805-8250-999e85980f3b.png",
+  "output": "anim_gold_scavenger_side_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        76,
+        157,
+        407,
+        400
+      ],
+      "transparentRatio": 0.783,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        77,
+        157,
+        406,
+        398
+      ],
+      "transparentRatio": 0.7859,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        69,
+        161,
+        388,
+        400
+      ],
+      "transparentRatio": 0.7893,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        55,
+        159,
+        374,
+        400
+      ],
+      "transparentRatio": 0.7775,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        73,
+        161,
+        383,
+        400
+      ],
+      "transparentRatio": 0.788,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        57,
+        162,
+        369,
+        400
+      ],
+      "transparentRatio": 0.7943,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        34,
+        162,
+        388,
+        400
+      ],
+      "transparentRatio": 0.7853,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        7,
+        162,
+        343,
+        399
+      ],
+      "transparentRatio": 0.7847,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        45,
+        175,
+        387,
+        397
+      ],
+      "transparentRatio": 0.7918,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        11,
+        175,
+        397,
+        399
+      ],
+      "transparentRatio": 0.788,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        20,
+        173,
+        389,
+        400
+      ],
+      "transparentRatio": 0.7875,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        16,
+        187,
+        387,
+        400
+      ],
+      "transparentRatio": 0.7947,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        94,
+        183,
+        395,
+        400
+      ],
+      "transparentRatio": 0.8086,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        61,
+        138,
+        389,
+        377
+      ],
+      "transparentRatio": 0.807,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        53,
+        138,
+        381,
+        346
+      ],
+      "transparentRatio": 0.8062,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        77,
+        180,
+        378,
+        400
+      ],
+      "transparentRatio": 0.8044,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      291,
+      557,
+      819,
+      1122
+    ],
+    "baselines": [
+      265,
+      527,
+      785,
+      1081
+    ],
+    "scale": 1.15,
+    "targetBaseline": 400,
+    "isolatedRows": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "note": "黄金拾荒者严格朝右侧视待机、走、跑、跳；连通主体分离用于保留跨等分格的腿部和金币袋。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

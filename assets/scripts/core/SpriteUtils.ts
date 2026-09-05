@@ -7,12 +7,14 @@
 // 这样才能保证全部路径都先经过 ArtRemap.artPath() 做错位修正，并共享同一份
 // SpriteFrame 缓存（避免同一张图被反复异步加载）。
 
-import { SpriteFrame, resources, Sprite, Node, UITransform } from 'cc';
+import { SpriteFrame, resources, Sprite, Node, UITransform, Rect, Size, Vec2 } from 'cc';
 import { artPath } from './ArtRemap';
+import type { ActorClip, AnimationFrame } from '../data/ActorAnimationDB';
 
 const _cache: Map<string, SpriteFrame> = new Map();
 const _pending: Map<string, ((sf: SpriteFrame | null) => void)[]> = new Map();
 const _requestedKey: WeakMap<Sprite, string> = new WeakMap();
+const _animationFrames: Map<string, SpriteFrame> = new Map();
 
 /**
  * 按美术资源 key（如 'enemy_grunt'，会先经 ArtRemap 解析真实文件名）加载
@@ -64,11 +66,36 @@ export function applyArtSprite(sprite: Sprite, key: string): void {
     });
 }
 
-/**
- * 通用 Node+Sprite 对象池：一次性创建 `size` 个挂 Sprite 的子节点（初始 inactive），
- * 运行时靠 acquire()/release() 复用，避免频繁 new Node()/destroy() 造成 GC 压力。
- * 池耗尽时 acquire() 返回 undefined，调用方应跳过本帧渲染而不是报错崩溃。
- */
+/** 复用图集纹理与网格切片，逐帧应用同一坐标定义的枢轴。 */
+export function applyAnimationFrame(sprite: Sprite, clip: ActorClip, frame: AnimationFrame): void {
+    const key = `${clip.sheet}:${clip.columns}:${clip.rows}:${frame.index}`;
+    _requestedKey.set(sprite, key);
+    sprite.trim = false;
+    sprite.node.getComponent(UITransform)!.setAnchorPoint(frame.pivot[0], 1 - frame.pivot[1]);
+    const cached = _animationFrames.get(key);
+    if (cached) { sprite.spriteFrame = cached; return; }
+    loadArtSprite(clip.sheet, (source) => {
+        if (!source || !sprite.isValid || _requestedKey.get(sprite) !== key) return;
+        // 子帧共用源纹理，禁止动态合图搬移后造成rect错位。
+        source.packable = false;
+        let sliced = _animationFrames.get(key);
+        if (!sliced) {
+            const w = source.originalSize.width / clip.columns;
+            const h = source.originalSize.height / clip.rows;
+            sliced = new SpriteFrame();
+            sliced.texture = source.texture;
+            sliced.rect = new Rect((frame.index % clip.columns) * w,
+                Math.floor(frame.index / clip.columns) * h, w, h);
+            sliced.originalSize = new Size(w, h);
+            sliced.offset = new Vec2(0, 0);
+            sliced.packable = false;
+            _animationFrames.set(key, sliced);
+        }
+        sprite.spriteFrame = sliced;
+    });
+}
+
+/** 通用 Sprite 节点池，耗尽时返回 undefined，由调用方跳过本帧渲染。 */
 export class SpriteNodePool {
     private _pool: Node[] = [];
 

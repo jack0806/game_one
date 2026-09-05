@@ -1,0 +1,5 @@
+{
+  "rowCuts": [0,744], "baselines": [555], "scale": 0.58, "targetBaseline": 378,
+  "columnCuts": {"0": [0,529,1058,1586,2115]}, "isolatedRows": [0],
+  "note": "爆炸怪背面四帧受击；挤压、反弹、过冲、恢复。"
+}

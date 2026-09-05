@@ -287,6 +287,7 @@ export class BulletPool {
                 this._release(b); continue;
             }
             if (player.alive && Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
+                if (b.enemyFx === 'toxin_dart') game.particles?.toxicImpact?.(b.x, b.y, b.vx, b.vy);
                 // 破盾弹：先清空玩家护盾（锯齿剑虾尖刺/无人机声波）
                 if (b.pierceShield && player.shield > 0) {
                     player.shield = 0;

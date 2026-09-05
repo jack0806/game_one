@@ -22,6 +22,9 @@ export class BossController extends EnemyBase {
     chargeTargetY = 0;
     skillWindup = 0;
     skillWindupMax = 0.52;
+    visualSkillT = 0;
+    visualSummonT = 0;
+    visualPhaseT = 0;
     _chargeVx    = 0;
     _chargeVy    = 0;
     private _chargeTime = 0;
@@ -36,6 +39,9 @@ export class BossController extends EnemyBase {
     mechSkyTargetX = 0;
     mechSkyTargetY = 0;
     mechBuffT = 0;             // 光剑增伤剩余
+    visualMechSlashReleaseT = 0;
+    visualMechBuffT = 0;
+    visualMechSkyLandT = 0;
     private _mechSlashCd = 3;
     // abyss 状态
     /** 海之霸主激活期间：主角每受一次伤害 boss 生成 20% 血量护盾（GameManager.onPlayerHit 读取）。 */
@@ -44,12 +50,16 @@ export class BossController extends EnemyBase {
     private _abyssZoneCd = 12;
     private _abyssCloneCd = 16;
     private _abyssSquidCd = 20;
+    visualAbyssSkillT = 0;
+    visualAbyssSkillIndex = 0;
     // 《怪物设计与数值》三只新大Boss：固定轮转，便于测试房逐项验收，
     // 同一时刻只允许一个主机制存在。
     docSkillIndex = 0;
     docSkillTimer = 2.4;
     docBasicTimer = 1.8;
     docSkillName = '';
+    visualDocSkillT = 0;
+    visualDocSkillIndex = 0;
     private _docFinalUsed = false;
 
     override init(type: string, wave: number, game: any): void {
@@ -62,6 +72,13 @@ export class BossController extends EnemyBase {
         this.phase  = 1; this.enraged = false; this._animTime = 0;
         this._skillTimer = 2.5; this._summonTimer = 7; this._chargeCd = 10;
         this.isCharging = false; this.chargeWindup = 0; this.skillWindup = 0;
+        this.visualSkillT = 0; this.visualSummonT = 0; this.visualPhaseT = 0;
+        this.mechSlashT = 0; this.mechSkyT = 0; this.mechBuffT = 0;
+        this.visualMechSlashReleaseT = 0; this.visualMechBuffT = 0; this.visualMechSkyLandT = 0;
+        this._mechSlashCd = 3;
+        this.visualAbyssSkillT = 0; this.visualAbyssSkillIndex = 0;
+        this._abyssPillarCd = 8; this._abyssZoneCd = 12;
+        this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
@@ -96,6 +113,7 @@ export class BossController extends EnemyBase {
         this.directionalFrames = false;
         this.docSkillIndex = 0; this.docSkillTimer = 2.4; this.docBasicTimer = 1.8;
         this.docSkillName = ''; this._docFinalUsed = false;
+        this.visualDocSkillT = 0; this.visualDocSkillIndex = 0;
     }
 
     /** 机械高达被动：50% 概率格挡玩家伤害（用剑劈掉攻击，简化实现）。 */
@@ -142,6 +160,14 @@ export class BossController extends EnemyBase {
         this._animTime += dt;
         this.flashTimer = Math.max(0, this.flashTimer - dt);
         this.actionRecoil = Math.max(0, this.actionRecoil - dt);
+        this.visualSkillT = Math.max(0, this.visualSkillT - dt);
+        this.visualSummonT = Math.max(0, this.visualSummonT - dt);
+        this.visualPhaseT = Math.max(0, this.visualPhaseT - dt);
+        this.visualMechSlashReleaseT = Math.max(0, this.visualMechSlashReleaseT - dt);
+        this.visualMechBuffT = Math.max(0, this.visualMechBuffT - dt);
+        this.visualMechSkyLandT = Math.max(0, this.visualMechSkyLandT - dt);
+        this.visualAbyssSkillT = Math.max(0, this.visualAbyssSkillT - dt);
+        this.visualDocSkillT = Math.max(0, this.visualDocSkillT - dt);
         this._contactCd = Math.max(0, this._contactCd - dt);
 
         // DoT（对齐 hexblast-py entities/boss.py update()：DoT把血打空时也要触发死亡，
@@ -260,6 +286,7 @@ export class BossController extends EnemyBase {
     private _enterPhase(phase: number, game: any): void {
         this.phase   = phase;
         this.enraged = true;
+        this.visualPhaseT = 0.8;
         // 新设计Boss不靠无提示叠伤或通用20%加速制造难度：只让维斯帕在第三阶段
         // 按文档获得15%移速，其余通过技能组合与节奏变化升级。
         if (this.bossKind === 'vespa' && phase === 3) this.speed *= 1.15;
@@ -314,6 +341,8 @@ export class BossController extends EnemyBase {
             manyfold: ['对岸缝线', '折面迁跃', '借影裁片', '六面缺口', '边界收针'],
         };
         this.docSkillName = names[this.bossKind!][skill];
+        this.visualDocSkillIndex = skill + 1;
+        this.visualDocSkillT = 0.72;
         game.floatingText?.spawn?.(this.x, this.y - 100, this.docSkillName, this.glowColor, 18, true);
         game.startDocBossSkill?.(this.bossKind, skill, this, player);
         this.actionRecoil = 0.34;
@@ -327,6 +356,7 @@ export class BossController extends EnemyBase {
         // 正式章节按 chapter 分支；测试房间专属 Boss 按 bossKind 分支
         const kind = this.bossKind ?? `ch${this.chapter}`;
         this.actionRecoil = 0.30;
+        this.visualSkillT = 0.65;
         switch (kind) {
             case 'ch1': // 废土：毒液 DOT 圆
                 game.particles?.explode(this.x, this.y, '#44ff00', 100);
@@ -359,6 +389,7 @@ export class BossController extends EnemyBase {
     }
 
     private _summon(game: any): void {
+        this.visualSummonT = 0.65;
         const count = this.phase;
         const angleOffset = Rng.float(0, Math.PI * 2);
         for (let i = 0; i < count; i++) {
@@ -392,6 +423,7 @@ export class BossController extends EnemyBase {
             this.mechSkyT -= dt;
             if (this.mechSkyT <= 0) {
                 this.invulnerable = false;
+                this.visualMechSkyLandT = 0.65;
                 game.particles?.explode?.(this.mechSkyTargetX, this.mechSkyTargetY, '#88ccff', 90);
                 game.screenShake?.shake?.(14, 0.35);
                 game.hitStop?.trigger?.(90);
@@ -407,6 +439,7 @@ export class BossController extends EnemyBase {
         if (this.mechSlashT > 0) {
             this.mechSlashT -= dt;
             if (this.mechSlashT <= 0) {
+                this.visualMechSlashReleaseT = 0.65;
                 game.particles?.meleeSlash?.(this.x, this.y, this.mechSlashAngle, this.glowColor, 260, 1.6);
                 game.screenShake?.shake?.(8, 0.25);
                 game.audio?.playSfx?.('skill_r', 0.8);
@@ -439,6 +472,7 @@ export class BossController extends EnemyBase {
                 game.floatingText?.spawn?.(this.x, this.y - 90, '剑气蓄能！', '#aaddff', 18, true);
             } else if (r === 1) {
                 this.mechBuffT = 15;
+                this.visualMechBuffT = 0.65;
                 this.buffDmgMult = 1.25;
                 game.particles?.hexActivate?.(this.x, this.y, '#88ccff');
                 game.floatingText?.spawn?.(this.x, this.y - 90, '光剑·增伤25%！', '#88ccff', 20, true);
@@ -487,24 +521,28 @@ export class BossController extends EnemyBase {
         this._abyssPillarCd -= dt;
         if (this._abyssPillarCd <= 0) {
             this._abyssPillarCd = 22;
+            this.visualAbyssSkillIndex = 2; this.visualAbyssSkillT = 0.68;
             game.startPillarStorm?.(this);
         }
         // 冰冻区域：随机 4 个预告区（GameManager._telegraphZones 维护）
         this._abyssZoneCd -= dt;
         if (this._abyssZoneCd <= 0) {
             this._abyssZoneCd = 15;
+            this.visualAbyssSkillIndex = 3; this.visualAbyssSkillT = 0.68;
             game.startTelegraphZones?.(this);
         }
         // 水分身冲锋
         this._abyssCloneCd -= dt;
         if (this._abyssCloneCd <= 0 && player.alive) {
             this._abyssCloneCd = 14;
+            this.visualAbyssSkillIndex = 4; this.visualAbyssSkillT = 0.68;
             game.spawnWaterClone?.(this, player);
         }
         // 消耗水柱召唤深海鱿鱼
         this._abyssSquidCd -= dt;
         if (this._abyssSquidCd <= 0) {
             this._abyssSquidCd = 18;
+            this.visualAbyssSkillIndex = 5; this.visualAbyssSkillT = 0.72;
             game.abyssSummonSquid?.(this);
         }
         // 大水刺：随机 3 方向各 3 发（复用 skillWindup 前摇）

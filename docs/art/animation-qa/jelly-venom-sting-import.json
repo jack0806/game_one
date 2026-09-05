@@ -1,0 +1,201 @@
+{
+  "source": "exec-d00ec9e8-009c-4c16-9173-411f57d00205.png",
+  "output": "anim_jelly_venom_sting.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        102,
+        97,
+        384,
+        415
+      ],
+      "transparentRatio": 0.8197,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        113,
+        94,
+        396,
+        393
+      ],
+      "transparentRatio": 0.8257,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        123,
+        96,
+        404,
+        435
+      ],
+      "transparentRatio": 0.8203,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        107,
+        96,
+        383,
+        413
+      ],
+      "transparentRatio": 0.8236,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        95,
+        101,
+        385,
+        361
+      ],
+      "transparentRatio": 0.8618,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        102,
+        102,
+        411,
+        361
+      ],
+      "transparentRatio": 0.8618,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        103,
+        103,
+        412,
+        361
+      ],
+      "transparentRatio": 0.8648,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        104,
+        103,
+        369,
+        362
+      ],
+      "transparentRatio": 0.8715,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        101,
+        36,
+        374,
+        366
+      ],
+      "transparentRatio": 0.8396,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        117,
+        36,
+        390,
+        365
+      ],
+      "transparentRatio": 0.839,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        114,
+        41,
+        387,
+        368
+      ],
+      "transparentRatio": 0.8471,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        93,
+        48,
+        366,
+        366
+      ],
+      "transparentRatio": 0.8381,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      362,
+      724,
+      1086
+    ],
+    "targetBaseline": 420,
+    "scale": 1.0,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      1
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

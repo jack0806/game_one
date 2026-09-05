@@ -1,0 +1,256 @@
+{
+  "source": "exec-3c6bbd9f-c383-4141-b83f-45cd098bb340.png",
+  "output": "anim_squid_back_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        103,
+        111,
+        366,
+        420
+      ],
+      "transparentRatio": 0.7943,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        67,
+        110,
+        382,
+        420
+      ],
+      "transparentRatio": 0.7735,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        80,
+        53,
+        361,
+        420
+      ],
+      "transparentRatio": 0.7103,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        78,
+        110,
+        331,
+        420
+      ],
+      "transparentRatio": 0.7942,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        104,
+        104,
+        365,
+        414
+      ],
+      "transparentRatio": 0.7956,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        75,
+        113,
+        360,
+        414
+      ],
+      "transparentRatio": 0.7898,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        88,
+        136,
+        356,
+        420
+      ],
+      "transparentRatio": 0.786,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        73,
+        104,
+        332,
+        414
+      ],
+      "transparentRatio": 0.7961,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        104,
+        111,
+        365,
+        420
+      ],
+      "transparentRatio": 0.7977,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        53,
+        199,
+        376,
+        411
+      ],
+      "transparentRatio": 0.8314,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        45,
+        241,
+        377,
+        405
+      ],
+      "transparentRatio": 0.865,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        38,
+        307,
+        367,
+        402
+      ],
+      "transparentRatio": 0.9124,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        109,
+        114,
+        361,
+        420
+      ],
+      "transparentRatio": 0.8049,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        103,
+        114,
+        353,
+        419
+      ],
+      "transparentRatio": 0.8056,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        95,
+        114,
+        341,
+        420
+      ],
+      "transparentRatio": 0.8092,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        79,
+        110,
+        324,
+        420
+      ],
+      "transparentRatio": 0.8133,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      344,
+      657,
+      959,
+      1245
+    ],
+    "scale": 1.15,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼背面战斗按整图连通主体保留完整触手；水弹释放光只在背部顶缘，死亡帧保持低矮。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

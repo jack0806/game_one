@@ -1,0 +1,84 @@
+{
+  "source": "exec-2ccea769-8f6b-43c5-b0be-7210ec0c4bcf.png",
+  "output": "anim_gold_scavenger_front_run.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        61,
+        23,
+        407,
+        368
+      ],
+      "transparentRatio": 0.7053,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        39,
+        23,
+        387,
+        399
+      ],
+      "transparentRatio": 0.6713,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        22,
+        23,
+        365,
+        400
+      ],
+      "transparentRatio": 0.6732,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        6,
+        24,
+        385,
+        397
+      ],
+      "transparentRatio": 0.6679,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      887
+    ],
+    "baselines": [
+      655
+    ],
+    "scale": 1.05,
+    "targetBaseline": 400,
+    "columnCuts": {
+      "0": [
+        0,
+        444,
+        887,
+        1330,
+        1774
+      ]
+    },
+    "note": "黄金拾荒者正面独立跑动条；四帧共用脚底基线，保留六足交替支撑和向前冲势。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

@@ -1,0 +1,142 @@
+{
+  "source": "exec-44bb6aec-edef-4b17-bf94-581dc7df8646.png",
+  "output": "anim_squid_back_skills.png",
+  "size": [
+    1792,
+    896
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        78,
+        91,
+        413,
+        416
+      ],
+      "transparentRatio": 0.7381,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        77,
+        55,
+        405,
+        420
+      ],
+      "transparentRatio": 0.7326,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        50,
+        35,
+        389,
+        420
+      ],
+      "transparentRatio": 0.7326,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        33,
+        91,
+        363,
+        420
+      ],
+      "transparentRatio": 0.7412,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        59,
+        94,
+        430,
+        418
+      ],
+      "transparentRatio": 0.7208,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        61,
+        71,
+        412,
+        419
+      ],
+      "transparentRatio": 0.6349,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        88,
+        65,
+        357,
+        420
+      ],
+      "transparentRatio": 0.7204,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        34,
+        95,
+        362,
+        420
+      ],
+      "transparentRatio": 0.7416,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      464,
+      927
+    ],
+    "baselines": [
+      436,
+      860
+    ],
+    "scale": 0.98,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        424,
+        848,
+        1272,
+        1696
+      ],
+      "1": [
+        0,
+        424,
+        848,
+        1272,
+        1696
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼背面技能按整图连通主体保留背部顶缘水刺与远向缠绕触手，不显示面部。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

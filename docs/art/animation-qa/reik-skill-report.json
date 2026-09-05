@@ -1,0 +1,198 @@
+{
+  "source": "exec-fde1efde-b0ad-459e-a40e-f7e307efd376.png",
+  "output": "anim_reik_skill.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        141,
+        195,
+        357,
+        385
+      ],
+      "transparentRatio": 0.8871,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        97,
+        203,
+        326,
+        378
+      ],
+      "transparentRatio": 0.8941,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        82,
+        205,
+        364,
+        380
+      ],
+      "transparentRatio": 0.8754,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        89,
+        197,
+        319,
+        386
+      ],
+      "transparentRatio": 0.8851,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        131,
+        160,
+        340,
+        323
+      ],
+      "transparentRatio": 0.9064,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        90,
+        156,
+        315,
+        326
+      ],
+      "transparentRatio": 0.898,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        83,
+        159,
+        364,
+        322
+      ],
+      "transparentRatio": 0.8895,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        98,
+        169,
+        314,
+        324
+      ],
+      "transparentRatio": 0.909,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        138,
+        103,
+        343,
+        266
+      ],
+      "transparentRatio": 0.9047,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        95,
+        87,
+        298,
+        275
+      ],
+      "transparentRatio": 0.9125,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        60,
+        98,
+        342,
+        276
+      ],
+      "transparentRatio": 0.8842,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        99,
+        102,
+        305,
+        268
+      ],
+      "transparentRatio": 0.9059,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "Q 怒冲：采用整体缩小18%的修正版，三向冲锋斩完整落在各自格内，显示尺度与现有重甲动作校准后通过复核。"
+}\n

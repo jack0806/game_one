@@ -73,6 +73,10 @@ test('铆链猎犬0.70秒锁向后冲360px且撞墙眩晕1.1秒', () => {
     assert.equal(e.attackWindup, 0.70, '冲锋前应完整显示0.70秒走廊');
     e.update(0.70, player, game);
     assert.ok(Math.abs(e._chargeT - 360 / 560) < 1e-10, '冲锋按360px距离配置');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill', '冲锋开始必须播放独立链钉冲猎动作');
+    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.currentFrame.event, 'cast');
     e.update(0.20, player, game);
     assert.equal(e.stunned, 1.1, '撞墙提供明确背击输出窗口');
 });
@@ -87,6 +91,9 @@ test('铆链猎犬回收夹在玩家两侧投放两枚0.8秒预警陷阱', () =>
     assert.equal(traps.length, 1);
     assert.deepEqual(traps[0], [400, 158, 400, 42], '两夹沿瞄准线法向分置，不能完全叠在玩家脚下');
     assert.equal(e._miniCd2, 8);
+    assert.equal(e.actorAnimation.action, 'skill2', '投放陷阱必须播放独立尾夹动作');
+    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.currentFrame.event, 'cast');
 });
 
 test('棱壳巡灯兽预热0.75秒后旋转150度光带且同轮最多命中一次', () => {
@@ -97,8 +104,15 @@ test('棱壳巡灯兽预热0.75秒后旋转150度光带且同轮最多命中一�
     e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'prism_windup');
     assert.equal(e.miniSkillTimer, 0.75);
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill', '预热阶段必须显示镜片聚能');
+    assert.equal(e.actorAnimation.frame, 0);
     e.update(0.75, player, game);
     assert.equal(e.miniSkillState, 'prism_sweep');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill');
+    assert.equal(e.actorAnimation.frame, 2, '扫射阶段直接进入短光刃峰值帧');
+    assert.equal(e.actorAnimation.currentFrame.event, 'cast');
     e.update(0.90, player, game);
     assert.equal(player.hp, 84, '光带扫过玩家时造成16伤害');
     e.update(0.05, player, game);
@@ -114,10 +128,16 @@ test('棱壳巡灯兽闭壳获得220盾，破盾眩晕掉8金；未破盾则六�
     broken.update(0.01, player, game);
     assert.equal(broken.miniSkillState, 'prism_shell');
     assert.equal(broken.shieldHp, 220);
+    broken.updateVisualAnimation(0.01, player);
+    assert.equal(broken.actorAnimation.action, 'skill2', '闭壳护盾必须播放独立防御动作');
+    assert.equal(broken.actorAnimation.frame, 0);
     broken.takeDamage(220, player, game);
     broken.update(0.01, player, game);
     assert.equal(broken.stunned, 1.3);
     assert.deepEqual(drops[0], [100, 100, 8]);
+    broken.stunned = 0;
+    broken.updateVisualAnimation(0.01, player);
+    assert.notEqual(broken.actorAnimation.action, 'skill2', '破盾眩晕结束后不能继续卡在闭壳动作');
 
     const charged = new EnemyBase(); charged.init('prism_snail', 1, game);
     charged.x = 100; charged.y = 100; charged._miniCd1 = 5; charged._miniCd2 = 0;
@@ -125,6 +145,8 @@ test('棱壳巡灯兽闭壳获得220盾，破盾眩晕掉8金；未破盾则六�
     charged.update(2.5, player, game);
     assert.equal(game.enemyBullets.length, 6, '蓄光完成向六方向发射慢速光弹');
     assert.ok(game.enemyBullets.every(b => b.damage === 8));
+    charged.updateVisualAnimation(0.01, player);
+    assert.notEqual(charged.actorAnimation.action, 'skill2', '闭壳自然结束后必须恢复移动动作');
 });
 
 test('三相祭司严格按火冰雷轮转并调用真实地面机制入口', () => {
@@ -139,11 +161,17 @@ test('三相祭司严格按火冰雷轮转并调用真实地面机制入口', ()
 
     e._miniTimer = 0; e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'triune_fire');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill', '焚相必须使用上层火核动作');
     assert.deepEqual(calls[0][1].map(p => p.x), [500, 542, 584], '三枚烙印沿玩家移动方向连续预测');
     e.miniSkillState = ''; e._miniTimer = 0; e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'triune_ice');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill2', '冻相必须切换为中央冰核动作');
     e.miniSkillState = ''; e._miniTimer = 0; e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'triune_arc');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill3', '雷相必须切换为下层电核动作');
     assert.deepEqual(calls.map(c => c[0]), ['fire', 'ice', 'arc']);
 });
 
@@ -155,10 +183,25 @@ test('磁轨屠夫0.9秒炮线后发射30伤贯穿弹并反冲100px', () => {
     e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'rail_windup');
     assert.equal(e.miniSkillTimer, 0.9);
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill', '磁轨蓄力必须播放独立炮击动作');
     e.update(0.9, player, game);
     assert.equal(game.enemyBullets.length, 1);
     assert.equal(game.enemyBullets[0].damage, 30);
     assert.equal(e.x, 400, '开火后沿瞄准反方向滑退100px');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.currentFrame.event, 'cast', '后坐切换时必须直达炮口开火帧');
+});
+
+test('磁轨屠夫回转锯阶段播放三方向锯刃动作', () => {
+    const game = makeMockGame();
+    const player = makePlayer({ x: 700, y: 300 });
+    const e = new EnemyBase(); e.init('rail_butcher', 1, game); e.x = 300; e.y = 300;
+    e._miniSkillCount = 1; e._miniTimer = 0; e.update(0.01, player, game);
+    assert.equal(e.miniSkillState, 'rail_saw');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill2');
+    assert.equal(e.actorAnimation.clip.sheet, 'anim_rail_butcher_saw');
 });
 
 test('磁轨拖拽先预警1秒再拉动1.8秒，预警期不偷位移', () => {
@@ -167,6 +210,8 @@ test('磁轨拖拽先预警1秒再拉动1.8秒，预警期不偷位移', () => {
     const e = new EnemyBase(); e.init('rail_butcher', 1, game); e.x = 300; e.y = 300;
     e._miniSkillCount = 2; e._miniTimer = 0; e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'rail_drag');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill3', '磁极拖拽必须播放炮口磁场动作');
     const x0 = player.x;
     e.update(0.5, player, game);
     assert.equal(player.x, x0, '前1秒蓝色箭头只预警不拉人');
@@ -180,6 +225,9 @@ test('葬钟静默罩只暂停罩内Q/E冷却且Boss移速降低35%', () => {
     const e = new EnemyBase(); e.init('bell_devourer', 1, game); e.x = 300; e.y = 300;
     e._miniSkillCount = 2; e._miniTimer = 0; e.update(0.01, player, game);
     assert.equal(e.miniSkillState, 'bell_silence');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill3', '静默罩必须播放钟体闭合动作');
+    assert.equal(e.actorAnimation.clip.sheet, 'anim_bell_devourer_silence');
     e.update(0.5, player, game);
     assert.equal(e.buffSpeedMult, 0.65);
     assert.equal(player._qCd, 3.5);
@@ -194,10 +242,13 @@ test('葬钟按丧钟→回声→钟罩→丧钟→反震固定轮转且反震45
     const e = new EnemyBase(); e.init('bell_devourer', 1, game); e.x = 300; e.y = 300;
     e.hp = e.maxHp * 0.4;
     const expected = ['bell_rings', 'bell_record', 'bell_silence', 'bell_rings', 'bell_counter'];
-    for (const state of expected) {
+    const actions = ['skill', 'skill2', 'skill3', 'skill', 'skill4'];
+    for (let i = 0; i < expected.length; i++) {
         e.miniSkillState = ''; e._miniTimer = 0; e.attackWindup = 0;
         e.update(0.01, player, game);
-        assert.equal(e.miniSkillState, state);
+        assert.equal(e.miniSkillState, expected[i]);
+        e.updateVisualAnimation(0.01, player);
+        assert.equal(e.actorAnimation.action, actions[i]);
     }
     assert.equal(e.bellAbsorbHp, 300);
     assert.equal(e.miniSkillTimer, 2);
@@ -215,6 +266,9 @@ test('吞音反震按吸收量释放1~3圈，停火仍只有一圈基础波', ()
     e.update(2, player, game);
     assert.equal(e.miniSkillState, 'bell_counter_release');
     assert.equal(e.bellCounterWaves, 2, '120点吸收量应折算两圈');
+    e.updateVisualAnimation(0.01, player);
+    assert.equal(e.actorAnimation.action, 'skill4');
+    assert.equal(e.actorAnimation.currentFrame.event, 'cast', '反震释放必须直达钟体爆发帧');
 
     const quiet = new EnemyBase(); quiet.init('bell_devourer', 1, game); quiet.x = 300; quiet.y = 300;
     quiet.hp = quiet.maxHp * 0.4; quiet._miniSkillCount = 4; quiet._miniTimer = 0;
@@ -308,7 +362,8 @@ test('酸囊投手向玩家移动前方45px抛投,同类初始冷却错开且攻
     const player = makePlayer({ x: 400, y: 250, facingX: 1, facingY: 0 });
     e.update(0.01, player, game);
     assert.equal(throws.length, 1);
-    assert.deepEqual(throws[0], [100, 100, 445, 250], '目标应领先玩家移动方向45px');
+    assert.notDeepEqual(throws[0].slice(0, 2), [100, 100], '酸球必须从机械爪而非逻辑中心抛出');
+    assert.deepEqual(throws[0].slice(2), [445, 250], '目标应领先玩家移动方向45px');
     assert.equal(e._rangedCd, 2.2, '投掷后进入2.2秒间隔');
 });
 
@@ -388,6 +443,9 @@ test('冰棱侍从0.75秒三线预警后发射三枚减速冰棱', () => {
     assert.equal(game.enemyBullets.length, 3);
     assert.ok(game.enemyBullets.every(b => b.enemyFx === 'frost'));
     assert.ok(game.enemyBullets.every(b => b.slow?.mult === 0.75 && b.slow?.dur === 1.6));
+    assert.ok(game.enemyBullets.every(b => b.x === game.enemyBullets[0].x && b.y === game.enemyBullets[0].y));
+    assert.notDeepEqual([game.enemyBullets[0].x, game.enemyBullets[0].y], [e.x, e.y],
+        '三枚冰棱必须从当前动作的中央环挂点发射，不能继续从逻辑根生成');
     assert.ok(game.enemyBullets.every(b => Math.abs(Math.hypot(b.vx, b.vy) - 320) < 1e-8));
     const angles = game.enemyBullets.map(b => Math.atan2(b.vy, b.vx));
     assert.ok(Math.abs(angles[1] - angles[0] - 0.16) < 1e-10);
@@ -421,6 +479,8 @@ test('闪弧寄生体发射慢速电球且死亡使已连接友军眩晕0.6秒',
     arc.update(0.01, player, game);
     assert.equal(game.enemyBullets.length, 1);
     assert.equal(game.enemyBullets[0].enemyFx, 'arc');
+    assert.notDeepEqual([game.enemyBullets[0].x, game.enemyBullets[0].y], [arc.x, arc.y],
+        '慢速电球必须从当前动作的电眼挂点发射，不能继续从逻辑根生成');
     assert.ok(Math.abs(Math.hypot(game.enemyBullets[0].vx, game.enemyBullets[0].vy) - 185) < 1e-8);
     arc.takeDamage(999, player, game);
     assert.equal(ally.stunned, 0.6);
@@ -459,13 +519,14 @@ test('锯齿剑虾常驻+50%移速,无人机禁近战', () => {
 test('深海鱿鱼贴脸触发缠绕(玩家2秒禁移动)', () => {
     const game = makeMockGame();
     const squid = new EnemyBase(); squid.init('squid', 1, game);
-    squid._miniCd1 = 0;
+    squid._miniCd1 = 0; squid._miniCd2 = 99; squid._miniTimer = 99;
     const player = makeBuffPlayer({ x: squid.x + 30, y: squid.y });
     squid.update(0.1, player, game);
     const grab = player.buffs.find(b => b.id === 'squid_grab');
     assert.ok(grab, '贴脸应施加缠绕');
     assert.equal(grab.dur, 2, '控制时长2秒');
     assert.equal(grab.mods.noMove, true, '缠绕=禁移动');
+    assert.equal(squid.actorAnimation.action, 'skill3', '缠绕必须播放独立触手包围动作');
 });
 
 test('深海鱿鱼周期性发射深水炸弹与3发分裂水刺', () => {
@@ -480,6 +541,12 @@ test('深海鱿鱼周期性发射深水炸弹与3发分裂水刺', () => {
     const spikes = bullets.filter(b => b.radius === 7);
     assert.ok(spikes.length >= 3, '分裂水刺应3发');
     assert.ok(spikes.every(b => b.enemyFx === 'water_spike'), '水刺不可复用毒球或默认圆点');
+    const bomb = bullets.find(b => b.radius === 12);
+    assert.notDeepEqual([bomb.x, bomb.y], [squid.x, squid.y], '深水炸弹必须从施法帧的身体挂点生成');
+    assert.ok(spikes.every(b => b.x === spikes[0].x && b.y === spikes[0].y), '三枚水刺共用同一释放口');
+    assert.notDeepEqual([spikes[0].x, spikes[0].y], [squid.x, squid.y], '水刺必须从成形帧的水晶尖端生成');
+    assert.notDeepEqual([spikes[0].x, spikes[0].y], [bomb.x, bomb.y], '水弹和水刺使用各自动作的独立挂点');
+    assert.equal(squid.actorAnimation.action, 'skill2', '同帧最后结算的水刺保持其独立动作');
 });
 
 test('深水炸弹反弹1次后撞边爆炸,大水刺反弹2次', () => {
@@ -528,6 +595,7 @@ test('深海鱿鱼放完一轮技能(累计3个)后自毁消失', () => {
     squid2.update(0.1, closePlayer, game);
     assert.equal(squid2.alive, false, '放完一轮技能应自毁消失');
     assert.equal(squid2.hp, 0, '自毁走正常死亡结算');
+    assert.equal(squid2.actorAnimation.action, 'skill3', '同帧多技能以最后结算的贴脸缠绕作为可见动作');
 });
 
 // ── 盾龟 ──
@@ -545,6 +613,9 @@ test('盾龟附近有其他小兵时生成100护盾,独行不生成', () => {
     turtle.update(0.1, player, game);
     assert.equal(turtle.shieldHp, 100, '附近有友军应生成龟壳护盾');
     assert.equal(turtle.shieldActive, true);
+    assert.equal(turtle.actorAnimation.action, 'skill', '生成护盾时必须播放贴壳护盾动作');
+    assert.equal(turtle.actorAnimation.frame, 2, '护盾表现定位到护罩成形帧');
+    assert.equal(turtle.actorAnimation.currentFrame.event, 'cast');
 
     const soloGame = makeMockGame(); // 干净场景：场上没有其他敌人
     const solo = new EnemyBase(); solo.init('turtle', 1, soloGame);
@@ -561,6 +632,10 @@ test('盾龟冷却结束发起高速碰撞冲刺并位移', () => {
     turtle.update(0.1, player, game);
     assert.ok(turtle._chargeT > 0, '应进入冲锋');
     assert.ok(turtle._chargeDmg > 0, '冲锋应带伤害');
+    turtle.updateVisualAnimation(0.1, player);
+    assert.equal(turtle.actorAnimation.action, 'skill2', '高速碰撞必须播放独立冲撞动作');
+    assert.equal(turtle.actorAnimation.frame, 2, '冲撞表现定位到速度线最强帧');
+    assert.equal(turtle.actorAnimation.currentFrame.event, 'cast');
     const x0 = turtle.x;
     turtle.update(0.1, player, game);
     assert.notEqual(turtle.x, x0, '冲锋期间应发生位移');
@@ -574,8 +649,23 @@ test('锯齿剑虾尖刺弹带破盾标记', () => {
     shrimp._miniCd1 = 0;
     const player = makePlayer({ x: shrimp.x + 200, y: shrimp.y });
     shrimp.update(0.1, player, game);
-    assert.ok(game.enemyBullets.some(b => b.pierceShield === true), '尖刺弹应可破盾');
-    assert.ok(game.enemyBullets.some(b => b.enemyFx === 'shrimp_spike'), '尖刺弹应有锯刃轮廓');
+    const spike = game.enemyBullets.find(b => b.enemyFx === 'shrimp_spike');
+    assert.ok(spike?.pierceShield, '尖刺弹应可破盾并使用锯刃轮廓');
+    assert.notDeepEqual([spike.x, spike.y], [shrimp.x, shrimp.y], '尖刺弹必须从背刺发射帧挂点生成');
+    assert.equal(shrimp.actorAnimation.action, 'skill', '发射尖刺播放独立背刺动作');
+    assert.equal(shrimp.actorAnimation.currentFrame.event, 'cast');
+});
+
+test('锯齿剑虾贴脸甩尾播放独立动作并眩晕玩家', () => {
+    const game = makeMockGame();
+    const shrimp = new EnemyBase(); shrimp.init('shrimp', 1, game);
+    shrimp._miniCd1 = 99; shrimp._miniCd2 = 0;
+    const player = makeBuffPlayer({ x: shrimp.x + 20, y: shrimp.y });
+    shrimp.update(0.1, player, game);
+    assert.ok(player.buffs.some(buff => buff.id === 'shrimp_stun'), '甩尾应施加1.5秒眩晕');
+    assert.equal(shrimp.actorAnimation.action, 'skill2', '甩尾必须播放独立尾扇横扫动作');
+    assert.equal(shrimp.actorAnimation.frame, 2);
+    assert.equal(shrimp.actorAnimation.currentFrame.event, 'cast');
 });
 
 // ── 毒刺鬼水母 ──
@@ -588,6 +678,9 @@ test('毒刺鬼水母隐身循环:隐身3s无敌,到期现形可被击中', () =
     jelly.update(0.1, player, game);
     assert.equal(jelly.invisible, true, '应进入隐身');
     assert.equal(jelly.invulnerable, true, '隐身期间免疫伤害');
+    assert.equal(jelly.actorAnimation.action, 'skill', '进入隐身时应播放渐隐动作');
+    assert.equal(jelly.actorAnimation.frame, 2, '隐身表现定位到幽灵态帧');
+    assert.equal(jelly.actorAnimation.currentFrame.event, 'cast');
     assert.equal(jelly.takeDamage(50, player, game), 0, '隐身时伤害应被免疫');
     jelly.update(3.2, player, game);
     assert.equal(jelly.invisible, false, '隐身3s后应现形');
@@ -602,7 +695,12 @@ test('毒刺鬼水母现形时发射独立毒针轮廓', () => {
     jelly.invisible = false; jelly.invulnerable = false;
     jelly._miniTimer = 99; jelly._miniCd1 = 0;
     jelly.update(0.1, makePlayer({ x: jelly.x + 200, y: jelly.y }), game);
-    assert.ok(game.enemyBullets.some(b => b.enemyFx === 'venom_sting' && b.dot?.dps === 3));
+    const venom = game.enemyBullets.find(b => b.enemyFx === 'venom_sting' && b.dot?.dps === 3);
+    assert.ok(venom);
+    assert.notDeepEqual([venom.x, venom.y], [jelly.x, jelly.y], '毒针必须从伸刺亮点挂点生成');
+    assert.equal(jelly.actorAnimation.action, 'skill2', '毒针发射时必须播放独立伸刺动作');
+    assert.equal(jelly.actorAnimation.frame, 2);
+    assert.equal(jelly.actorAnimation.currentFrame.event, 'cast');
 });
 
 // ── 支援型无人机 ──
@@ -622,6 +720,22 @@ test('支援型无人机治疗附近友军并部署150能量盾', () => {
     assert.ok(wounded.hp > wounded.maxHp * 0.5, '友军应被治疗');
     assert.equal(wounded.shieldHp, 150, '友军应获得150能量盾');
     assert.equal(wounded.shieldActive, true);
+    assert.equal(drone.actorAnimation.action, 'skill2', '同帧治疗和护盾最终显示护盾部署峰值');
+    assert.equal(drone.actorAnimation.frame, 2);
+    assert.equal(drone.actorAnimation.currentFrame.event, 'cast');
+});
+
+test('支援型无人机呼叫五架攻击无人机并播放独立召唤动作', () => {
+    const spawned = [];
+    const game = makeMockGame({ spawnEnemy(type, x, y) { spawned.push({ type, x, y }); } });
+    const drone = new EnemyBase(); drone.init('drone_s', 1, game);
+    drone._miniTimer = 0; drone._miniCd1 = 99; drone._miniCd2 = 99;
+    const player = makePlayer({ x: drone.x + 200, y: drone.y });
+    drone.update(0.1, player, game);
+    assert.equal(spawned.filter(e => e.type === 'drone_a').length, 5, '应环绕召唤五架攻击无人机');
+    assert.equal(drone.actorAnimation.action, 'skill3', '召唤必须播放独立通讯动作');
+    assert.equal(drone.actorAnimation.frame, 2);
+    assert.equal(drone.actorAnimation.currentFrame.event, 'cast');
 });
 
 // ── 攻击性无人机 ──
@@ -632,7 +746,14 @@ test('攻击性无人机发射破盾声波弹与锁定光束DoT弹', () => {
     drone._miniCd1 = 0; drone._miniCd2 = 0;
     const player = makePlayer({ x: drone.x + 200, y: drone.y });
     drone.update(0.1, player, game);
-    assert.ok(game.enemyBullets.some(b => b.pierceShield === true && b.enemyFx === 'sonic'), '声波弹应破盾并显示声波环');
-    assert.ok(game.enemyBullets.some(b => b.dot && b.dot.dps === 4 && b.dot.dur === 3 && b.enemyFx === 'beam'), '光束弹应挂3秒DoT并显示束流轮廓');
+    const sonic = game.enemyBullets.find(b => b.pierceShield === true && b.enemyFx === 'sonic');
+    const beam = game.enemyBullets.find(b => b.dot && b.dot.dps === 4 && b.dot.dur === 3 && b.enemyFx === 'beam');
+    assert.ok(sonic, '声波弹应破盾并显示声波环');
+    assert.ok(beam, '光束弹应挂3秒DoT并显示束流轮廓');
     assert.ok(game.enemyBullets.some(b => b.homing === true), '光束应为锁定弹');
+    assert.notDeepEqual([sonic.x, sonic.y], [drone.x, drone.y], '声波必须从第三帧炮口生成');
+    assert.notDeepEqual([beam.x, beam.y], [drone.x, drone.y], '锁定光束必须从第三帧炮口生成');
+    assert.equal(drone.actorAnimation.action, 'skill2', '同帧双技能最终显示锁定光束峰值动作');
+    assert.equal(drone.actorAnimation.frame, 2);
+    assert.equal(drone.actorAnimation.currentFrame.event, 'cast');
 });

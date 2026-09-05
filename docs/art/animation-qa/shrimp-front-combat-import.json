@@ -1,0 +1,256 @@
+{
+  "source": "exec-f3724111-d85b-4ee0-93aa-8e619407b3ca.png",
+  "output": "anim_shrimp_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        138,
+        160,
+        376,
+        420
+      ],
+      "transparentRatio": 0.8849,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        94,
+        160,
+        388,
+        419
+      ],
+      "transparentRatio": 0.8839,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        138,
+        160,
+        275,
+        416
+      ],
+      "transparentRatio": 0.8872,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        53,
+        160,
+        289,
+        420
+      ],
+      "transparentRatio": 0.886,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        156,
+        164,
+        363,
+        417
+      ],
+      "transparentRatio": 0.8874,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        129,
+        164,
+        348,
+        420
+      ],
+      "transparentRatio": 0.8844,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        99,
+        164,
+        309,
+        420
+      ],
+      "transparentRatio": 0.886,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        69,
+        164,
+        274,
+        420
+      ],
+      "transparentRatio": 0.8881,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        148,
+        230,
+        366,
+        420
+      ],
+      "transparentRatio": 0.9111,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        110,
+        278,
+        353,
+        410
+      ],
+      "transparentRatio": 0.9172,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        79,
+        308,
+        320,
+        408
+      ],
+      "transparentRatio": 0.9307,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        47,
+        329,
+        287,
+        409
+      ],
+      "transparentRatio": 0.9406,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        141,
+        218,
+        372,
+        420
+      ],
+      "transparentRatio": 0.91,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        122,
+        206,
+        341,
+        420
+      ],
+      "transparentRatio": 0.9156,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        93,
+        201,
+        310,
+        420
+      ],
+      "transparentRatio": 0.9159,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        61,
+        222,
+        277,
+        420
+      ],
+      "transparentRatio": 0.9162,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      272,
+      543,
+      814,
+      1086
+    ],
+    "baselines": [
+      302,
+      603,
+      825,
+      1068
+    ],
+    "scale": 0.9,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "3": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "锯齿剑虾按整图连通主体保留长触须、六足、双锯螯、尾扇及贴身技能弧，以每行动作最低点统一基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

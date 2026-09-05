@@ -1,0 +1,199 @@
+{
+  "source": "exec-cf561791-7c70-4764-a4a6-e1124164e6e1.png",
+  "output": "anim_liana_skill2.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        195,
+        137,
+        402,
+        359
+      ],
+      "transparentRatio": 0.9057,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        139,
+        137,
+        337,
+        359
+      ],
+      "transparentRatio": 0.9082,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        83,
+        139,
+        304,
+        370
+      ],
+      "transparentRatio": 0.9063,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        40,
+        138,
+        235,
+        359
+      ],
+      "transparentRatio": 0.9067,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        196,
+        97,
+        403,
+        322
+      ],
+      "transparentRatio": 0.9152,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        129,
+        97,
+        337,
+        322
+      ],
+      "transparentRatio": 0.9137,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        65,
+        101,
+        310,
+        322
+      ],
+      "transparentRatio": 0.9072,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        27,
+        102,
+        229,
+        322
+      ],
+      "transparentRatio": 0.9175,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        194,
+        70,
+        380,
+        283
+      ],
+      "transparentRatio": 0.9115,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        129,
+        70,
+        315,
+        283
+      ],
+      "transparentRatio": 0.909,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        60,
+        70,
+        264,
+        283
+      ],
+      "transparentRatio": 0.9074,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        36,
+        70,
+        223,
+        283
+      ],
+      "transparentRatio": 0.9112,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "discardDetachedComponentsUnder": 100,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "E冰场领域：修正版经显式小连通碎片清理，枪口连接定位晶体且无跨格残线。"
+}

@@ -1,0 +1,258 @@
+{
+  "source": "exec-29e1416e-1edc-45b8-9101-1a95616e6c8c.png",
+  "output": "anim_boss_ch1_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        120,
+        171,
+        324,
+        400
+      ],
+      "transparentRatio": 0.847,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        94,
+        171,
+        327,
+        401
+      ],
+      "transparentRatio": 0.8447,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        94,
+        207,
+        389,
+        400
+      ],
+      "transparentRatio": 0.8501,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        115,
+        176,
+        331,
+        406
+      ],
+      "transparentRatio": 0.8565,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        115,
+        192,
+        354,
+        420
+      ],
+      "transparentRatio": 0.8486,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        133,
+        232,
+        345,
+        422
+      ],
+      "transparentRatio": 0.8689,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        144,
+        233,
+        302,
+        419
+      ],
+      "transparentRatio": 0.8877,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        124,
+        193,
+        297,
+        414
+      ],
+      "transparentRatio": 0.8723,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        121,
+        196,
+        293,
+        364
+      ],
+      "transparentRatio": 0.8955,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        97,
+        211,
+        337,
+        364
+      ],
+      "transparentRatio": 0.8944,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        104,
+        282,
+        311,
+        366
+      ],
+      "transparentRatio": 0.9402,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        94,
+        296,
+        328,
+        367
+      ],
+      "transparentRatio": 0.9447,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        122,
+        167,
+        285,
+        361
+      ],
+      "transparentRatio": 0.8926,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        89,
+        160,
+        296,
+        354
+      ],
+      "transparentRatio": 0.8913,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        84,
+        192,
+        319,
+        367
+      ],
+      "transparentRatio": 0.8868,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        144,
+        175,
+        298,
+        364
+      ],
+      "transparentRatio": 0.9018,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.82,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      1
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

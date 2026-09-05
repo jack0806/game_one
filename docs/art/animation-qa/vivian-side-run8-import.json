@@ -1,0 +1,153 @@
+{
+  "source": "exec-fededd80-303e-4613-b3a3-97e8570028c8.png",
+  "output": "anim_vivian_side_run8.png",
+  "size": [
+    1024,
+    512
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        30,
+        39,
+        250,
+        231
+      ],
+      "transparentRatio": 0.7439,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        32,
+        49,
+        236,
+        233
+      ],
+      "transparentRatio": 0.7573,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        45,
+        44,
+        237,
+        232
+      ],
+      "transparentRatio": 0.7545,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        12,
+        41,
+        213,
+        225
+      ],
+      "transparentRatio": 0.7607,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        25,
+        45,
+        251,
+        228
+      ],
+      "transparentRatio": 0.7693,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        40,
+        55,
+        236,
+        231
+      ],
+      "transparentRatio": 0.7814,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        47,
+        49,
+        242,
+        228
+      ],
+      "transparentRatio": 0.7633,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        13,
+        42,
+        222,
+        204
+      ],
+      "transparentRatio": 0.7767,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      454,
+      887
+    ],
+    "baselines": [
+      379,
+      797
+    ],
+    "scale": 0.64,
+    "targetBaseline": 232,
+    "columnCuts": {
+      "0": [
+        0,
+        440,
+        876,
+        1290,
+        1774
+      ],
+      "1": [
+        0,
+        443,
+        886,
+        1260,
+        1774
+      ]
+    },
+    "pelvisX": [
+      [
+        210,
+        626,
+        1064,
+        1490
+      ],
+      [
+        212,
+        635,
+        1068,
+        1493
+      ]
+    ]
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

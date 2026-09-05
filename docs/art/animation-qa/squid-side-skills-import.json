@@ -1,0 +1,142 @@
+{
+  "source": "exec-3dc0b8c1-7b4e-4ceb-a2b1-404ac3110648.png",
+  "output": "anim_squid_side_skills.png",
+  "size": [
+    1792,
+    896
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        66,
+        232,
+        370,
+        415
+      ],
+      "transparentRatio": 0.8296,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        62,
+        235,
+        382,
+        415
+      ],
+      "transparentRatio": 0.829,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        57,
+        236,
+        421,
+        414
+      ],
+      "transparentRatio": 0.8232,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        61,
+        234,
+        355,
+        420
+      ],
+      "transparentRatio": 0.8375,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        66,
+        219,
+        369,
+        400
+      ],
+      "transparentRatio": 0.8339,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        44,
+        216,
+        386,
+        406
+      ],
+      "transparentRatio": 0.8229,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        33,
+        220,
+        407,
+        420
+      ],
+      "transparentRatio": 0.8067,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        68,
+        223,
+        357,
+        401
+      ],
+      "transparentRatio": 0.8431,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      512,
+      1024
+    ],
+    "baselines": [
+      368,
+      817
+    ],
+    "scale": 1.05,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ],
+      "1": [
+        0,
+        384,
+        768,
+        1152,
+        1536
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼右侧技能按整图连通主体保留喙前水刺与前伸触手，以每行动作最低点装箱。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

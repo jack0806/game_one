@@ -1,7 +1,7 @@
 // ============================================================
 //  InputManager.ts — 键盘 + 鼠标 + 虚拟摇杆输入（Cocos Creator 3.x API）
 // ============================================================
-// PC：WASD/方向键移动、QER技能、Esc暂停、M属性面板。
+// PC：WASD/方向键移动、空格跳跃、QER技能、Esc暂停、M属性面板。
 // 移动端：TouchControls 把虚拟摇杆向量与技能按钮按下沿写进来，
 // 两套输入在 moveX/moveY 与 isKey?Pressed() 里合并（键盘优先）。
 import { _decorator, Component, Node, EventKeyboard, EventMouse, KeyCode, Input, input, Vec2 } from 'cc';
@@ -75,6 +75,8 @@ export class InputManager extends Component {
         this._virtualPressed.add(slot);
     }
 
+    fireJumpPressed(): void { this._virtualPressed.add('jump'); }
+
     private _virtualPressedSlot(slot: string): boolean {
         return this._virtualPressed.has(slot);
     }
@@ -97,5 +99,6 @@ export class InputManager extends Component {
     isKeyQPressed(): boolean { return this.justPressedCode(KeyCode.KEY_Q) || this._virtualPressedSlot('q'); }
     isKeyEPressed(): boolean { return this.justPressedCode(KeyCode.KEY_E) || this._virtualPressedSlot('e'); }
     isKeyRPressed(): boolean { return this.justPressedCode(KeyCode.KEY_R) || this._virtualPressedSlot('r'); }
+    isJumpPressed(): boolean { return this.justPressedCode(32) || this._virtualPressedSlot('jump'); }
     isKeyMPressed(): boolean { return this.justPressedCode(KeyCode.KEY_M); }
 }

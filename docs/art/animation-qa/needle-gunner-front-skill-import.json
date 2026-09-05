@@ -1,0 +1,87 @@
+{
+  "source": "exec-89852017-0379-4d27-929d-39a066738feb.png",
+  "output": "anim_needle_gunner_front_skill.png",
+  "size": [
+    1536,
+    384
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        102,
+        97,
+        303,
+        331
+      ],
+      "transparentRatio": 0.8501,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        96,
+        98,
+        294,
+        332
+      ],
+      "transparentRatio": 0.8514,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        94,
+        98,
+        291,
+        354
+      ],
+      "transparentRatio": 0.8449,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        75,
+        96,
+        271,
+        330
+      ],
+      "transparentRatio": 0.8442,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      724
+    ],
+    "baselines": [
+      600
+    ],
+    "scale": 0.5,
+    "targetBaseline": 330,
+    "columnCuts": {
+      "0": [
+        0,
+        543,
+        1086,
+        1629,
+        2172
+      ]
+    },
+    "isolatedRows": [
+      0
+    ],
+    "note": "断针射手正面高功率修正版；第三帧短束完整收在格内，炮口留有透明边界。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

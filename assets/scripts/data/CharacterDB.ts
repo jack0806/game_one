@@ -56,11 +56,13 @@ export const CHARACTERS: Record<string, CharDef> = {
         passive(p: any) { p.stats.pierce += 1; },
         qSkill(p: any, game: any) {
             // 方向性技能沿角色朝向释放（facing 随移动输入更新），不再追鼠标
-            const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
             // 弹头放大50%（radius 12 → 18）
-            game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 18, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
+            game.bulletPool.spawn({ x: mx, y: my, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 18, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
-            game.particles.explode(p.x, p.y, '#ff8800', 20);
+            if (game.particles.weaponFlash) game.particles.weaponFlash(mx, my, nx, ny, 'charged');
+            else game.particles.explode(mx, my, '#ff8800', 20);
         },
         eSkill(p: any, game: any) {
             p.applyBuff('barrage_mode', 4, { atkSpd: 3, noMove: true });
@@ -68,9 +70,10 @@ export const CHARACTERS: Record<string, CharDef> = {
         },
         ultimate(p: any, game: any) {
             // 弹头自动追踪敌人（homing 由 BulletPool.update 朝最近敌人转向）
+            const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
             for (let i = 0; i < 30; i++) {
                 const a = Rng.float(0, Math.PI * 2);
-                game.bulletPool.spawn({ x: p.x, y: p.y, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player', charKey: p.charId, homing: true });
+                game.bulletPool.spawn({ x: mx, y: my, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player', charKey: p.charId, homing: true });
             }
             p.applyBuff('overload', 8, { dmgMult: 2 });
             game.screenShake.shake(15, 0.5);
@@ -123,7 +126,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.05; },
         qSkill(p: any, game: any) {
             // 冲锋方向 = 角色朝向（不再追鼠标）
-            const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const startX = p.x, startY = p.y;
             p.x = clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius);
             p.y = clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius);
@@ -380,12 +383,14 @@ export const CHARACTERS: Record<string, CharDef> = {
         passive(p: any) { p.stats.freezeBonus = 2.5; },
         qSkill(p: any, game: any) {
             // 方向性技能沿角色朝向释放（不再追鼠标）
-            const [nx, ny] = Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
-            const b = game.bulletPool.spawn({ x: p.x, y: p.y, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId });
+            const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
+            const b = game.bulletPool.spawn({ x: mx, y: my, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId });
             b.onHitCb = (_bullet: any, enemy: any) => {
                 enemy.slowMult = 0.3; enemy.frozen = Math.max(enemy.frozen || 0, 0.8);
                 game.particles?.coldImpact(enemy.x, enemy.y);
             };
+            game.particles.weaponFlash?.(mx, my, nx, ny, 'ice');
             game.particles.hexActivate(p.x, p.y, '#00ccff');
         },
         eSkill(p: any, game: any) {
@@ -394,11 +399,13 @@ export const CHARACTERS: Record<string, CharDef> = {
             const cx = c ? c.x : game.input.mouse.x;
             const cy = c ? c.y : game.input.mouse.y;
             game.spawnIceZone(cx, cy, 100, 12);
-            game.particles.hexActivate(cx, cy, '#00ccff');
+            if (game.particles.frostField) game.particles.frostField(cx, cy, 100);
+            else game.particles.hexActivate(cx, cy, '#00ccff');
         },
         ultimate(p: any, game: any) {
             game.freezeAllEnemies(5);
             for (const e of game.enemies) { if (e.alive) e.takeDamage(p.stats.damage * 3, p, game); }
+            game.particles.frostField?.(p.x, p.y, 160);
             game.screenShake.shake(12, 0.5);
             game.particles.hexActivate(p.x, p.y, '#00ccff');
             game.floatingText.spawn(640, 200, '绝对零度', '#00ccff', 28, true);

@@ -1,0 +1,2001 @@
+{
+  "note": "6英雄与36目录敌人；召唤物还须单独审计。素材/动作登记不表示通过视觉或技能特效验收。",
+  "units": [
+    {
+      "id": "kai",
+      "category": "hero",
+      "key": "char_token_kai",
+      "directions": [
+        "front",
+        "back",
+        "side"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "vivian",
+      "category": "hero",
+      "key": "char_token_vivian",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "reik",
+      "category": "hero",
+      "key": "char_token_reik",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "olia",
+      "category": "hero",
+      "key": "char_token_olia",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "attackMelee",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "attackMelee",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "attackMelee",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "graf",
+      "category": "hero",
+      "key": "char_token_graf",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "liana",
+      "category": "hero",
+      "key": "char_token_liana",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_ch1",
+      "category": "boss",
+      "key": "enemy_boss_ch1",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_ch2",
+      "category": "boss",
+      "key": "enemy_boss_ch2",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_ch3",
+      "category": "boss",
+      "key": "enemy_boss_ch3",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_ch4",
+      "category": "boss",
+      "key": "enemy_boss_ch4",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_mech",
+      "category": "boss",
+      "key": "enemy_boss_mech",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_abyss",
+      "category": "boss",
+      "key": "enemy_boss_abyss",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_vespa",
+      "category": "boss",
+      "key": "enemy_boss_vespa",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_crucible_city",
+      "category": "boss",
+      "key": "enemy_boss_crucible_city",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_manyfold",
+      "category": "boss",
+      "key": "enemy_boss_manyfold",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4",
+          "skill5"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "squid",
+      "category": "miniboss",
+      "key": "enemy_squid",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "turtle",
+      "category": "miniboss",
+      "key": "enemy_turtle",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "shrimp",
+      "category": "miniboss",
+      "key": "enemy_shrimp",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "jelly",
+      "category": "miniboss",
+      "key": "enemy_jelly",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "drone_a",
+      "category": "miniboss",
+      "key": "enemy_drone_attack",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "drone_s",
+      "category": "miniboss",
+      "key": "enemy_drone_support",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "chain_hound",
+      "category": "miniboss",
+      "key": "enemy_chain_hound",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill2",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill2",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill2",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "prism_snail",
+      "category": "miniboss",
+      "key": "enemy_prism_snail",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "triune_priest",
+      "category": "miniboss",
+      "key": "enemy_triune_priest",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "rail_butcher",
+      "category": "miniboss",
+      "key": "enemy_rail_butcher",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "bell_devourer",
+      "category": "miniboss",
+      "key": "enemy_bell_devourer",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "skill4"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "grunt",
+      "category": "grunt",
+      "key": "enemy_grunt",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "shield",
+      "category": "grunt",
+      "key": "enemy_shield",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "exploder",
+      "category": "grunt",
+      "key": "enemy_exploder",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "defeated",
+          "skill",
+          "hit"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "defeated",
+          "skill",
+          "hit"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "defeated",
+          "skill",
+          "hit"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "golem",
+      "category": "grunt",
+      "key": "enemy_golem",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "skill",
+          "defeated"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "elite_grunt",
+      "category": "grunt",
+      "key": "enemy_elite",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "archer",
+      "category": "grunt",
+      "key": "enemy_archer",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "jump",
+          "hit",
+          "defeated",
+          "skill",
+          "attack",
+          "walk",
+          "run"
+        ],
+        "side": [
+          "idle",
+          "jump",
+          "hit",
+          "defeated",
+          "skill",
+          "attack",
+          "walk",
+          "run"
+        ],
+        "back": [
+          "idle",
+          "jump",
+          "hit",
+          "defeated",
+          "skill",
+          "attack",
+          "walk",
+          "run"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "miniboss",
+      "category": "grunt",
+      "key": "enemy_shadow_hunter",
+      "directions": [],
+      "actions": {},
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "rust_biter",
+      "category": "grunt",
+      "key": "enemy_rust_biter",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "needle_gunner",
+      "category": "grunt",
+      "key": "enemy_needle_gunner",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "ember_acolyte",
+      "category": "grunt",
+      "key": "enemy_ember_acolyte",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "frost_acolyte",
+      "category": "grunt",
+      "key": "enemy_frost_acolyte",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "acid_sac",
+      "category": "grunt",
+      "key": "enemy_acid_sac",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "skill",
+          "hit",
+          "defeated"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "rivet_beast",
+      "category": "grunt",
+      "key": "enemy_rivet_beast",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "arc_leech",
+      "category": "grunt",
+      "key": "enemy_arc_leech",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "gold_scavenger",
+      "category": "grunt",
+      "key": "enemy_gold_scavenger",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "blast_tick",
+      "category": "grunt",
+      "key": "enemy_blast_tick",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    }
+  ]
+}

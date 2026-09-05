@@ -1,0 +1,137 @@
+{
+  "source": "exec-7270ce49-2ce1-4a20-baf3-a3ff945ae5f2.png",
+  "output": "anim_vivian_side_walk8.png",
+  "size": [
+    1024,
+    512
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        56,
+        35,
+        222,
+        233
+      ],
+      "transparentRatio": 0.7786,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        50,
+        35,
+        212,
+        232
+      ],
+      "transparentRatio": 0.7854,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        49,
+        34,
+        206,
+        232
+      ],
+      "transparentRatio": 0.7844,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        39,
+        34,
+        203,
+        233
+      ],
+      "transparentRatio": 0.7783,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        48,
+        38,
+        220,
+        232
+      ],
+      "transparentRatio": 0.7805,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        50,
+        38,
+        210,
+        233
+      ],
+      "transparentRatio": 0.7838,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        48,
+        37,
+        206,
+        233
+      ],
+      "transparentRatio": 0.7865,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        39,
+        38,
+        203,
+        233
+      ],
+      "transparentRatio": 0.7842,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      454,
+      887
+    ],
+    "baselines": [
+      429,
+      842
+    ],
+    "scale": 0.54,
+    "targetBaseline": 232,
+    "pelvisX": [
+      [
+        197,
+        615,
+        1054,
+        1475
+      ],
+      [
+        197,
+        613,
+        1058,
+        1475
+      ]
+    ]
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

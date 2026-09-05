@@ -1,0 +1,231 @@
+{
+  "source": "exec-2c93afc1-33a0-4c67-922a-ecb5427704cb.png",
+  "output": "anim_gold_scavenger_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        111,
+        215,
+        406,
+        398
+      ],
+      "transparentRatio": 0.8677,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        98,
+        216,
+        387,
+        398
+      ],
+      "transparentRatio": 0.8653,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        82,
+        225,
+        304,
+        400
+      ],
+      "transparentRatio": 0.881,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        68,
+        226,
+        360,
+        401
+      ],
+      "transparentRatio": 0.8739,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        111,
+        223,
+        364,
+        393
+      ],
+      "transparentRatio": 0.878,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        106,
+        215,
+        364,
+        394
+      ],
+      "transparentRatio": 0.8725,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        104,
+        226,
+        331,
+        398
+      ],
+      "transparentRatio": 0.8858,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        69,
+        229,
+        292,
+        400
+      ],
+      "transparentRatio": 0.8852,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        100,
+        241,
+        362,
+        397
+      ],
+      "transparentRatio": 0.8835,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        70,
+        261,
+        379,
+        399
+      ],
+      "transparentRatio": 0.8874,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        80,
+        283,
+        380,
+        400
+      ],
+      "transparentRatio": 0.902,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        68,
+        311,
+        354,
+        400
+      ],
+      "transparentRatio": 0.925,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        105,
+        217,
+        329,
+        389
+      ],
+      "transparentRatio": 0.8887,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        44,
+        228,
+        344,
+        387
+      ],
+      "transparentRatio": 0.8931,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        10,
+        248,
+        403,
+        383
+      ],
+      "transparentRatio": 0.8635,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        118,
+        238,
+        328,
+        400
+      ],
+      "transparentRatio": 0.8962,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      320,
+      589,
+      835,
+      1122
+    ],
+    "baselines": [
+      277,
+      543,
+      794,
+      1061
+    ],
+    "scale": 1.0,
+    "targetBaseline": 400,
+    "isolatedRows": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "note": "黄金拾荒者严格朝右侧视无伤害拾取、受击、倒下、逃逸；速度线向左拖尾。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

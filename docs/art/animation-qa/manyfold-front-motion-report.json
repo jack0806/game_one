@@ -1,0 +1,255 @@
+{
+  "source": "exec-879bf537-b5ec-438f-8061-da05b6f0ca11.png",
+  "output": "anim_boss_manyfold_front_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        122,
+        179,
+        335,
+        388
+      ],
+      "transparentRatio": 0.9143,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        113,
+        179,
+        330,
+        388
+      ],
+      "transparentRatio": 0.9142,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        116,
+        179,
+        320,
+        388
+      ],
+      "transparentRatio": 0.9185,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        115,
+        183,
+        307,
+        388
+      ],
+      "transparentRatio": 0.9215,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        143,
+        166,
+        325,
+        388
+      ],
+      "transparentRatio": 0.9217,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        138,
+        166,
+        312,
+        388
+      ],
+      "transparentRatio": 0.9231,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        138,
+        166,
+        310,
+        388
+      ],
+      "transparentRatio": 0.9256,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        132,
+        166,
+        301,
+        388
+      ],
+      "transparentRatio": 0.9218,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        127,
+        166,
+        335,
+        374
+      ],
+      "transparentRatio": 0.9401,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        113,
+        166,
+        328,
+        377
+      ],
+      "transparentRatio": 0.943,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        118,
+        166,
+        327,
+        378
+      ],
+      "transparentRatio": 0.9408,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        114,
+        166,
+        316,
+        379
+      ],
+      "transparentRatio": 0.9454,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        179,
+        193,
+        282,
+        351
+      ],
+      "transparentRatio": 0.9535,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        166,
+        218,
+        278,
+        358
+      ],
+      "transparentRatio": 0.9559,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        164,
+        196,
+        265,
+        353
+      ],
+      "transparentRatio": 0.9531,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        112,
+        190,
+        326,
+        380
+      ],
+      "transparentRatio": 0.9301,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      940,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "已核对六针肢身份、三方向朝向、技能语义、透明背景、共同基线与单格完整性；Playwright逐动作页面复核通过"
+}

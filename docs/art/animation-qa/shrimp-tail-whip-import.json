@@ -1,0 +1,199 @@
+{
+  "source": "exec-dfbac9b7-ca32-4ee4-88f5-047421aea9eb.png",
+  "output": "anim_shrimp_tail_whip.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        102,
+        105,
+        342,
+        418
+      ],
+      "transparentRatio": 0.8261,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        104,
+        101,
+        361,
+        416
+      ],
+      "transparentRatio": 0.7937,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        62,
+        115,
+        374,
+        416
+      ],
+      "transparentRatio": 0.7364,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        104,
+        105,
+        343,
+        416
+      ],
+      "transparentRatio": 0.8265,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        69,
+        169,
+        375,
+        371
+      ],
+      "transparentRatio": 0.8521,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        92,
+        123,
+        362,
+        382
+      ],
+      "transparentRatio": 0.8085,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        64,
+        169,
+        379,
+        374
+      ],
+      "transparentRatio": 0.7986,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        70,
+        170,
+        375,
+        371
+      ],
+      "transparentRatio": 0.8535,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        111,
+        72,
+        332,
+        408
+      ],
+      "transparentRatio": 0.7761,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        94,
+        72,
+        371,
+        407
+      ],
+      "transparentRatio": 0.7589,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        68,
+        85,
+        381,
+        417
+      ],
+      "transparentRatio": 0.6981,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        116,
+        74,
+        332,
+        406
+      ],
+      "transparentRatio": 0.7807,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      369,
+      699,
+      1058
+    ],
+    "scale": 0.88,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "锯齿剑虾按整图连通主体保留长触须、六足、双锯螯、尾扇及贴身技能弧，以每行动作最低点统一基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

@@ -1,0 +1,198 @@
+{
+  "source": "exec-013a5291-648d-4036-9241-3b5ff8385848.png",
+  "output": "anim_reik_skill3.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        160,
+        193,
+        360,
+        383
+      ],
+      "transparentRatio": 0.8912,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        133,
+        195,
+        317,
+        382
+      ],
+      "transparentRatio": 0.8956,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        96,
+        170,
+        336,
+        385
+      ],
+      "transparentRatio": 0.8583,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        105,
+        193,
+        294,
+        383
+      ],
+      "transparentRatio": 0.8973,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        156,
+        120,
+        343,
+        308
+      ],
+      "transparentRatio": 0.9061,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        130,
+        125,
+        300,
+        311
+      ],
+      "transparentRatio": 0.9011,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        123,
+        104,
+        309,
+        313
+      ],
+      "transparentRatio": 0.8883,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        98,
+        120,
+        287,
+        309
+      ],
+      "transparentRatio": 0.9004,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        147,
+        59,
+        342,
+        259
+      ],
+      "transparentRatio": 0.8945,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        132,
+        59,
+        319,
+        257
+      ],
+      "transparentRatio": 0.8949,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        100,
+        36,
+        325,
+        259
+      ],
+      "transparentRatio": 0.8625,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        96,
+        61,
+        296,
+        260
+      ],
+      "transparentRatio": 0.8936,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "R 死亡意志：采用背面纠正并整体缩小的修正版，三向爆发帧双斧完整、背面不露面部与胸甲。"
+}\n

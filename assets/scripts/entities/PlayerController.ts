@@ -11,7 +11,18 @@ import {
     createDirectionalFacingState, directionalArtKeys, resetDirectionalFacing,
 } from '../core/DirectionalFacing';
 import type { DotEffect } from './EnemyBase';
+import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
+import { actorClip, ActorAction, ActorView, ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
+import { resolveFacingView } from '../core/DirectionalFacing';
 const { ccclass, property } = _decorator;
+
+interface VisualSkillRequest {
+    slot: 'q' | 'e' | 'r';
+    action: 'skill' | 'skill2' | 'skill3';
+    run: () => void;
+    dx: number;
+    dy: number;
+}
 
 export interface PlayerStats extends CharStats {
     extraBullets: number;
@@ -105,6 +116,17 @@ export class PlayerController extends Component {
     locomotionFrameKey = '';
     /** 视觉朝向与方向技能共用最后一次移动输入，保证按左/右时身体立即同向。 */
     directionalFacing = createDirectionalFacingState('side');
+    actorAnimation = new ActorAnimation();
+    animationView: ActorView = 'side';
+    animationMirror: 1 | -1 = 1;
+    private _animationLastX = this.x;
+    private _animationLastY = this.y;
+    private _pendingFire?: () => void;
+    private _emissionOrigin?: [number, number];
+    private _attackAnimationRate = 1;
+    private _skillQueue: VisualSkillRequest[] = [];
+    private _pendingSkill?: VisualSkillRequest;
+    private _castFacing?: [number, number];
 
     // ── 初始化 ───────────────────────────────────────────
     init(charId: string, game: any): void {
@@ -129,6 +151,15 @@ export class PlayerController extends Component {
             this.sprite.trim = false;
         }
         this.spriteKey = `char_token_${charId}`;
+        this.resetVisualAnimation();
+        const animationSheets = new Set<string>();
+        const animationSet = ACTOR_ANIMATIONS[this.spriteKey] ?? {};
+        for (const viewName of Object.keys(animationSet)) {
+            const view = animationSet[viewName];
+            for (const action of Object.keys(view)) animationSheets.add(view[action].sheet);
+        }
+        // 避免 Cocos Web 转译把 `[...set]` 变成包含 Set 对象的单元素数组。
+        preloadArt(Array.from(animationSheets));
         this.moveSpriteKey = `${this.spriteKey}_move`;
         this.locomotionFrameKey = this.spriteKey;
         preloadArt(directionalArtKeys(this.spriteKey));
@@ -261,6 +292,7 @@ export class PlayerController extends Component {
         // 受击钩子：深海恐惧「海之霸主」期间每受一次伤害 Boss 生成护盾（测试房）
         game.onPlayerHit?.(this, game);
         this._iframeTimer = 0.5;
+        this.playVisualAction('hit');
         game.audio?.playSfx?.('player_hurt');
         game.screenShake?.shake(4, 0.14);
         game.floatingText?.spawn(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff4444', 16, false);
@@ -276,7 +308,7 @@ export class PlayerController extends Component {
                 game.particles?.hexActivate?.(this.x, this.y, '#66ffff');
                 return;
             }
-            this.hp = 0; this.alive = false; game.onPlayerDeath();
+            this.hp = 0; this.alive = false; this.beginDefeat(); game.onPlayerDeath();
         }
     }
 
@@ -297,7 +329,7 @@ export class PlayerController extends Component {
     }
 
     tick(dt: number, input: any, game: any): void {
-        if (!this.alive) return;
+        if (!this.alive) { this.updateVisualAnimation(dt); return; }
 
         // DoT 持续伤害（测试房小boss毒刺/高能光束等）：吃护甲、不吃受击无敌帧，可叠加。
         // 测试房 godMode 代表“跳过一切伤害”，但 DoT 计时仍正常消耗，避免关闭无敌后残留过期效果。
@@ -322,9 +354,12 @@ export class PlayerController extends Component {
             if (this.hp <= 0 && this.alive) {
                 this.hp = 0; this.alive = false;
                 // 用 tick 传入的 game（headless 测试不调 init()，this._game 可能为空）
+                this.beginDefeat();
                 game?.onPlayerDeath?.();
             }
         }
+
+        if (!this.alive) { this.updateVisualAnimation(dt); return; }
 
         this._iframeTimer = Math.max(0, this._iframeTimer - dt);
         this._invincible  = Math.max(0, this._invincible - dt);
@@ -357,53 +392,59 @@ export class PlayerController extends Component {
 
         // 移动
         this.tickMovement(dt, input);
+        // 跳跃使用独立的起跳/腾空/落地姿势，长按不会不断重置起跳帧。
+        if (input.isJumpPressed?.() && !this.actorAnimation.locked) this.playVisualAction('jump');
+        this.updateVisualAnimation(dt);
 
         // 普攻
         this._shootTimer += dt;
         const atkInterval = 1 / Math.max(0.1, this.getAtkSpd());
         if (!game?.testCeasefire && this._shootTimer >= atkInterval) {
-            this._shootTimer = 0;
-            this._shoot(input, game);
+            // 被受击/技能打断时保留一次待发机会，不能积累成恢复后的瞬间爆发。
+            this._shootTimer = this._shoot(input, game)
+                ? Math.min(atkInterval, this._shootTimer - atkInterval) : atkInterval;
         } else if (game?.testCeasefire) {
             this._shootTimer = Math.min(this._shootTimer, atkInterval);
         }
 
         // 技能 Q（CD 可按角色定制：qCd ?? 默认SKILL_Q_CD=4秒）
         if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
-            this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
-            game.audio?.playSfx?.('skill_q');
-            this._grantCastShield(game);
-            this._charDef.qSkill(this, game);
-            const qName = this._charDef.skills.q.split('—')[0].trim();
-            game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
-            game.augmentManager?.dispatchSkill(this, game);
+            if (this._requestSkill('q', () => {
+                game.audio?.playSfx?.('skill_q');
+                this._grantCastShield(game);
+                this._charDef.qSkill(this, game);
+                const qName = this._charDef.skills.q.split('—')[0].trim();
+                game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
+                game.augmentManager?.dispatchSkill(this, game);
+            })) this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
         }
         // 技能 E（CD 可按角色定制：eCd ?? 默认SKILL_E_CD=10秒）
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
-            this._eCd = (this._charDef.eCd ?? SKILL_E_CD) * (1 - this.stats.cdReduction);
-            game.audio?.playSfx?.('skill_e');
-            this._grantCastShield(game);
-            let eName = this._charDef.skills.e.split('—')[0].trim();
-            if (this.stats.eSkillUpgrade === 'blackhole') {
-                // 放置类技能：黑洞直接释放在敌人最密集的位置；
-                // 场上没有敌人时才退回鼠标位置。
-                const cluster = game.getEnemyClusterPoint?.();
-                const bx = cluster ? cluster.x : input.mouse.x;
-                const by = cluster ? cluster.y : input.mouse.y;
-                game.attractEnemies?.(bx, by, 120);
-                game.particles?.explode(bx, by, '#aa00ff', 60);
-                for (const e of game.enemies) {
-                    if (e.alive && Math.hypot(e.x - bx, e.y - by) < 120) e.takeDamage(this.getDamage(game) * 2, this, game);
+            if (this._requestSkill('e', () => {
+                game.audio?.playSfx?.('skill_e');
+                this._grantCastShield(game);
+                let eName = this._charDef.skills.e.split('—')[0].trim();
+                if (this.stats.eSkillUpgrade === 'blackhole') {
+                    // 放置类技能：黑洞直接释放在敌人最密集的位置；
+                    // 场上没有敌人时才退回鼠标位置。
+                    const cluster = game.getEnemyClusterPoint?.();
+                    const bx = cluster ? cluster.x : input.mouse.x;
+                    const by = cluster ? cluster.y : input.mouse.y;
+                    game.attractEnemies?.(bx, by, 120);
+                    game.particles?.explode(bx, by, '#aa00ff', 60);
+                    for (const e of game.enemies) {
+                        if (e.alive && Math.hypot(e.x - bx, e.y - by) < 120) e.takeDamage(this.getDamage(game) * 2, this, game);
+                    }
+                    eName = '黑洞引擎';
+                } else {
+                    this._charDef.eSkill(this, game);
                 }
-                eName = '黑洞引擎';
-            } else {
-                this._charDef.eSkill(this, game);
-            }
-            // Q/E 名称统一只由控制器显示一次。角色数据层只负责效果，避免
-            // “网络连接/连接网络”这类同义文案在英雄头顶叠两遍。
-            const eColor = this.stats.eSkillUpgrade === 'blackhole' ? '#cc00ff' : this.color;
-            game.floatingText?.spawn(this.x, this.y - 55, eName, eColor, 15, true);
-            game.augmentManager?.dispatchSkill(this, game);
+                // Q/E 名称统一只由控制器显示一次。角色数据层只负责效果，避免
+                // “网络连接/连接网络”这类同义文案在英雄头顶叠两遍。
+                const eColor = this.stats.eSkillUpgrade === 'blackhole' ? '#cc00ff' : this.color;
+                game.floatingText?.spawn(this.x, this.y - 55, eName, eColor, 15, true);
+                game.augmentManager?.dispatchSkill(this, game);
+            })) this._eCd = (this._charDef.eCd ?? SKILL_E_CD) * (1 - this.stats.cdReduction);
         }
         // 宇宙法则(cosmos_law)：R 键触发（独立于大招 R，走独立30s CD）。
         // 对齐 hexblast-py entities/player.py 的触发方式：
@@ -416,11 +457,12 @@ export class PlayerController extends Component {
         }
         // 终极 R
         if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1) {
-            this._rCharge = 0; this.ultReady = false;
-            game.audio?.playSfx?.('skill_r');
-            this._grantCastShield(game);
-            this._charDef.ultimate(this, game);
-            game.hitStop?.trigger(0.1);
+            if (this._requestSkill('r', () => {
+                game.audio?.playSfx?.('skill_r');
+                this._grantCastShield(game);
+                this._charDef.ultimate(this, game);
+                game.hitStop?.trigger(0.1);
+            })) { this._rCharge = 0; this.ultReady = false; }
         }
         this._rCharge = Math.min(1, this._rCharge);
         if (this._rCharge >= 1) this.ultReady = true;
@@ -446,22 +488,30 @@ export class PlayerController extends Component {
     }
 
     // ── 近战普攻 ────────────────────────────────────────────
-    private _meleeAttack(game: any): void {
+    private _meleeAttack(game: any, lockedTarget?: any, lockedAngle?: number): void {
         // 远程角色切入近战形态时使用紧凑的形态近战范围（90），近战角色沿用自身攻击距离
         const range = (this.attackForm === 'melee' && this._charDef.attackType !== 'melee')
             ? 90 : this._charDef.attackRange;
-        const enemy = game.getNearestEnemy?.(this.x, this.y);
-        if (!enemy || !enemy.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > range + this.radius + enemy.radius) return;
-        // 剑气特效：从玩家位置向目标方向斩出，刃长覆盖整个攻击距离；
-        // 命中点追加冲击提示，让攻击范围与落点一眼可读
-        const angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+        const enemy = lockedTarget ?? game.getNearestEnemy?.(this.x, this.y);
+        if (!enemy) return;
+        const inRange = enemy.alive && Vec.dist(this.x, this.y, enemy.x, enemy.y) <= range + this.radius + enemy.radius;
+        if (!lockedTarget && !inRange) return;
+        // 挥刃时生成特效，命中点另加冲击；武器挂点不改变攻击范围判定。
+        const angle = lockedAngle ?? Math.atan2(enemy.y - this.y, enemy.x - this.x);
         if (this.charId === 'reik' && game.particles?.reikCleave) {
             game.particles.reikCleave(this.x, this.y, angle, range, 1, this._reikSwingSide++);
+        } else if (this.charId === 'olia' && game.particles?.timeBlade) {
+            const [bladeX, bladeY] = this.getMuzzlePosition();
+            game.particles.timeBlade(bladeX, bladeY, angle);
         } else {
             game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, range, 1);
         }
-        game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
-        this.applyAttackDamage(enemy, game);
+        // 前摇期间目标离开范围或绕到身后时仍挥出动作，但不会隔空/背向扣血。
+        const dot = (enemy.x - this.x) * Math.cos(angle) + (enemy.y - this.y) * Math.sin(angle);
+        if (inRange && dot >= 0) {
+            game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
+            this.applyAttackDamage(enemy, game);
+        }
     }
 
     /**
@@ -471,7 +521,7 @@ export class PlayerController extends Component {
      */
     applyAttackDamage(enemy: any, game: any, baseDamage?: number): number {
         let dmg = baseDamage ?? this.getDamage(game);
-        const isCrit = Math.random() < (this.stats.critRate || 0);
+        const isCrit = Rng.chance(this.stats.critRate || 0);
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
             game.floatingText?.spawn(enemy.x, enemy.y - 20, '暴击！', '#ffd700', 14, true);
@@ -511,12 +561,18 @@ export class PlayerController extends Component {
     }
 
     // ── 发射子弹 ─────────────────────────────────────────
-    private _shoot(input: any, game: any): void {
+    private _shoot(input: any, game: any): boolean {
+        if (!this.alive || this._pendingFire) return false;
+        if (this.actorAnimation.locked && this.actorAnimation.action !== 'attack' && this.actorAnimation.action !== 'attackMelee') return false;
         // 形态切换（时空行者E）：attackForm 优先于角色默认攻击方式
         const form = this.attackForm || this._charDef.attackType;
         if (form === 'melee') {
-            this._meleeAttack(game);
-            return;
+            const enemy = game.getNearestEnemy?.(this.x, this.y);
+            const range = this._charDef.attackType === 'melee' ? this._charDef.attackRange : 90;
+            if (!enemy?.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > range + this.radius + enemy.radius) return false;
+            const dx = enemy.x - this.x, dy = enemy.y - this.y;
+            const angle = Math.atan2(dy, dx);
+            return this._queueVisualAttack(dx, dy, () => this._meleeAttack(game, enemy, angle));
         }
         const nearest = game.getNearestEnemy?.(this.x, this.y);
         let tx = input.mouse.x, ty = input.mouse.y;
@@ -524,11 +580,12 @@ export class PlayerController extends Component {
         const [ndx, ndy] = Vec.normalize(tx - this.x, ty - this.y);
 
         const dmg    = this.getDamage(game);
-        const isCrit = Math.random() < (this.stats.critRate || 0);
+        const isCrit = Rng.chance(this.stats.critRate || 0);
 
         const spawnBullet = (dx: number, dy: number, dmgMult = 1) => {
+            const [muzzleX, muzzleY] = this.getMuzzlePosition();
             game.bulletPool?.spawn({
-                x: this.x, y: this.y, vx: dx * 550, vy: dy * 550,
+                x: muzzleX, y: muzzleY, vx: dx * 550, vy: dy * 550,
                 damage: dmg * dmgMult, radius: this._charDef.attackType === 'melee' ? 20 : 5,
                 color: this.color, owner: 'player', isCrit,
                 pierceLeft: this.stats.pierce || 0,
@@ -537,36 +594,165 @@ export class PlayerController extends Component {
             });
         };
 
-        game.audio?.playSfx?.('shoot');
+        const fire = () => {
+            if (!this.alive) return;
+            // 发弹时从当前枪口重新瞄准，不能沿“腰部→目标”的平行线飞过目标。
+            const [muzzleX, muzzleY] = this.getMuzzlePosition();
+            const aimX = nearest?.alive ? nearest.x : tx;
+            const aimY = nearest?.alive ? nearest.y : ty;
+            const [ndx, ndy] = Vec.normalize(aimX - muzzleX, aimY - muzzleY);
+            game.audio?.playSfx?.('shoot');
+            const flash = this.charId === 'liana' ? 'ice' : this.charId === 'graf' ? 'chaos' : this.charId === 'olia' ? 'time' : 'cyan';
+            game.particles?.weaponFlash?.(muzzleX, muzzleY, ndx, ndy, flash);
 
-        if (this.stats.novaMode) {
-            // 全方向9发
-            for (let i = 0; i < 9; i++) {
-                const a = (i / 9) * Math.PI * 2;
-                spawnBullet(Math.cos(a), Math.sin(a), 0.35);
+            if (this.stats.novaMode) {
+                // 全方向9发
+                for (let i = 0; i < 9; i++) {
+                    const a = (i / 9) * Math.PI * 2;
+                    spawnBullet(Math.cos(a), Math.sin(a), 0.35);
+                }
+            } else if (this.stats.barrageMode) {
+                // 5发散射
+                const spread = 0.25;
+                for (let i = -2; i <= 2; i++) {
+                    const a = Math.atan2(ndy, ndx) + i * spread;
+                    spawnBullet(Math.cos(a), Math.sin(a), 0.5);
+                }
+            } else {
+                spawnBullet(ndx, ndy, 1);
+                // 额外子弹
+                for (let i = 0; i < (this.stats.extraBullets || 0); i++) {
+                    const off = Rng.float(-0.15, 0.15);
+                    const a   = Math.atan2(ndy, ndx) + off;
+                    spawnBullet(Math.cos(a), Math.sin(a), 0.7);
+                }
+                // all_in
+                for (let i = 1; i < (this.stats.allInBullets || 0); i++) {
+                    const off = (i / (this.stats.allInBullets - 1) - 0.5) * 0.5;
+                    const a   = Math.atan2(ndy, ndx) + off;
+                    spawnBullet(Math.cos(a), Math.sin(a), 0.8);
+                }
             }
-        } else if (this.stats.barrageMode) {
-            // 5发散射
-            const spread = 0.25;
-            for (let i = -2; i <= 2; i++) {
-                const a = Math.atan2(ndy, ndx) + i * spread;
-                spawnBullet(Math.cos(a), Math.sin(a), 0.5);
-            }
-        } else {
-            spawnBullet(ndx, ndy, 1);
-            // 额外子弹
-            for (let i = 0; i < (this.stats.extraBullets || 0); i++) {
-                const off = (Math.random() - 0.5) * 0.3;
-                const a   = Math.atan2(ndy, ndx) + off;
-                spawnBullet(Math.cos(a), Math.sin(a), 0.7);
-            }
-            // all_in
-            for (let i = 1; i < (this.stats.allInBullets || 0); i++) {
-                const off = (i / (this.stats.allInBullets - 1) - 0.5) * 0.5;
-                const a   = Math.atan2(ndy, ndx) + off;
-                spawnBullet(Math.cos(a), Math.sin(a), 0.8);
-            }
+        };
+        // 开火帧驱动弹体生成，枪口火焰与伤害弹体共用同一时刻。
+        return this._queueVisualAttack(ndx, ndy, fire);
+    }
+
+    private _queueVisualAttack(dx: number, dy: number, fire: () => void): boolean {
+        const facing = resolveFacingView(dx, dy, this.animationView);
+        const melee = (this.attackForm || this._charDef.attackType) === 'melee';
+        const action: ActorAction = melee && actorClip(this.spriteKey, facing.view, 'attackMelee') ? 'attackMelee' : 'attack';
+        const clip = actorClip(this.spriteKey, facing.view, action);
+        if (!clip) { fire(); return true; }
+        if (!this.playVisualAction(action, dx, dy)) return false;
+        this._pendingFire = fire;
+        const duration = clip.frames.reduce((sum, frame) => sum + frame.seconds, 0);
+        this._attackAnimationRate = Math.max(1, duration * this.getAtkSpd());
+        return true;
+    }
+
+    playVisualAction(action: ActorAction, dx = this.facingX, dy = this.facingY): boolean {
+        // 受击/倒下沿用正在显示的身体方向，不能因移动输入不同而突然转身。
+        const facing = action === 'hit' || action === 'defeated'
+            ? { view: this.animationView, mirror: this.animationMirror }
+            : resolveFacingView(dx, dy, this.animationView);
+        const clip = actorClip(this.spriteKey, facing.view, action);
+        if (!this.actorAnimation.play(action, clip, true)) return false;
+        this.animationView = facing.view; this.animationMirror = facing.mirror;
+        if (action !== 'attack' && action !== 'attackMelee') this._pendingFire = undefined;
+        if (action === 'hit' && this._pendingSkill) {
+            // 受击中断时保留输入，恢复后重播准备动作，不重复消耗CD。
+            this._skillQueue.unshift(this._pendingSkill);
+            this._pendingSkill = undefined;
         }
+        return true;
+    }
+
+    updateVisualAnimation(dt: number): void {
+        const moved = Math.hypot(this.x - this._animationLastX, this.y - this._animationLastY);
+        this._animationLastX = this.x; this._animationLastY = this.y;
+        if (!this.alive) {
+            this.playVisualAction('defeated');
+            this._pendingFire = undefined;
+        } else if (!this.actorAnimation.locked) {
+            const facing = resolveFacingView(this.facingX, this.facingY, this.animationView);
+            const action: ActorAction = moved < 0.015 ? 'idle'
+                : moved / Math.max(0.001, dt) > 240 ? 'run' : 'walk';
+            const clip = actorClip(this.spriteKey, facing.view, action);
+            if (clip) this.actorAnimation.play(action, clip);
+            else this.actorAnimation.reset();
+            this.animationView = facing.view; this.animationMirror = facing.mirror;
+        }
+        const attacking = this.actorAnimation.action === 'attack' || this.actorAnimation.action === 'attackMelee';
+        this.actorAnimation.update(dt, attacking ? this._attackAnimationRate : 1);
+        for (const { event, frame } of this.actorAnimation.takeFrameEvents()) {
+            // 高攻速/低帧率可能一次跨过开火帧；保留事件自己的挂点，不使用已走到的收招帧。
+            this._emissionOrigin = animationSocket(frame, this.x, this.y,
+                82 * (this.actorAnimation.clip?.displayScale ?? 1), this.animationMirror);
+            try {
+                if (event === 'fire' || event === 'strike') {
+                    const fire = this._pendingFire; this._pendingFire = undefined; fire?.();
+                } else if (event === 'cast' && this.alive) {
+                    const skill = this._pendingSkill; this._pendingSkill = undefined;
+                    if (skill) {
+                        this._castFacing = [skill.dx, skill.dy];
+                        try { skill.run(); } finally { this._castFacing = undefined; }
+                    }
+                }
+            } finally { this._emissionOrigin = undefined; }
+        }
+        this._startNextSkill();
+    }
+
+    private _requestSkill(slot: 'q' | 'e' | 'r', run: () => void): boolean {
+        if (!this.alive || this._pendingSkill?.slot === slot || this._skillQueue.some(s => s.slot === slot)) return false;
+        const [dx, dy] = Vec.normalize(this.facingX, this.facingY);
+        const facing = resolveFacingView(dx, dy, this.animationView);
+        const requestedAction = slot === 'q' ? 'skill' : slot === 'e' ? 'skill2' : 'skill3';
+        // 尚未完成专属稿的角色暂时回落原有施法行；随着图集登记，Q/E/R会自动分流。
+        const action: 'skill' | 'skill2' | 'skill3' = actorClip(this.spriteKey, facing.view, requestedAction)
+            ? requestedAction
+            : 'skill';
+        const clip = actorClip(this.spriteKey, facing.view, action);
+        if (!clip?.frames.some(frame => frame.event === 'cast')) { run(); return true; }
+        this._skillQueue.push({ slot, action, run, dx, dy });
+        this._startNextSkill();
+        return true;
+    }
+
+    private _startNextSkill(): void {
+        if (!this.alive || this._pendingSkill || this._skillQueue.length === 0) return;
+        if (this.actorAnimation.locked && ['skill', 'skill2', 'skill3'].indexOf(this.actorAnimation.action) >= 0) return;
+        const next = this._skillQueue[0];
+        if (!this.playVisualAction(next.action, next.dx, next.dy)) return;
+        this._skillQueue.shift(); this._pendingSkill = next;
+    }
+
+    getCastDirection(): [number, number] {
+        return this._castFacing ?? Vec.normalize(this.facingX, this.facingY);
+    }
+
+    getMuzzlePosition(): [number, number] {
+        if (this._emissionOrigin) return this._emissionOrigin;
+        const frame = this.actorAnimation.currentFrame;
+        return frame ? animationSocket(frame, this.x, this.y, 82 * (this.actorAnimation.clip?.displayScale ?? 1), this.animationMirror) ?? [this.x, this.y]
+            : [this.x, this.y];
+    }
+
+    beginDefeat(): void {
+        this._pendingFire = undefined;
+        this._pendingSkill = undefined; this._skillQueue.length = 0;
+        this.actorAnimation.play('defeated', actorClip(this.spriteKey, this.animationView, 'defeated'));
+    }
+
+    resetVisualAnimation(): void {
+        this.actorAnimation.reset();
+        this._emissionOrigin = undefined;
+        this._pendingFire = undefined;
+        this._pendingSkill = undefined; this._skillQueue.length = 0; this._castFacing = undefined;
+        this._attackAnimationRate = 1;
+        this._animationLastX = this.x; this._animationLastY = this.y;
+        this._shootTimer = 0;
     }
 
     // ── CD 归零（eternal_machine 词条调用） ──────────────

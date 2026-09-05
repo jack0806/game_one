@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "b1baffdf-dff4-4912-9b32-6e80515b24e5",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "b1baffdf-dff4-4912-9b32-6e80515b24e5@6c48a",
+      "displayName": "anim_ember_acolyte_side_combat",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "b1baffdf-dff4-4912-9b32-6e80515b24e5",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "b1baffdf-dff4-4912-9b32-6e80515b24e5@f9941",
+      "displayName": "anim_ember_acolyte_side_combat",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 1.5,
+        "offsetY": -4.5,
+        "trimX": 70,
+        "trimY": 129,
+        "width": 1655,
+        "height": 1543,
+        "rawWidth": 1792,
+        "rawHeight": 1792,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": false,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -827.5,
+            -771.5,
+            0,
+            827.5,
+            -771.5,
+            0,
+            -827.5,
+            771.5,
+            0,
+            827.5,
+            771.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            70,
+            1663,
+            1725,
+            1663,
+            70,
+            120,
+            1725,
+            120
+          ],
+          "nuv": [
+            0.0390625,
+            0.06696428571428571,
+            0.9626116071428571,
+            0.06696428571428571,
+            0.0390625,
+            0.9280133928571429,
+            0.9626116071428571,
+            0.9280133928571429
+          ],
+          "minPos": [
+            -827.5,
+            -771.5,
+            0
+          ],
+          "maxPos": [
+            827.5,
+            771.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "b1baffdf-dff4-4912-9b32-6e80515b24e5@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "b1baffdf-dff4-4912-9b32-6e80515b24e5@6c48a"
+  }
+}

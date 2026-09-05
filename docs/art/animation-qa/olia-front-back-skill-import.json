@@ -1,0 +1,133 @@
+{
+  "source": "exec-7cd35d28-1f60-4969-a590-a770c442568e.png",
+  "output": "anim_olia_front_back_skill.png",
+  "size": [
+    1024,
+    512
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        64,
+        51,
+        209,
+        241
+      ],
+      "transparentRatio": 0.7855,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        52,
+        35,
+        199,
+        241
+      ],
+      "transparentRatio": 0.7843,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        46,
+        16,
+        192,
+        240
+      ],
+      "transparentRatio": 0.7832,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        32,
+        51,
+        178,
+        240
+      ],
+      "transparentRatio": 0.788,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        71,
+        63,
+        220,
+        240
+      ],
+      "transparentRatio": 0.7993,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        61,
+        33,
+        210,
+        240
+      ],
+      "transparentRatio": 0.7981,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        51,
+        24,
+        200,
+        240
+      ],
+      "transparentRatio": 0.7985,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        41,
+        63,
+        189,
+        240
+      ],
+      "transparentRatio": 0.7996,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      435,
+      887
+    ],
+    "baselines": [
+      430,
+      845
+    ],
+    "scale": 0.53,
+    "targetBaseline": 240,
+    "rowBounds": {
+      "0:2": [
+        0,
+        434
+      ],
+      "1:2": [
+        434,
+        887
+      ]
+    }
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

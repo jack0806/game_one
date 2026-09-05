@@ -1,0 +1,255 @@
+{
+  "source": "exec-f16fa249-370e-4536-a60f-763145e02a21.png",
+  "output": "anim_boss_abyss_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        138,
+        190,
+        314,
+        379
+      ],
+      "transparentRatio": 0.9118,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        125,
+        190,
+        365,
+        379
+      ],
+      "transparentRatio": 0.9068,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        120,
+        191,
+        327,
+        376
+      ],
+      "transparentRatio": 0.9074,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        133,
+        191,
+        311,
+        381
+      ],
+      "transparentRatio": 0.9107,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        136,
+        196,
+        312,
+        382
+      ],
+      "transparentRatio": 0.9141,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        133,
+        202,
+        319,
+        378
+      ],
+      "transparentRatio": 0.9173,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        136,
+        233,
+        321,
+        379
+      ],
+      "transparentRatio": 0.9301,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        135,
+        196,
+        309,
+        383
+      ],
+      "transparentRatio": 0.9151,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        138,
+        196,
+        310,
+        354
+      ],
+      "transparentRatio": 0.9315,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        130,
+        205,
+        303,
+        355
+      ],
+      "transparentRatio": 0.9355,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        125,
+        268,
+        300,
+        357
+      ],
+      "transparentRatio": 0.9497,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        127,
+        271,
+        295,
+        357
+      ],
+      "transparentRatio": 0.9531,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        136,
+        170,
+        316,
+        353
+      ],
+      "transparentRatio": 0.9131,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        134,
+        171,
+        315,
+        354
+      ],
+      "transparentRatio": 0.9122,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        147,
+        171,
+        331,
+        354
+      ],
+      "transparentRatio": 0.9177,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        146,
+        173,
+        307,
+        354
+      ],
+      "transparentRatio": 0.9239,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      940,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "浏览器逐帧检查通过：三方向、共同基线、技能峰值和格间隔离符合运行时用途"
+}

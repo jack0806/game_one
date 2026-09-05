@@ -1,0 +1,256 @@
+{
+  "source": "exec-0dce993f-c699-4a28-be2a-961993cef785.png",
+  "output": "anim_boss_crucible_city_front_skills.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        126,
+        192,
+        321,
+        369
+      ],
+      "transparentRatio": 0.9012,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        126,
+        187,
+        322,
+        370
+      ],
+      "transparentRatio": 0.8993,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        127,
+        189,
+        324,
+        370
+      ],
+      "transparentRatio": 0.898,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        130,
+        192,
+        325,
+        369
+      ],
+      "transparentRatio": 0.9011,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        125,
+        192,
+        320,
+        373
+      ],
+      "transparentRatio": 0.8991,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        126,
+        190,
+        322,
+        373
+      ],
+      "transparentRatio": 0.8966,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        127,
+        191,
+        324,
+        373
+      ],
+      "transparentRatio": 0.8971,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        130,
+        192,
+        325,
+        372
+      ],
+      "transparentRatio": 0.8985,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        126,
+        195,
+        321,
+        373
+      ],
+      "transparentRatio": 0.8999,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        119,
+        194,
+        327,
+        375
+      ],
+      "transparentRatio": 0.8894,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        121,
+        194,
+        329,
+        374
+      ],
+      "transparentRatio": 0.8889,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        130,
+        195,
+        325,
+        374
+      ],
+      "transparentRatio": 0.8998,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        126,
+        194,
+        321,
+        373
+      ],
+      "transparentRatio": 0.9002,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        125,
+        194,
+        321,
+        373
+      ],
+      "transparentRatio": 0.8972,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        127,
+        193,
+        324,
+        374
+      ],
+      "transparentRatio": 0.8952,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        130,
+        194,
+        325,
+        373
+      ],
+      "transparentRatio": 0.8992,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      940,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "cellInset": 4,
+    "removeEdgeWhiteGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "已核对三方向身份、动作语义、透明背景、共同基线与单格完整性；Playwright逐动作页面复核通过"
+}

@@ -1,0 +1,258 @@
+{
+  "source": "exec-0b653e74-5516-402d-8fc6-22a6a4439723.png",
+  "output": "anim_chain_hound_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        97,
+        246,
+        354,
+        354
+      ],
+      "transparentRatio": 0.9326,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        107,
+        251,
+        336,
+        353
+      ],
+      "transparentRatio": 0.9394,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        91,
+        251,
+        360,
+        354
+      ],
+      "transparentRatio": 0.9354,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        114,
+        254,
+        350,
+        358
+      ],
+      "transparentRatio": 0.9364,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        102,
+        216,
+        341,
+        334
+      ],
+      "transparentRatio": 0.9336,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        101,
+        228,
+        327,
+        339
+      ],
+      "transparentRatio": 0.9365,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        112,
+        229,
+        332,
+        344
+      ],
+      "transparentRatio": 0.938,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        102,
+        231,
+        332,
+        338
+      ],
+      "transparentRatio": 0.9357,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        98,
+        223,
+        336,
+        300
+      ],
+      "transparentRatio": 0.9459,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        100,
+        233,
+        336,
+        310
+      ],
+      "transparentRatio": 0.9477,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        102,
+        235,
+        332,
+        311
+      ],
+      "transparentRatio": 0.9505,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        101,
+        256,
+        335,
+        308
+      ],
+      "transparentRatio": 0.9628,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        101,
+        162,
+        349,
+        310
+      ],
+      "transparentRatio": 0.9271,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        106,
+        152,
+        333,
+        317
+      ],
+      "transparentRatio": 0.9173,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        97,
+        140,
+        321,
+        320
+      ],
+      "transparentRatio": 0.9174,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        89,
+        170,
+        349,
+        310
+      ],
+      "transparentRatio": 0.9249,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 388,
+    "scale": 0.86,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      2
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

@@ -1,0 +1,11 @@
+{
+  "rowCuts": [0, 217, 430, 619, 834, 1080, 1280, 1497, 1774],
+  "baselines": [200, 402, 609, 821, 1055, 1257, 1460, 1710],
+  "scale": 0.95,
+  "targetBaseline": 232,
+  "frameOverrides": [
+    { "row": 3, "column": 0, "source": "exec-29c5644a-d67a-4461-80d3-285b74628c47.png" },
+    { "row": 3, "column": 3, "source": "exec-29c5644a-d67a-4461-80d3-285b74628c47.png" },
+    { "row": 4, "column": 1, "source": "exec-29c5644a-d67a-4461-80d3-285b74628c47.png" }
+  ]
+}

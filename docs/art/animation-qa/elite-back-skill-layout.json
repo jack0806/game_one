@@ -1,0 +1,11 @@
+{
+  "rowCuts": [0, 724],
+  "baselines": [610],
+  "scale": 0.52,
+  "targetBaseline": 390,
+  "columnCuts": {
+    "0": [0, 543, 1086, 1629, 2172]
+  },
+  "isolatedRows": [0],
+  "note": "精英腐肉背面技能4帧；只让脊柱骨甲缝与双爪发光，背部没有晶核或脸。"
+}

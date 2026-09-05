@@ -1,0 +1,384 @@
+{
+  "source": "exec-3c06f6ca-4ff2-47f8-9f68-511df4e1cd54.png",
+  "output": "anim_blast_tick_back.png",
+  "size": [
+    1792,
+    3136
+  ],
+  "columns": 4,
+  "rows": 7,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        99,
+        68,
+        422,
+        386
+      ],
+      "transparentRatio": 0.7063,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        87,
+        73,
+        405,
+        385
+      ],
+      "transparentRatio": 0.7119,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        61,
+        75,
+        378,
+        402
+      ],
+      "transparentRatio": 0.716,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        38,
+        73,
+        355,
+        380
+      ],
+      "transparentRatio": 0.7135,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        94,
+        90,
+        393,
+        402
+      ],
+      "transparentRatio": 0.7539,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        67,
+        90,
+        371,
+        400
+      ],
+      "transparentRatio": 0.7543,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        33,
+        90,
+        356,
+        399
+      ],
+      "transparentRatio": 0.7576,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        34,
+        90,
+        339,
+        392
+      ],
+      "transparentRatio": 0.7479,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        74,
+        108,
+        417,
+        388
+      ],
+      "transparentRatio": 0.7708,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        80,
+        101,
+        389,
+        385
+      ],
+      "transparentRatio": 0.7749,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        32,
+        106,
+        387,
+        403
+      ],
+      "transparentRatio": 0.7655,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        44,
+        105,
+        364,
+        387
+      ],
+      "transparentRatio": 0.765,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        104,
+        105,
+        404,
+        400
+      ],
+      "transparentRatio": 0.7532,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        105,
+        93,
+        376,
+        390
+      ],
+      "transparentRatio": 0.7468,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        83,
+        82,
+        352,
+        392
+      ],
+      "transparentRatio": 0.7391,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        51,
+        105,
+        343,
+        400
+      ],
+      "transparentRatio": 0.7567,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 0,
+      "bounds": [
+        95,
+        62,
+        409,
+        400
+      ],
+      "transparentRatio": 0.703,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "bounds": [
+        85,
+        62,
+        397,
+        397
+      ],
+      "transparentRatio": 0.7036,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 2,
+      "bounds": [
+        63,
+        62,
+        380,
+        400
+      ],
+      "transparentRatio": 0.7023,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "bounds": [
+        39,
+        63,
+        353,
+        400
+      ],
+      "transparentRatio": 0.7033,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 0,
+      "bounds": [
+        94,
+        96,
+        398,
+        395
+      ],
+      "transparentRatio": 0.7392,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 1,
+      "bounds": [
+        64,
+        103,
+        399,
+        392
+      ],
+      "transparentRatio": 0.7385,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 2,
+      "bounds": [
+        61,
+        98,
+        373,
+        402
+      ],
+      "transparentRatio": 0.7359,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 3,
+      "bounds": [
+        42,
+        91,
+        356,
+        396
+      ],
+      "transparentRatio": 0.7448,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 0,
+      "bounds": [
+        72,
+        152,
+        414,
+        401
+      ],
+      "transparentRatio": 0.7509,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 1,
+      "bounds": [
+        64,
+        156,
+        401,
+        399
+      ],
+      "transparentRatio": 0.779,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 2,
+      "bounds": [
+        45,
+        187,
+        380,
+        393
+      ],
+      "transparentRatio": 0.816,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 3,
+      "bounds": [
+        34,
+        223,
+        361,
+        393
+      ],
+      "transparentRatio": 0.8444,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      238,
+      462,
+      682,
+      903,
+      1138,
+      1365,
+      1551
+    ],
+    "baselines": [
+      224,
+      440,
+      665,
+      893,
+      1120,
+      1344,
+      1533
+    ],
+    "scale": 1.65,
+    "targetBaseline": 400,
+    "isolatedRows": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "note": "熔爆蜱背面主稿只采用前七行；后壳无眼口，第八行错误正脸过热不入库。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

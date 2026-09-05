@@ -1,0 +1,9 @@
+{
+  "rowCuts": [0, 887],
+  "baselines": [760],
+  "scale": 0.75,
+  "targetBaseline": 400,
+  "columnCuts": { "0": [0, 444, 887, 1331, 1774] },
+  "isolatedRows": [0],
+  "note": "酸囊投手背面受击修正版；四帧保持站立并回到准备姿势，不误用塌落动作。"
+}

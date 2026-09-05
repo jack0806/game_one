@@ -1,0 +1,198 @@
+{
+  "source": "exec-87d830dc-3e38-4e1c-be9e-73fc0aec518e.png",
+  "output": "anim_vivian_skill3.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        125,
+        118,
+        375,
+        416
+      ],
+      "transparentRatio": 0.8527,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        97,
+        119,
+        352,
+        416
+      ],
+      "transparentRatio": 0.8612,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        80,
+        119,
+        329,
+        416
+      ],
+      "transparentRatio": 0.8628,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        50,
+        120,
+        296,
+        416
+      ],
+      "transparentRatio": 0.8556,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        163,
+        86,
+        325,
+        371
+      ],
+      "transparentRatio": 0.8917,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        130,
+        86,
+        288,
+        371
+      ],
+      "transparentRatio": 0.8908,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        106,
+        86,
+        281,
+        371
+      ],
+      "transparentRatio": 0.8869,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        87,
+        86,
+        240,
+        371
+      ],
+      "transparentRatio": 0.8937,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        129,
+        44,
+        375,
+        348
+      ],
+      "transparentRatio": 0.8519,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        99,
+        44,
+        353,
+        348
+      ],
+      "transparentRatio": 0.8603,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        82,
+        44,
+        328,
+        348
+      ],
+      "transparentRatio": 0.859,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        54,
+        44,
+        299,
+        348
+      ],
+      "transparentRatio": 0.8522,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "R 炮台风暴：采用修正版胸前六边形指令环，三向四帧且无跨行动作部件，透明边缘及基线通过人工复核。"
+}\n

@@ -1,0 +1,147 @@
+{
+  "source": "exec-31224cc6-bbff-4195-a520-f3d22c5f7d8a.png",
+  "output": "anim_olia_back_combat.png",
+  "size": [
+    1280,
+    640
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        77,
+        68,
+        261,
+        301
+      ],
+      "transparentRatio": 0.8204,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        51,
+        92,
+        259,
+        301
+      ],
+      "transparentRatio": 0.8226,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        68,
+        79,
+        268,
+        301
+      ],
+      "transparentRatio": 0.8232,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        78,
+        92,
+        244,
+        301
+      ],
+      "transparentRatio": 0.8337,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        62,
+        75,
+        263,
+        298
+      ],
+      "transparentRatio": 0.8497,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        8,
+        66,
+        308,
+        299
+      ],
+      "transparentRatio": 0.8313,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        39,
+        144,
+        275,
+        299
+      ],
+      "transparentRatio": 0.8717,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        91,
+        110,
+        235,
+        299
+      ],
+      "transparentRatio": 0.8635,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      453,
+      887
+    ],
+    "baselines": [
+      412,
+      827
+    ],
+    "scale": 0.7,
+    "targetBaseline": 300,
+    "isolatedRows": [
+      1
+    ],
+    "sourceColumns": {
+      "1": 5
+    },
+    "columnSelection": {
+      "1": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "columnCuts": {
+      "1": [
+        0,
+        390,
+        800,
+        1100,
+        1440,
+        1774
+      ]
+    }
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

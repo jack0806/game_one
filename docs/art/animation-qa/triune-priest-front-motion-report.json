@@ -1,0 +1,255 @@
+{
+  "source": "exec-756ad021-168a-4898-8767-b620379fd4ae.png",
+  "output": "anim_triune_priest_front_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        107,
+        142,
+        321,
+        439
+      ],
+      "transparentRatio": 0.8505,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        102,
+        136,
+        315,
+        438
+      ],
+      "transparentRatio": 0.8488,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        103,
+        129,
+        313,
+        435
+      ],
+      "transparentRatio": 0.8501,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        98,
+        140,
+        311,
+        442
+      ],
+      "transparentRatio": 0.8498,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        105,
+        146,
+        312,
+        441
+      ],
+      "transparentRatio": 0.8593,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        99,
+        141,
+        303,
+        439
+      ],
+      "transparentRatio": 0.859,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        96,
+        140,
+        301,
+        439
+      ],
+      "transparentRatio": 0.8583,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        96,
+        138,
+        297,
+        440
+      ],
+      "transparentRatio": 0.8526,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        94,
+        237,
+        319,
+        425
+      ],
+      "transparentRatio": 0.8996,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        92,
+        229,
+        304,
+        424
+      ],
+      "transparentRatio": 0.8944,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        72,
+        233,
+        287,
+        427
+      ],
+      "transparentRatio": 0.8939,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        63,
+        231,
+        278,
+        427
+      ],
+      "transparentRatio": 0.897,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        139,
+        218,
+        284,
+        360
+      ],
+      "transparentRatio": 0.9295,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        108,
+        157,
+        289,
+        351
+      ],
+      "transparentRatio": 0.9094,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        97,
+        147,
+        285,
+        354
+      ],
+      "transparentRatio": 0.9078,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        92,
+        165,
+        282,
+        346
+      ],
+      "transparentRatio": 0.9101,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      680,
+      941,
+      1254
+    ],
+    "targetBaseline": 388,
+    "scale": 0.92,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

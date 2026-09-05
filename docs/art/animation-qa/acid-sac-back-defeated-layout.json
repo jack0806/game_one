@@ -1,0 +1,9 @@
+{
+  "rowCuts": [0, 724],
+  "baselines": [648],
+  "scale": 0.7,
+  "targetBaseline": 400,
+  "columnCuts": { "0": [0, 543, 1086, 1629, 2172] },
+  "isolatedRows": [0],
+  "note": "酸囊投手背面死亡修正版；四帧逐步塌落，最终低矮残骸无正脸。"
+}

@@ -1,0 +1,124 @@
+{
+  "source": "exec-8cb92811-87ba-4473-ab83-7567a7b7eb0b.png",
+  "output": "anim_olia_side_melee_skill.png",
+  "size": [
+    1024,
+    512
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        57,
+        33,
+        186,
+        232
+      ],
+      "transparentRatio": 0.8229,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        42,
+        38,
+        235,
+        232
+      ],
+      "transparentRatio": 0.8,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        37,
+        49,
+        207,
+        232
+      ],
+      "transparentRatio": 0.8016,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        52,
+        35,
+        180,
+        232
+      ],
+      "transparentRatio": 0.8271,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        11,
+        10,
+        182,
+        243
+      ],
+      "transparentRatio": 0.8137,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        52,
+        15,
+        158,
+        234
+      ],
+      "transparentRatio": 0.8327,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        45,
+        15,
+        198,
+        234
+      ],
+      "transparentRatio": 0.8206,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        53,
+        43,
+        180,
+        234
+      ],
+      "transparentRatio": 0.8355,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      444,
+      887
+    ],
+    "baselines": [
+      413,
+      858
+    ],
+    "scale": 0.55,
+    "cellInset": 10,
+    "targetBaseline": 232
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

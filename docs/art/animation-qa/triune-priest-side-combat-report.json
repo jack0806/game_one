@@ -1,0 +1,260 @@
+{
+  "source": "exec-a66aec3e-580b-406b-92fd-cd3202efdb5c.png",
+  "output": "anim_triune_priest_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        125,
+        138,
+        332,
+        389
+      ],
+      "transparentRatio": 0.8765,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        97,
+        143,
+        313,
+        390
+      ],
+      "transparentRatio": 0.8802,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        76,
+        189,
+        381,
+        390
+      ],
+      "transparentRatio": 0.8865,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        109,
+        144,
+        294,
+        390
+      ],
+      "transparentRatio": 0.8834,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        138,
+        107,
+        305,
+        335
+      ],
+      "transparentRatio": 0.8882,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        124,
+        102,
+        275,
+        340
+      ],
+      "transparentRatio": 0.8913,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        118,
+        119,
+        266,
+        343
+      ],
+      "transparentRatio": 0.8992,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        109,
+        129,
+        272,
+        352
+      ],
+      "transparentRatio": 0.9006,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        133,
+        145,
+        330,
+        341
+      ],
+      "transparentRatio": 0.9019,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        98,
+        207,
+        323,
+        336
+      ],
+      "transparentRatio": 0.9282,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        75,
+        229,
+        311,
+        341
+      ],
+      "transparentRatio": 0.934,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        60,
+        272,
+        339,
+        344
+      ],
+      "transparentRatio": 0.9471,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        123,
+        102,
+        329,
+        343
+      ],
+      "transparentRatio": 0.8796,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        89,
+        117,
+        285,
+        352
+      ],
+      "transparentRatio": 0.879,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        84,
+        112,
+        365,
+        352
+      ],
+      "transparentRatio": 0.8497,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        93,
+        110,
+        286,
+        350
+      ],
+      "transparentRatio": 0.8825,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      680,
+      941,
+      1254
+    ],
+    "targetBaseline": 388,
+    "scale": 0.92,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      0,
+      1,
+      3
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

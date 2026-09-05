@@ -2,6 +2,8 @@
 //  ParticleManager.ts — 粒子特效管理器（纯逻辑，与渲染解耦）
 // ============================================================
 import { Rng } from '../core/MathUtils';
+import type { ActorClip, AnimationFrame } from '../data/ActorAnimationDB';
+import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 
 interface Particle {
     x: number; y: number;
@@ -37,6 +39,21 @@ export interface SpriteFx {
     motion?: 'burst' | 'slash' | 'aura';
     /** 持续光环不应像爆炸一样满不透明遮住角色。 */
     baseAlpha?: number;
+    /** 已绘制的逐帧特效，画布大小固定，不再靠缩放/旋转冒充动画。 */
+    animation?: ActorClip;
+}
+
+/** 按存活时间采样，不另建会与暂停、清场脱节的墙钟计时器。 */
+export function spriteFxFrame(fx: SpriteFx): AnimationFrame | undefined {
+    const frames = fx.animation?.frames;
+    if (!frames?.length) return undefined;
+    const duration = frames.reduce((sum, frame) => sum + frame.seconds, 0);
+    let elapsed = Math.max(0, Math.min(1, 1 - fx.life / Math.max(0.001, fx.maxLife))) * duration;
+    for (const frame of frames) {
+        if (elapsed < frame.seconds) return frame;
+        elapsed -= frame.seconds;
+    }
+    return frames[frames.length - 1];
 }
 
 export class ParticleManager {
@@ -66,7 +83,16 @@ export class ParticleManager {
             }
             if (activeExplosions >= 8) return;
         }
-        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color, ...opts });
+        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color, animation: EFFECT_ANIMATIONS[key], ...opts });
+    }
+
+    /** 每次真实开火调用一次，爆发散射共享枪口，不为每一发叠一张火焰。 */
+    weaponFlash(x: number, y: number, dx: number, dy: number, kind: 'cyan' | 'charged' | 'ice' | 'chaos' | 'time' | 'toxic' = 'cyan'): void {
+        const key = 'fx_weapon_' + kind;
+        const life = EFFECT_ANIMATIONS[key].frames.reduce((sum, frame) => sum + frame.seconds, 0);
+        this.spawnSpriteFx(x, y, key, life, kind === 'charged' ? 1.05 : kind === 'toxic' ? 0.38 : 0.7, undefined, {
+            rotationDeg: -Math.atan2(dy, dx) * 180 / Math.PI,
+        });
     }
 
     // ── 通用发射 ─────────────────────────────────────────
@@ -98,6 +124,7 @@ export class ParticleManager {
     // ── 命中闪光 ─────────────────────────────────────────
     hit(x: number, y: number, color: string): void {
         this.emit({ x, y, count: 6, color, speedMin: 60, speedMax: 180, lifeMin: 0.1, lifeMax: 0.3, sizeMin: 2, sizeMax: 4 });
+        this.spawnSpriteFx(x, y, 'fx_hit', 0.245, 0.55);
     }
 
     // ── 爆炸 ─────────────────────────────────────────────
@@ -126,6 +153,7 @@ export class ParticleManager {
     ignite(x: number, y: number): void {
         this.emit({ x, y, count: 8, color: '#ff6600', speedMin: 20, speedMax: 80, lifeMin: 0.2, lifeMax: 0.5, sizeMin: 3, sizeMax: 6, glow: true, gravity: false });
         this.emit({ x, y, count: 4, color: '#ffaa00', speedMin: 10, speedMax: 40, lifeMin: 0.3, lifeMax: 0.6 });
+        this.spawnSpriteFx(x, y, 'fx_ignite', 0.48, 0.82);
     }
 
     // ── 毒液溅射 ─────────────────────────────────────────
@@ -133,6 +161,12 @@ export class ParticleManager {
         this.emit({ x, y, count: 8, color: '#44ff00', speedMin: 30, speedMax: 100, lifeMin: 0.3, lifeMax: 0.6, sizeMin: 3, sizeMax: 6, glow: true });
         this.emit({ x, y, count: 5, color: '#00aa00', speedMin: 10, speedMax: 50, lifeMin: 0.2, lifeMax: 0.4 });
         this.spawnSpriteFx(x, y, 'fx_poison', 0.45, 1);
+    }
+
+    toxicImpact(x: number, y: number, vx: number, vy: number): void {
+        this.spawnSpriteFx(x, y, 'fx_toxic_impact', 0.255, 0.5, undefined, {
+            rotationDeg: -Math.atan2(vy, vx) * 180 / Math.PI,
+        });
     }
 
     // ── 治疗回血 ─────────────────────────────────────────
@@ -145,6 +179,10 @@ export class ParticleManager {
     // ── 寒冰打击（冻结命中/冰弹） ──────────────────────────
     coldImpact(x: number, y: number): void {
         this.spawnSpriteFx(x, y, 'fx_cold_arrow', 0.4, 1);
+    }
+
+    frostField(x: number, y: number, radius: number): void {
+        this.spawnSpriteFx(x, y, 'fx_frost_aura', 0.6, Math.max(1, radius / 32));
     }
 
     // ── 护盾格挡 ─────────────────────────────────────────
@@ -164,6 +202,7 @@ export class ParticleManager {
             radius: broken ? 12 : 7, maxRadius: broken ? 54 : 32, alpha: 1,
         });
         if (broken) {
+            this.spawnSpriteFx(x, y, 'fx_shield_break', 0.38, 1.1);
             this.particles.push({
                 x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3,
                 size: 2, color: '#ffffff', fade: true, gravity: false,
@@ -251,6 +290,13 @@ export class ParticleManager {
         this.emit({ x, y, count: 4 + Math.floor(strength * 3), color, speedMin: 80, speedMax: 200 + strength * 60, lifeMin: 0.1, lifeMax: 0.3, sizeMin: 2, sizeMax: 4, glow: true, angleMin: angle - 0.45, angleMax: angle + 0.45 });
     }
 
+    /** 时间刃从挥刃命中帧的武器挂点展开，范围判定仍由攻击者负责。 */
+    timeBlade(x: number, y: number, angle: number): void {
+        this.spawnSpriteFx(x, y, 'fx_time_blade', 0.26, 0.9, undefined, {
+            rotationDeg: -angle * 180 / Math.PI,
+        });
+    }
+
     // ── 狂战士·雷克专属攻击视觉 ─────────────────────────────
     /**
      * 双斧普攻：用真正的交错熔岩弧刃替代通用三条直线。comboSide 让连续攻击
@@ -319,12 +365,12 @@ export class ParticleManager {
     }
 
     // ── 混沌傀儡·格雷夫专属技能视觉 ─────────────────────────
-    /** Q：按随机结果改变辅色，但始终保留不稳定脉冲的双环与六向裂光。 */
+    /** Q：核心使用独立绘制的脉冲序列，随机结果仍由辅色与六向裂光区分。 */
     grafChaosPulse(x: number, y: number, effect: string): void {
         const accent = effect === 'explode' ? '#ff5a3c'
             : effect === 'lightning' ? '#63e7ff'
             : effect === 'attract' ? '#ffcf58' : '#d16dff';
-        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.52, 1.75, '#cc44ff', { motion: 'burst', rotationDeg: -18 });
+        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.52, 1.75);
         this.particles.push({ x, y, vx: 0, vy: 0, life: 0.44, maxLife: 0.44, size: 2, color: accent,
             fade: true, gravity: false, glow: true, type: 'ring', radius: 12, maxRadius: 92, alpha: 1, lineWidth: 5 });
         for (let i = 0; i < 6; i++) {

@@ -1,0 +1,123 @@
+{
+  "source": "exec-0bb4fe33-61a7-4b94-b29d-36c237c32889.png",
+  "output": "anim_kai_side_walk8.png",
+  "size": [
+    1024,
+    512
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        37,
+        25,
+        220,
+        232
+      ],
+      "transparentRatio": 0.7682,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        50,
+        28,
+        222,
+        228
+      ],
+      "transparentRatio": 0.7742,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        80,
+        23,
+        219,
+        233
+      ],
+      "transparentRatio": 0.7926,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        49,
+        24,
+        218,
+        228
+      ],
+      "transparentRatio": 0.7771,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        31,
+        22,
+        217,
+        227
+      ],
+      "transparentRatio": 0.7636,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        51,
+        22,
+        219,
+        227
+      ],
+      "transparentRatio": 0.7788,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        76,
+        18,
+        222,
+        231
+      ],
+      "transparentRatio": 0.7848,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        40,
+        23,
+        222,
+        227
+      ],
+      "transparentRatio": 0.7729,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      443,
+      887
+    ],
+    "baselines": [
+      430,
+      874
+    ],
+    "scale": 0.5,
+    "targetBaseline": 232
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

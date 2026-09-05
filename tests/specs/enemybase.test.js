@@ -216,6 +216,26 @@ test('显式出生安全校正:贴脸坐标被推离玩家且保持在战斗区�
     assert.ok(y >= 18 && y <= PLAYFIELD_BOTTOM - 18);
 });
 
+test('近距离编队出生保留原方位，不因浮点尾差让不同方向的怪物完全重叠', () => {
+    const requested = [[520, 360], [760, 360], [560, 260], [720, 260], [560, 460]];
+    const positions = requested.map(([x, y]) => EnemyBase.safeSpawnPos(x, y, 18, 640, 360, 180));
+    assert.equal(new Set(positions.map(p => p.map(Math.round).join(','))).size, 5);
+    positions.forEach(([x, y], index) => {
+        const [sx, sy] = requested[index];
+        const cross = (x - 640) * (sy - 360) - (y - 360) * (sx - 640);
+        assert.ok(Math.abs(cross) < 1e-6, '可行时沿请求的方向向外推开');
+        assert.ok(Math.hypot(x - 640, y - 360) >= 180 - 1e-6);
+    });
+});
+
+test('靠墙的原出生方向不可用时选择战斗区内的安全替代方向', () => {
+    for (const [px, py, sx, sy] of [[20,20,0,20],[1260,20,1280,20],[20,620,0,648]]) {
+        const [x, y] = EnemyBase.safeSpawnPos(sx, sy, 18, px, py, 180);
+        assert.ok(x >= 18 && x <= 1262 && y >= 18 && y <= 630);
+        assert.ok(Math.hypot(x - px, y - py) >= 180 - 1e-6);
+    }
+});
+
 test('持续伤害保持小数DPS且血量归零时正常结算死亡', () => {
     const game = makeMockGame();
     const player = makePlayer();
@@ -248,9 +268,11 @@ test('archer在射程内发射小型毒镖而非Boss毒球,并进入新一轮冷
     player.x = 400; player.y = 60;
     const shots = () => game.enemyBullets.filter(b => b.enemyFx === 'toxin_dart').length;
 
-    e._rangedCd = 0; // 清掉初始随机冷却,第一帧即可开火
+    e._rangedCd = 0; // 清掉初始随机冷却，先准备射击
     e.update(0.016, player, game);
-    assert.equal(shots(), 1, '冷却完毕应在射程内立即发射毒弹');
+    assert.equal(shots(), 0, '瞄准前摇不得提前发弹');
+    e.update(0.1, player, game);
+    assert.equal(shots(), 1, '前摇结束从枪口发射毒镖');
     // 2.2秒冷却内不应再次开火
     for (let i = 0; i < 100; i++) e.update(0.016, player, game); // ~1.6s
     assert.equal(shots(), 1, '冷却期间不应重复开火');
@@ -258,7 +280,140 @@ test('archer在射程内发射小型毒镖而非Boss毒球,并进入新一轮冷
     assert.equal(b.owner, 'enemy');
     assert.equal(b.isEnemyBullet, true);
     assert.equal(b.radius, 5, '普通攻击毒镖不可沿用巨型毒球尺寸');
-    assert.equal(Math.hypot(b.vx, b.vy), 300, '小型毒镖应有清晰利落的弹速');
+    assert.ok(Math.abs(Math.hypot(b.vx, b.vy) - 300) < 1e-9, '小型毒镖应有清晰利落的弹速');
+});
+
+test('毒射手三方向和镜像在击退结算后从开火帧枪尖瞄准锁定点', () => {
+    const { actorClip } = require('../dist/data/ActorAnimationDB');
+    const { animationSocket } = require('../dist/core/ActorAnimation');
+    for (const [dx, dy, view, mirror] of [[300,0,'side',1],[-300,0,'side',-1],[0,250,'front',1],[0,-250,'back',1]]) {
+        const game = makeMockGame({ enemyBullets: [] });
+        const flashes = [];
+        game.particles.weaponFlash = (...args) => flashes.push(args);
+        const e = makeEnemy('archer', 1, game);
+        e.x = 600; e.y = 330; e._rangedCd = 0;
+        const player = makePlayer({ x: e.x + dx, y: e.y + dy });
+        const locked = [player.x, player.y];
+        e.update(0.016, player, game); e.updateVisualAnimation(0.016, player);
+        assert.equal(e.actorAnimation.frame, 0);
+        assert.equal(game.enemyBullets.length, 0);
+        assert.equal(flashes.length, 0);
+        // 准备期间英雄改变方向，敌人被击退；既不追踪新落点，也不沿旧腰部射线发弹。
+        player.x = 600 - dx; player.y = 330 - dy;
+        e.knockbackX = 40; e.knockbackY = 20;
+        e.update(0.05, player, game); e.updateVisualAnimation(0.05, player);
+        assert.equal(game.enemyBullets.length, 0);
+        e.update(0.05, player, game); e.updateVisualAnimation(0.05, player);
+        const clip = actorClip(e.spriteKey, view, 'attack');
+        const expected = animationSocket(clip.frames[1], e.x, e.y, e.radius * 2 * e.visualScale * clip.displayScale, mirror);
+        assert.equal(game.enemyBullets.length, 1);
+        const b = game.enemyBullets[0];
+        assert.deepEqual([b.x,b.y], expected);
+        assert.equal(flashes.length, 1);
+        assert.deepEqual(flashes[0].slice(0, 2), expected);
+        assert.equal(flashes[0][4], 'toxic');
+        assert.equal(e.animationView, view);
+        assert.equal(e.animationMirror, mirror);
+        assert.equal(e.actorAnimation.frame, 1, '本帧身体必须仍在对应开火姿势');
+        assert.ok(Math.abs((locked[0]-b.x)*b.vy-(locked[1]-b.y)*b.vx)<1e-7);
+        for (let i=0;i<20;i++) {e.update(0.016,player,game);e.updateVisualAnimation(0.016,player);}
+        assert.equal(game.enemyBullets.length, 1, '收招只播放，不重复产生弹体');
+    }
+});
+
+test('断针射手三方向和镜像的三连针从当帧磁轨炮针尖发射', () => {
+    const { actorClip } = require('../dist/data/ActorAnimationDB');
+    const { animationSocket } = require('../dist/core/ActorAnimation');
+    for (const [dx, dy, view, mirror] of [[300,0,'side',1],[-300,0,'side',-1],[0,250,'front',1],[0,-250,'back',1]]) {
+        const game = makeMockGame({ enemyBullets: [] });
+        const flashes = [];
+        game.particles.weaponFlash = (...args) => flashes.push(args);
+        const e = makeEnemy('needle_gunner', 1, game);
+        e.x = 600; e.y = 330;
+        e.rangedAimTargetX = e.x + dx; e.rangedAimTargetY = e.y + dy;
+        e._rangedBurstLeft = 1; e._rangedBurstCd = 0;
+        e.knockbackX = 20; e.knockbackY = 10;
+        const player = makePlayer({ x: e.x + dx, y: e.y + dy });
+        e.update(0.016, player, game);
+        const clip = actorClip(e.spriteKey, view, 'attack');
+        const fireFrame = clip.frames.find(frame => frame.event === 'fire');
+        const expected = animationSocket(fireFrame, e.x, e.y,
+            e.radius * 2 * e.visualScale * clip.displayScale, mirror);
+        assert.equal(game.enemyBullets.length, 1);
+        const b = game.enemyBullets[0];
+        assert.deepEqual([b.x, b.y], expected);
+        assert.deepEqual(flashes[0].slice(0, 2), expected);
+        assert.equal(flashes[0][4], 'charged');
+        assert.equal(e.animationView, view);
+        assert.equal(e.animationMirror, mirror);
+        assert.equal(e.actorAnimation.frame, 1);
+        assert.equal(e.actorAnimation.currentFrame.event, 'fire');
+        assert.ok(Math.abs((e.rangedAimTargetX-b.x)*b.vy-(e.rangedAimTargetY-b.y)*b.vx)<1e-7);
+    }
+});
+
+test('酸囊投手三方向和镜像从第三帧机械爪抛出酸球', () => {
+    const { actorClip } = require('../dist/data/ActorAnimationDB');
+    const { animationSocket } = require('../dist/core/ActorAnimation');
+    for (const [dx, dy, view, mirror] of [[300,0,'side',1],[-300,0,'side',-1],[0,250,'front',1],[0,-250,'back',1]]) {
+        const throws = [], toxins = [];
+        const game = makeMockGame({
+            spawnEnemyAcidHazard: (...args) => throws.push(args),
+        });
+        game.particles.toxin = (...args) => toxins.push(args);
+        const e = makeEnemy('acid_sac', 1, game);
+        e.x = 600; e.y = 330; e._rangedCd = 0;
+        e.knockbackX = 20; e.knockbackY = 10;
+        const player = makePlayer({ x: e.x + dx, y: e.y + dy, facingX: 0, facingY: 0 });
+        e.update(0.016, player, game);
+        const clip = actorClip(e.spriteKey, view, 'attack');
+        const fireFrame = clip.frames.find(frame => frame.event === 'fire');
+        const expected = animationSocket(fireFrame, e.x, e.y,
+            e.radius * 2 * e.visualScale * clip.displayScale, mirror);
+        assert.equal(throws.length, 1);
+        assert.deepEqual(throws[0].slice(0, 2), expected);
+        assert.deepEqual(toxins[0].slice(0, 2), expected);
+        assert.equal(e.animationView, view);
+        assert.equal(e.animationMirror, mirror);
+        assert.equal(e.actorAnimation.frame, 2);
+        assert.equal(e.actorAnimation.currentFrame.event, 'fire');
+    }
+});
+
+test('毒射手的瞄准前摇随冻结暂停，死亡后不补发毒镖', () => {
+    const game = makeMockGame({ enemyBullets: [] }), e = makeEnemy('archer',1,game);
+    e.x=400;e.y=350;e._rangedCd=0;
+    const player=makePlayer({x:700,y:350});
+    e.update(0.016,player,game);
+    e.frozen=1;
+    e.update(0.05,player,game);
+    assert.equal(e.rangedAimWindup,0.1);
+    assert.equal(game.enemyBullets.length,0);
+    e.frozen=0;e.alive=false;
+    e.update(0.2,player,game);
+    assert.equal(game.enemyBullets.length,0);
+});
+
+test('冻结同时暂停近战蓄力和已开始的远程连射，解冻后继续原动作', () => {
+    for (const type of ['grunt', 'needle_gunner']) {
+        const game = makeMockGame({ enemyBullets: [] }), e = makeEnemy(type, 1, game);
+        e.x = 400; e.y = 350; e.frozen = 1;
+        const player = makePlayer({ x: 450, y: 350 });
+        e.attackTargetX = e.rangedAimTargetX = player.x;
+        e.attackTargetY = e.rangedAimTargetY = player.y;
+        if (type === 'grunt') e.attackWindup = 0.04;
+        else { e._rangedBurstLeft = 2; e._rangedBurstCd = 0; }
+        const before = player.hp;
+        e.update(0.05, player, game);
+        assert.equal(player.hp, before);
+        assert.equal(game.enemyBullets.length, 0);
+        if (type === 'grunt') assert.equal(e.attackWindup, 0.04);
+        else assert.equal(e._rangedBurstLeft, 2);
+        e.frozen = 0;
+        e.update(0.05, player, game);
+        if (type === 'grunt') assert.ok(player.hp < before);
+        else assert.equal(game.enemyBullets.length, 1);
+    }
 });
 
 test('archer被玩家贴脸时后撤而不是继续接近', () => {

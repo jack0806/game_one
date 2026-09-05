@@ -1,0 +1,231 @@
+{
+  "source": "exec-da3586c0-fabe-4d76-82cc-c8451add495c.png",
+  "output": "anim_gold_scavenger_back_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        92,
+        92,
+        380,
+        400
+      ],
+      "transparentRatio": 0.7708,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        87,
+        94,
+        369,
+        398
+      ],
+      "transparentRatio": 0.7768,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        80,
+        94,
+        362,
+        399
+      ],
+      "transparentRatio": 0.7764,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        72,
+        94,
+        354,
+        400
+      ],
+      "transparentRatio": 0.7755,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        85,
+        79,
+        375,
+        401
+      ],
+      "transparentRatio": 0.7682,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        77,
+        80,
+        376,
+        400
+      ],
+      "transparentRatio": 0.7759,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        92,
+        79,
+        360,
+        400
+      ],
+      "transparentRatio": 0.7732,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        70,
+        79,
+        355,
+        398
+      ],
+      "transparentRatio": 0.7756,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        66,
+        72,
+        400,
+        383
+      ],
+      "transparentRatio": 0.7681,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        65,
+        75,
+        391,
+        386
+      ],
+      "transparentRatio": 0.7693,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        60,
+        72,
+        388,
+        398
+      ],
+      "transparentRatio": 0.7714,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        54,
+        75,
+        374,
+        400
+      ],
+      "transparentRatio": 0.7676,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        96,
+        79,
+        374,
+        400
+      ],
+      "transparentRatio": 0.7751,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        88,
+        79,
+        367,
+        400
+      ],
+      "transparentRatio": 0.7749,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        40,
+        79,
+        408,
+        400
+      ],
+      "transparentRatio": 0.7754,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        54,
+        79,
+        356,
+        398
+      ],
+      "transparentRatio": 0.7753,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      321,
+      619,
+      916,
+      1254
+    ],
+    "baselines": [
+      299,
+      601,
+      900,
+      1189
+    ],
+    "scale": 1.25,
+    "targetBaseline": 400,
+    "isolatedRows": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "note": "黄金拾荒者严格背视待机、走、跑、跳；金币袋朝向屏幕上方且无正面传感器。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

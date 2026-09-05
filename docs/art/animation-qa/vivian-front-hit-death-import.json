@@ -1,0 +1,132 @@
+{
+  "source": "exec-67f3aad9-8920-46e3-b274-f80fbe6140a4.png",
+  "output": "anim_vivian_front_hit_death.png",
+  "size": [
+    1024,
+    512
+  ],
+  "columns": 4,
+  "rows": 2,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        27,
+        39,
+        221,
+        232
+      ],
+      "transparentRatio": 0.7784,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        25,
+        61,
+        228,
+        232
+      ],
+      "transparentRatio": 0.78,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        23,
+        43,
+        216,
+        232
+      ],
+      "transparentRatio": 0.78,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        24,
+        36,
+        212,
+        232
+      ],
+      "transparentRatio": 0.7814,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        31,
+        82,
+        218,
+        231
+      ],
+      "transparentRatio": 0.7925,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        18,
+        100,
+        215,
+        231
+      ],
+      "transparentRatio": 0.8041,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        20,
+        109,
+        223,
+        228
+      ],
+      "transparentRatio": 0.794,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        10,
+        156,
+        238,
+        232
+      ],
+      "transparentRatio": 0.8412,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      488,
+      887
+    ],
+    "baselines": [
+      421,
+      821
+    ],
+    "scale": 0.56,
+    "columnCuts": {
+      "1": [
+        0,
+        441,
+        871,
+        1285,
+        1774
+      ]
+    },
+    "targetBaseline": 232
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

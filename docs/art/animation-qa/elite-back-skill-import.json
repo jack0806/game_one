@@ -1,0 +1,87 @@
+{
+  "source": "exec-4ed5c513-32bc-4d78-87be-7228cfec6108.png",
+  "output": "anim_elite_back_skill.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        94,
+        127,
+        368,
+        390
+      ],
+      "transparentRatio": 0.7902,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        92,
+        127,
+        367,
+        390
+      ],
+      "transparentRatio": 0.7905,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        89,
+        127,
+        365,
+        390
+      ],
+      "transparentRatio": 0.7871,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        85,
+        127,
+        364,
+        390
+      ],
+      "transparentRatio": 0.7623,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      724
+    ],
+    "baselines": [
+      610
+    ],
+    "scale": 0.52,
+    "targetBaseline": 390,
+    "columnCuts": {
+      "0": [
+        0,
+        543,
+        1086,
+        1629,
+        2172
+      ]
+    },
+    "isolatedRows": [
+      0
+    ],
+    "note": "精英腐肉背面技能4帧；只让脊柱骨甲缝与双爪发光，背部没有晶核或脸。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

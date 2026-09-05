@@ -1,0 +1,256 @@
+{
+  "source": "exec-8e561b41-8f06-4cb9-a76a-0715e5fbb72f.png",
+  "output": "anim_turtle_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        90,
+        229,
+        429,
+        418
+      ],
+      "transparentRatio": 0.8175,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        78,
+        225,
+        382,
+        419
+      ],
+      "transparentRatio": 0.8315,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        86,
+        229,
+        427,
+        420
+      ],
+      "transparentRatio": 0.8032,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        78,
+        234,
+        358,
+        420
+      ],
+      "transparentRatio": 0.8411,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        84,
+        221,
+        352,
+        416
+      ],
+      "transparentRatio": 0.8312,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        76,
+        224,
+        350,
+        417
+      ],
+      "transparentRatio": 0.8276,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        66,
+        224,
+        337,
+        417
+      ],
+      "transparentRatio": 0.8282,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        71,
+        235,
+        350,
+        420
+      ],
+      "transparentRatio": 0.8294,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        87,
+        225,
+        366,
+        409
+      ],
+      "transparentRatio": 0.8317,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        85,
+        246,
+        372,
+        413
+      ],
+      "transparentRatio": 0.8451,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        68,
+        275,
+        372,
+        417
+      ],
+      "transparentRatio": 0.8691,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        66,
+        300,
+        358,
+        420
+      ],
+      "transparentRatio": 0.8844,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        86,
+        232,
+        372,
+        418
+      ],
+      "transparentRatio": 0.8292,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        88,
+        225,
+        375,
+        417
+      ],
+      "transparentRatio": 0.8234,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        91,
+        221,
+        380,
+        417
+      ],
+      "transparentRatio": 0.8075,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        65,
+        242,
+        343,
+        420
+      ],
+      "transparentRatio": 0.8386,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      306,
+      601,
+      902,
+      1188
+    ],
+    "scale": 1.02,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "盾龟按整图连通主体保留四肢、反应炉与贴壳能量边，以每行动作最低点作为共同基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

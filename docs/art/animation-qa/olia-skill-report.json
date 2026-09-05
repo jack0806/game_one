@@ -1,0 +1,198 @@
+{
+  "source": "exec-fb0cd7ef-c5d0-4a0f-8b53-11f80dab308b.png",
+  "output": "anim_olia_skill.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        183,
+        143,
+        353,
+        400
+      ],
+      "transparentRatio": 0.8843,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        169,
+        156,
+        318,
+        392
+      ],
+      "transparentRatio": 0.9,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        84,
+        158,
+        352,
+        396
+      ],
+      "transparentRatio": 0.8858,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        120,
+        145,
+        262,
+        401
+      ],
+      "transparentRatio": 0.8921,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        195,
+        106,
+        349,
+        355
+      ],
+      "transparentRatio": 0.9133,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        173,
+        113,
+        308,
+        347
+      ],
+      "transparentRatio": 0.9205,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        68,
+        117,
+        352,
+        354
+      ],
+      "transparentRatio": 0.8879,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        119,
+        107,
+        238,
+        355
+      ],
+      "transparentRatio": 0.9165,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        194,
+        69,
+        368,
+        319
+      ],
+      "transparentRatio": 0.8853,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        176,
+        74,
+        314,
+        317
+      ],
+      "transparentRatio": 0.9093,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        68,
+        85,
+        329,
+        318
+      ],
+      "transparentRatio": 0.8865,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        127,
+        67,
+        263,
+        319
+      ],
+      "transparentRatio": 0.8951,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      362,
+      724,
+      1086
+    ],
+    "baselines": [
+      342,
+      705,
+      1066
+    ],
+    "targetBaseline": 410,
+    "scale": 1.1,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "1": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ],
+      "2": [
+        0,
+        362,
+        724,
+        1086,
+        1448
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "Q 时空切割：采用缩小并缩短腕刃的修正版，三向瞬移斩无跨格残片，显示倍率1.25后与现有动作尺度一致。"
+}\n

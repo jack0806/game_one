@@ -1,0 +1,198 @@
+{
+  "source": "exec-e1c4e01c-48ba-47a8-bbf6-2aab401a294f.png",
+  "output": "anim_triune_priest_ice.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        102,
+        92,
+        336,
+        436
+      ],
+      "transparentRatio": 0.8034,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        106,
+        90,
+        341,
+        436
+      ],
+      "transparentRatio": 0.8033,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        101,
+        92,
+        336,
+        436
+      ],
+      "transparentRatio": 0.8031,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        115,
+        90,
+        345,
+        436
+      ],
+      "transparentRatio": 0.805,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        131,
+        95,
+        309,
+        416
+      ],
+      "transparentRatio": 0.8626,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        137,
+        95,
+        312,
+        417
+      ],
+      "transparentRatio": 0.8639,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        131,
+        95,
+        334,
+        417
+      ],
+      "transparentRatio": 0.8577,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        138,
+        96,
+        298,
+        417
+      ],
+      "transparentRatio": 0.873,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        122,
+        71,
+        336,
+        379
+      ],
+      "transparentRatio": 0.831,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        124,
+        71,
+        338,
+        379
+      ],
+      "transparentRatio": 0.8308,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        110,
+        73,
+        333,
+        381
+      ],
+      "transparentRatio": 0.8242,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        118,
+        73,
+        335,
+        381
+      ],
+      "transparentRatio": 0.8299,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      418,
+      836,
+      1254
+    ],
+    "baselines": [
+      418,
+      836,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.82,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

@@ -1,0 +1,256 @@
+{
+  "source": "exec-fea229c6-0e89-4782-9852-b1e4ce17abe3.png",
+  "output": "anim_arc_leech_back_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        85,
+        111,
+        373,
+        405
+      ],
+      "transparentRatio": 0.8378,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        81,
+        108,
+        364,
+        410
+      ],
+      "transparentRatio": 0.8381,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        77,
+        103,
+        358,
+        407
+      ],
+      "transparentRatio": 0.8378,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        75,
+        102,
+        355,
+        409
+      ],
+      "transparentRatio": 0.8371,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        81,
+        121,
+        361,
+        399
+      ],
+      "transparentRatio": 0.8575,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        72,
+        121,
+        360,
+        402
+      ],
+      "transparentRatio": 0.8553,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        58,
+        119,
+        355,
+        393
+      ],
+      "transparentRatio": 0.8548,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        59,
+        123,
+        354,
+        393
+      ],
+      "transparentRatio": 0.8526,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        94,
+        126,
+        367,
+        388
+      ],
+      "transparentRatio": 0.8591,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        64,
+        123,
+        367,
+        389
+      ],
+      "transparentRatio": 0.8553,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        52,
+        122,
+        384,
+        382
+      ],
+      "transparentRatio": 0.8556,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        65,
+        122,
+        381,
+        380
+      ],
+      "transparentRatio": 0.857,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        106,
+        93,
+        327,
+        364
+      ],
+      "transparentRatio": 0.8703,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        90,
+        115,
+        334,
+        373
+      ],
+      "transparentRatio": 0.8705,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        95,
+        106,
+        336,
+        383
+      ],
+      "transparentRatio": 0.8637,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        95,
+        58,
+        314,
+        353
+      ],
+      "transparentRatio": 0.8756,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      300,
+      613,
+      926,
+      1240
+    ],
+    "scale": 1.18,
+    "targetBaseline": 410,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "note": "闪弧寄生体按整图连通主体保留两条软电缆、夹爪与跨格电弧，以共同悬浮根装箱，不逐帧缩放、补画或截断电缆。",
+    "isolatedGrid": true
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

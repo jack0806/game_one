@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "7be11e56-702d-4938-a175-1ca244f4850e",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "7be11e56-702d-4938-a175-1ca244f4850e@6c48a",
+      "displayName": "anim_rivet_beast_side_combat",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "7be11e56-702d-4938-a175-1ca244f4850e",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "7be11e56-702d-4938-a175-1ca244f4850e@f9941",
+      "displayName": "anim_rivet_beast_side_combat",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": 5,
+        "offsetY": -76.5,
+        "trimX": 72,
+        "trimY": 201,
+        "width": 1658,
+        "height": 1543,
+        "rawWidth": 1792,
+        "rawHeight": 1792,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": false,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -829,
+            -771.5,
+            0,
+            829,
+            -771.5,
+            0,
+            -829,
+            771.5,
+            0,
+            829,
+            771.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            72,
+            1591,
+            1730,
+            1591,
+            72,
+            48,
+            1730,
+            48
+          ],
+          "nuv": [
+            0.04017857142857143,
+            0.026785714285714284,
+            0.9654017857142857,
+            0.026785714285714284,
+            0.04017857142857143,
+            0.8878348214285714,
+            0.9654017857142857,
+            0.8878348214285714
+          ],
+          "minPos": [
+            -829,
+            -771.5,
+            0
+          ],
+          "maxPos": [
+            829,
+            771.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "7be11e56-702d-4938-a175-1ca244f4850e@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "7be11e56-702d-4938-a175-1ca244f4850e@6c48a"
+  }
+}

@@ -173,7 +173,7 @@ test('炮台使用固定俯视底座与独立旋转炮筒并保留接触阴影',
     assert.match(gameSource, /new SpriteNodePool\(this\._gameLayer, 24, 'TurretBase'/);
     assert.match(gameSource, /new SpriteNodePool\(this\._gameLayer, 24, 'TurretBarrel'/);
     assert.match(gameSource, /applyArtSprite\(baseSp, 'turret_base_vivian'\)/);
-    assert.match(gameSource, /applyArtSprite\(barrelSp, 'turret_barrel_vivian'\)/);
+    assert.match(gameSource, /applyAnimationFrame\(barrelSp, turretClip, turretClip\.frames\[fireIndex\]\)/);
     assert.match(gameSource, /barrelTransform\.setAnchorPoint\(0\.36, 0\.5\)/);
     assert.match(gameSource, /barrel\.setRotationFromEuler/);
     assert.doesNotMatch(gameSource, /base\.setRotationFromEuler/);
@@ -295,6 +295,16 @@ test('Web Desktop发布外壳与设计画布都锁定1280×720', () => {
     assert.match(webShellStyle, /height: min\(100vh, calc\(100vw \* 9 \/ 16\)\) !important/);
     assert.match(webShellStyle, /overflow: hidden/);
     assert.match(webShellStyle, /border: 0/);
+});
+
+test('水分身、影分身与炮台都使用真实逐帧动作', () => {
+    assert.match(gameSource, /_initSummonActor\(c, 'enemy_boss_abyss'/);
+    assert.match(gameSource, /_initSummonActor\(c, player\.spriteKey \?\? `char_token_\$\{player\.charId\}`/);
+    assert.match(gameSource, /c\._actorRequested = 'attack'/);
+    assert.match(gameSource, /applyAnimationFrame\(sprite, t\._actorAnimation\.clip, t\._actorAnimation\.currentFrame\)/);
+    assert.match(gameSource, /EFFECT_ANIMATIONS\.fx_turret_barrel_fire/);
+    assert.match(gameSource, /t\._fireAnimT = 0\.18/g);
+    assert.doesNotMatch(gameSource, /分身使用角形人形剪影/);
 });
 
 test('角色详情将十个词条排成2列×5行，长技能说明使用双行阅读单元', () => {

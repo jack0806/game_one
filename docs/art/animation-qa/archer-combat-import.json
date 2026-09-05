@@ -1,0 +1,197 @@
+{
+  "source": "exec-93f1454c-b52f-458d-a569-2b1ad08296d6.png",
+  "output": "anim_archer_combat.png",
+  "size": [
+    1280,
+    960
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        124,
+        82,
+        249,
+        303
+      ],
+      "transparentRatio": 0.8595,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        110,
+        82,
+        230,
+        276
+      ],
+      "transparentRatio": 0.8686,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        89,
+        82,
+        214,
+        304
+      ],
+      "transparentRatio": 0.8597,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        72,
+        82,
+        198,
+        298
+      ],
+      "transparentRatio": 0.8663,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        83,
+        95,
+        274,
+        255
+      ],
+      "transparentRatio": 0.8793,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        63,
+        95,
+        255,
+        255
+      ],
+      "transparentRatio": 0.8783,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        58,
+        95,
+        249,
+        255
+      ],
+      "transparentRatio": 0.8801,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        57,
+        96,
+        240,
+        255
+      ],
+      "transparentRatio": 0.8831,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        114,
+        69,
+        221,
+        255
+      ],
+      "transparentRatio": 0.8921,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        94,
+        72,
+        201,
+        255
+      ],
+      "transparentRatio": 0.8889,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        81,
+        69,
+        187,
+        255
+      ],
+      "transparentRatio": 0.8924,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        65,
+        68,
+        171,
+        255
+      ],
+      "transparentRatio": 0.8925,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      350,
+      615,
+      940
+    ],
+    "baselines": [
+      274,
+      588,
+      906
+    ],
+    "scale": 0.72,
+    "targetBaseline": 256,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        340,
+        640,
+        931,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "note": "仅取三方向射击12格，第四行步态尚未验收不入库；各方向逐格骨盆和枪尖另在ActorAnimationDB标定。"
+  },
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

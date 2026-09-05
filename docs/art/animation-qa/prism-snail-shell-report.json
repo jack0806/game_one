@@ -1,0 +1,198 @@
+{
+  "source": "exec-d76dc787-4cf0-4caa-aa6c-e5a735fe04f1.png",
+  "output": "anim_prism_snail_shell.png",
+  "size": [
+    1792,
+    1344
+  ],
+  "columns": 4,
+  "rows": 3,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        92,
+        125,
+        362,
+        412
+      ],
+      "transparentRatio": 0.7504,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        120,
+        135,
+        339,
+        394
+      ],
+      "transparentRatio": 0.7817,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        112,
+        134,
+        331,
+        389
+      ],
+      "transparentRatio": 0.7903,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        107,
+        134,
+        326,
+        389
+      ],
+      "transparentRatio": 0.7897,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        94,
+        124,
+        368,
+        349
+      ],
+      "transparentRatio": 0.7869,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        117,
+        140,
+        339,
+        342
+      ],
+      "transparentRatio": 0.8279,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        115,
+        129,
+        325,
+        346
+      ],
+      "transparentRatio": 0.8234,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        108,
+        129,
+        325,
+        347
+      ],
+      "transparentRatio": 0.8174,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        99,
+        70,
+        350,
+        319
+      ],
+      "transparentRatio": 0.7725,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        126,
+        88,
+        336,
+        311
+      ],
+      "transparentRatio": 0.8163,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        110,
+        87,
+        321,
+        319
+      ],
+      "transparentRatio": 0.8134,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        106,
+        87,
+        318,
+        319
+      ],
+      "transparentRatio": 0.8131,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      418,
+      836,
+      1254
+    ],
+    "baselines": [
+      418,
+      836,
+      1254
+    ],
+    "targetBaseline": 402,
+    "scale": 0.86,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

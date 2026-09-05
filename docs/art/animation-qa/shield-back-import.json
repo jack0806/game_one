@@ -1,0 +1,483 @@
+{
+  "source": "exec-830df90d-2f92-4188-8a14-d4d7d025f9bd.png",
+  "output": "anim_shield_back.png",
+  "size": [
+    1536,
+    3072
+  ],
+  "columns": 4,
+  "rows": 8,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        128,
+        133,
+        293,
+        327
+      ],
+      "transparentRatio": 0.8559,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        114,
+        132,
+        273,
+        325
+      ],
+      "transparentRatio": 0.8599,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        85,
+        135,
+        244,
+        327
+      ],
+      "transparentRatio": 0.8636,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        71,
+        133,
+        231,
+        325
+      ],
+      "transparentRatio": 0.8589,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        130,
+        134,
+        279,
+        324
+      ],
+      "transparentRatio": 0.8805,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        118,
+        133,
+        267,
+        324
+      ],
+      "transparentRatio": 0.8806,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        94,
+        135,
+        237,
+        323
+      ],
+      "transparentRatio": 0.8808,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        77,
+        133,
+        221,
+        324
+      ],
+      "transparentRatio": 0.8805,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        133,
+        129,
+        288,
+        322
+      ],
+      "transparentRatio": 0.8735,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        116,
+        128,
+        266,
+        326
+      ],
+      "transparentRatio": 0.8726,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        94,
+        127,
+        251,
+        326
+      ],
+      "transparentRatio": 0.8714,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        77,
+        128,
+        224,
+        325
+      ],
+      "transparentRatio": 0.8784,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        129,
+        159,
+        292,
+        319
+      ],
+      "transparentRatio": 0.8773,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        118,
+        129,
+        277,
+        323
+      ],
+      "transparentRatio": 0.8799,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        98,
+        123,
+        254,
+        310
+      ],
+      "transparentRatio": 0.8823,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        74,
+        165,
+        238,
+        319
+      ],
+      "transparentRatio": 0.8816,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 0,
+      "bounds": [
+        127,
+        131,
+        283,
+        311
+      ],
+      "transparentRatio": 0.8757,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "bounds": [
+        84,
+        131,
+        265,
+        313
+      ],
+      "transparentRatio": 0.8769,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 2,
+      "bounds": [
+        96,
+        139,
+        268,
+        311
+      ],
+      "transparentRatio": 0.8702,
+      "edgePixels": 0
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "bounds": [
+        70,
+        132,
+        218,
+        311
+      ],
+      "transparentRatio": 0.877,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 0,
+      "bounds": [
+        133,
+        136,
+        304,
+        314
+      ],
+      "transparentRatio": 0.885,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 1,
+      "bounds": [
+        110,
+        133,
+        282,
+        313
+      ],
+      "transparentRatio": 0.8832,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 2,
+      "bounds": [
+        101,
+        133,
+        267,
+        315
+      ],
+      "transparentRatio": 0.8907,
+      "edgePixels": 0
+    },
+    {
+      "row": 5,
+      "column": 3,
+      "bounds": [
+        81,
+        133,
+        223,
+        315
+      ],
+      "transparentRatio": 0.88,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 0,
+      "bounds": [
+        128,
+        157,
+        269,
+        321
+      ],
+      "transparentRatio": 0.8886,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 1,
+      "bounds": [
+        104,
+        192,
+        273,
+        317
+      ],
+      "transparentRatio": 0.8961,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 2,
+      "bounds": [
+        48,
+        234,
+        284,
+        321
+      ],
+      "transparentRatio": 0.9021,
+      "edgePixels": 0
+    },
+    {
+      "row": 6,
+      "column": 3,
+      "bounds": [
+        52,
+        246,
+        277,
+        326
+      ],
+      "transparentRatio": 0.9158,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 0,
+      "bounds": [
+        131,
+        116,
+        286,
+        305
+      ],
+      "transparentRatio": 0.8662,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 1,
+      "bounds": [
+        123,
+        101,
+        273,
+        304
+      ],
+      "transparentRatio": 0.8654,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 2,
+      "bounds": [
+        72,
+        85,
+        254,
+        305
+      ],
+      "transparentRatio": 0.8339,
+      "edgePixels": 0
+    },
+    {
+      "row": 7,
+      "column": 3,
+      "bounds": [
+        76,
+        116,
+        228,
+        304
+      ],
+      "transparentRatio": 0.8681,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      210,
+      400,
+      590,
+      780,
+      970,
+      1160,
+      1310,
+      1536
+    ],
+    "baselines": [
+      194,
+      383,
+      574,
+      760,
+      950,
+      1138,
+      1304,
+      1524
+    ],
+    "scale": 1.18,
+    "targetBaseline": 324,
+    "columnCuts": {
+      "0": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "1": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "2": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "3": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "4": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "5": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "6": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ],
+      "7": [
+        0,
+        256,
+        512,
+        768,
+        1024
+      ]
+    },
+    "note": "护盾兵背面32帧；盾牌固定在屏幕左侧，384画布容纳倒地轮廓。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

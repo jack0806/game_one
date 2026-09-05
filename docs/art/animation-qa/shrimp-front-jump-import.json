@@ -1,0 +1,85 @@
+{
+  "source": "exec-07196429-efb7-492a-b993-5a55f413acfe.png",
+  "output": "anim_shrimp_front_jump.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        89,
+        141,
+        344,
+        412
+      ],
+      "transparentRatio": 0.8497,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        102,
+        77,
+        342,
+        418
+      ],
+      "transparentRatio": 0.8389,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        92,
+        27,
+        348,
+        395
+      ],
+      "transparentRatio": 0.8167,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        101,
+        137,
+        357,
+        419
+      ],
+      "transparentRatio": 0.8451,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      770
+    ],
+    "baselines": [
+      743
+    ],
+    "scale": 0.55,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        511,
+        1022,
+        1532,
+        2043
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "锯齿剑虾按整图连通主体保留长触须、六足、双锯螯、尾扇及贴身技能弧，以每行动作最低点统一基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

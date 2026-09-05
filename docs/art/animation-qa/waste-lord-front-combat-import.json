@@ -1,0 +1,259 @@
+{
+  "source": "exec-8ea56df0-a91a-4112-986c-cb2f6dc25ee3.png",
+  "output": "anim_boss_ch1_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        105,
+        160,
+        335,
+        404
+      ],
+      "transparentRatio": 0.8197,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        96,
+        160,
+        320,
+        395
+      ],
+      "transparentRatio": 0.8248,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        119,
+        174,
+        340,
+        394
+      ],
+      "transparentRatio": 0.8495,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        99,
+        157,
+        332,
+        404
+      ],
+      "transparentRatio": 0.8189,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        108,
+        178,
+        322,
+        417
+      ],
+      "transparentRatio": 0.8484,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        115,
+        177,
+        322,
+        409
+      ],
+      "transparentRatio": 0.8352,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        127,
+        193,
+        333,
+        415
+      ],
+      "transparentRatio": 0.8415,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        93,
+        178,
+        325,
+        413
+      ],
+      "transparentRatio": 0.8256,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        109,
+        182,
+        321,
+        367
+      ],
+      "transparentRatio": 0.8654,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        88,
+        216,
+        325,
+        379
+      ],
+      "transparentRatio": 0.8825,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        92,
+        235,
+        331,
+        373
+      ],
+      "transparentRatio": 0.8975,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        89,
+        270,
+        334,
+        373
+      ],
+      "transparentRatio": 0.9185,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        107,
+        142,
+        332,
+        384
+      ],
+      "transparentRatio": 0.8278,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        90,
+        144,
+        313,
+        383
+      ],
+      "transparentRatio": 0.8367,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        67,
+        157,
+        334,
+        383
+      ],
+      "transparentRatio": 0.8512,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        103,
+        144,
+        329,
+        384
+      ],
+      "transparentRatio": 0.8294,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.82,
+    "isolatedGrid": true,
+    "discardDetachedFragmentRows": [
+      1,
+      2
+    ],
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

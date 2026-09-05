@@ -1,0 +1,87 @@
+{
+  "source": "exec-3090b163-d365-482f-b0c9-b8f7d2ae64fc.png",
+  "output": "anim_golem_front_defeated.png",
+  "size": [
+    1536,
+    384
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        65,
+        55,
+        355,
+        324
+      ],
+      "transparentRatio": 0.656,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        67,
+        108,
+        336,
+        329
+      ],
+      "transparentRatio": 0.704,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        61,
+        194,
+        330,
+        330
+      ],
+      "transparentRatio": 0.837,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        59,
+        254,
+        315,
+        330
+      ],
+      "transparentRatio": 0.9175,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      793
+    ],
+    "baselines": [
+      692
+    ],
+    "scale": 0.57,
+    "targetBaseline": 330,
+    "columnCuts": {
+      "0": [
+        0,
+        496,
+        992,
+        1487,
+        1983
+      ]
+    },
+    "isolatedRows": [
+      0
+    ],
+    "note": "石像鬼正面独立碎裂倒下4帧；保持原始碎石与熄灭符文，不合成补画。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

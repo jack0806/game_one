@@ -1,0 +1,255 @@
+{
+  "source": "exec-52a58e2d-95c0-418f-a726-782b939490f0.png",
+  "output": "anim_boss_crucible_city_back_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        129,
+        190,
+        330,
+        371
+      ],
+      "transparentRatio": 0.8985,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        130,
+        190,
+        330,
+        371
+      ],
+      "transparentRatio": 0.8984,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        125,
+        190,
+        325,
+        371
+      ],
+      "transparentRatio": 0.8988,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        119,
+        190,
+        319,
+        371
+      ],
+      "transparentRatio": 0.8982,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        129,
+        192,
+        330,
+        374
+      ],
+      "transparentRatio": 0.8969,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        130,
+        192,
+        330,
+        374
+      ],
+      "transparentRatio": 0.8959,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        125,
+        191,
+        327,
+        374
+      ],
+      "transparentRatio": 0.8936,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        122,
+        191,
+        323,
+        374
+      ],
+      "transparentRatio": 0.8961,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        126,
+        193,
+        328,
+        376
+      ],
+      "transparentRatio": 0.8906,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        129,
+        194,
+        330,
+        376
+      ],
+      "transparentRatio": 0.8867,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        124,
+        217,
+        327,
+        376
+      ],
+      "transparentRatio": 0.899,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        116,
+        261,
+        316,
+        379
+      ],
+      "transparentRatio": 0.9246,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        129,
+        188,
+        329,
+        369
+      ],
+      "transparentRatio": 0.8944,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        128,
+        189,
+        327,
+        369
+      ],
+      "transparentRatio": 0.8951,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        125,
+        188,
+        324,
+        369
+      ],
+      "transparentRatio": 0.8954,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        119,
+        189,
+        318,
+        369
+      ],
+      "transparentRatio": 0.8956,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      940,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "cellInset": 2,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "已核对三方向身份、动作语义、透明背景、共同基线与单格完整性；Playwright逐动作页面复核通过"
+}

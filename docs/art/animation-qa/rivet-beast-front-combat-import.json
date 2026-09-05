@@ -1,0 +1,255 @@
+{
+  "source": "exec-533a193d-2960-4f31-836a-fb203766c069.png",
+  "output": "anim_rivet_beast_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        59,
+        132,
+        387,
+        402
+      ],
+      "transparentRatio": 0.7167,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        63,
+        134,
+        394,
+        402
+      ],
+      "transparentRatio": 0.7145,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        54,
+        139,
+        385,
+        402
+      ],
+      "transparentRatio": 0.7158,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        54,
+        134,
+        381,
+        402
+      ],
+      "transparentRatio": 0.7194,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        71,
+        134,
+        379,
+        397
+      ],
+      "transparentRatio": 0.7265,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        66,
+        143,
+        377,
+        402
+      ],
+      "transparentRatio": 0.7353,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        78,
+        137,
+        376,
+        395
+      ],
+      "transparentRatio": 0.7371,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        59,
+        145,
+        376,
+        399
+      ],
+      "transparentRatio": 0.7401,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        74,
+        151,
+        389,
+        401
+      ],
+      "transparentRatio": 0.7506,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        56,
+        195,
+        397,
+        400
+      ],
+      "transparentRatio": 0.7776,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        38,
+        225,
+        425,
+        401
+      ],
+      "transparentRatio": 0.7967,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        27,
+        263,
+        422,
+        402
+      ],
+      "transparentRatio": 0.8364,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        60,
+        110,
+        384,
+        381
+      ],
+      "transparentRatio": 0.7192,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        75,
+        109,
+        398,
+        381
+      ],
+      "transparentRatio": 0.7153,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        14,
+        116,
+        423,
+        401
+      ],
+      "transparentRatio": 0.6661,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        53,
+        109,
+        377,
+        381
+      ],
+      "transparentRatio": 0.7147,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      282,
+      546,
+      791,
+      1086
+    ],
+    "baselines": [
+      262,
+      533,
+      776,
+      1059
+    ],
+    "scale": 1.15,
+    "targetBaseline": 400,
+    "columnCuts": {
+      "0": [
+        0,
+        357,
+        714,
+        1073,
+        1448
+      ],
+      "1": [
+        0,
+        358,
+        721,
+        1073,
+        1448
+      ],
+      "2": [
+        0,
+        348,
+        699,
+        1076,
+        1448
+      ],
+      "3": [
+        0,
+        357,
+        696,
+        1097,
+        1448
+      ]
+    },
+    "note": "铆甲兽正面战斗小批次：顶撞、受击、倒下、冲锋；第三帧为撞击/爆发。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

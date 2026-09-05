@@ -6,7 +6,9 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getMiniBossDef, getTestGruntDef } from '../data/BossDB';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
-import { createDirectionalFacingState, resetDirectionalFacing } from '../core/DirectionalFacing';
+import { createDirectionalFacingState, resetDirectionalFacing, resolveFacingView } from '../core/DirectionalFacing';
+import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
+import { actorClip, ActorAction, ActorView } from '../data/ActorAnimationDB';
 
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
@@ -41,6 +43,16 @@ export class EnemyBase {
     locomotion = createLocomotionState();
     /** 无论追击、横移、后退或站定，视觉上都由“指向玩家”的向量驱动。 */
     directionalFacing = createDirectionalFacingState('front');
+    actorAnimation = new ActorAnimation();
+    animationView: ActorView = 'front';
+    animationMirror: 1 | -1 = 1;
+    private _visualLastX = 0;
+    private _visualLastY = 0;
+    private _visualLastRecoil = 0;
+    private _visualLastFlash = 0;
+    private _visualWasWinding = false;
+    /** 机制小Boss技能状态边沿，用于只在阶段切换时重启动作。 */
+    private _visualMiniSkillState = '';
     /** 底层位图的色调；旧单位另由 GameManager 叠加独立程序轮廓，不再只靠 tint 区分。 */
     tintColor   = '#ffffff';
     /**
@@ -128,6 +140,24 @@ export class EnemyBase {
     _miniTimer = 0;
     /** 小 Boss 已释放技能计数（深海鱿鱼放完一轮后自毁消失）。 */
     _miniSkillCount = 0;
+    /** 鱿鱼技能先记录锁定点，在本帧位移完成后再从动画挂点生成弹体。 */
+    private _squidBombTarget?: [number, number];
+    private _squidSpikeTarget?: [number, number];
+    private _squidGrabTarget?: [number, number];
+    /** 剑虾先锁定目标，位移结算后再从背刺挂点发射并显示甩尾峰值。 */
+    private _shrimpSpikeTarget?: [number, number];
+    private _shrimpTailTarget?: [number, number];
+    /** 水母毒刺先锁定目标，位移结算后再从伸长毒针的亮点生成弹体。 */
+    private _jellyVenomTarget?: [number, number];
+    /** 攻击无人机先锁定目标，位移结算后再从声波/光束炮口生成弹体。 */
+    private _droneSonicTarget?: [number, number];
+    private _droneBeamTarget?: [number, number];
+    /** 支援无人机结算技能后记录朝向，位移结束再显示对应动作峰值。 */
+    private _droneSupportSummonTarget?: [number, number];
+    private _droneSupportHealTarget?: [number, number];
+    private _droneSupportShieldTarget?: [number, number];
+    /** 回收夹在逻辑结算后保留瞄准点，供最终位置的尾夹动作使用。 */
+    private _chainHoundTrapTarget?: [number, number];
     /** 《怪物设计与数值》机制小Boss的公开施法状态，GameManager据此绘制预警。 */
     miniSkillState = '';
     miniSkillTimer = 0;
@@ -163,11 +193,24 @@ export class EnemyBase {
         this.scavengerEscapeTimer = 0; this.scavengerHitBoost = 0; this._scavengerAge = 0;
         this.arcLinks = []; this.arcBoostTimer = 0; this.blastCountdown = 0; this.blastCountdownMax = 0;
         this._miniCd1 = 0; this._miniCd2 = 0; this._miniTimer = 0; this._miniSkillCount = 0;
+        this._squidBombTarget = undefined; this._squidSpikeTarget = undefined; this._squidGrabTarget = undefined;
+        this._shrimpSpikeTarget = undefined; this._shrimpTailTarget = undefined;
+        this._jellyVenomTarget = undefined;
+        this._droneSonicTarget = undefined; this._droneBeamTarget = undefined;
+        this._droneSupportSummonTarget = undefined;
+        this._droneSupportHealTarget = undefined; this._droneSupportShieldTarget = undefined;
+        this._chainHoundTrapTarget = undefined;
         this.miniSkillState = ''; this.miniSkillTimer = 0; this.miniSkillMax = 0;
         this.miniSkillAngle = 0; this.miniSkillHit = false; this.miniSkillHits = 0;
         this.miniSkillPhase = 0; this.miniPoints = [];
         this.bellAbsorbHp = 0; this.bellAbsorbed = 0; this.bellCounterWaves = 0;
         this.directionalFrames = true;
+        this.actorAnimation.reset();
+        this.animationView = 'front'; this.animationMirror = 1;
+        this._visualLastX = this.x; this._visualLastY = this.y;
+        this._visualLastRecoil = 0; this._visualLastFlash = 0;
+        this._visualWasWinding = false;
+        this._visualMiniSkillState = '';
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
         this._applyTypeDef(type, scale, game);
@@ -318,6 +361,7 @@ export class EnemyBase {
                 this.meleeRange = 0;
                 this.rangedRange = 460; this.rangedKeepDist = 300;
                 this._rangedCd = Rng.float(0.8, 1.6);
+                this.rangedAimWindupMax = 0.1;
                 this.visualScale = 1.20;
                 this.spriteKey = 'enemy_archer'; this.tintColor = '#ffffff';
                 this.directionalFrames = false; break;
@@ -491,6 +535,168 @@ export class EnemyBase {
         }
     }
 
+    /** Boss与普通怪共享表现时钟，由组合根在各自AI更新后调用。 */
+    updateVisualAnimation(dt: number, player: any): void {
+        const moved = dt > 0 ? Math.hypot(this.x - this._visualLastX, this.y - this._visualLastY) : 0;
+        this._visualLastX = this.x; this._visualLastY = this.y;
+        if (!this.alive || this.frozen > 0 || this.stunned > 0) return;
+        const [dx, dy] = this.getVisualFacing(player, 0, 0);
+        const facing = resolveFacingView(dx, dy, this.animationView);
+        const play = (action: ActorAction, restart = false) => {
+            const clip = actorClip(this.spriteKey, facing.view, action);
+            if (!this.actorAnimation.play(action, clip, restart)) return false;
+            this.animationView = facing.view; this.animationMirror = facing.mirror;
+            return true;
+        };
+        const winding = this.attackWindup > 0 || this.rangedAimWindup > 0;
+        const struck = this.actionRecoil > this._visualLastRecoil + 0.001;
+        const hurt = this.flashTimer > this._visualLastFlash + 0.001;
+        this._visualLastRecoil = this.actionRecoil; this._visualLastFlash = this.flashTimer;
+        const chargeBurst = (this.type === 'rust_biter' || this.type === 'rivet_beast' ||
+            this.type === 'turtle' || this.type === 'chain_hound') && this._chargeT > 0;
+        const blastArmed = this.type === 'blast_tick' && this.blastCountdown > 0;
+        const miniVisualState = this.type === 'prism_snail' || this.type === 'triune_priest' ||
+            this.type === 'rail_butcher' || this.type === 'bell_devourer'
+            ? this.miniSkillState : '';
+        const boss: any = this;
+        const bossVisualState = this.isBoss && !boss.bossKind
+            ? boss.visualPhaseT > 0 ? 'boss_phase'
+                : boss.visualSummonT > 0 ? 'boss_summon'
+                : boss.chargeWindup > 0 ? 'boss_charge_windup'
+                : boss.isCharging ? 'boss_charge'
+                : boss.skillWindup > 0 ? 'boss_skill_windup'
+                : boss.visualSkillT > 0 ? 'boss_skill_fire' : ''
+            : '';
+        const mechVisualState = boss.bossKind === 'mech'
+            ? boss.visualMechSkyLandT > 0 ? 'mech_sky_land'
+                : boss.visualMechBuffT > 0 ? 'mech_buff'
+                : boss.visualSkillT > 0 ? 'mech_blade_fire'
+                : boss.skillWindup > 0 ? 'mech_blade_windup'
+                : boss.visualMechSlashReleaseT > 0 ? 'mech_slash_fire'
+                : boss.mechSlashT > 0 ? 'mech_slash_windup' : ''
+            : '';
+        const abyssVisualState = boss.bossKind === 'abyss'
+            ? boss.visualAbyssSkillT > 0 ? `abyss_skill_${boss.visualAbyssSkillIndex}`
+                : boss.visualSkillT > 0 ? 'abyss_skill_1_fire'
+                : boss.skillWindup > 0 ? 'abyss_skill_1_windup' : ''
+            : '';
+        const docVisualState = (boss.bossKind === 'vespa' || boss.bossKind === 'crucible_city' ||
+            boss.bossKind === 'manyfold') && boss.visualDocSkillT > 0
+            ? `doc_skill_${boss.visualDocSkillIndex}` : '';
+        const mechanismVisualState = miniVisualState || bossVisualState || mechVisualState || abyssVisualState || docVisualState;
+        let miniVisualAction: ActorAction | undefined;
+        if (this.type === 'prism_snail') {
+            miniVisualAction = miniVisualState === 'prism_shell' ? 'skill2'
+                : miniVisualState === 'prism_windup' || miniVisualState === 'prism_sweep' ? 'skill' : undefined;
+        } else if (this.type === 'triune_priest') {
+            miniVisualAction = miniVisualState === 'triune_fire' ? 'skill'
+                : miniVisualState === 'triune_ice' ? 'skill2'
+                : miniVisualState === 'triune_arc' ? 'skill3' : undefined;
+        } else if (this.type === 'rail_butcher') {
+            miniVisualAction = miniVisualState === 'rail_windup' || miniVisualState === 'rail_recoil' ? 'skill'
+                : miniVisualState === 'rail_saw' ? 'skill2'
+                : miniVisualState === 'rail_drag' ? 'skill3' : undefined;
+        } else if (this.type === 'bell_devourer') {
+            miniVisualAction = miniVisualState === 'bell_rings' ? 'skill'
+                : miniVisualState === 'bell_record' || miniVisualState === 'bell_echo_warn' ||
+                    miniVisualState === 'bell_echo_play' ? 'skill2'
+                : miniVisualState === 'bell_silence' ? 'skill3'
+                : miniVisualState === 'bell_counter' || miniVisualState === 'bell_counter_release'
+                    ? 'skill4' : undefined;
+        } else if (mechVisualState) {
+            miniVisualAction = mechVisualState === 'mech_sky_land' ? 'skill4'
+                : mechVisualState === 'mech_buff' ? 'skill3'
+                : mechVisualState === 'mech_blade_windup' || mechVisualState === 'mech_blade_fire' ? 'skill2'
+                : 'skill';
+        } else if (abyssVisualState) {
+            const index = Math.max(1, Math.min(5, Number(abyssVisualState.match(/\d+/)?.[0]) || 1));
+            miniVisualAction = (index === 1 ? 'skill' : `skill${index}`) as ActorAction;
+        } else if (docVisualState) {
+            const index = Math.max(1, Math.min(5, Number(docVisualState.match(/\d+/)?.[0]) || 1));
+            miniVisualAction = (index === 1 ? 'skill' : `skill${index}`) as ActorAction;
+        } else if (bossVisualState) {
+            miniVisualAction = bossVisualState === 'boss_phase' ? 'skill4'
+                : bossVisualState === 'boss_summon' ? 'skill3'
+                : bossVisualState === 'boss_charge_windup' || bossVisualState === 'boss_charge' ? 'skill2'
+                : 'skill';
+        }
+        if (!miniVisualAction && this._visualMiniSkillState !== '' &&
+            (this.actorAnimation.action === 'skill' || this.actorAnimation.action === 'skill2' ||
+                this.actorAnimation.action === 'skill3' || this.actorAnimation.action === 'skill4' ||
+                this.actorAnimation.action === 'skill5')) {
+            this.actorAnimation.reset();
+        }
+        if (miniVisualAction) {
+            const changed = mechanismVisualState !== this._visualMiniSkillState ||
+                this.actorAnimation.action !== miniVisualAction;
+            if (play(miniVisualAction, changed) && changed) {
+                if (miniVisualState === 'bell_echo_warn') {
+                    this.actorAnimation.seekFrame(1);
+                } else if (miniVisualState === 'prism_sweep' || miniVisualState === 'rail_recoil' ||
+                    miniVisualState === 'bell_echo_play' || miniVisualState === 'bell_counter_release' ||
+                    bossVisualState === 'boss_skill_fire' || bossVisualState === 'boss_charge' ||
+                    bossVisualState === 'boss_summon' || bossVisualState === 'boss_phase') {
+                    const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
+                    this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
+                } else if (mechVisualState === 'mech_slash_fire' || mechVisualState === 'mech_blade_fire' ||
+                    mechVisualState === 'mech_buff' || mechVisualState === 'mech_sky_land') {
+                    const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
+                    this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
+                } else if (abyssVisualState && !abyssVisualState.endsWith('_windup')) {
+                    const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
+                    this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
+                } else if (docVisualState) {
+                    const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
+                    this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
+                }
+            }
+        } else if (blastArmed) {
+            // 倒计时是熔爆蜱唯一的攻击结算状态；即使由致命受击触发，也要
+            // 立即从受击切到逐步过热，随后爆炸逻辑再进入倒下空壳。
+            if (this.actorAnimation.action !== 'skill') this.actorAnimation.reset();
+            play('skill');
+        } else if (chargeBurst) {
+            const chargeAction: ActorAction = this.type === 'turtle' ? 'skill2' : 'skill';
+            const starting = this.actorAnimation.action !== chargeAction;
+            if (play(chargeAction, starting) && starting) {
+                const burst = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
+                this.actorAnimation.seekFrame(burst >= 0 ? burst : 2);
+            }
+        } else if (struck) {
+            if (play('attack', true)) {
+                const impact = this.actorAnimation.clip?.frames.findIndex(frame =>
+                    frame.event === 'strike' || frame.event === 'fire' || frame.event === 'cast') ?? -1;
+                this.actorAnimation.seekFrame(impact >= 0 ? impact : 1);
+            }
+        } else if (winding) {
+            if (play('attack', !this._visualWasWinding)) this.actorAnimation.seekFrame(0);
+        } else if (hurt && !this.actorAnimation.locked) play('hit', true);
+        else if (this.type === 'gold_scavenger' && this.scavengerHitBoost > 0) {
+            // 受击优先完整播放；随后用逃逸爆发动作覆盖剩余加速时段。
+            // 此动作没有伤害事件，不会把纯逃跑单位表现成攻击者。
+            if (!this.actorAnimation.locked) play('skill');
+        }
+        else if (!this.actorAnimation.locked) {
+            const action: ActorAction = moved < 0.015 ? 'idle'
+                : moved / Math.max(0.001, dt) > Math.max(120, this.speed * 1.2) ? 'run' : 'walk';
+            if (!actorClip(this.spriteKey, facing.view, action)) this.actorAnimation.reset();
+            else play(action);
+            this.animationView = facing.view; this.animationMirror = facing.mirror;
+        }
+        // 前摇由战斗计时器决定；命中姿势在actionRecoil触发当帧直接切入。
+        if (!winding || this.actorAnimation.action !== 'attack') this.actorAnimation.update(dt);
+        this._visualWasWinding = winding;
+        this._visualMiniSkillState = mechanismVisualState;
+        this.actorAnimation.takeEvents();
+    }
+
+    beginDefeat(): boolean {
+        const clip = actorClip(this.spriteKey, this.animationView, 'defeated');
+        if (!clip) return false;
+        this.actorAnimation.play('defeated', clip);
+        return true;
+    }
+
     // ── 每帧更新 ──────────────────────────────────────────
     update(dt: number, player: any, game: any): void {
         if (!this.alive) return;
@@ -543,6 +749,10 @@ export class EnemyBase {
         // 击退衰减
         this.knockbackX *= (1 - dt * 8);
         this.knockbackY *= (1 - dt * 8);
+
+        // 冻结时身体帧已经停止，攻击前摇、连射和冲锋也必须暂停。
+        // 上面的状态、持续伤害、冷却和增益计时仍正常结算。
+        if (this.frozen > 0) return;
 
         // 微型冲锋（盾龟高速碰撞等）：冲锋期间不执行其他移动/攻击
         if (this._chargeT > 0) {
@@ -701,6 +911,11 @@ export class EnemyBase {
         const spd = this.speed * (this.frozen > 0 ? 0 : this.slowMult) * this.buffSpeedMult *
             (this.arcBoostTimer > 0 ? 1.15 : 1);
         let mvx = dx, mvy = dy;
+        let archerShot = false;
+        let needleShot = false;
+        let frostShot = false;
+        let arcShot = false;
+        let acidShot: [number, number] | undefined;
         if (this.rangedRange > 0) {
             const dist = Math.hypot(player.x - this.x, player.y - this.y);
             if (dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }      // 太近 → 后撤
@@ -710,7 +925,15 @@ export class EnemyBase {
                 mvx = dx * 0.72 - dy * 0.42;
                 mvy = dy * 0.72 + dx * 0.42;
             }
-            if (this.type === 'needle_gunner' && this.rangedAimWindup > 0) {
+            if (this.type === 'archer' && this.rangedAimWindup > 0) {
+                mvx = 0; mvy = 0;
+                this.rangedAimWindup = Math.max(0, this.rangedAimWindup - dt);
+                if (this.rangedAimWindup <= 0) {
+                    archerShot = player.alive;
+                    // 将0.1秒准备动作计入原2.2秒攻击周期。
+                    this._rangedCd = 2.2 - this.rangedAimWindupMax;
+                }
+            } else if (this.type === 'needle_gunner' && this.rangedAimWindup > 0) {
                 mvx = 0; mvy = 0;
                 this.rangedAimWindup = Math.max(0, this.rangedAimWindup - dt);
                 if (this.rangedAimWindup <= 0) {
@@ -721,15 +944,7 @@ export class EnemyBase {
                 mvx = 0; mvy = 0;
                 this._rangedBurstCd -= dt;
                 if (this._rangedBurstCd <= 0) {
-                    const a = Math.atan2(this.rangedAimTargetY - this.y, this.rangedAimTargetX - this.x);
-                    game.enemyBullets?.push({
-                        x: this.x, y: this.y,
-                        vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
-                        damage: this.damage * this.buffDmgMult, radius: 5,
-                        color: '#fff06a', life: 3, lifeTime: 3,
-                        owner: 'enemy', isEnemyBullet: true, enemyFx: 'needle',
-                    });
-                    this.actionRecoil = 0.13;
+                    needleShot = true;
                     this._rangedBurstLeft--;
                     this._rangedBurstCd = 0.12;
                     if (this._rangedBurstLeft <= 0) this._rangedCd = 1.65;
@@ -738,16 +953,7 @@ export class EnemyBase {
                 mvx = 0; mvy = 0;
                 this.rangedAimWindup = Math.max(0, this.rangedAimWindup - dt * (this.arcBoostTimer > 0 ? 1.15 : 1));
                 if (this.rangedAimWindup <= 0) {
-                    const center = Math.atan2(this.rangedAimTargetY - this.y, this.rangedAimTargetX - this.x);
-                    for (const off of [-0.16, 0, 0.16]) {
-                        const a = center + off;
-                        game.enemyBullets?.push({
-                            x: this.x, y: this.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
-                            damage: this.damage * this.buffDmgMult, radius: 6, color: '#9eefff',
-                            life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
-                            enemyFx: 'frost', slow: { mult: 0.75, dur: 1.6 },
-                        });
-                    }
+                    frostShot = true;
                     this.actionRecoil = 0.18;
                     this._rangedCd = 2.6;
                 }
@@ -767,9 +973,9 @@ export class EnemyBase {
                 // 落点领先玩家当前移动方向45px；抛物线与虚线落点由GameManager统一绘制。
                 const tx = clamp(player.x + (player.facingX ?? 0) * 45, 52, CANVAS_W - 52);
                 const ty = clamp(player.y + (player.facingY ?? 0) * 45, 52, PLAYFIELD_BOTTOM - 52);
-                game.spawnEnemyAcidHazard?.(this.x, this.y, tx, ty);
-                game.particles?.toxin?.(this.x, this.y);
-                this.actionRecoil = 0.20;
+                this.rangedAimTargetX = tx; this.rangedAimTargetY = ty;
+                acidShot = [tx, ty];
+                mvx = 0; mvy = 0;
                 this._rangedCd = 2.2;
             } else if (this.type === 'ember_acolyte' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
                 game.spawnEnemyEmberHazard?.(player.x, player.y);
@@ -783,14 +989,16 @@ export class EnemyBase {
                 this.rangedAimWindup = 0.75;
                 mvx = 0; mvy = 0;
             } else if (this.type === 'arc_leech' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
-                const a = Math.atan2(player.y - this.y, player.x - this.x);
-                game.enemyBullets?.push({
-                    x: this.x, y: this.y, vx: Math.cos(a) * 185, vy: Math.sin(a) * 185,
-                    damage: this.damage * this.buffDmgMult, radius: 8, color: '#7df4ff',
-                    life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'arc',
-                });
+                this.rangedAimTargetX = player.x;
+                this.rangedAimTargetY = player.y;
+                arcShot = true;
                 this.actionRecoil = 0.16;
                 this._rangedCd = 2.0;
+            } else if (this.type === 'archer' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
+                this.rangedAimTargetX = player.x;
+                this.rangedAimTargetY = player.y;
+                this.rangedAimWindup = this.rangedAimWindupMax;
+                mvx = 0; mvy = 0;
             } else if (player.alive && dist <= this.rangedRange && this.frozen <= 0) {
                 const a = Math.atan2(player.y - this.y, player.x - this.x);
                 game.enemyBullets?.push({
@@ -808,6 +1016,128 @@ export class EnemyBase {
         this.y += (mvy * spd + this.knockbackY) * dt;
         this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
         this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
+
+        // 小Boss技能与本帧最终身体位置使用同一坐标，避免移动后弹体仍从旧逻辑根生成。
+        if (this.type === 'squid') this._flushSquidProjectiles(game);
+        if (this.type === 'shrimp') this._flushShrimpSkills(game);
+        if (this.type === 'jelly') this._flushJellySkill(game);
+        if (this.type === 'drone_a') this._flushAttackDroneSkills(game);
+        if (this.type === 'drone_s') this._flushSupportDroneSkills();
+        if (this.type === 'chain_hound') this._flushChainHoundSkill();
+
+        // 位移和击退结算后再定位枪口，弹体与本帧身体使用相同世界坐标。
+        if (arcShot) {
+            const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
+            const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
+            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const frame = clip?.frames.find(frame => frame.event === 'cast');
+            let origin: [number, number] = [this.x, this.y];
+            if (frame && this.actorAnimation.play('attack', clip, true)) {
+                this.animationView = facing.view; this.animationMirror = facing.mirror;
+                this.actorAnimation.seekFrame(clip.frames.indexOf(frame));
+                origin = animationSocket(frame, this.x, this.y,
+                    this.radius * 2 * this.visualScale * (clip.displayScale ?? 1), facing.mirror) ?? origin;
+                this._visualLastRecoil = this.actionRecoil;
+            }
+            const a = Math.atan2(ty - origin[1], tx - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'cyan');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 185, vy: Math.sin(a) * 185,
+                damage: this.damage * this.buffDmgMult, radius: 8, color: '#7df4ff',
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'arc',
+            });
+        }
+
+        if (frostShot) {
+            const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
+            const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
+            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const frame = clip?.frames.find(frame => frame.event === 'cast');
+            let origin: [number, number] = [this.x, this.y];
+            if (frame && this.actorAnimation.play('attack', clip, true)) {
+                this.animationView = facing.view; this.animationMirror = facing.mirror;
+                this.actorAnimation.seekFrame(clip.frames.indexOf(frame));
+                origin = animationSocket(frame, this.x, this.y,
+                    this.radius * 2 * this.visualScale * (clip.displayScale ?? 1), facing.mirror) ?? origin;
+                this._visualLastRecoil = this.actionRecoil;
+            }
+            const center = Math.atan2(ty - origin[1], tx - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(center), Math.sin(center), 'ice');
+            for (const off of [-0.16, 0, 0.16]) {
+                const a = center + off;
+                game.enemyBullets?.push({
+                    x: origin[0], y: origin[1], vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
+                    damage: this.damage * this.buffDmgMult, radius: 6, color: '#9eefff',
+                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                    enemyFx: 'frost', slow: { mult: 0.75, dur: 1.6 },
+                });
+            }
+        }
+
+        if (archerShot) {
+            const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
+            const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
+            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const frame = clip?.frames.find(frame => frame.event === 'fire');
+            this.actionRecoil = 0.16;
+            let origin: [number, number] = [this.x, this.y];
+            if (frame && this.actorAnimation.play('attack', clip, true)) {
+                this.animationView = facing.view; this.animationMirror = facing.mirror;
+                this.actorAnimation.seekFrame(clip.frames.indexOf(frame));
+                origin = animationSocket(frame, this.x, this.y,
+                    this.radius * 2 * this.visualScale * (clip.displayScale ?? 1), facing.mirror) ?? origin;
+                // 已在这一帧摆好开火姿势，表现更新不能按新的玩家方向再重播。
+                this._visualLastRecoil = this.actionRecoil;
+            }
+            const a = Math.atan2(ty - origin[1], tx - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'toxic');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                damage: this.damage * this.buffDmgMult, radius: 5, color: '#baff5c',
+                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'toxin_dart',
+            });
+        }
+
+        if (needleShot) {
+            const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
+            const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
+            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const frame = clip?.frames.find(frame => frame.event === 'fire');
+            this.actionRecoil = 0.13;
+            let origin: [number, number] = [this.x, this.y];
+            if (frame && this.actorAnimation.play('attack', clip, true)) {
+                this.animationView = facing.view; this.animationMirror = facing.mirror;
+                this.actorAnimation.seekFrame(clip.frames.indexOf(frame));
+                origin = animationSocket(frame, this.x, this.y,
+                    this.radius * 2 * this.visualScale * (clip.displayScale ?? 1), facing.mirror) ?? origin;
+                this._visualLastRecoil = this.actionRecoil;
+            }
+            const a = Math.atan2(ty - origin[1], tx - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                damage: this.damage * this.buffDmgMult, radius: 5, color: '#fff06a',
+                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'needle',
+            });
+        }
+
+        if (acidShot) {
+            const [tx, ty] = acidShot;
+            const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
+            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const frame = clip?.frames.find(frame => frame.event === 'fire');
+            this.actionRecoil = 0.20;
+            let origin: [number, number] = [this.x, this.y];
+            if (frame && this.actorAnimation.play('attack', clip, true)) {
+                this.animationView = facing.view; this.animationMirror = facing.mirror;
+                this.actorAnimation.seekFrame(clip.frames.indexOf(frame));
+                origin = animationSocket(frame, this.x, this.y,
+                    this.radius * 2 * this.visualScale * (clip.displayScale ?? 1), facing.mirror) ?? origin;
+                this._visualLastRecoil = this.actionRecoil;
+            }
+            game.spawnEnemyAcidHazard?.(origin[0], origin[1], tx, ty);
+            game.particles?.toxin?.(origin[0], origin[1]);
+        }
 
         if (this.type === 'blast_tick' && player.alive &&
             Vec.dist(this.x, this.y, player.x, player.y) <= 82 + (player.radius ?? 16)) {
@@ -836,6 +1166,133 @@ export class EnemyBase {
     }
 
     // ── 测试房间小 Boss 专属技能（文档 boss.docx） ──────────
+
+    /** 立即落到技能结算帧，并返回该方向图上绑定的真实释放挂点。 */
+    private _miniSkillOrigin(action: ActorAction, targetX: number, targetY: number): [number, number] {
+        const facing = resolveFacingView(targetX - this.x, targetY - this.y, this.animationView);
+        const clip = actorClip(this.spriteKey, facing.view, action);
+        const frame = clip?.frames.find(candidate => candidate.event === 'cast');
+        if (!clip || !frame || !this.actorAnimation.play(action, clip, true)) return [this.x, this.y];
+        this.animationView = facing.view; this.animationMirror = facing.mirror;
+        this.actorAnimation.seekFrame(clip.frames.indexOf(frame));
+        return animationSocket(frame, this.x, this.y,
+            this.radius * 2 * this.visualScale * (clip.displayScale ?? 1), facing.mirror) ?? [this.x, this.y];
+    }
+
+    private _flushSquidProjectiles(game: any): void {
+        const bomb = this._squidBombTarget;
+        this._squidBombTarget = undefined;
+        if (bomb) {
+            const origin = this._miniSkillOrigin('skill', bomb[0], bomb[1]);
+            const a = Math.atan2(bomb[1] - origin[1], bomb[0] - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'ice');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 240, vy: Math.sin(a) * 240,
+                damage: this.damage * 0.5, radius: 12, color: '#33ccff',
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_bomb',
+                bounceLeft: 1, bounceExplode: true,
+            });
+        }
+        const spikes = this._squidSpikeTarget;
+        this._squidSpikeTarget = undefined;
+        if (spikes) {
+            const origin = this._miniSkillOrigin('skill2', spikes[0], spikes[1]);
+            const base = Math.atan2(spikes[1] - origin[1], spikes[0] - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(base), Math.sin(base), 'ice');
+            for (let i = -1; i <= 1; i++) {
+                const a = base + i * 0.28;
+                game.enemyBullets?.push({
+                    x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                    damage: this.damage * 0.25, radius: 7, color: '#66ddff',
+                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_spike',
+                });
+            }
+        }
+        const grab = this._squidGrabTarget;
+        this._squidGrabTarget = undefined;
+        if (grab) this._miniSkillOrigin('skill3', grab[0], grab[1]);
+    }
+
+    private _flushShrimpSkills(game: any): void {
+        const spike = this._shrimpSpikeTarget;
+        this._shrimpSpikeTarget = undefined;
+        if (spike) {
+            const origin = this._miniSkillOrigin('skill', spike[0], spike[1]);
+            const a = Math.atan2(spike[1] - origin[1], spike[0] - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
+                damage: this.damage * 0.45, radius: 9, color: '#ffaa66',
+                life: 3.5, lifeTime: 3.5, owner: 'enemy', isEnemyBullet: true,
+                pierceShield: true, enemyFx: 'shrimp_spike',
+            });
+        }
+        const tail = this._shrimpTailTarget;
+        this._shrimpTailTarget = undefined;
+        if (tail) this._miniSkillOrigin('skill2', tail[0], tail[1]);
+    }
+
+    private _flushJellySkill(game: any): void {
+        const venom = this._jellyVenomTarget;
+        this._jellyVenomTarget = undefined;
+        if (!venom) return;
+        const origin = this._miniSkillOrigin('skill2', venom[0], venom[1]);
+        const a = Math.atan2(venom[1] - origin[1], venom[0] - origin[0]);
+        game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'toxic');
+        game.enemyBullets?.push({
+            x: origin[0], y: origin[1], vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
+            damage: this.damage * 0.1, radius: 8, color: '#cc66ff',
+            life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+            dot: { dps: 3, dur: 5, color: '#cc66ff' }, enemyFx: 'venom_sting',
+        });
+    }
+
+    private _flushAttackDroneSkills(game: any): void {
+        const sonic = this._droneSonicTarget;
+        this._droneSonicTarget = undefined;
+        if (sonic) {
+            const origin = this._miniSkillOrigin('skill', sonic[0], sonic[1]);
+            const a = Math.atan2(sonic[1] - origin[1], sonic[0] - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                damage: this.damage * 0.4, radius: 9, color: '#ff8888',
+                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                pierceShield: true, enemyFx: 'sonic',
+            });
+        }
+        const beam = this._droneBeamTarget;
+        this._droneBeamTarget = undefined;
+        if (beam) {
+            const origin = this._miniSkillOrigin('skill2', beam[0], beam[1]);
+            const a = Math.atan2(beam[1] - origin[1], beam[0] - origin[0]);
+            game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
+            game.enemyBullets?.push({
+                x: origin[0], y: origin[1], vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
+                damage: 1, radius: 7, color: '#ff5555',
+                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true,
+                homing: true, enemyFx: 'beam', dot: { dps: 4, dur: 3, color: '#ff5555' },
+            });
+        }
+    }
+
+    private _flushSupportDroneSkills(): void {
+        const summon = this._droneSupportSummonTarget;
+        this._droneSupportSummonTarget = undefined;
+        if (summon) this._miniSkillOrigin('skill3', summon[0], summon[1]);
+        const heal = this._droneSupportHealTarget;
+        this._droneSupportHealTarget = undefined;
+        if (heal) this._miniSkillOrigin('skill', heal[0], heal[1]);
+        const shield = this._droneSupportShieldTarget;
+        this._droneSupportShieldTarget = undefined;
+        if (shield) this._miniSkillOrigin('skill2', shield[0], shield[1]);
+    }
+
+    private _flushChainHoundSkill(): void {
+        const trap = this._chainHoundTrapTarget;
+        this._chainHoundTrapTarget = undefined;
+        if (trap) this._miniSkillOrigin('skill2', trap[0], trap[1]);
+    }
 
     private _updateMiniBoss(dt: number, player: any, game: any): void {
         switch (this.type) {
@@ -867,6 +1324,7 @@ export class EnemyBase {
             game.floatingText?.spawn?.(this.x, this.y - 46, '链钉冲猎', '#ff756d', 15, true);
         } else if (this._miniCd2 <= 0 && this._miniCd1 > 1.5) {
             this._miniCd2 = 8;
+            this._chainHoundTrapTarget = [player.x, player.y];
             const a = Math.atan2(player.y - this.y, player.x - this.x);
             const px = -Math.sin(a), py = Math.cos(a);
             game.spawnHoundTraps?.(
@@ -1196,33 +1654,20 @@ export class EnemyBase {
         if (this._miniCd2 <= 0) {
             this._miniCd2 = 4;
             this._miniSkillCount++;
-            const a = Math.atan2(player.y - this.y, player.x - this.x);
-            game.enemyBullets?.push({
-                x: this.x, y: this.y, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240,
-                damage: this.damage * 0.5, radius: 12, color: '#33ccff',
-                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_bomb',
-                bounceLeft: 1, bounceExplode: true,
-            });
+            this._squidBombTarget = [player.x, player.y];
         }
         // 技能3 分裂水刺：向前 3 发 10 伤害
         if (this._miniTimer <= 0) {
             this._miniTimer = 5;
             this._miniSkillCount++;
-            const base = Math.atan2(player.y - this.y, player.x - this.x);
-            for (let i = -1; i <= 1; i++) {
-                const a = base + i * 0.28;
-                game.enemyBullets?.push({
-                    x: this.x, y: this.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
-                    damage: this.damage * 0.25, radius: 7, color: '#66ddff',
-                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_spike',
-                });
-            }
+            this._squidSpikeTarget = [player.x, player.y];
         }
         // 技能1 缠绕：贴脸触发，控制主角 2 秒
         if (this._miniCd1 <= 0 &&
             Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 20) {
             this._miniCd1 = 8;
             this._miniSkillCount++;
+            this._squidGrabTarget = [player.x, player.y];
             player.applyBuff?.('squid_grab', 2, { noMove: true });
             game.particles?.hexActivate?.(player.x, player.y, '#33ccff');
             game.floatingText?.spawn?.(player.x, player.y - 50, '缠绕！', '#33ccff', 18, true);
@@ -1248,6 +1693,7 @@ export class EnemyBase {
                     e !== this && !e.dead && Vec.dist(e.x, e.y, this.x, this.y) < 220);
                 if (hasAlly) {
                     this.maxShieldHp = 100; this.shieldHp = 100; this.shieldActive = true;
+                    this._miniSkillOrigin('skill', player.x, player.y);
                     game.particles?.shieldBlock?.(this.x, this.y, false);
                     game.floatingText?.spawn?.(this.x, this.y - 46, '龟壳护盾', '#55ff77', 14, true);
                 }
@@ -1273,13 +1719,7 @@ export class EnemyBase {
         // 技能2 发射尖刺：可破盾并造成 20 伤害
         if (this._miniCd1 <= 0) {
             this._miniCd1 = 4.5;
-            const a = Math.atan2(player.y - this.y, player.x - this.x);
-            game.enemyBullets?.push({
-                x: this.x, y: this.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
-                damage: this.damage * 0.45, radius: 9, color: '#ffaa66',
-                life: 3.5, lifeTime: 3.5, owner: 'enemy', isEnemyBullet: true,
-                pierceShield: true, enemyFx: 'shrimp_spike',
-            });
+            this._shrimpSpikeTarget = [player.x, player.y];
         }
         // 技能4 甩击：近身触发，30 伤害 + 主角眩晕 1.5 秒
         if (this._miniCd2 <= 0 &&
@@ -1290,6 +1730,7 @@ export class EnemyBase {
             player.takeDamage(this.damage * this.buffDmgMult * 0.67, game); // 30/45
             player.applyBuff?.('shrimp_stun', 1.5, { noMove: true });
             game.floatingText?.spawn?.(player.x, player.y - 50, '眩晕！', '#ffcc66', 18, true);
+            this._shrimpTailTarget = [player.x, player.y];
         }
     }
 
@@ -1302,19 +1743,14 @@ export class EnemyBase {
             this.invulnerable = this.invisible;
             this._miniTimer = this.invisible ? 3 : 2;
             if (this.invisible) {
+                this._miniSkillOrigin('skill', player.x, player.y);
                 game.floatingText?.spawn?.(this.x, this.y - 40, '隐身…', '#cc88ff', 14, true);
             }
         }
         // 技能2 毒刺：命中挂 5 秒 DoT（每秒 3 伤害，可叠加）
         if (this._miniCd1 <= 0 && player.alive && !this.invisible) {
             this._miniCd1 = 5;
-            const a = Math.atan2(player.y - this.y, player.x - this.x);
-            game.enemyBullets?.push({
-                x: this.x, y: this.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
-                damage: this.damage * 0.1, radius: 8, color: '#cc66ff',
-                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
-                dot: { dps: 3, dur: 5, color: '#cc66ff' }, enemyFx: 'venom_sting',
-            });
+            this._jellyVenomTarget = [player.x, player.y];
         }
     }
 
@@ -1325,24 +1761,12 @@ export class EnemyBase {
         // 技能1 声波攻击：让主角护盾失效（破盾）+ 伤害
         if (this._miniCd1 <= 0) {
             this._miniCd1 = 3.5;
-            const a = Math.atan2(player.y - this.y, player.x - this.x);
-            game.enemyBullets?.push({
-                x: this.x, y: this.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
-                damage: this.damage * 0.4, radius: 9, color: '#ff8888',
-                life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
-                pierceShield: true, enemyFx: 'sonic',
-            });
+            this._droneSonicTarget = [player.x, player.y];
         }
         // 技能2 高能光束：锁定弹，命中挂 3 秒 DoT（每秒 4 伤害）
         if (this._miniCd2 <= 0) {
             this._miniCd2 = 6;
-            const a = Math.atan2(player.y - this.y, player.x - this.x);
-            game.enemyBullets?.push({
-                x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
-                damage: 1, radius: 7, color: '#ff5555',
-                life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'beam',
-                dot: { dps: 4, dur: 3, color: '#ff5555' },
-            });
+            this._droneBeamTarget = [player.x, player.y];
         }
     }
 
@@ -1352,6 +1776,7 @@ export class EnemyBase {
         // 技能3 召唤 5 个攻击性无人机（环绕散布）
         if (this._miniTimer <= 0) {
             this._miniTimer = 10;
+            this._droneSupportSummonTarget = [player.x, player.y];
             for (let i = 0; i < 5; i++) {
                 const a = Rng.float(0, Math.PI * 2);
                 game.spawnEnemy?.('drone_a', this.x + Math.cos(a) * 90, this.y + Math.sin(a) * 90);
@@ -1363,6 +1788,7 @@ export class EnemyBase {
             this._miniCd1 = 6;
             const targets = this._nearbyAllies(game, 300);
             const n = Math.min(targets.length, Rng.int(5, 10));
+            this._droneSupportHealTarget = n > 0 ? [targets[0].x, targets[0].y] : [player.x, player.y];
             for (let i = 0; i < n; i++) {
                 const t = targets[i];
                 t.hp = Math.min(t.maxHp, t.hp + Rng.int(40, 60));
@@ -1376,6 +1802,7 @@ export class EnemyBase {
             this._miniCd2 = 8;
             const targets = this._nearbyAllies(game, 300);
             const n = Math.min(targets.length, Rng.int(5, 10));
+            this._droneSupportShieldTarget = n > 0 ? [targets[0].x, targets[0].y] : [player.x, player.y];
             for (let i = 0; i < n; i++) {
                 const t = targets[i];
                 t.maxShieldHp = 150; t.shieldHp = 150; t.shieldActive = true;
@@ -1400,11 +1827,16 @@ export class EnemyBase {
      */
     getVisualFacing(player: any, movementX = 1, movementY = 0): [number, number] {
         if (this.type === 'gold_scavenger') return [this.combatFacingX, this.combatFacingY];
+        if (this._chargeT > 0) return [this.combatFacingX, this.combatFacingY];
         let tx: number | undefined;
         let ty: number | undefined;
         if (this.attackWindup > 0) {
             tx = this.attackTargetX;
             ty = this.attackTargetY;
+        } else if ((this.type === 'archer' || this.type === 'needle_gunner' || this.type === 'acid_sac') &&
+            (this.rangedAimWindup > 0 || this.actionRecoil > 0)) {
+            tx = this.rangedAimTargetX;
+            ty = this.rangedAimTargetY;
         } else if (player?.alive !== false && player) {
             tx = player.x;
             ty = player.y;
@@ -1441,7 +1873,10 @@ export class EnemyBase {
             const cx = clamp(playerX + Math.cos(angle) * minDistance, radius, CANVAS_W - radius);
             const cy = clamp(playerY + Math.sin(angle) * minDistance, radius, PLAYFIELD_BOTTOM - radius);
             const dist2 = Vec.dist2(cx, cy, playerX, playerY);
-            if (dist2 > bestDist2) { bestX = cx; bestY = cy; bestDist2 = dist2; }
+            // 优先保留脚本指定的出生方向。等半径候选的浮点尾差不能让相反方位
+            // 都跳到同一个“最远”点，导致多只怪物完全重叠。
+            if (dist2 + 1e-6 >= minDistance * minDistance) return [cx, cy];
+            if (dist2 > bestDist2 + 1e-6) { bestX = cx; bestY = cy; bestDist2 = dist2; }
         }
         return [bestX, bestY];
     }

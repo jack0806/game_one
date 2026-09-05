@@ -1,0 +1,134 @@
+{
+  "ver": "1.0.27",
+  "importer": "image",
+  "imported": true,
+  "uuid": "5d8495d5-52f3-4087-85c8-908b13c109d2",
+  "files": [
+    ".json",
+    ".png"
+  ],
+  "subMetas": {
+    "6c48a": {
+      "importer": "texture",
+      "uuid": "5d8495d5-52f3-4087-85c8-908b13c109d2@6c48a",
+      "displayName": "anim_rust_biter_back",
+      "id": "6c48a",
+      "name": "texture",
+      "userData": {
+        "wrapModeS": "clamp-to-edge",
+        "wrapModeT": "clamp-to-edge",
+        "imageUuidOrDatabaseUri": "5d8495d5-52f3-4087-85c8-908b13c109d2",
+        "isUuid": true,
+        "visible": false,
+        "minfilter": "linear",
+        "magfilter": "linear",
+        "mipfilter": "none",
+        "anisotropy": 0
+      },
+      "ver": "1.0.22",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    },
+    "f9941": {
+      "importer": "sprite-frame",
+      "uuid": "5d8495d5-52f3-4087-85c8-908b13c109d2@f9941",
+      "displayName": "anim_rust_biter_back",
+      "id": "f9941",
+      "name": "spriteFrame",
+      "userData": {
+        "trimThreshold": 1,
+        "rotated": false,
+        "offsetX": -4,
+        "offsetY": -52.5,
+        "trimX": 67,
+        "trimY": 138,
+        "width": 1394,
+        "height": 2517,
+        "rawWidth": 1536,
+        "rawHeight": 2688,
+        "borderTop": 0,
+        "borderBottom": 0,
+        "borderLeft": 0,
+        "borderRight": 0,
+        "packable": false,
+        "pixelsToUnit": 100,
+        "pivotX": 0.5,
+        "pivotY": 0.5,
+        "meshType": 0,
+        "vertices": {
+          "rawPosition": [
+            -697,
+            -1258.5,
+            0,
+            697,
+            -1258.5,
+            0,
+            -697,
+            1258.5,
+            0,
+            697,
+            1258.5,
+            0
+          ],
+          "indexes": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "uv": [
+            67,
+            2550,
+            1461,
+            2550,
+            67,
+            33,
+            1461,
+            33
+          ],
+          "nuv": [
+            0.043619791666666664,
+            0.012276785714285714,
+            0.951171875,
+            0.012276785714285714,
+            0.043619791666666664,
+            0.9486607142857143,
+            0.951171875,
+            0.9486607142857143
+          ],
+          "minPos": [
+            -697,
+            -1258.5,
+            0
+          ],
+          "maxPos": [
+            697,
+            1258.5,
+            0
+          ]
+        },
+        "isUuid": true,
+        "imageUuidOrDatabaseUri": "5d8495d5-52f3-4087-85c8-908b13c109d2@6c48a",
+        "atlasUuid": "",
+        "trimType": "auto"
+      },
+      "ver": "1.0.12",
+      "imported": true,
+      "files": [
+        ".json"
+      ],
+      "subMetas": {}
+    }
+  },
+  "userData": {
+    "type": "sprite-frame",
+    "fixAlphaTransparencyArtifacts": false,
+    "hasAlpha": true,
+    "redirect": "5d8495d5-52f3-4087-85c8-908b13c109d2@6c48a"
+  }
+}

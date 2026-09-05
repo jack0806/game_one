@@ -1,0 +1,256 @@
+{
+  "source": "exec-4d23aac5-fc4f-4679-956f-6cadaf93510f.png",
+  "output": "anim_squid_front_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        85,
+        52,
+        383,
+        410
+      ],
+      "transparentRatio": 0.7121,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        59,
+        60,
+        378,
+        420
+      ],
+      "transparentRatio": 0.708,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        65,
+        60,
+        378,
+        420
+      ],
+      "transparentRatio": 0.7113,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        60,
+        65,
+        361,
+        419
+      ],
+      "transparentRatio": 0.7214,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        65,
+        111,
+        395,
+        413
+      ],
+      "transparentRatio": 0.7869,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        43,
+        120,
+        368,
+        420
+      ],
+      "transparentRatio": 0.7912,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        51,
+        116,
+        390,
+        417
+      ],
+      "transparentRatio": 0.7741,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        60,
+        121,
+        353,
+        419
+      ],
+      "transparentRatio": 0.7899,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        71,
+        137,
+        385,
+        412
+      ],
+      "transparentRatio": 0.8039,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        50,
+        130,
+        374,
+        407
+      ],
+      "transparentRatio": 0.7967,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        39,
+        135,
+        374,
+        396
+      ],
+      "transparentRatio": 0.7945,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        30,
+        139,
+        377,
+        420
+      ],
+      "transparentRatio": 0.785,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        142,
+        122,
+        320,
+        365
+      ],
+      "transparentRatio": 0.8564,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        98,
+        76,
+        306,
+        355
+      ],
+      "transparentRatio": 0.8295,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        70,
+        75,
+        330,
+        342
+      ],
+      "transparentRatio": 0.8224,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        57,
+        100,
+        334,
+        420
+      ],
+      "transparentRatio": 0.7679,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      338,
+      630,
+      922,
+      1249
+    ],
+    "scale": 1.15,
+    "targetBaseline": 420,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    },
+    "isolatedGrid": true,
+    "note": "深海鱿鱼正面移动按整图连通主体保留跨格触手，以每行动作最低点作为共同基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

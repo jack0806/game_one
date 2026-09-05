@@ -1,0 +1,11 @@
+{
+  "rowCuts": [0, 237, 457, 670, 891, 1126, 1352, 1523, 1774],
+  "baselines": [212, 437, 647, 881, 1101, 1318, 1514, 1736],
+  "scale": 0.95,
+  "targetBaseline": 232,
+  "columnCuts": { "6": [0, 213, 394, 652, 887] },
+  "isolatedRows": [6],
+  "frameOverrides": [
+    { "row": 7, "column": 1, "source": "exec-11e99924-952e-4395-8537-841aa22505cd.png" }
+  ]
+}

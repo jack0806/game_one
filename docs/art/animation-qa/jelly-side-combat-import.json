@@ -1,0 +1,208 @@
+{
+  "source": "exec-f1972a20-4a27-40f4-ac62-a4384922b151.png",
+  "output": "anim_jelly_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        37,
+        164,
+        435,
+        408
+      ],
+      "transparentRatio": 0.7211,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        17,
+        169,
+        448,
+        405
+      ],
+      "transparentRatio": 0.7501,
+      "edgePixels": 34
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        0,
+        167,
+        448,
+        414
+      ],
+      "transparentRatio": 0.7495,
+      "edgePixels": 71
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        0,
+        177,
+        420,
+        415
+      ],
+      "transparentRatio": 0.7613,
+      "edgePixels": 41
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        45,
+        119,
+        442,
+        373
+      ],
+      "transparentRatio": 0.7178,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        54,
+        127,
+        401,
+        374
+      ],
+      "transparentRatio": 0.7634,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        22,
+        133,
+        365,
+        377
+      ],
+      "transparentRatio": 0.7762,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        16,
+        120,
+        383,
+        377
+      ],
+      "transparentRatio": 0.7455,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        51,
+        64,
+        429,
+        356
+      ],
+      "transparentRatio": 0.7194,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        13,
+        144,
+        448,
+        364
+      ],
+      "transparentRatio": 0.7643,
+      "edgePixels": 8
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        0,
+        225,
+        448,
+        366
+      ],
+      "transparentRatio": 0.8144,
+      "edgePixels": 11
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        0,
+        247,
+        416,
+        364
+      ],
+      "transparentRatio": 0.8655,
+      "edgePixels": 3
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        51,
+        60,
+        421,
+        304
+      ],
+      "transparentRatio": 0.7527,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        29,
+        59,
+        406,
+        304
+      ],
+      "transparentRatio": 0.9404,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        227,
+        89,
+        344,
+        271
+      ],
+      "transparentRatio": 0.9998,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        9,
+        62,
+        377,
+        303
+      ],
+      "transparentRatio": 0.7549,
+      "edgePixels": 0
+    }
+  ],
+  "layout": null,
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

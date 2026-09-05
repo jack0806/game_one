@@ -1,0 +1,255 @@
+{
+  "source": "exec-3b624283-5b9c-4d22-bf44-c3910760a6b4.png",
+  "output": "anim_rivet_beast_front_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        78,
+        97,
+        400,
+        397
+      ],
+      "transparentRatio": 0.7149,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        64,
+        100,
+        389,
+        399
+      ],
+      "transparentRatio": 0.7084,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        58,
+        98,
+        383,
+        401
+      ],
+      "transparentRatio": 0.7072,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        54,
+        100,
+        351,
+        402
+      ],
+      "transparentRatio": 0.7163,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        106,
+        123,
+        374,
+        393
+      ],
+      "transparentRatio": 0.7538,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        80,
+        130,
+        368,
+        382
+      ],
+      "transparentRatio": 0.7583,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        93,
+        127,
+        359,
+        402
+      ],
+      "transparentRatio": 0.7526,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        68,
+        133,
+        335,
+        389
+      ],
+      "transparentRatio": 0.7636,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        102,
+        133,
+        371,
+        388
+      ],
+      "transparentRatio": 0.763,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        85,
+        146,
+        382,
+        402
+      ],
+      "transparentRatio": 0.764,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        73,
+        144,
+        351,
+        370
+      ],
+      "transparentRatio": 0.7982,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        75,
+        132,
+        323,
+        383
+      ],
+      "transparentRatio": 0.7887,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        90,
+        144,
+        373,
+        387
+      ],
+      "transparentRatio": 0.7695,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        92,
+        177,
+        344,
+        400
+      ],
+      "transparentRatio": 0.8053,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        114,
+        123,
+        333,
+        402
+      ],
+      "transparentRatio": 0.8088,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        84,
+        133,
+        323,
+        373
+      ],
+      "transparentRatio": 0.8049,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      240,
+      444,
+      644,
+      856
+    ],
+    "baselines": [
+      223,
+      431,
+      629,
+      835
+    ],
+    "scale": 1.45,
+    "targetBaseline": 400,
+    "columnCuts": {
+      "0": [
+        0,
+        266,
+        512,
+        761,
+        1024
+      ],
+      "1": [
+        0,
+        262,
+        516,
+        755,
+        1024
+      ],
+      "2": [
+        0,
+        262,
+        513,
+        754,
+        1024
+      ],
+      "3": [
+        0,
+        268,
+        515,
+        748,
+        1024
+      ]
+    },
+    "note": "铆甲兽正面首稿实际6行；只采用前4行待机、走、跑、跳，按透明间隔切行并共用脚底基线。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

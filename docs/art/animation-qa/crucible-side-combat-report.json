@@ -1,0 +1,255 @@
+{
+  "source": "exec-d5765a32-acee-4d3e-bba4-b533d1e16b32.png",
+  "output": "anim_boss_crucible_city_side_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        125,
+        206,
+        315,
+        353
+      ],
+      "transparentRatio": 0.9305,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        125,
+        209,
+        326,
+        353
+      ],
+      "transparentRatio": 0.9311,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        126,
+        208,
+        330,
+        353
+      ],
+      "transparentRatio": 0.9304,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        126,
+        212,
+        316,
+        353
+      ],
+      "transparentRatio": 0.934,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        125,
+        215,
+        328,
+        355
+      ],
+      "transparentRatio": 0.9321,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        122,
+        214,
+        326,
+        355
+      ],
+      "transparentRatio": 0.9315,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        127,
+        213,
+        321,
+        355
+      ],
+      "transparentRatio": 0.9286,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        127,
+        220,
+        326,
+        355
+      ],
+      "transparentRatio": 0.9317,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        125,
+        247,
+        321,
+        355
+      ],
+      "transparentRatio": 0.9403,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        125,
+        259,
+        319,
+        356
+      ],
+      "transparentRatio": 0.9488,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        120,
+        269,
+        323,
+        355
+      ],
+      "transparentRatio": 0.9599,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        120,
+        284,
+        321,
+        356
+      ],
+      "transparentRatio": 0.9687,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        125,
+        210,
+        334,
+        355
+      ],
+      "transparentRatio": 0.929,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        114,
+        210,
+        334,
+        355
+      ],
+      "transparentRatio": 0.9307,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        114,
+        210,
+        334,
+        355
+      ],
+      "transparentRatio": 0.9308,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        114,
+        210,
+        318,
+        355
+      ],
+      "transparentRatio": 0.9309,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      940,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      940,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "cellInset": 4,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        940,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "已核对三方向身份、动作语义、透明背景、共同基线与单格完整性；Playwright逐动作页面复核通过"
+}

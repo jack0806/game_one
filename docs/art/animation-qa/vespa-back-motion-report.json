@@ -1,0 +1,255 @@
+{
+  "source": "exec-9c3647fb-9fdd-4ed4-8fa3-0f7e7f264e0a.png",
+  "output": "anim_boss_vespa_back_motion.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        136,
+        207,
+        334,
+        403
+      ],
+      "transparentRatio": 0.9174,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        132,
+        207,
+        321,
+        403
+      ],
+      "transparentRatio": 0.9185,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        125,
+        206,
+        317,
+        403
+      ],
+      "transparentRatio": 0.9182,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        116,
+        204,
+        310,
+        403
+      ],
+      "transparentRatio": 0.9166,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        135,
+        227,
+        335,
+        390
+      ],
+      "transparentRatio": 0.9231,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        134,
+        229,
+        320,
+        389
+      ],
+      "transparentRatio": 0.9249,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        126,
+        231,
+        308,
+        385
+      ],
+      "transparentRatio": 0.926,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        119,
+        230,
+        305,
+        385
+      ],
+      "transparentRatio": 0.9245,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        138,
+        228,
+        332,
+        356
+      ],
+      "transparentRatio": 0.9422,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        129,
+        227,
+        325,
+        352
+      ],
+      "transparentRatio": 0.941,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        121,
+        227,
+        316,
+        350
+      ],
+      "transparentRatio": 0.9414,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        113,
+        226,
+        308,
+        353
+      ],
+      "transparentRatio": 0.9416,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        143,
+        196,
+        326,
+        344
+      ],
+      "transparentRatio": 0.9298,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        143,
+        198,
+        311,
+        336
+      ],
+      "transparentRatio": 0.9252,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        135,
+        178,
+        304,
+        316
+      ],
+      "transparentRatio": 0.9287,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        119,
+        211,
+        308,
+        344
+      ],
+      "transparentRatio": 0.9243,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.72,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "accepted",
+  "note": "浏览器三方向与五技能峰值检查通过"
+}

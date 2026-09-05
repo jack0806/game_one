@@ -1,0 +1,255 @@
+{
+  "source": "exec-e54b1015-2b12-4697-82ab-2f6b64dec302.png",
+  "output": "anim_archer_back_motion.png",
+  "size": [
+    1280,
+    1280
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        137,
+        98,
+        229,
+        257
+      ],
+      "transparentRatio": 0.9184,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        113,
+        97,
+        202,
+        257
+      ],
+      "transparentRatio": 0.9226,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        99,
+        97,
+        189,
+        258
+      ],
+      "transparentRatio": 0.9213,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        85,
+        98,
+        173,
+        258
+      ],
+      "transparentRatio": 0.9232,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        136,
+        108,
+        230,
+        264
+      ],
+      "transparentRatio": 0.9214,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        111,
+        108,
+        202,
+        263
+      ],
+      "transparentRatio": 0.9258,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        97,
+        108,
+        189,
+        262
+      ],
+      "transparentRatio": 0.926,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        85,
+        107,
+        173,
+        261
+      ],
+      "transparentRatio": 0.9268,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        135,
+        106,
+        228,
+        269
+      ],
+      "transparentRatio": 0.9273,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        115,
+        105,
+        202,
+        269
+      ],
+      "transparentRatio": 0.9296,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        100,
+        106,
+        186,
+        257
+      ],
+      "transparentRatio": 0.9293,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        88,
+        107,
+        176,
+        269
+      ],
+      "transparentRatio": 0.929,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        139,
+        114,
+        230,
+        258
+      ],
+      "transparentRatio": 0.932,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        122,
+        114,
+        202,
+        254
+      ],
+      "transparentRatio": 0.9363,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        103,
+        114,
+        184,
+        255
+      ],
+      "transparentRatio": 0.9354,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        91,
+        114,
+        176,
+        256
+      ],
+      "transparentRatio": 0.9345,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      345,
+      642,
+      950,
+      1254
+    ],
+    "baselines": [
+      329,
+      622,
+      925,
+      1208
+    ],
+    "scale": 0.55,
+    "targetBaseline": 256,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    },
+    "note": "背面8帧步行+8帧奔跑制作稿；统一脚底基线与比例，不按透明包围盒逐格重排。"
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

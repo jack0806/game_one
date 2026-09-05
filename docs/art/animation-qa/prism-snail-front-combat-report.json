@@ -1,0 +1,255 @@
+{
+  "source": "exec-f62d01f3-64d3-4970-84d3-a5c64011c119.png",
+  "output": "anim_prism_snail_front_combat.png",
+  "size": [
+    1792,
+    1792
+  ],
+  "columns": 4,
+  "rows": 4,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        114,
+        169,
+        348,
+        409
+      ],
+      "transparentRatio": 0.8141,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        109,
+        211,
+        333,
+        399
+      ],
+      "transparentRatio": 0.85,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        92,
+        208,
+        345,
+        423
+      ],
+      "transparentRatio": 0.8079,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        99,
+        169,
+        333,
+        409
+      ],
+      "transparentRatio": 0.8127,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "bounds": [
+        106,
+        213,
+        334,
+        414
+      ],
+      "transparentRatio": 0.8358,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "bounds": [
+        112,
+        214,
+        340,
+        414
+      ],
+      "transparentRatio": 0.836,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "bounds": [
+        106,
+        208,
+        330,
+        425
+      ],
+      "transparentRatio": 0.8282,
+      "edgePixels": 0
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "bounds": [
+        103,
+        208,
+        332,
+        425
+      ],
+      "transparentRatio": 0.8295,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "bounds": [
+        108,
+        200,
+        339,
+        386
+      ],
+      "transparentRatio": 0.8551,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 1,
+      "bounds": [
+        110,
+        233,
+        323,
+        385
+      ],
+      "transparentRatio": 0.8834,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "bounds": [
+        106,
+        214,
+        331,
+        390
+      ],
+      "transparentRatio": 0.8581,
+      "edgePixels": 0
+    },
+    {
+      "row": 2,
+      "column": 3,
+      "bounds": [
+        104,
+        267,
+        327,
+        390
+      ],
+      "transparentRatio": 0.9011,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "bounds": [
+        117,
+        157,
+        333,
+        347
+      ],
+      "transparentRatio": 0.8571,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "bounds": [
+        111,
+        157,
+        329,
+        347
+      ],
+      "transparentRatio": 0.8566,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "bounds": [
+        109,
+        157,
+        328,
+        379
+      ],
+      "transparentRatio": 0.8531,
+      "edgePixels": 0
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "bounds": [
+        108,
+        157,
+        328,
+        347
+      ],
+      "transparentRatio": 0.8553,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      314,
+      627,
+      941,
+      1254
+    ],
+    "baselines": [
+      314,
+      627,
+      941,
+      1254
+    ],
+    "targetBaseline": 390,
+    "scale": 0.84,
+    "isolatedGrid": true,
+    "columnCuts": {
+      "0": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "1": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "2": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ],
+      "3": [
+        0,
+        314,
+        627,
+        941,
+        1254
+      ]
+    }
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

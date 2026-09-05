@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,">
+<title>Hexblast 动作逐帧检查</title>
+<style>
+body{margin:0;padding:28px;background:#10151f;color:#e2eaf5;font:15px system-ui}h1{font-size:24px;margin:0 0 10px}p{color:#adb9cb}header{max-width:1100px;margin:auto}nav{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0}button,select{background:#243148;color:#e2eaf5;border:1px solid #4b6080;border-radius:6px;padding:9px}label{display:flex;gap:7px;align-items:center}.grid{display:grid;grid-template-columns:repeat(3,minmax(230px,1fr));gap:18px;max-width:1100px;margin:auto}article{background:#1b2433;border:1px solid #36445a;padding:16px;border-radius:10px}h2{margin:0;font-size:18px}canvas{display:block;width:100%;background:repeating-conic-gradient(#293447 0 25%,#222d3e 0 50%) 0/24px 24px;border-radius:6px}.frame{font:13px monospace;color:#b7d0e4;min-height:50px;margin-top:12px}.small{margin:10px auto 0;width:100px;height:100px}#status{min-height:24px}input[type=range]{width:150px}@media(max-width:760px){.grid{grid-template-columns:1fr}body{padding:16px}}
+</style>
+<header><h1>Hexblast 动作逐帧检查</h1><p>制作稿，尚未通过全套动作验收。青色十字为逻辑原点，橙色圆点为武器挂点。下方小图按该单位在游戏中的实际画布尺寸显示。</p>
+<nav><label>角色 <select id="actor"></select></label><label>动作 <select id="action"></select></label><button id="pause">暂停</button><button id="first">首帧</button><button id="step">下一帧</button><label><input id="mirror" type="checkbox">镜像</label><label><input id="marks" type="checkbox" checked>显示挂点</label><label>速度 <input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"><span id="rate">1×</span></label><label>背景 <select id="background"><option value="dark">深色</option><option value="light">浅色</option></select></label></nav><p id="status">正在载入动作清单…</p></header>
+<main class="grid"></main>
+<script>
+const $=id=>document.getElementById(id), labels={idle:'待机',walk:'行走',run:'奔跑',jump:'跳跃',attack:'攻击',attackMelee:'近战形态',hit:'受击',defeated:'倒下',skill:'技能1',skill2:'技能2',skill3:'技能3',skill4:'技能4',skill5:'技能5'};
+let database={}, sizes={}, images={}, entries=[], running=true, last=0, buildVersion=0, initialFrame=0;
+async function init(){sizes=await(await fetch('./preview-sizes.json')).json();database=await(await fetch('./preview-data.json')).json();for(const key of Object.keys(database))$('actor').add(new Option(key,key));for(const [key,label]of Object.entries(labels))$('action').add(new Option(label,key));const params=new URLSearchParams(location.search),actor=params.get('actor'),hash=location.hash.slice(1).split(':'),action=params.get('action')||hash[0];initialFrame=Math.max(0,Number(hash[1])||0);running=initialFrame===0;$('actor').value=actor&&database[actor]?actor:$('actor').value;$('action').value=action&&labels[action]?action:'walk';await rebuild();requestAnimationFrame(tick)}
+async function rebuild(){
+    const version=++buildVersion, set=database[$('actor').value], action=$('action').value;
+    entries=[];$('step').disabled=$('first').disabled=true;
+    document.querySelector('main').replaceChildren();$('status').textContent='正在载入动作…';
+    const next=[], fragment=document.createDocumentFragment();
+    for(const [view,name] of [['front','正面'],['side','侧面'],['back','背面']]){
+        const clip=set[view]?.[action], article=document.createElement('article');
+        article.innerHTML=`<h2>${name}</h2><canvas width="400" height="400"></canvas><canvas class="small" width="140" height="140" style="width:140px;height:140px"></canvas><div class="frame"></div>`;
+        fragment.append(article);
+        if(!clip){article.querySelector('.frame').textContent='此方向尚无制作稿';continue}
+        if(!images[clip.sheet]){const img=new Image();img.src='../../../assets/resources/art/'+clip.sheet+'.png';await img.decode();images[clip.sheet]=img}
+        if(version!==buildVersion)return;
+        next.push({clip,frame:Math.min(initialFrame,clip.frames.length-1),elapsed:0,article});
+    }
+    if(version!==buildVersion)return;
+    document.querySelector('main').replaceChildren(fragment);entries=next;
+    $('step').disabled=$('first').disabled=false;
+    $('status').textContent='已载入 '+entries.length+' 个方向；一次性动作停在最后一帧。';draw();
+}
+function draw(){for(const entry of entries){const {clip,frame,article}=entry;const f=clip.frames[frame];for(const [i,canvas]of [...article.querySelectorAll('canvas')].entries()){const ctx=canvas.getContext('2d'),size=(i?(sizes[document.getElementById("actor").value]||82):256)*(clip.displayScale||1),center=canvas.width/2;ctx.clearRect(0,0,canvas.width,canvas.height);if($('background').value==='light'){ctx.fillStyle='#ebedf0';ctx.fillRect(0,0,canvas.width,canvas.height)}const img=images[clip.sheet],w=img.width/clip.columns,h=img.height/clip.rows;ctx.save();ctx.translate(center,center);ctx.scale($('mirror').checked?-1:1,1);ctx.drawImage(img,(f.index%clip.columns)*w,Math.floor(f.index/clip.columns)*h,w,h,-f.pivot[0]*size,-f.pivot[1]*size,size,size);if($('marks').checked){ctx.strokeStyle='#29eee6';ctx.lineWidth=i?1:2;ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(8,0);ctx.moveTo(0,-8);ctx.lineTo(0,8);ctx.stroke();if(f.muzzle){ctx.strokeStyle='#ffbc61';ctx.beginPath();ctx.arc((f.muzzle[0]-f.pivot[0])*size,(f.muzzle[1]-f.pivot[1])*size,i?2:5,0,Math.PI*2);ctx.stroke()}}ctx.restore()}article.querySelector('.frame').textContent=`${frame+1}/${clip.frames.length} · ${clip.sheet}\n${f.event||'—'} · ${f.seconds}s`}}
+function tick(now){const dt=last?Math.min(.05,(now-last)/1000):0;last=now;if(running)for(const e of entries){e.elapsed+=dt*Number($('speed').value);while(e.elapsed>=e.clip.frames[e.frame].seconds){e.elapsed-=e.clip.frames[e.frame].seconds;if(e.frame+1<e.clip.frames.length)e.frame++;else if(e.clip.loop)e.frame=0;else{e.elapsed=0;break}}}draw();requestAnimationFrame(tick)}
+$('actor').onchange=$('action').onchange=()=>rebuild().catch(error=>$('status').textContent=error.message);$('pause').onclick=()=>{running=!running;$('pause').textContent=running?'暂停':'播放'};$('step').onclick=()=>{running=false;$('pause').textContent='播放';for(const e of entries){e.frame=(e.frame+1)%e.clip.frames.length;e.elapsed=0}draw()};$('first').onclick=()=>{running=false;$('pause').textContent='播放';for(const e of entries){e.frame=0;e.elapsed=0}draw()};$('speed').oninput=()=>{$('rate').textContent=$('speed').value+'×'};init().catch(error=>$('status').textContent='载入失败：'+error.message);
+</script></html>

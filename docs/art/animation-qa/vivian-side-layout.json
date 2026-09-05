@@ -1,0 +1,76 @@
+{
+  "rowCuts": [
+    0,
+    269,
+    507,
+    710,
+    938,
+    1175,
+    1404,
+    1558,
+    1774
+  ],
+  "baselines": [
+    252,
+    489,
+    697,
+    924,
+    1160,
+    1390,
+    1542,
+    1765
+  ],
+  "scale": 0.84,
+  "columnCuts": {
+    "6": [
+      0,
+      197,
+      396,
+      624,
+      887
+    ]
+  },
+  "targetBaseline": 232,
+  "frameOverrides": [
+    {
+      "row": 4,
+      "column": 0,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 4,
+      "column": 2,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 5,
+      "column": 0,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 5,
+      "column": 1,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 5,
+      "column": 2,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    },
+    {
+      "row": 5,
+      "column": 3,
+      "source": "exec-f3233c17-b9c4-4579-a47a-74e23f0800f9.png"
+    }
+  ]
+}

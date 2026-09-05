@@ -1,0 +1,85 @@
+{
+  "source": "exec-bb6bc950-446a-41dd-95f8-237d4c72e207.png",
+  "output": "anim_frost_acolyte_front_skill.png",
+  "size": [
+    1792,
+    448
+  ],
+  "columns": 4,
+  "rows": 1,
+  "cells": [
+    {
+      "row": 0,
+      "column": 0,
+      "bounds": [
+        49,
+        14,
+        410,
+        340
+      ],
+      "transparentRatio": 0.799,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "bounds": [
+        46,
+        13,
+        406,
+        339
+      ],
+      "transparentRatio": 0.7936,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "bounds": [
+        41,
+        13,
+        401,
+        339
+      ],
+      "transparentRatio": 0.7972,
+      "edgePixels": 0
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "bounds": [
+        39,
+        13,
+        399,
+        339
+      ],
+      "transparentRatio": 0.8023,
+      "edgePixels": 0
+    }
+  ],
+  "layout": {
+    "rowCuts": [
+      0,
+      793
+    ],
+    "baselines": [
+      650
+    ],
+    "scale": 0.9,
+    "targetBaseline": 410,
+    "columnCuts": {
+      "0": [
+        0,
+        496,
+        992,
+        1487,
+        1983
+      ]
+    },
+    "note": "冰棱侍从按整图连通主体保留三枚主晶体和跨格短特效，以共同悬浮根装箱，不逐帧缩放或补画。",
+    "isolatedGrid": true
+  },
+  "softMatte": false,
+  "visualReview": "pending",
+  "note": "像素检查不代表动作质量、锚点与循环衔接已经验收"
+}

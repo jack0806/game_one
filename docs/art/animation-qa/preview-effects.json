@@ -1,0 +1,1027 @@
+{
+  "fx_turret_barrel_fire": {
+    "sheet": "anim_turret_barrel_fire",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 448,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.36,
+          0.5
+        ],
+        "seconds": 0.06
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.36,
+          0.5
+        ],
+        "seconds": 0.055
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.36,
+          0.5
+        ],
+        "seconds": 0.055
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.36,
+          0.5
+        ],
+        "seconds": 0.055
+      }
+    ]
+  },
+  "fx_weapon_cyan": {
+    "sheet": "anim_fx_weapons",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.392,
+          0.487
+        ],
+        "seconds": 0.025
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.361,
+          0.486
+        ],
+        "seconds": 0.045
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.37,
+          0.491
+        ],
+        "seconds": 0.04
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.37,
+          0.49
+        ],
+        "seconds": 0.05
+      }
+    ]
+  },
+  "fx_weapon_charged": {
+    "sheet": "anim_fx_weapons",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 4,
+        "pivot": [
+          0.378,
+          0.458
+        ],
+        "seconds": 0.03
+      },
+      {
+        "index": 5,
+        "pivot": [
+          0.356,
+          0.453
+        ],
+        "seconds": 0.07
+      },
+      {
+        "index": 6,
+        "pivot": [
+          0.336,
+          0.458
+        ],
+        "seconds": 0.07
+      },
+      {
+        "index": 7,
+        "pivot": [
+          0.34,
+          0.46
+        ],
+        "seconds": 0.07
+      }
+    ]
+  },
+  "fx_explosion": {
+    "sheet": "anim_fx_weapons",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 8,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.04
+      },
+      {
+        "index": 9,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.1
+      },
+      {
+        "index": 10,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.12
+      },
+      {
+        "index": 11,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.14
+      }
+    ]
+  },
+  "fx_weapon_ice": {
+    "sheet": "anim_fx_weapons",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 12,
+        "pivot": [
+          0.395,
+          0.447
+        ],
+        "seconds": 0.025
+      },
+      {
+        "index": 13,
+        "pivot": [
+          0.315,
+          0.444
+        ],
+        "seconds": 0.055
+      },
+      {
+        "index": 14,
+        "pivot": [
+          0.336,
+          0.445
+        ],
+        "seconds": 0.05
+      },
+      {
+        "index": 15,
+        "pivot": [
+          0.336,
+          0.445
+        ],
+        "seconds": 0.05
+      }
+    ]
+  },
+  "fx_cold_arrow": {
+    "sheet": "anim_fx_elements",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.04
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.1
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.12
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.14
+      }
+    ]
+  },
+  "fx_enemy_claw_slash": {
+    "sheet": "anim_fx_elements",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 4,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.035
+      },
+      {
+        "index": 5,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.065
+      },
+      {
+        "index": 6,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.08
+      },
+      {
+        "index": 7,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.08
+      }
+    ]
+  },
+  "fx_heal": {
+    "sheet": "anim_fx_elements",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 8,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.06
+      },
+      {
+        "index": 9,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.12
+      },
+      {
+        "index": 10,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.14
+      },
+      {
+        "index": 11,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.18
+      }
+    ]
+  },
+  "fx_frost_aura": {
+    "sheet": "anim_fx_elements",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 12,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.06
+      },
+      {
+        "index": 13,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.14
+      },
+      {
+        "index": 14,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.18
+      },
+      {
+        "index": 15,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.22
+      }
+    ]
+  },
+  "fx_weapon_chaos": {
+    "sheet": "anim_fx_chrono_chaos",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.533,
+          0.57
+        ],
+        "seconds": 0.03
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.32,
+          0.575
+        ],
+        "seconds": 0.045
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.32,
+          0.575
+        ],
+        "seconds": 0.05
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.32,
+          0.575
+        ],
+        "seconds": 0.06
+      }
+    ]
+  },
+  "fx_weapon_time": {
+    "sheet": "anim_fx_chrono_chaos",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 4,
+        "pivot": [
+          0.508,
+          0.535
+        ],
+        "seconds": 0.025
+      },
+      {
+        "index": 5,
+        "pivot": [
+          0.348,
+          0.531
+        ],
+        "seconds": 0.045
+      },
+      {
+        "index": 6,
+        "pivot": [
+          0.348,
+          0.531
+        ],
+        "seconds": 0.04
+      },
+      {
+        "index": 7,
+        "pivot": [
+          0.348,
+          0.531
+        ],
+        "seconds": 0.05
+      }
+    ]
+  },
+  "fx_time_blade": {
+    "sheet": "anim_fx_chrono_chaos",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 8,
+        "pivot": [
+          0.53,
+          0.45
+        ],
+        "seconds": 0.035
+      },
+      {
+        "index": 9,
+        "pivot": [
+          0.53,
+          0.45
+        ],
+        "seconds": 0.065
+      },
+      {
+        "index": 10,
+        "pivot": [
+          0.53,
+          0.45
+        ],
+        "seconds": 0.08
+      },
+      {
+        "index": 11,
+        "pivot": [
+          0.53,
+          0.45
+        ],
+        "seconds": 0.08
+      }
+    ]
+  },
+  "fx_chaos_pulse": {
+    "sheet": "anim_fx_chrono_chaos",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 12,
+        "pivot": [
+          0.539,
+          0.383
+        ],
+        "seconds": 0.06
+      },
+      {
+        "index": 13,
+        "pivot": [
+          0.5,
+          0.379
+        ],
+        "seconds": 0.14
+      },
+      {
+        "index": 14,
+        "pivot": [
+          0.5,
+          0.36
+        ],
+        "seconds": 0.16
+      },
+      {
+        "index": 15,
+        "pivot": [
+          0.49,
+          0.395
+        ],
+        "seconds": 0.16
+      }
+    ]
+  },
+  "fx_weapon_toxic": {
+    "sheet": "anim_fx_toxic_shield",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.39,
+          0.58
+        ],
+        "seconds": 0.025
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.25,
+          0.585
+        ],
+        "seconds": 0.045
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.25,
+          0.585
+        ],
+        "seconds": 0.05
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.25,
+          0.585
+        ],
+        "seconds": 0.06
+      }
+    ]
+  },
+  "fx_toxic_impact": {
+    "sheet": "anim_fx_toxic_shield",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 4,
+        "pivot": [
+          0.46,
+          0.52
+        ],
+        "seconds": 0.025
+      },
+      {
+        "index": 5,
+        "pivot": [
+          0.4,
+          0.525
+        ],
+        "seconds": 0.065
+      },
+      {
+        "index": 6,
+        "pivot": [
+          0.4,
+          0.525
+        ],
+        "seconds": 0.075
+      },
+      {
+        "index": 7,
+        "pivot": [
+          0.4,
+          0.525
+        ],
+        "seconds": 0.09
+      }
+    ]
+  },
+  "fx_poison": {
+    "sheet": "anim_fx_toxic_shield",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 8,
+        "pivot": [
+          0.52,
+          0.48
+        ],
+        "seconds": 0.05
+      },
+      {
+        "index": 9,
+        "pivot": [
+          0.52,
+          0.48
+        ],
+        "seconds": 0.11
+      },
+      {
+        "index": 10,
+        "pivot": [
+          0.52,
+          0.48
+        ],
+        "seconds": 0.13
+      },
+      {
+        "index": 11,
+        "pivot": [
+          0.52,
+          0.48
+        ],
+        "seconds": 0.16
+      }
+    ]
+  },
+  "fx_shield_break": {
+    "sheet": "anim_fx_toxic_shield",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 12,
+        "pivot": [
+          0.5,
+          0.36
+        ],
+        "seconds": 0.035
+      },
+      {
+        "index": 13,
+        "pivot": [
+          0.5,
+          0.36
+        ],
+        "seconds": 0.075
+      },
+      {
+        "index": 14,
+        "pivot": [
+          0.5,
+          0.36
+        ],
+        "seconds": 0.11
+      },
+      {
+        "index": 15,
+        "pivot": [
+          0.5,
+          0.36
+        ],
+        "seconds": 0.16
+      }
+    ]
+  },
+  "fx_hex_ring": {
+    "sheet": "anim_fx_runic_reik",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.06
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.11
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.14
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.19
+      }
+    ]
+  },
+  "fx_reik_cleave": {
+    "sheet": "anim_fx_runic_reik",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 4,
+        "pivot": [
+          0.38,
+          0.5
+        ],
+        "seconds": 0.04
+      },
+      {
+        "index": 5,
+        "pivot": [
+          0.38,
+          0.5
+        ],
+        "seconds": 0.07
+      },
+      {
+        "index": 6,
+        "pivot": [
+          0.38,
+          0.5
+        ],
+        "seconds": 0.08
+      },
+      {
+        "index": 7,
+        "pivot": [
+          0.38,
+          0.5
+        ],
+        "seconds": 0.11
+      }
+    ]
+  },
+  "fx_reik_warcry": {
+    "sheet": "anim_fx_runic_reik",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 8,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.07
+      },
+      {
+        "index": 9,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.14
+      },
+      {
+        "index": 10,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.17
+      },
+      {
+        "index": 11,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.24
+      }
+    ]
+  },
+  "fx_reik_death_will": {
+    "sheet": "anim_fx_runic_reik",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 12,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.8
+      },
+      {
+        "index": 13,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.8
+      },
+      {
+        "index": 14,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.8
+      },
+      {
+        "index": 15,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.8
+      }
+    ]
+  },
+  "fx_enemy_bell_wave": {
+    "sheet": "anim_fx_enemy_impacts",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 0,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.06
+      },
+      {
+        "index": 1,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.12
+      },
+      {
+        "index": 2,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.16
+      },
+      {
+        "index": 3,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.21
+      }
+    ]
+  },
+  "fx_enemy_ember_brand": {
+    "sheet": "anim_fx_enemy_impacts",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 4,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.07
+      },
+      {
+        "index": 5,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.13
+      },
+      {
+        "index": 6,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.18
+      },
+      {
+        "index": 7,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.22
+      }
+    ]
+  },
+  "fx_hit": {
+    "sheet": "anim_fx_enemy_impacts",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 8,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.025
+      },
+      {
+        "index": 9,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.05
+      },
+      {
+        "index": 10,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.07
+      },
+      {
+        "index": 11,
+        "pivot": [
+          0.5,
+          0.5
+        ],
+        "seconds": 0.1
+      }
+    ]
+  },
+  "fx_ignite": {
+    "sheet": "anim_fx_enemy_impacts",
+    "columns": 4,
+    "rows": 4,
+    "cellSize": 256,
+    "loop": false,
+    "frames": [
+      {
+        "index": 12,
+        "pivot": [
+          0.5,
+          0.56
+        ],
+        "seconds": 0.05
+      },
+      {
+        "index": 13,
+        "pivot": [
+          0.5,
+          0.56
+        ],
+        "seconds": 0.1
+      },
+      {
+        "index": 14,
+        "pivot": [
+          0.5,
+          0.56
+        ],
+        "seconds": 0.14
+      },
+      {
+        "index": 15,
+        "pivot": [
+          0.5,
+          0.56
+        ],
+        "seconds": 0.19
+      }
+    ]
+  }
+}

@@ -137,7 +137,7 @@ test('测试房间跳过波次调度,玩家阵亡3秒后重生且不写档案', 
     assert.match(gameSource, /if \(this\.state !== 'testRoom'\) \{[\s\S]*?this\._waveMgr\.update\(dt, this\)/);
     assert.match(gameSource, /if \(this\.state === 'testRoom'\) \{[\s\S]*?this\._scheduleTestRespawn\(\)/);
     assert.match(gameSource, /'3 秒后重生…'/);
-    assert.match(gameSource, /this\._recordRun\(false\);\s*this\._setState\('gameover'\)/);
+    assert.match(gameSource, /this\._recordRun\(false\);/, '正式局仍记录失败，动画结束后显示结算');
     assert.match(gameSource, /setTimeout\(\(\) => \{[\s\S]*?if \(this\.state !== 'testRoom' \|\| this\._runId !== runId\) return;/);
 });
 
@@ -211,7 +211,7 @@ test('机械高达横劈扇形与判定区域一致,飞空期间完全消失', (
 test('隐形/飞空实体感修复:阴影与血条隐藏,受击显示免疫', () => {
     assert.match(gameSource, /const hidden = e\.invisible \|\| \(e instanceof BossController && e\.mechSkyT > 0\);/, '隐藏态判定');
     assert.match(gameSource, /if \(!hidden\) \{[\s\S]*?g\.ellipse\(/, '隐藏时不画接触阴影');
-    assert.match(gameSource, /if \(!e\.isBoss && e\.hp < e\.maxHp && !hidden\)/, '隐藏时不画头顶血条');
+    assert.match(gameSource, /if \(\(\(!e\.isBoss && e\.hp < e\.maxHp\) \|\| showGuides\) && !hidden\)/, '定位模式也不能给隐藏实体画头顶血条');
     const bulletSource2 = fs.readFileSync(path.join(root, 'assets/scripts/entities/BulletController.ts'), 'utf8');
     assert.match(bulletSource2, /'免疫'/, '子弹命中无敌目标显示免疫');
     assert.match(playerSource, /'免疫'/, '近战命中无敌目标显示免疫');
