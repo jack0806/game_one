@@ -7,7 +7,7 @@
 // 数值与抽取前逐字一致，不影响正式局平衡。
 
 export interface BossDef {
-    /** 1-based 章节号（1~4），与 BossController.chapter 语义一致。 */
+    /** 1-based 章节号（1~5），与 BossController.chapter 语义一致。 */
     chapter: number;
     maxHp: number;
     damage: number;
@@ -31,6 +31,8 @@ export const BOSSES: BossDef[] = [
     { chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#cc7a33', glow: '#ffaa44', label: '钢铁之王·熔炉',       spriteKey: 'enemy_boss_ch2', visualScale: 2.0, attackWindupMax: 0.42 },
     { chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#00cc88', glow: '#00ffcc', label: '海克斯异变体·无限核', spriteKey: 'enemy_boss_ch3', visualScale: 2.0, attackWindupMax: 0.42 },
     { chapter: 4, maxHp: 14000, damage: 132, speed: 80, armor: 40, goldValue: 800, radius: 45, color: '#8800cc', glow: '#cc44ff', label: '混沌深渊·终焉之门',   spriteKey: 'enemy_boss_ch4', visualScale: 2.0, attackWindupMax: 0.42 },
+    // 第5章灭世机神·天罚：暂无独立贴图，复用 enemy_boss 素体+橙红染色（同测试房 mech/abyss 套路）。
+    { chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚',       spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
 /** 按 0-based 章节号取 Boss 定义，越界回落到最后一章。 */
@@ -45,10 +47,13 @@ export function getBossDef(chapter0Based: number): BossDef {
 // 文档只给技能描述，无数值——数值按对应章节档位自行定档（mech 取第二章
 // 5500/66/68/20，abyss 取第三章 9000/94/74/30）。两者使用专属俯视立绘，
 // 不再借用章节 Boss 后依赖程序线框补轮廓。
+// 《怪物设计与数值》5.2~5.4：维斯帕/坩埚/万相（独立贴图，逐字使用文档数值）。
+// 用户设计稿：第五章「灭世机神·天罚」（invader，复用 enemy_boss 素体+染色，
+// 数值取第五章档位 20000/160/65/50）。
 
 export interface TestBossDef extends BossDef {
     /** 技能集标识：BossController._useSkill 按此分支。 */
-    kind: 'mech' | 'abyss' | 'vespa' | 'crucible_city' | 'manyfold';
+    kind: 'mech' | 'abyss' | 'vespa' | 'crucible_city' | 'manyfold' | 'invader';
 }
 
 export const TEST_BOSSES: TestBossDef[] = [
@@ -58,6 +63,7 @@ export const TEST_BOSSES: TestBossDef[] = [
     { kind: 'vespa', chapter: 3, maxHp: 6800, damage: 42, speed: 78, armor: 14, goldValue: 480, radius: 46, color: '#132b4c', glow: '#69ff4a', label: '疫晶跳蛛·维斯帕', spriteKey: 'enemy_boss_vespa', tintColor: '#ffffff', visualScale: 1.85, attackWindupMax: 0.50 },
     { kind: 'crucible_city', chapter: 3, maxHp: 9800, damage: 60, speed: 50, armor: 30, goldValue: 680, radius: 50, color: '#38281f', glow: '#ff8b2c', label: '磁潮铸城兽·坩埚', spriteKey: 'enemy_boss_crucible_city', tintColor: '#ffffff', visualScale: 1.84, attackWindupMax: 0.70 },
     { kind: 'manyfold', chapter: 4, maxHp: 14500, damage: 82, speed: 64, armor: 38, goldValue: 920, radius: 48, color: '#271737', glow: '#c991ff', label: '折界裁缝·万相', spriteKey: 'enemy_boss_manyfold', tintColor: '#ffffff', visualScale: 1.88, attackWindupMax: 0.55 },
+    { kind: 'invader', chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
 // ============================================================
@@ -208,7 +214,7 @@ export interface UnitEntry {
 }
 
 export const UNIT_CATALOG: UnitEntry[] = [
-    // 首领：4 章大 Boss + 测试房机制 Boss
+    // 首领：4 章大 Boss + 测试房机制 Boss（含《怪物设计与数值》3 个 + 灭世机神）
     { id: 'boss_ch1',  label: '废土领主·腐肉', category: 'boss', color: '#cc3300' },
     { id: 'boss_ch2',  label: '钢铁之王·熔炉', category: 'boss', color: '#cc7a33' },
     { id: 'boss_ch3',  label: '海克斯异变体',  category: 'boss', color: '#00cc88' },
@@ -218,6 +224,7 @@ export const UNIT_CATALOG: UnitEntry[] = [
     { id: 'boss_vespa', label: '疫晶跳蛛·维斯帕', category: 'boss', color: '#69ff4a' },
     { id: 'boss_crucible_city', label: '磁潮铸城兽·坩埚', category: 'boss', color: '#ff8b2c' },
     { id: 'boss_manyfold', label: '折界裁缝·万相', category: 'boss', color: '#c991ff' },
+    { id: 'boss_invader', label: '灭世机神·天罚', category: 'boss', color: '#ffaa33' },
     // 小 Boss（文档 6 个）
     ...MINI_BOSSES.map(m => ({ id: m.id, label: m.label, category: 'miniboss' as UnitCategory, color: m.color })),
     // 小兵：保留现有样例，新文档单位追加在后，便于并排对比验收。

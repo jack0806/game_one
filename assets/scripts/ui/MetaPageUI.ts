@@ -144,7 +144,7 @@ export class MetaPageUI {
         const titleLbl = this._mkLabel(page, -272, 291, 560, 48, title, 30, WHITE, HorizontalTextAlignment.LEFT);
         titleLbl.overflow = Label.Overflow.SHRINK;
 
-        const back = this._mkButton(page, '返回首页', 526, 306, 150, 42, new Color(78, 111, 135, 255));
+        const back = this._mkButton(page, '返回大厅', 526, 306, 150, 42, new Color(78, 111, 135, 255));
         back.on(Node.EventType.TOUCH_END, this._callbacks.onBack);
 
         // 顶栏两端的切角光标，强化三个页面共用的工业终端语言。

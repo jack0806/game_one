@@ -185,3 +185,46 @@ test('AUGMENT_DB中50个词条id全部唯一', () => {
     const ids = AUGMENT_DB.map(a => a.id);
     assert.equal(new Set(ids).size, ids.length, '词条数据库中存在重复id');
 });
+
+// ---- 黑洞引擎(2026-09-07重做:定时自动施放,不再替换E技能) ----------
+
+test('黑洞引擎:装备不改写E技能,每5秒自动在最密敌群处生成黑洞', () => {
+    const am = new AugmentManager();
+    const def = AUGMENT_DB.find(a => a.id === 'black_hole');
+    const p = makePlayer();
+    const spawned = [];
+    const game = makeMockGame({
+        getEnemyClusterPoint: () => ({ x: 100, y: 200 }),
+        spawnAutoBlackHole(pl, mult) { spawned.push({ pl, mult }); return true; },
+    });
+    am.equip(def, p, game);
+    // 重做后不再替换 E 技能：stats 不应再被打上 eSkillUpgrade 标记
+    assert.equal(p.stats.eSkillUpgrade, undefined, '黑洞引擎不得改写E技能');
+    assert.equal(spawned.length, 0, '装备后立即不应施放');
+    // 前5秒不施放（推进4.9秒）
+    for (let i = 0; i < 49; i++) am.dispatchUpdate(p, 0.1, game);
+    assert.equal(spawned.length, 0, '5秒周期未到不应施放');
+    // 满5秒后施放一次，且传入玩家与升级倍率
+    for (let i = 0; i < 11; i++) am.dispatchUpdate(p, 0.1, game); // 累计6秒
+    assert.equal(spawned.length, 1, '满5秒应自动生成一个黑洞');
+    assert.equal(spawned[0].pl, p, '应把玩家传给spawnAutoBlackHole(结算伤害用)');
+    assert.equal(spawned[0].mult, 1, '1级词条倍率为1');
+    // 再过5秒生成第二个（推进到11.5秒，避开恰好落在10.0秒边界的浮点误差）
+    for (let i = 0; i < 55; i++) am.dispatchUpdate(p, 0.1, game); // 累计11.5秒
+    assert.equal(spawned.length, 2, '周期5秒应再次生成');
+});
+
+test('黑洞引擎:场上没有敌人时不消耗周期,0.5秒后重试', () => {
+    const am = new AugmentManager();
+    const def = AUGMENT_DB.find(a => a.id === 'black_hole');
+    const p = makePlayer();
+    let calls = 0;
+    const game = makeMockGame({
+        spawnAutoBlackHole() { calls++; return false; }, // 模拟没有敌群可锚定
+    });
+    am.equip(def, p, game);
+    for (let i = 0; i < 60; i++) am.dispatchUpdate(p, 0.1, game); // 6秒
+    // 满5秒首次尝试后，每0.5秒重试一次：6秒内应有多次尝试而非只调一次
+    assert.ok(calls >= 2, `无敌人期间应持续重试,实际尝试${calls}次`);
+    assert.ok(calls <= 4, `重试间隔0.5秒,6秒内尝试次数应有限,实际${calls}次`);
+});

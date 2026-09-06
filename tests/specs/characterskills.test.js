@@ -21,6 +21,10 @@ test('炮击手Q弹头放大50%(radius 18),R弹头全部自动追踪', () => {
     kai.ultimate(p, game);
     assert.equal(pool.length, 30, 'R应发射30发');
     assert.ok(pool.every(b => b.homing === true), 'R弹头全部自动追踪敌人');
+    // 2026-08-26：R炮弹打不着怪不再消失——2秒后加速，命中/脱靶最终半径50爆炸
+    assert.ok(pool.every(b => b.speedUpAfter === 2 && b.speedUpMult === 2), 'R弹头2秒后弹速翻倍');
+    assert.ok(pool.every(b => b.explodeOnExpire === true && b.explodeRadius === 50), 'R弹头最终半径50爆炸');
+    assert.ok(pool.every(b => b.lifeTime === 4), 'R弹头寿命延长到4秒(加速后仍有飞行时间)');
 });
 
 test('薇薇安被动砍掉永久炮台,只保留炮台词条加成×1.5', () => {

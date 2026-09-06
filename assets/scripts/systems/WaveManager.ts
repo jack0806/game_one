@@ -1,7 +1,7 @@
 // ============================================================
 //  WaveManager.ts — 波次/章节管理器
 // ============================================================
-import { CHAPTERS, MUTATIONS, ENEMY_COUNT_BY_WAVE, MutationDef } from '../data/WaveData';
+import { CHAPTERS, MUTATIONS, ENEMY_COUNT_BY_WAVE, chapterForWave, MutationDef } from '../data/WaveData';
 import { Rng, clamp } from '../core/MathUtils';
 import { ENDLESS_START_WAVE, CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
@@ -24,7 +24,7 @@ export class WaveManager {
     private _spawnBatches: string[][] = [];
     private _spawnTimer = 0;
     /** 批次间隔：一批3-4个同刷后停3.5秒，给玩家留出清理节奏。 */
-    private readonly BATCH_INTERVAL = 3.5;
+    private readonly BATCH_INTERVAL = 2.5;
     private _intermissionTimer = 0;
     /** 变异：混沌节拍(chaos_beat) — 每5秒随机buff一批场上敌人的计时器。 */
     private _chaosBeatTimer = 0;
@@ -58,7 +58,7 @@ export class WaveManager {
 
     startWave(game: any): void {
         this.wave++;
-        this.chapter = Math.ceil(this.wave / 10);
+        this.chapter = chapterForWave(this.wave);
 
         // 词条 onWaveStart 钩子（wave_heal / time_shard / absolute_zero 等依赖此分发；
         // 之前一直未被任何调用点触发，是死代码——这里补上消费点）。
@@ -75,65 +75,75 @@ export class WaveManager {
             }
         }
 
-        // Boss 波
+        // Boss 波：Boss 会跟小怪关一样正常刷小怪（与普通波同等数量的批次队列），
+        // 场上清空（含 Boss）才算通关；镜像军队变异仍使 Boss 数量×2。
         const chDef = CHAPTERS.find(c => c.bossWave === this.wave);
         const mods  = game._mutationMods || {};
         if (chDef) {
             const bossBatch = ['boss'];
             // 变异：镜像军队 — Boss型敌人数量×2（对齐 WaveData.ts 的 mirror_army 描述）
             if (mods.mirrorArmy) bossBatch.push('boss');
-            this._spawnBatches = [bossBatch];
+            const count = ENEMY_COUNT_BY_WAVE(this.wave, this.difficulty);
+            this._spawnBatches = [bossBatch, ...this._buildMinionBatches(count, mods)];
         } else {
             const count = ENEMY_COUNT_BY_WAVE(this.wave, this.difficulty);
-            const melee = this._meleePool();
-            // 先把 count 预切成 3-4 个的批：余数会是 1/2/5 时换另一种尺寸，
-            // 保证不出现 1-2 个的尾巴批；再往每批填 1-2 个远程 + 其余近战。
-            const sizes: number[] = [];
-            let left = count;
-            while (left > 0) {
-                let size = Math.min(left, Rng.int(3, 4));
-                const rem = left - size;
-                if (rem > 0 && (rem < 3 || rem === 5)) {
-                    const alt = size === 3 ? 4 : 3;
-                    if (alt <= left) size = alt;
-                }
-                sizes.push(size);
-                left -= size;
-            }
-            this._spawnBatches = sizes.map(sz => {
-                const rangedN = Math.min(Rng.int(1, 2), Math.max(1, sz - 2));
-                const batch: string[] = [];
-                for (let i = 0; i < rangedN; i++) batch.push(Rng.pick(this._rangedPool()));
-                while (batch.length < sz) batch.push(Rng.pick(melee));
-                return batch;
-            });
-            const eliteChance = 0.05 + (this.chapter - 1) * 0.08;
-            if (Rng.chance(eliteChance)) this._spawnBatches.push(['elite_grunt']);
-            // 变异：分身之战 — 每波额外生成2倍普通敌人（对齐 WaveData.ts 的 clone_war 描述）
-            if (mods.cloneWar) {
-                const extras = Array.from({ length: count * 2 }, () => Rng.pick(melee));
-                for (let i = 0; i < extras.length; i += 4) this._spawnBatches.push(extras.slice(i, i + 4));
-            }
-            // 变异：镜像军队 — miniboss/elite 也算"Boss型"敌人，数量×2
-            if (mods.mirrorArmy) {
-                const bossLike: string[] = [];
-                for (const b of this._spawnBatches) {
-                    for (const t of b) if (t === 'elite_grunt' || t === 'miniboss') bossLike.push(t);
-                }
-                if (bossLike.length) this._spawnBatches.push(bossLike);
-            }
+            this._spawnBatches = this._buildMinionBatches(count, mods);
         }
 
         this._spawnTimer = 0;
         this.state = 'spawning';
     }
 
+    /**
+     * 把小怪波总量预切成 5-7 个的批次（每批 2-3 个远程 + 其余近战），
+     * 并追加精英/变异扩展批。Boss 波与普通波共用，保证"boss 也正常刷小怪"。
+     * 2026-09-07 密度上调：批次 3-4→5-7、批间隔 3.5s→2.5s（配合 WaveData
+     * 总量曲线上调，同屏敌人密度显著提升，而不只是把波次时间拉长）。
+     */
+    private _buildMinionBatches(count: number, mods: Record<string, any>): string[][] {
+        const melee = this._meleePool();
+        // 先把 count 预切成 5-7 个的批；若这样切会剩 1-2 只的尾巴批，
+        // 则把本批改为 left-3（仍在 5-7 范围内），让尾批至少 3 只。
+        const sizes: number[] = [];
+        let left = count;
+        while (left > 0) {
+            let size = Math.min(left, Rng.int(5, 7));
+            const rem = left - size;
+            if (rem > 0 && rem < 3 && left >= 8) size = left - 3;
+            sizes.push(size);
+            left -= size;
+        }
+        const batches: string[][] = sizes.map(sz => {
+            const rangedN = Math.min(Rng.int(2, 3), Math.max(1, sz - 2));
+            const batch: string[] = [];
+            for (let i = 0; i < rangedN; i++) batch.push(Rng.pick(this._rangedPool()));
+            while (batch.length < sz) batch.push(Rng.pick(melee));
+            return batch;
+        });
+        const eliteChance = 0.05 + (this.chapter - 1) * 0.08;
+        if (Rng.chance(eliteChance)) batches.push(['elite_grunt']);
+        // 变异：分身之战 — 每波额外生成2倍普通敌人（对齐 WaveData.ts 的 clone_war 描述）
+        if (mods.cloneWar) {
+            const extras = Array.from({ length: count * 2 }, () => Rng.pick(melee));
+            for (let i = 0; i < extras.length; i += 4) batches.push(extras.slice(i, i + 4));
+        }
+        // 变异：镜像军队 — miniboss/elite 也算"Boss型"敌人，数量×2
+        if (mods.mirrorArmy) {
+            const bossLike: string[] = [];
+            for (const b of batches) {
+                for (const t of b) if (t === 'elite_grunt' || t === 'miniboss') bossLike.push(t);
+            }
+            if (bossLike.length) batches.push(bossLike);
+        }
+        return batches;
+    }
+
     update(dt: number, game: any): void {
         if (this.state === 'spawning') {
             this._spawnTimer -= dt;
             if (this._spawnTimer <= 0 && this._spawnBatches.length > 0) {
-                // 一波3-4个成批同刷：整批共享一个边缘锚点、成员在锚点±50散布，
-                // 批间隔3.5秒（旧版是0.5秒滴灌式单刷，没有"一波"的节奏感）。
+                // 一波5-7个成批同刷：整批共享一个边缘锚点、成员在锚点±50散布，
+                // 批间隔2.5秒（密度上调前为3-4个/3.5秒滴灌，同屏压力不足）。
                 const batch = this._spawnBatches.shift()!;
                 const [ax, ay] = this._batchAnchor();
                 const spawn = this.onSpawnEnemy ?? ((t: string, x?: number, y?: number) => game.spawnEnemy(t, x, y));

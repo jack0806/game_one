@@ -195,9 +195,21 @@ export const AUGMENT_DB: AugmentDef[] = [
       desc: '每次使用技能后，周围 120px敌人减速70%/3s',
       onSkill(p, game) { game.slowEnemiesAround(p.x, p.y, 120, 0.3, 3); } },
 
-    { id: 'black_hole', rarity: 'purple', icon: 'chaos', name: '黑洞引擎', tags: ['black_hole'],
-      desc: '技能 E 变为黑洞：吸附半径 160，5s 后爆炸',
-      onEquip(p, _g, _mult = 1) { p.stats.eSkillUpgrade = 'blackhole'; } },
+    { id: 'black_hole', rarity: 'purple', icon: 'chaos', name: '黑洞引擎', tags: ['black_hole', 'field'],
+      desc: '每5秒在敌人最密集处自动生成黑洞：吸附半径160，5s后爆炸',
+      _timer: 0, _mult: 1,
+      // 2026-09-07 重做：不再替换 E 技能（E 保持角色原技能），改为独立
+      // 定时器自动施放——每 5 秒在敌人最密集处落一个黑洞（见
+      // GameManager.spawnAutoBlackHole：持续牵引 5s 后爆炸）。
+      onEquip(p, _g, mult = 1) { this._mult = mult; this._timer = 5; },
+      onUpdate(p, dt, game) {
+          this._timer -= dt;
+          if (this._timer > 0) return;
+          // 场上没怪时不消耗周期：0.5 秒后重试，敌群一出现立刻落黑洞
+          this._timer = game?.spawnAutoBlackHole
+              ? (game.spawnAutoBlackHole(p, this._mult) ? 5 : 0.5)
+              : 5;
+      } },
 
     { id: 'death_explode', rarity: 'purple', icon: 'explosion', name: '死亡爆破', tags: ['explosion', 'death'],
       desc: '击杀时，以死亡点为中心爆炸（80px，伤害×80%）',

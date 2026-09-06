@@ -50,7 +50,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         name: '炮击手·凯尔', icon: '⚙️', color: '#00ffcc', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 20,
         desc: '穿甲义肢炮，子弹额外穿透1个敌人',
-        skills: { q: '强化射击 — 发射超大穿透弹，伤害×4', e: '弹幕模式 — 4秒内三连发，无法移动', r: '核心过载 — 全方向30发爆炸弹+8秒伤害×2' },
+        skills: { q: '强化射击 — 发射超大穿透弹，伤害×4', e: '弹幕模式 — 4秒内三连发，无法移动', r: '核心过载 — 30发追踪爆裂弹(2秒后加速,命中或脱靶均半径50爆炸)+8秒伤害×2' },
         skillIcons: { q: 'pierce', e: 'bounce', r: 'explosion' },
         stats: { maxHp: 120, speed: 330, damage: 25, attackSpeed: 2, armor: 10, critRate: 0.05, critDmg: 0.5, pierce: 1 },
         passive(p: any) { p.stats.pierce += 1; },
@@ -69,11 +69,19 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
         },
         ultimate(p: any, game: any) {
-            // 弹头自动追踪敌人（homing 由 BulletPool.update 朝最近敌人转向）
+            // 弹头自动追踪敌人（homing 由 BulletPool.update 朝最近敌人转向）。
+            // 2026-08-26 修正：炮弹不再"打不着怪就消失"——2 秒后弹速翻倍加速，
+            // 命中(穿透耗尽)或脱靶(到期/出界)时每个炮弹都会造成半径 50 的爆炸伤害。
             const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
             for (let i = 0; i < 30; i++) {
                 const a = Rng.float(0, Math.PI * 2);
-                game.bulletPool.spawn({ x: mx, y: my, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500, damage: p.stats.damage * 2, radius: 7, color: '#ff4400', pierceLeft: 2, lifeTime: 1.8, owner: 'player', charKey: p.charId, homing: true });
+                game.bulletPool.spawn({
+                    x: mx, y: my, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500,
+                    damage: p.stats.damage * 2, radius: 7, color: '#ff4400',
+                    pierceLeft: 2, lifeTime: 4, owner: 'player', charKey: p.charId, homing: true,
+                    speedUpAfter: 2, speedUpMult: 2, // 2秒后加速到 1000 码/秒
+                    explodeOnExpire: true, explodeRadius: 50, // 最终每个炮弹半径50爆炸
+                });
             }
             p.applyBuff('overload', 8, { dmgMult: 2 });
             game.screenShake.shake(15, 0.5);

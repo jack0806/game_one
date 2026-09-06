@@ -40,8 +40,17 @@ export interface BulletData {
     slow?:        { mult: number; dur: number };
     /** 敌弹撞边爆炸：bounceLeft 耗尽后再次撞到屏幕边缘直接爆炸（深水炸弹）。 */
     bounceExplode?: boolean;
-    /** 敌弹终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺），命中玩家时也炸。 */
+    /** 敌弹终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺/灭世机神追踪导弹脱靶），命中玩家时也炸。 */
     explodeOnExpire?: boolean;
+    /** 终点爆炸半径（缺省 90）与爆炸颜色（缺省水蓝），供不同弹种定制。 */
+    explodeRadius?: number;
+    explodeColor?: string;
+    /** 玩家子弹延时加速（凯尔大招）：存活超过 speedUpAfter 秒后弹速×speedUpMult（只加速一次）。 */
+    speedUpAfter?: number;
+    speedUpMult?: number;
+    _spedUp?: boolean;
+    /** 追踪弹锁定目标（玩家弹）；加速瞬间清空重锁，目标死亡自动重锁最近存活敌人。 */
+    _homingTarget?: any;
     trailCd?:     number;
     /** Sprite node carrying bullet_<charKey> art; enemy bullets use programmatic threat shapes. */
     node?:        Node;
@@ -82,6 +91,9 @@ function resetBullet(b: BulletData): void {
     b.novaMode = false; b.infinite = false; b.isEnemyBullet = false; b.homing = false;
     b.enemyFx = undefined; b.trailCd = 0;
     b.pierceShield = false; b.dot = undefined; b.slow = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
+    b.explodeRadius = undefined; b.explodeColor = undefined;
+    b.speedUpAfter = undefined; b.speedUpMult = undefined; b._spedUp = false;
+    b._homingTarget = undefined;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -162,9 +174,37 @@ export class BulletPool {
             b.y += b.vy * dt;
             b.life += dt;
 
-            // 追踪逻辑（如有）
+            // 延时加速（凯尔大招）：存活超过 speedUpAfter 秒后弹速×speedUpMult，只加速一次。
+            // 加速瞬间清空旧锁定，下一帧重新锁定最近敌人——"加速后锁定怪物位置"。
+            if (b.speedUpAfter !== undefined && b.speedUpMult && !b._spedUp && b.life >= b.speedUpAfter) {
+                b._spedUp = true;
+                b.vx *= b.speedUpMult;
+                b.vy *= b.speedUpMult;
+                b._homingTarget = undefined;
+            }
+
+            // 追踪逻辑（凯尔大招等）：锁定最近存活敌人，目标死亡后重新锁定。
+            // 场上存在存活 Boss 时优先锁定最近的 Boss（凯尔大招"有boss优先锁boss"）。
             if (b.homing) {
-                const nearest = enemies.find(e => e.alive);
+                let nearest = b._homingTarget;
+                if (nearest && !nearest.alive) { nearest = undefined; b._homingTarget = undefined; }
+                if (!nearest) {
+                    let bestD = Infinity;
+                    for (const e of enemies) {
+                        if (!e.alive || !e.isBoss) continue;
+                        const d = (e.x - b.x) ** 2 + (e.y - b.y) ** 2;
+                        if (d < bestD) { bestD = d; nearest = e; }
+                    }
+                    if (!nearest) {
+                        bestD = Infinity;
+                        for (const e of enemies) {
+                            if (!e.alive) continue;
+                            const d = (e.x - b.x) ** 2 + (e.y - b.y) ** 2;
+                            if (d < bestD) { bestD = d; nearest = e; }
+                        }
+                    }
+                    b._homingTarget = nearest;
+                }
                 if (nearest) {
                     const [dx, dy] = [nearest.x - b.x, nearest.y - b.y];
                     const spd = Math.hypot(b.vx, b.vy);
@@ -181,6 +221,10 @@ export class BulletPool {
                 if (b.y < b.radius || b.y > PLAYFIELD_BOTTOM - b.radius) { b.vy *= -1; b.y = clamp(b.y, b.radius, PLAYFIELD_BOTTOM - b.radius); b.bounceLeft--; }
             } else if (!b.infinite) {
                 if (b.x < -20 || b.x > CANVAS_W + 20 || b.y < -20 || b.y > PLAYFIELD_BOTTOM + 20 || b.life > b.lifeTime) {
+                    // 终点爆炸（凯尔大招"打不着怪不白消失"）：到期/出界时对敌人造成半径范围伤害
+                    if (b.explodeOnExpire) {
+                        game.spawnExplosion?.(player, clamp(b.x, 0, CANVAS_W), clamp(b.y, 0, PLAYFIELD_BOTTOM), b.damage, b.explodeRadius ?? 50, game);
+                    }
                     this._release(b); continue;
                 }
             }
@@ -213,11 +257,23 @@ export class BulletPool {
                         game.floatingText?.spawn(e.x + Rng.float(-10, 10), e.y - 10, Math.ceil(dmg).toString(), b.isCrit ? '#ffd700' : '#fff', b.isCrit ? 16 : 13, b.isCrit);
                         game.particles?.hit(b.x, b.y, b.color);
                     } else {
-                        // 无敌/隐身/格挡：显示"免疫"而不是伤害数字，避免看起来还在掉血
-                        game.floatingText?.spawn(e.x, e.y - 14, '免疫', '#9fb4c8', 12, false);
+                        // 无敌/隐身/格挡：普通伤害被免疫。若攻击携带真伤（时空行者被动），
+                        // 显示真伤掉血数字而非"免疫"——否则满屏"免疫"+血条隐藏会让人误以为完全不掉血
+                        const trueRate = player.stats?.trueDamageRate ?? 0;
+                        if (trueRate > 0) {
+                            game.floatingText?.spawn(e.x, e.y - 14, `-${Math.ceil(dmg * trueRate)}真伤`, '#c8a2ff', 13, false);
+                        } else {
+                            game.floatingText?.spawn(e.x, e.y - 14, '免疫', '#9fb4c8', 12, false);
+                        }
                     }
                     game.augmentManager?.dispatchHit(player, e, dmg, game);
-                    if (b.pierceLeft <= 0 && !b.infinite) { this._release(b); released = true; break; }
+                    if (b.pierceLeft <= 0 && !b.infinite) {
+                        // 穿透耗尽释放：命中后的炮弹同样以半径爆炸收尾（凯尔大招每个炮弹50半径伤害）
+                        if (b.explodeOnExpire) {
+                            game.spawnExplosion?.(player, b.x, b.y, b.damage, b.explodeRadius ?? 50, game);
+                        }
+                        this._release(b); released = true; break;
+                    }
                     else b.pierceLeft = Math.max(0, b.pierceLeft - 1);
                 }
             }
@@ -274,12 +330,12 @@ export class BulletPool {
                 this._release(b); continue;
             } else if (b.explodeOnExpire &&
                 (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30)) {
-                // 终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺未命中时）
+                // 终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺/追踪导弹脱靶时）
                 const ex = clamp(b.x, 0, CANVAS_W);
                 const ey = clamp(b.y, 0, PLAYFIELD_BOTTOM);
-                game.particles?.explode?.(ex, ey, '#33ccff', 70);
+                game.particles?.explode?.(ex, ey, b.explodeColor ?? '#33ccff', 70);
                 game.audio?.playSfx?.('explode', 0.6);
-                if (player.alive && Vec.dist(ex, ey, player.x, player.y) < 90) {
+                if (player.alive && Vec.dist(ex, ey, player.x, player.y) < (b.explodeRadius ?? 90)) {
                     player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
                 }
                 this._release(b); continue;
@@ -297,8 +353,8 @@ export class BulletPool {
                 // DoT 弹：命中挂持续伤害（毒刺/高能光束，可叠加）
                 if (b.dot && player.applyDot) player.applyDot(b.dot.dps, b.dot.dur, b.dot.color);
                 if (b.slow && player.applyBuff) player.applyBuff('enemy_frost_slow', b.slow.dur, { speed: b.slow.mult });
-                // 终点爆炸弹：命中玩家时也炸（水刺，范围溅射特效）
-                if (b.explodeOnExpire) game.particles?.explode?.(player.x, player.y, '#33ccff', 46);
+                // 终点爆炸弹：命中玩家时也炸（水刺/追踪导弹，范围溅射特效）
+                if (b.explodeOnExpire) game.particles?.explode?.(player.x, player.y, b.explodeColor ?? '#33ccff', 46);
                 // 测试房敌弹穿透受击无敌帧：逐发水刺/剑气等高频弹幕不被 0.5s 无敌帧吞掉
                 player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
                 this._release(b);

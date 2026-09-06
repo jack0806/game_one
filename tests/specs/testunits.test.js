@@ -670,7 +670,7 @@ test('锯齿剑虾贴脸甩尾播放独立动作并眩晕玩家', () => {
 
 // ── 毒刺鬼水母 ──
 
-test('毒刺鬼水母隐身循环:隐身3s无敌,到期现形可被击中', () => {
+test('毒刺鬼水母隐身循环:隐身3s无敌,CD10秒,奥莉亚真伤无视隐身扣血', () => {
     const game = makeMockGame();
     const jelly = new EnemyBase(); jelly.init('jelly', 1, game);
     jelly._miniTimer = 0.05;
@@ -685,8 +685,16 @@ test('毒刺鬼水母隐身循环:隐身3s无敌,到期现形可被击中', () =
     jelly.update(3.2, player, game);
     assert.equal(jelly.invisible, false, '隐身3s后应现形');
     assert.equal(jelly.invulnerable, false);
+    assert.equal(jelly._miniTimer, 10, '隐身技能CD为10秒(现形10秒后才可再隐身)');
     const dealt = jelly.takeDamage(50, player, game);
     assert.ok(dealt > 0, '现形后应正常受击');
+    // 奥莉亚被动35%真伤无视隐身：再次进入隐身,真伤仍直接扣血
+    jelly._miniTimer = 0.05;
+    jelly.update(0.1, player, game);
+    assert.equal(jelly.invisible, true, 'CD10秒后再次进入隐身');
+    const hpBefore = jelly.hp;
+    jelly.takeTrueDamage(50, player, game);
+    assert.equal(jelly.hp, hpBefore - 50, '真伤无视隐身直接扣血');
 });
 
 test('毒刺鬼水母现形时发射独立毒针轮廓', () => {
@@ -725,17 +733,42 @@ test('支援型无人机治疗附近友军并部署150能量盾', () => {
     assert.equal(drone.actorAnimation.currentFrame.event, 'cast');
 });
 
-test('支援型无人机呼叫五架攻击无人机并播放独立召唤动作', () => {
+test('支援型无人机呼叫攻击无人机并播放独立召唤动作', () => {
     const spawned = [];
     const game = makeMockGame({ spawnEnemy(type, x, y) { spawned.push({ type, x, y }); } });
     const drone = new EnemyBase(); drone.init('drone_s', 1, game);
-    drone._miniTimer = 0; drone._miniCd1 = 99; drone._miniCd2 = 99;
+    drone._miniCd1 = 99; drone._miniCd2 = 99;
     const player = makePlayer({ x: drone.x + 200, y: drone.y });
+    // 满血不召唤（召唤重做为血量首次≤20%触发，见下一条测试）
     drone.update(0.1, player, game);
-    assert.equal(spawned.filter(e => e.type === 'drone_a').length, 5, '应环绕召唤五架攻击无人机');
+    assert.equal(spawned.length, 0, '满血时不召唤');
+    drone.hp = drone.maxHp * 0.2;
+    drone.update(0.1, player, game);
+    assert.equal(spawned.filter(e => e.type === 'drone_a').length, 3, '应环绕召唤三架攻击无人机');
     assert.equal(drone.actorAnimation.action, 'skill3', '召唤必须播放独立通讯动作');
     assert.equal(drone.actorAnimation.frame, 2);
     assert.equal(drone.actorAnimation.currentFrame.event, 'cast');
+});
+
+test('支援型无人机首次血量≤20%召唤3个攻击无人机(仅一次,替代原周期5个)', () => {
+    const game = makeMockGame();
+    const spawned = [];
+    game.spawnEnemy = (type, x, y) => { spawned.push({ type, x, y }); };
+    const drone = new EnemyBase(); drone.init('drone_s', 1, game);
+    drone.x = 0; drone.y = 0;
+    const player = makePlayer({ x: 500, y: 500 });
+    // 满血不召唤
+    drone.update(1, player, game);
+    assert.equal(spawned.length, 0, '满血时不召唤');
+    // 首次掉到20% → 召唤3个攻击无人机（不再每10秒召唤5个）
+    drone.hp = drone.maxHp * 0.2;
+    drone.update(0.1, player, game);
+    assert.equal(spawned.length, 3, '首次20%血召唤3个');
+    assert.ok(spawned.every(s => s.type === 'drone_a'), '召唤的是攻击性无人机');
+    // 只触发一次：继续压低血量不再召唤
+    drone.hp = drone.maxHp * 0.05;
+    drone.update(1, player, game);
+    assert.equal(spawned.length, 3, '召唤只触发一次');
 });
 
 // ── 攻击性无人机 ──

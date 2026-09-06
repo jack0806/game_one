@@ -1,9 +1,10 @@
 // ============================================================
-//  SaveSystem.ts — 玩家档案存档 + 成就系统
+//  SaveSystem.ts — 多槽位玩家存档 + 成就系统
 // ============================================================
 // 跨局持久化玩家数据(总局数/累计击杀/最远进度/最高连击等)，存于
 // Cocos 的 sys.localStorage(web 为浏览器 localStorage，原生平台为
-// 本地文件，API 一致)。首页成就墙与局末统计都从这里读写。
+// 本地文件，API 一致)。提供 3 个独立存档槽：首页「进入游戏」先选槽，
+// 之后大厅/成就墙/局末统计都读写当前选中槽。
 import { sys } from 'cc';
 
 /** 一局结束时的汇总数据（由 GameManager 在死亡/通关时填写）。 */
@@ -22,6 +23,10 @@ export interface RunSummary {
 /** 玩家档案（localStorage 持久化的全部字段）。 */
 export interface PlayerProfile {
     version: number;
+    /** 档案创建时间戳(ms)；旧档无此字段时按 0 处理，首次记录时补齐。 */
+    createdAt: number;
+    /** 最近一次写入时间戳(ms)，存档选择页显示「最后游玩」。 */
+    updatedAt: number;
     totalRuns: number;         // 完成局数
     totalWins: number;         // 通关局数
     totalKills: number;        // 累计击杀
@@ -34,6 +39,14 @@ export interface PlayerProfile {
     bestKillsInRun: number;    // 单局最多击杀
     charsPlayed: string[];     // 使用过的角色id
     achievements: string[];    // 已解锁成就id
+}
+
+/** 存档槽概览（存档选择页渲染用；exists=false 即空槽）。 */
+export interface SaveSlotSummary {
+    /** 槽位下标(0-based)，显示时 +1。 */
+    slot: number;
+    exists: boolean;
+    profile: PlayerProfile | null;
 }
 
 export interface AchievementDef {
@@ -84,6 +97,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 function freshProfile(): PlayerProfile {
     return {
         version: 1,
+        createdAt: 0, updatedAt: 0,
         totalRuns: 0, totalWins: 0, totalKills: 0, bossKills: 0,
         bestChapter: 0, bestWave: 0, totalGoldEarned: 0,
         bestCombo: 0, bestAugmentCount: 0, bestKillsInRun: 0,
@@ -91,29 +105,97 @@ function freshProfile(): PlayerProfile {
     };
 }
 
+/** 从 localStorage 原文解析档案；损坏/不存在时返回 null（区别于空白新档）。 */
+function parseProfileRaw(raw: string | null): PlayerProfile | null {
+    if (!raw) return null;
+    try {
+        const data = JSON.parse(raw);
+        if (data && typeof data === 'object') return Object.assign(freshProfile(), data);
+    } catch (_e) { /* 存档损坏按空槽处理，不中断游戏 */ }
+    return null;
+}
+
 export class SaveSystem {
-    private static readonly KEY = 'hexblast_profile_v1';
+    /** 存档槽数量（首页进入游戏后任选其一）。 */
+    static readonly SLOT_COUNT = 3;
+    /** 旧单档案时代的存储 key；仅在迁移时读取，不再写入。 */
+    private static readonly LEGACY_KEY = 'hexblast_profile_v1';
+    /** 槽位存储 key 前缀，实际 key 为 `${BASE}${槽位号1-based}`。 */
+    private static readonly KEY_BASE = 'hexblast_slot_v1_';
+    private static _slot = 0;
     private static _cache: PlayerProfile | null = null;
 
-    /** 读取档案（带内存缓存；localStorage 损坏/不存在时回退空白档案）。 */
+    /** 槽位实际使用的 localStorage key。 */
+    static slotKey(slot: number): string {
+        return this.KEY_BASE + (slot + 1);
+    }
+
+    /** 当前选中的槽位(0-based)。未选择过时默认 0 号槽。 */
+    static currentSlot(): number {
+        return this._slot;
+    }
+
+    /** 切换当前槽位：换槽即清内存缓存，后续 load/save/recordRun 都作用于新槽。 */
+    static selectSlot(slot: number): void {
+        const s = Math.min(Math.max(0, Math.floor(slot)), this.SLOT_COUNT - 1);
+        if (s === this._slot) { this._cache = null; return; }
+        this._slot = s;
+        this._cache = null;
+    }
+
+    /** 全部槽位概览（存档选择页用）；只读存储，不动当前槽与缓存。 */
+    static listSlots(): SaveSlotSummary[] {
+        const out: SaveSlotSummary[] = [];
+        for (let i = 0; i < this.SLOT_COUNT; i++) {
+            let p: PlayerProfile | null = null;
+            try {
+                p = parseProfileRaw(sys.localStorage.getItem(this.slotKey(i)));
+            } catch (_e) { p = null; }
+            out.push({ slot: i, exists: !!p, profile: p });
+        }
+        return out;
+    }
+
+    /** 删除槽位存档（存档选择页两步确认后调用）。当前槽被删则缓存一并失效。 */
+    static deleteSlot(slot: number): void {
+        try { sys.localStorage.removeItem(this.slotKey(slot)); } catch (_e) { /* 忽略 */ }
+        if (slot === this._slot) this._cache = null;
+    }
+
+    /**
+     * 旧单档案（hexblast_profile_v1）一次性迁移到 1 号槽：
+     * 仅当旧 key 存在且所有槽位都为空时执行，避免覆盖任何新档。
+     * GameManager 启动时调用；幂等，迁移失败（损坏旧档）静默跳过。
+     */
+    static migrateLegacyProfile(): void {
+        try {
+            const raw = sys.localStorage.getItem(this.LEGACY_KEY);
+            if (!raw) return;
+            for (let i = 0; i < this.SLOT_COUNT; i++) {
+                if (sys.localStorage.getItem(this.slotKey(i))) return;
+            }
+            const p = parseProfileRaw(raw);
+            if (p) sys.localStorage.setItem(this.slotKey(0), JSON.stringify(p));
+        } catch (_e) { /* 旧档损坏时跳过迁移 */ }
+    }
+
+    /** 读取当前槽档案（带内存缓存；localStorage 损坏/不存在时回退空白档案）。 */
     static load(): PlayerProfile {
         if (this._cache) return this._cache;
-        let p = freshProfile();
+        let p: PlayerProfile;
         try {
-            const raw = sys.localStorage.getItem(this.KEY);
-            if (raw) {
-                const data = JSON.parse(raw);
-                if (data && typeof data === 'object') p = Object.assign(freshProfile(), data);
-            }
-        } catch (_e) { /* 存档损坏时按新档处理，不中断游戏 */ }
+            p = parseProfileRaw(sys.localStorage.getItem(this.slotKey(this._slot))) ?? freshProfile();
+        } catch (_e) { p = freshProfile(); }
         this._cache = p;
         return p;
     }
 
     static save(): void {
         if (!this._cache) return;
+        this._cache.updatedAt = Date.now();
+        if (!this._cache.createdAt) this._cache.createdAt = this._cache.updatedAt;
         try {
-            sys.localStorage.setItem(this.KEY, JSON.stringify(this._cache));
+            sys.localStorage.setItem(this.slotKey(this._slot), JSON.stringify(this._cache));
         } catch (_e) { /* 隐私模式/存储满时静默失败 */ }
     }
 

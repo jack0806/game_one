@@ -7,6 +7,8 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..', '..');
 const screenSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/ScreenManager.ts'), 'utf8');
 const metaSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/MetaPageUI.ts'), 'utf8');
+const saveSelectSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/SaveSelectUI.ts'), 'utf8');
+const lobbySource = fs.readFileSync(path.join(root, 'assets/scripts/ui/LobbyUI.ts'), 'utf8');
 const gameSource = fs.readFileSync(path.join(root, 'assets/scripts/core/GameManager.ts'), 'utf8');
 const playerSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/PlayerController.ts'), 'utf8');
 const enemySource = fs.readFileSync(path.join(root, 'assets/scripts/entities/EnemyBase.ts'), 'utf8');
@@ -31,14 +33,79 @@ test('首页背景已移除烧录按钮，操作区不再绘制不透明遮挡�
     assert.doesNotMatch(screenSource, /dockG\.fillRect/);
 });
 
-test('首页任务树、图鉴、成就均进入独立全屏页面', () => {
-    assert.match(screenSource, /'任务树'/);
-    assert.match(screenSource, /'图鉴'/);
-    assert.match(screenSource, /'成就档案'/);
-    assert.match(screenSource, /transition\('menu', 'tasks'\)/);
-    assert.match(screenSource, /transition\('menu', 'codex'\)/);
-    assert.match(screenSource, /transition\('menu', 'achievements'\)/);
-    assert.doesNotMatch(screenSource, /_buildAchievementWall/);
+test('任务树/图鉴/成就档案入口迁入存档大厅,首页不再展示', () => {
+    // 三个元进度入口随存档会话进入大厅左侧"情报终端"
+    assert.match(lobbySource, /\['tasks', '任务树', CYAN\]/);
+    assert.match(lobbySource, /\['codex', '图鉴'/);
+    assert.match(lobbySource, /\['achievements', '成就档案', GOLD\]/);
+    assert.match(lobbySource, /this\._callbacks\.onMetaPage\(name\)/);
+    // 首页已无元进度导航（MetaDock 整体移除）
+    assert.doesNotMatch(screenSource, /MetaDock/);
+    assert.doesNotMatch(screenSource, /'任务树'/);
+    assert.doesNotMatch(screenSource, /'图鉴'/);
+    assert.doesNotMatch(screenSource, /'成就档案'/);
+    assert.doesNotMatch(screenSource, /transition\('menu', 'tasks'\)/);
+    assert.doesNotMatch(screenSource, /transition\('menu', 'codex'\)/);
+    assert.doesNotMatch(screenSource, /transition\('menu', 'achievements'\)/);
+    // 元进度页返回目标从首页改为存档大厅
+    assert.match(screenSource, /transition\(this\._currentMetaPage\(\), 'lobby'\)/);
+    assert.match(metaSource, /'返回大厅'/);
+    assert.doesNotMatch(metaSource, /'返回首页'/);
+});
+
+test('进入游戏先选存档再进大厅:传送门进选人,对局退出回大厅', () => {
+    // 开始游戏 → 存档选择
+    assert.match(gameSource, /onPlayPressed     = \(\) => this\._setState\('saveSelect'\)/);
+    // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
+    assert.match(gameSource, /onSlotPicked      = \(slot\) => \{[\s\S]*?SaveSystem\.selectSlot\(slot\);[\s\S]*?this\._setState\('lobby'\);/);
+    // 大厅传送门 → 选人页；选人页可返回大厅
+    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('charSelect'\)/);
+    assert.match(gameSource, /onCharSelectBack  = \(\) => this\._setState\('lobby'\)/);
+    // 状态机加入新状态并显示对应面板
+    assert.match(gameSource, /'menu' \| 'saveSelect' \| 'lobby' \| 'charSelect' \| 'playing'/);
+    assert.match(gameSource, /case 'saveSelect':[\s\S]*?this\._screenMgr\.show\('saveSelect'\)/);
+    assert.match(gameSource, /case 'lobby':[\s\S]*?this\._screenMgr\.show\('lobby'\)/);
+    // 对局内退出按会话来源分流：正式局回大厅、测试房回首页
+    assert.match(gameSource, /this\._setState\(this\._pauseReturn === 'testRoom' \? 'menu' : 'lobby'\)/);
+    assert.match(gameSource, /this\._pauseReturn = 'playing';/);
+    assert.match(gameSource, /this\._pauseReturn = 'testRoom';/);
+    // 启动时把旧单档案一次性迁移进 1 号槽
+    assert.match(gameSource, /SaveSystem\.migrateLegacyProfile\(\)/);
+    // 选人页新增返回大厅按钮
+    assert.match(screenSource, /'返回大厅', -560, 320, 160, 42/);
+    assert.match(screenSource, /onCharSelectBack\?\.\(\)/);
+});
+
+test('存档选择页:3槽卡片,空槽新建/已有槽继续,删除两步确认', () => {
+    assert.match(saveSelectSource, /'选择存档'/);
+    assert.match(saveSelectSource, /SaveSystem\.listSlots\(\)/);
+    assert.match(saveSelectSource, /this\._callbacks\.onSlotPicked\(slot\)/);
+    // 已有槽展示进度概览，空槽显示"+"引导
+    assert.match(saveSelectSource, /总局数 \$\{p\.totalRuns\}/);
+    assert.match(saveSelectSource, /成就 \$\{achCount\}\/\$\{ACHIEVEMENTS\.length\}/);
+    assert.match(saveSelectSource, /最后游玩/);
+    assert.match(saveSelectSource, /点按新建存档/);
+    // 删除两步确认：第一次 armed 变红,第二次才真正删档并刷新
+    assert.match(saveSelectSource, /'确认删除'/);
+    assert.match(saveSelectSource, /SaveSystem\.deleteSlot\(view\.slot\)/);
+    assert.match(saveSelectSource, /this\.refresh\(\);/);
+});
+
+test('存档大厅:右侧动画传送门,点击进入选人,左侧展示当前存档概要', () => {
+    assert.match(lobbySource, /'作战大厅'/);
+    assert.match(lobbySource, /'出击传送门'/);
+    assert.match(lobbySource, /this\._callbacks\.onPortalPressed\(\)/);
+    // 传送门锚定在画布右半区,由 ScreenManager.update 逐帧驱动旋转符文环
+    assert.match(lobbySource, /new Vec3\(430, -20, 0\)/);
+    assert.match(lobbySource, /update\(dt: number\)/);
+    assert.match(lobbySource, /this\._drawPortal\(this\._portalT\)/);
+    assert.match(screenSource, /this\._lobby\?\.update\(dt\)/);
+    // 左侧存档概要读取当前选中槽
+    assert.match(lobbySource, /SaveSystem\.currentSlot\(\)/);
+    assert.match(lobbySource, /SaveSystem\.load\(\)/);
+    // 大厅显示时刷新概要;存档选择页显示时刷新槽位卡
+    assert.match(screenSource, /name === 'saveSelect'[\s\S]*?this\._saveSelect\.refresh\(\)/);
+    assert.match(screenSource, /name === 'lobby'[\s\S]*?this\._lobby\.refresh\(\)/);
 });
 
 test('任务页使用主支线节点链路、状态着色和独立任务详情', () => {

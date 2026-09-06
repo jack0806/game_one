@@ -20,12 +20,29 @@ export interface MutationDef {
     apply: (game: any) => void;
 }
 
+// 每章改为 5 波小怪 + 1 波 Boss（2026-08-26 玩家要求：boss 波会跟小怪关一样正常刷小怪，
+// 全章节节奏统一为 5 波）。bossWave 是全局波次号：5/10/15/20/25。
 export const CHAPTERS: ChapterDef[] = [
-    { id: 1, name: '废土街道',   bgKey: 'bg_chapter1', waves: 10, bossWave: 10, enemyScale: 1.0, desc: '废弃的城市废墟，腐肉横行' },
-    { id: 2, name: '钢铁工厂',   bgKey: 'bg_chapter2', waves: 10, bossWave: 20, enemyScale: 1.3, desc: '轰鸣的熔炉，钢铁巨兽苏醒' },
-    { id: 3, name: '海克斯实验室', bgKey: 'bg_chapter3', waves: 10, bossWave: 30, enemyScale: 1.7, desc: '高能辐射区域，异变体涌现' },
-    { id: 4, name: '混沌位面',   bgKey: 'bg_chapter4', waves: 10, bossWave: 40, enemyScale: 2.2, desc: '现实崩塌，终焉之门大开' },
+    { id: 1, name: '废土街道',   bgKey: 'bg_chapter1', waves: 5, bossWave: 5,  enemyScale: 1.0, desc: '废弃的城市废墟，腐肉横行' },
+    { id: 2, name: '钢铁工厂',   bgKey: 'bg_chapter2', waves: 5, bossWave: 10, enemyScale: 1.3, desc: '轰鸣的熔炉，钢铁巨兽苏醒' },
+    { id: 3, name: '海克斯实验室', bgKey: 'bg_chapter3', waves: 5, bossWave: 15, enemyScale: 1.7, desc: '高能辐射区域，异变体涌现' },
+    { id: 4, name: '混沌位面',   bgKey: 'bg_chapter4', waves: 5, bossWave: 20, enemyScale: 2.2, desc: '现实崩塌，终焉之门大开' },
+    // 第5章复用第4章背景（暂无新美术）；第5章 Boss 见 BossDB
+    { id: 5, name: '天罚领域',   bgKey: 'bg_chapter4', waves: 5, bossWave: 25, enemyScale: 2.8, desc: '天空撕裂，灭世机神降临' },
 ];
+
+/**
+ * 按全局波次反推 1-based 章节号（波次超出最后一章时钳到最后章节，
+ * 无尽模式沿用最后一章敌群与章节显示）。
+ */
+export function chapterForWave(wave: number): number {
+    let acc = 0;
+    for (const c of CHAPTERS) {
+        acc += c.waves;
+        if (wave <= acc) return c.id;
+    }
+    return CHAPTERS[CHAPTERS.length - 1].id;
+}
 
 export const MUTATIONS: MutationDef[] = [
     { id: 'iron_skin',       name: '铁甲洪潮',   color: '#888',    desc: '所有敌人护甲+100',
@@ -63,8 +80,10 @@ export const MUTATIONS: MutationDef[] = [
       } },
 ];
 
+// 2026-09-07 玩家反馈"怪的密度还是太低"：总量曲线整体上调——
+// 起点 4+2/wave/封顶28 → 6+3/wave/封顶48（后期同屏约为旧版两倍）。
 export const ENEMY_COUNT_BY_WAVE = (wave: number, difficulty: 'normal' | 'nightmare' | 'chaos'): number => {
-    const base = Math.min(4 + wave * 2, 28);
+    const base = Math.min(6 + wave * 3, 48);
     const mult = { normal: 1, nightmare: 1.5, chaos: 2 }[difficulty] || 1;
     return Math.floor(base * mult);
 };

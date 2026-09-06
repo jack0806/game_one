@@ -225,6 +225,19 @@ test('机械高达升空直接消失:带走自身弹幕,不留残余攻击', () 
     assert.match(bossSource, /game\.clearTaggedEnemyBullets\?\.\('mech'\);/, '升空瞬间清除自身弹幕');
 });
 
+test('灭世机神·天罚场景系统:激光站桩定身/导弹半径100-150/震荡波', () => {
+    assert.match(gameSource, /startInvaderLaser\(boss: BossController\): void/, '激光发射入口');
+    assert.match(gameSource, /const radius = boss\.finalForm \? 150 : 100;/, '导弹半径基础100/最终150');
+    assert.match(gameSource, /startInvaderShockwaves\(boss: BossController\): void/, '震荡波入口');
+    assert.match(gameSource, /private _updateInvaderField\(dt: number\): void/, '场景系统推进');
+    assert.match(gameSource, /const aa = -laser\.angle; \/\/ 画布角 → 本地角（y 翻转），与伤害判定严格一致/, '激光渲染角度翻转,与伤害判定一致');
+    assert.match(gameSource, /width: 11, \/\/ 与渲染最外层辉光半宽\(22\/2\)一致/, '激光伤害宽度与显示光束一致');
+    assert.match(gameSource, /turnSpeed: boss\.finalForm \? 305 : 290, \/\/ 激光转向横向速度（原275\/290各加快15码）/, '激光转向速度基础290/最终305(各加快15码)');
+    assert.match(gameSource, /lockT: 0\.5, \/\/ 引导结束后先沿射出方向停顿0\.5秒,再开始追击主角/, '激光引导结束后停顿0.5秒再追击');
+    const bossSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
+    assert.match(bossSource, /this\.invAimT > 0 \|\| this\.invLaserT > 0/, '激光蓄能与发射期间Boss定身');
+});
+
 test('暂停/详情面板返回状态跟随测试房间', () => {
     assert.match(gameSource, /private _pauseCombat\(\) \{[\s\S]*?this\._pauseReturn = this\.state === 'testRoom' \? 'testRoom' : 'playing'/);
     assert.match(gameSource, /this\._screenMgr\.onResumePressed\s*=\s*\(\) => this\._setState\(this\._pauseReturn\)/);

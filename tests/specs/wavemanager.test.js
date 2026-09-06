@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { WaveManager } = require('../dist/systems/WaveManager');
-const { ENEMY_COUNT_BY_WAVE } = require('../dist/data/WaveData');
+const { ENEMY_COUNT_BY_WAVE, chapterForWave } = require('../dist/data/WaveData');
 const { makeMockGame } = require('./mockGame');
 
 function drainSpawning(wm, game, spawned) {
@@ -13,56 +13,69 @@ function drainSpawning(wm, game, spawned) {
     }
 }
 
-test('ENEMY_COUNT_BY_WAVE 数量随波次增长,难度倍率正确,且存在28的封顶', () => {
-    assert.equal(ENEMY_COUNT_BY_WAVE(1, 'normal'), 6);   // min(4+2,28)=6
-    assert.equal(ENEMY_COUNT_BY_WAVE(20, 'normal'), 28); // min(4+40,28)=28 封顶
-    assert.equal(ENEMY_COUNT_BY_WAVE(1, 'nightmare'), 9); // floor(6*1.5)
-    assert.equal(ENEMY_COUNT_BY_WAVE(1, 'chaos'), 12);    // 6*2
+test('ENEMY_COUNT_BY_WAVE 数量随波次增长,难度倍率正确,且存在48的封顶', () => {
+    // 2026-09-07 密度上调:6+3/wave/封顶48(旧为4+2/wave/封顶28)
+    assert.equal(ENEMY_COUNT_BY_WAVE(1, 'normal'), 9);   // min(6+3,48)=9
+    assert.equal(ENEMY_COUNT_BY_WAVE(20, 'normal'), 48); // min(6+60,48)=48 封顶
+    assert.equal(ENEMY_COUNT_BY_WAVE(1, 'nightmare'), 13); // floor(9*1.5)
+    assert.equal(ENEMY_COUNT_BY_WAVE(1, 'chaos'), 18);    // 9*2
 });
 
-test('startWave在Boss波(第10/20/30/40波)只生成boss队列', () => {
-    const game = makeMockGame();
-    const wm = new WaveManager();
-    wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
-    for (let w = 1; w <= 10; w++) wm.startWave(game);
-    assert.ok(wm.isBossWave(), '第10波应判定为Boss波');
-    drainSpawning(wm, game);
-    const spawnedTypes = game.enemies.map(e => e.type);
-    assert.deepEqual(spawnedTypes, ['boss'], 'Boss波应该只刷出1个boss');
+test('startWave在Boss波(第5波)先刷boss再正常刷小怪', () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0.5;
+    try {
+        const game = makeMockGame();
+        const wm = new WaveManager();
+        wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
+        for (let w = 1; w <= 5; w++) wm.startWave(game);
+        assert.ok(wm.isBossWave(), '第5波应判定为Boss波');
+        drainSpawning(wm, game);
+        const spawnedTypes = game.enemies.map(e => e.type);
+        assert.equal(spawnedTypes[0], 'boss', 'Boss波应先刷出boss');
+        assert.equal(spawnedTypes.filter(t => t === 'boss').length, 1, '只刷1个boss');
+        // boss 波会跟小怪关一样正常刷小怪（数量与普通波一致）
+        assert.equal(game.enemies.length, 1 + ENEMY_COUNT_BY_WAVE(5, 'normal'), 'boss波应附带完整小怪波');
+    } finally {
+        Math.random = originalRandom;
+    }
 });
 
-test('完整主线1~40波与无尽41波的队列均可生成,章节和Boss节点连续', () => {
+test('完整主线1~25波(每章5波)与无尽26波的队列均可生成,章节和Boss节点连续', () => {
     const originalRandom = Math.random;
     Math.random = () => 0.5; // 固定敌池，且不追加随机精英
     try {
         const game = makeMockGame();
         const wm = new WaveManager();
-        const bossWaves = new Set([10, 20, 30, 40]);
+        const bossWaves = new Set([5, 10, 15, 20, 25]);
         wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
 
-        for (let wave = 1; wave <= 40; wave++) {
+        for (let wave = 1; wave <= 25; wave++) {
             game.enemies = [];
             wm.startWave(game);
             drainSpawning(wm, game);
             assert.equal(wm.wave, wave);
-            assert.equal(wm.chapter, Math.ceil(wave / 10));
+            assert.equal(wm.chapter, chapterForWave(wave));
             if (bossWaves.has(wave)) {
-                assert.deepEqual(game.enemies.map(e => e.type), ['boss'], `第${wave}波应只生成章节Boss`);
+                const types = game.enemies.map(e => e.type);
+                assert.equal(types[0], 'boss', `第${wave}波应先刷章节Boss`);
+                assert.equal(types.filter(t => t === 'boss').length, 1, `第${wave}波只有1个章节Boss`);
+                assert.equal(game.enemies.length, 1 + ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波boss波应带完整小怪波`);
             } else {
                 assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波敌人数异常`);
             }
         }
 
-        // 无尽开启后的第41波会激活首个变异；固定随机数选择非增殖型变异，
+        // 无尽开启后的第26波会激活首个变异；固定随机数选择非增殖型变异，
         // 同时避开随机精英追加，以验证主线通关后仍可继续建立第5章敌群。
         Math.random = () => 0.5;
         wm.endless = true;
         game.enemies = [];
         wm.startWave(game);
         drainSpawning(wm, game);
-        assert.equal(wm.wave, 41);
+        assert.equal(wm.wave, 26);
         assert.equal(wm.chapter, 5);
-        assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(41, 'normal'));
+        assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(26, 'normal'));
     } finally {
         Math.random = originalRandom;
     }
@@ -113,8 +126,8 @@ test('变异cloneWar使普通波次敌人数量变为3倍(原本count + count*2)
         wmMut.startWave(gameMut);
         drainSpawning(wmMut, gameMut);
 
-        assert.equal(gameBase.enemies.length, 6);
-        assert.equal(gameMut.enemies.length, 18);
+        assert.equal(gameBase.enemies.length, 9, '第1波基础敌人9个(密度上调后)');
+        assert.equal(gameMut.enemies.length, 27, 'cloneWar三倍=9+9*2');
     } finally {
         Math.random = originalRandom;
     }
@@ -165,7 +178,7 @@ test('reset()清空波次状态回到初始值', () => {
 
 // ---- 批次刷怪(一波3-4个,近战+远程混合) --------------------------
 
-test('普通波队列成批编组:每批3-4个且包含近战与远程(archer)', () => {
+test('普通波队列成批编组:每批5-7个且包含近战与远程(archer)', () => {
     const game = makeMockGame();
     const wm = new WaveManager();
     const batches = [];
@@ -175,14 +188,15 @@ test('普通波队列成批编组:每批3-4个且包含近战与远程(archer)',
         if (clock !== lastFire) { batches.push([]); lastFire = clock; }
         batches[batches.length - 1].push({ type, x, y });
     };
-    wm.startWave(game); // 第1波: 6个
-    while (wm.state === 'spawning') { clock += 3.5; wm.update(3.5, game); }
+    wm.startWave(game); // 第1波: 9个
+    while (wm.state === 'spawning') { clock += 2.5; wm.update(2.5, game); }
 
-    // 5%精英事件会另追加一个单独精英批，不属于基础6只的3~4人编组。
+    // 5%精英事件会另追加一个单独精英批，不属于基础9只的5~7人编组。
     const normalBatches = batches.filter(b => !(b.length === 1 && b[0].type === 'elite_grunt'));
-    assert.equal(normalBatches.length, 2, '6个基础敌人应分成2批');
+    assert.equal(normalBatches.length, 2, '9个基础敌人应分成2批');
     for (const b of normalBatches) {
-        assert.ok(b.length >= 3 && b.length <= 4, `每批应3-4个,实际${b.length}`);
+        // 批次为5-7个；尾批允许3-4个（避免1-2只的碎尾巴批）
+        assert.ok(b.length >= 3 && b.length <= 7, `每批应3-7个,实际${b.length}`);
         assert.ok(b.some(e => e.type === 'archer'), '每批都应含远程archer');
         assert.ok(b.some(e => e.type !== 'archer'), '每批都应含近战');
     }

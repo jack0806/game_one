@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { BulletPool } = require('../dist/entities/BulletController');
+const { EnemyBase } = require('../dist/entities/EnemyBase');
 const { makeMockGame, makePlayer } = require('./mockGame');
 
 test('spawn/fire正确从池中取出子弹并加入active', () => {
@@ -48,6 +49,25 @@ test('无敌/隐身敌人被命中只显示免疫,不显示伤害数字与命中
     assert.ok(texts.includes('免疫'), '应显示免疫提示');
     assert.ok(!texts.some(t => t === '15'), '不应显示伤害数字');
     assert.equal(hitFx, 0, '不应播放命中粒子');
+});
+
+test('带真伤(时空行者被动)的攻击命中无敌目标:显示真伤掉血而非免疫', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const texts = [];
+    game.floatingText.spawn = (x, y, text) => texts.push(text);
+    const player = makePlayer({ stats: { ...makePlayer().stats, trueDamageRate: 0.35 } });
+    const enemy = {
+        x: 20, y: 0, radius: 10, alive: true, isElite: false, isBoss: false,
+        invulnerable: true, hp: 100,
+        takeDamage() { return 0; },          // 普通伤害被免疫
+        takeTrueDamage(amount) { this.hp -= amount; }, // 真伤无视隐身/无敌
+    };
+    pool.spawn({ x: 10, y: 0, vx: 0, vy: 0, damage: 15, radius: 5, pierceLeft: 0, hitEnemies: new Set() });
+    pool.update(0.016, [enemy], player, game);
+    assert.ok(enemy.hp < 100, '真伤应无视隐身扣血');
+    assert.ok(texts.includes('-6真伤'), '应显示真伤掉血数字(ceil(15*0.35)=6)');
+    assert.ok(!texts.includes('免疫'), '携带真伤时不再满屏免疫误导');
 });
 
 test('无穿透(pierceLeft=0)命中后子弹立即释放回池', () => {
@@ -164,6 +184,142 @@ test('explodeOnExpire弹:寿命耗尽后在终点爆炸,范围内玩家受伤;�
     pool2.updateEnemyBullets(0.016, player2, game2);
     assert.equal(player2.hp, 88, '命中应直接结算伤害');
     assert.equal(pool2.active.length, 0, '命中后爆炸释放');
+});
+
+test('explodeOnExpire弹支持定制爆炸半径(灭世机神追踪导弹脱靶100码爆炸)', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    // 玩家距爆心 95px：默认爆炸半径90不受伤，定制半径100则受伤
+    const player = makePlayer({ x: 695, y: 340, radius: 16 });
+    const b = pool.spawn({
+        x: 600, y: 340, vx: 0, vy: 0, damage: 10, radius: 8,
+        owner: 'enemy', isEnemyBullet: true, lifeTime: 0.3,
+        explodeOnExpire: true, explodeRadius: 100, explodeColor: '#ffaa33',
+    });
+    pool.updateEnemyBullets(0.5, player, game);
+    assert.ok(!pool.active.includes(b), '寿命耗尽应爆炸释放');
+    assert.ok(player.hp < 100, '定制半径100应覆盖95px外的玩家');
+});
+
+test('玩家子弹延时加速(凯尔大招2秒后弹速翻倍),只加速一次', () => {
+    const game = makeMockGame();
+    const enemies = [];
+    const player = makePlayer();
+    const pool = new BulletPool(8);
+    const b = pool.spawn({ x: 200, y: 200, vx: 100, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, speedUpAfter: 0.5, speedUpMult: 2 });
+    pool.update(0.4, enemies, player, game);
+    assert.equal(b.vx, 100, '未到2秒不加速');
+    pool.update(0.2, enemies, player, game); // life = 0.6 > 0.5
+    assert.equal(b.vx, 200, '2秒后弹速翻倍');
+    pool.update(0.1, enemies, player, game);
+    assert.equal(b.vx, 200, '只加速一次,不重复叠加');
+});
+
+test('玩家子弹脱靶到期爆炸:对半径内敌人造成伤害(凯尔大招打不着怪不白消失)', () => {
+    const game = makeMockGame();
+    const enemies = [];
+    const player = makePlayer();
+    const pool = new BulletPool(8);
+    const e = new EnemyBase();
+    e.init('grunt', 1, game);
+    e.x = 300; e.y = 300;
+    enemies.push(e);
+    const hpBefore = e.hp;
+    // 用简化实现代替 GameManager.spawnExplosion（headless 无法实例化 cc 组件）
+    game.spawnExplosion = (pl, x, y, dmg, radius) => {
+        for (const en of enemies) {
+            if (en.alive && Math.hypot(en.x - x, en.y - y) < radius) en.takeDamage(dmg, pl, game);
+        }
+    };
+    // 静止在敌人身旁(距离20<50)的炮弹,寿命耗尽未命中 → 爆炸伤害敌人
+    pool.spawn({ x: 300, y: 280, vx: 0, vy: 0, damage: 10, radius: 5, owner: 'player', lifeTime: 0.3, explodeOnExpire: true, explodeRadius: 50 });
+    pool.update(0.5, enemies, player, game);
+    assert.ok(e.hp < hpBefore, '脱靶到期爆炸应伤害半径50内的敌人');
+    // 爆炸范围外的敌人不受影响
+    const e2 = new EnemyBase();
+    e2.init('grunt', 1, game);
+    e2.x = 600; e2.y = 600;
+    enemies.push(e2);
+    const hp2Before = e2.hp;
+    pool.spawn({ x: 300, y: 280, vx: 0, vy: 0, damage: 10, radius: 5, owner: 'player', lifeTime: 0.3, explodeOnExpire: true, explodeRadius: 50 });
+    pool.update(0.5, enemies, player, game);
+    assert.equal(e2.hp, hp2Before, '爆炸半径外的敌人不受伤害');
+});
+
+test('玩家追踪弹锁定最近存活敌人(非数组第一个),目标死亡重锁,加速瞬间重锁', () => {
+    const game = makeMockGame();
+    const enemies = [];
+    const player = makePlayer();
+    const pool = new BulletPool(16);
+    const mkEnemy = (x, y) => {
+        const e = new EnemyBase();
+        e.init('grunt', 1, game);
+        e.x = x; e.y = y;
+        enemies.push(e);
+        return e;
+    };
+    // 数组顺序：远的在前、近的在后 → 验证锁定最近而非数组第一个
+    const far = mkEnemy(900, 100);
+    const near = mkEnemy(400, 100);
+    const b = pool.spawn({ x: 200, y: 100, vx: 100, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, homing: true });
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b._homingTarget, near, '应锁定最近敌人而非数组第一个');
+    // 锁定目标死亡 → 重新锁定存活敌人
+    near.alive = false;
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b._homingTarget, far, '目标死亡后重新锁定');
+    // 加速瞬间清空锁定 → 重新锁定最近存活目标（凯尔大招"加速后锁定怪物位置"）
+    const alive = mkEnemy(300, 100);
+    const b2 = pool.spawn({ x: 200, y: 100, vx: 100, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, homing: true, speedUpAfter: 0.5, speedUpMult: 2 });
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b2._homingTarget, alive, '加速前锁定最近目标');
+    pool.update(0.5, enemies, player, game); // life=0.516 >= 0.5 → 加速并重锁
+    assert.equal(b2._spedUp, true, '加速已触发');
+    assert.equal(b2._homingTarget, alive, '加速后重新锁定最近存活目标');
+});
+
+test('玩家追踪弹场上有Boss时优先锁定Boss(即使更远),Boss死亡后回落最近敌人', () => {
+    const game = makeMockGame();
+    const enemies = [];
+    const player = makePlayer();
+    const pool = new BulletPool(16);
+    const mkEnemy = (x, y, isBoss = false) => {
+        const e = new EnemyBase();
+        e.init('grunt', 1, game);
+        e.x = x; e.y = y;
+        e.isBoss = isBoss;
+        enemies.push(e);
+        return e;
+    };
+    // 近处普通敌人(200,100) + 远处Boss(900,100) → 应优先锁定Boss
+    const grunt = mkEnemy(200, 100);
+    const boss = mkEnemy(900, 100, true);
+    const b = pool.spawn({ x: 100, y: 100, vx: 100, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, homing: true });
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b._homingTarget, boss, '有Boss时优先锁定Boss(即使更远)');
+    // Boss死亡 → 重新锁定最近普通敌人
+    boss.alive = false;
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b._homingTarget, grunt, 'Boss死亡后回落最近敌人');
+});
+
+test('凯尔大招单目标时所有炮弹锁定同一个敌人(集火)', () => {
+    const game = makeMockGame();
+    const enemies = [];
+    const player = makePlayer();
+    const pool = new BulletPool(16);
+    const solo = new EnemyBase();
+    solo.init('grunt', 1, game);
+    solo.x = 300; solo.y = 100;
+    enemies.push(solo);
+    const bullets = [];
+    for (let i = 0; i < 5; i++) {
+        bullets.push(pool.spawn({ x: 100, y: 100, vx: 50, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, homing: true }));
+    }
+    pool.update(0.016, enemies, player, game);
+    for (const b of bullets) {
+        assert.equal(b._homingTarget, solo, '所有炮弹应锁定场上唯一目标');
+    }
 });
 
 test('bounceExplode弹:反弹耗尽后撞边爆炸,爆心附近的玩家受伤', () => {

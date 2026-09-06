@@ -312,6 +312,27 @@ export class PlayerController extends Component {
         }
     }
 
+    /**
+     * 真实伤害（灭世机神·毁灭激光等）：无视护盾/护甲/受击无敌帧直接扣血。
+     * 仍受 godMode（测试房无敌开关）与 buff 无敌（重生/技能保护）约束，避免沙盒失效。
+     * quiet 模式（激光连续伤害逐帧结算用）：跳过浮字/粒子/震屏/受击钩子，由调用方节流反馈。
+     */
+    takeTrueDamage(amount: number, game: any, opts?: { quiet?: boolean }): void {
+        if (!this.alive || this.godMode || amount <= 0) return;
+        if (this._invincible > 0) return;
+        this.hp -= amount;
+        if (!opts?.quiet) {
+            game.floatingText?.spawn?.(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff6655', 16, false);
+            game.particles?.hit?.(this.x, this.y, '#ff5544');
+            game.screenShake?.shake?.(3, 0.12);
+            game.onPlayerHit?.(this, game);
+        }
+        if (this.hp <= 0) {
+            this.hp = 0; this.alive = false;
+            game.onPlayerDeath();
+        }
+    }
+
     // ── 每帧更新 ─────────────────────────────────────────
     tickMovement(dt: number, input: any): void {
         if (!this.alive || this._buffs.some(b => b.mods.noMove)) return;
@@ -419,30 +440,16 @@ export class PlayerController extends Component {
             })) this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
         }
         // 技能 E（CD 可按角色定制：eCd ?? 默认SKILL_E_CD=10秒）
+        // 黑洞引擎(black_hole)词条已重做为独立定时器自动施放，不再替换 E 技能。
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
             if (this._requestSkill('e', () => {
                 game.audio?.playSfx?.('skill_e');
                 this._grantCastShield(game);
-                let eName = this._charDef.skills.e.split('—')[0].trim();
-                if (this.stats.eSkillUpgrade === 'blackhole') {
-                    // 放置类技能：黑洞直接释放在敌人最密集的位置；
-                    // 场上没有敌人时才退回鼠标位置。
-                    const cluster = game.getEnemyClusterPoint?.();
-                    const bx = cluster ? cluster.x : input.mouse.x;
-                    const by = cluster ? cluster.y : input.mouse.y;
-                    game.attractEnemies?.(bx, by, 120);
-                    game.particles?.explode(bx, by, '#aa00ff', 60);
-                    for (const e of game.enemies) {
-                        if (e.alive && Math.hypot(e.x - bx, e.y - by) < 120) e.takeDamage(this.getDamage(game) * 2, this, game);
-                    }
-                    eName = '黑洞引擎';
-                } else {
-                    this._charDef.eSkill(this, game);
-                }
+                this._charDef.eSkill(this, game);
                 // Q/E 名称统一只由控制器显示一次。角色数据层只负责效果，避免
                 // “网络连接/连接网络”这类同义文案在英雄头顶叠两遍。
-                const eColor = this.stats.eSkillUpgrade === 'blackhole' ? '#cc00ff' : this.color;
-                game.floatingText?.spawn(this.x, this.y - 55, eName, eColor, 15, true);
+                const eName = this._charDef.skills.e.split('—')[0].trim();
+                game.floatingText?.spawn(this.x, this.y - 55, eName, this.color, 15, true);
                 game.augmentManager?.dispatchSkill(this, game);
             })) this._eCd = (this._charDef.eCd ?? SKILL_E_CD) * (1 - this.stats.cdReduction);
         }
@@ -540,8 +547,14 @@ export class PlayerController extends Component {
             game.floatingText?.spawn(enemy.x, enemy.y - 10, Math.ceil(dmg).toString(), isCrit ? '#ffd700' : this.color, isCrit ? 16 : 13, isCrit);
             game.particles?.hit(enemy.x, enemy.y, this.color);
         } else {
-            // 无敌/隐身/格挡：显示"免疫"而不是伤害数字，避免看起来还在掉血
-            game.floatingText?.spawn(enemy.x, enemy.y - 14, '免疫', '#9fb4c8', 12, false);
+            // 无敌/隐身/格挡：普通伤害被免疫。若攻击携带真伤（时空行者被动），
+            // 显示真伤掉血数字而非"免疫"——否则满屏"免疫"会让人误以为完全不掉血
+            const trueRate = this.stats.trueDamageRate ?? 0;
+            if (trueRate > 0) {
+                game.floatingText?.spawn(enemy.x, enemy.y - 14, `-${Math.ceil(dmg * trueRate)}真伤`, '#c8a2ff', 13, false);
+            } else {
+                game.floatingText?.spawn(enemy.x, enemy.y - 14, '免疫', '#9fb4c8', 12, false);
+            }
         }
         return dmg;
     }

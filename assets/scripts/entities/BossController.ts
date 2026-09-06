@@ -5,6 +5,7 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { EnemyBase } from './EnemyBase';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getBossDef, TEST_BOSSES } from '../data/BossDB';
+import { CHAPTERS, chapterForWave } from '../data/WaveData';
 import { resetLocomotion } from '../core/Locomotion';
 import { resetDirectionalFacing } from '../core/DirectionalFacing';
 
@@ -30,7 +31,7 @@ export class BossController extends EnemyBase {
     private _chargeTime = 0;
     private _contactCd = 0;
 
-    /** 测试房间专属 Boss 技能集（'mech' | 'abyss'），正式章节 Boss 无此字段。 */
+    /** 测试房间专属 Boss 技能集（'mech' | 'abyss' | 'invader'），正式章节 Boss 无此字段。 */
     bossKind?: string;
     // mech 状态
     mechSlashT = 0;            // 横劈前摇剩余
@@ -61,11 +62,26 @@ export class BossController extends EnemyBase {
     visualDocSkillT = 0;
     visualDocSkillIndex = 0;
     private _docFinalUsed = false;
+    // 灭世机神·天罚（invader / 第五章）状态
+    /** 最终形态：血量首次掉到 20% 后引导 5 秒进入（全技能强化）。 */
+    finalForm = false;
+    /** 最终形态引导剩余时间（>0 时无敌且不移动/不攻击）。 */
+    _invFormT = 0;
+    /** 毁灭激光蓄能期锁定角度（渲染层画瞄准线）。 */
+    invAimAngle = 0;
+    /** 瞄准线剩余时间。 */
+    invAimT = 0;
+    /** 毁灭激光持续剩余（>0 时 Boss 定身站桩发射，与 GameManager.startInvaderLaser 的 t 同源）。 */
+    invLaserT = 0;
+    private _invLaserCd = 8;
+    private _invMissileCd = 14;
+    private _invShockCd = 10;
+    private _invHomingCd = 6;
 
     override init(type: string, wave: number, game: any): void {
         this.isBoss = true;
         this.type   = 'boss';
-        this.chapter = Math.ceil(wave / 10);
+        this.chapter = chapterForWave(wave);
         this.alive  = true;
         this.dots   = [];
         this.frozen = 0; this.slowMult = 1;
@@ -80,14 +96,19 @@ export class BossController extends EnemyBase {
         this._abyssPillarCd = 8; this._abyssZoneCd = 12;
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
+        this.finalForm = false; this._invFormT = 0; this.invAimT = 0; this.invLaserT = 0;
+        // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
+        // 进场约6秒才有第一发追踪弹，激光/震荡波/导弹依次排开；循环冷却保持原值
+        this._invLaserCd = 8; this._invMissileCd = 14; this._invShockCd = 10; this._invHomingCd = 6;
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
         this._setupForChapter(this.chapter);
     }
 
-    /** Called by GameManager.spawnEnemy('boss') — chapter is 0-based. */
+    /** Called by GameManager.spawnEnemy('boss') — chapter is 0-based。 */
     initBoss(chapter: number, game: any): void {
-        this.init('boss', (chapter + 1) * 10, game);
+        // 用章节表里的全局 Boss 波次反推章节，避免硬编码每章波数
+        this.init('boss', CHAPTERS[chapter].bossWave, game);
     }
 
     /** 测试房间专属 Boss：按 kind 套 TEST_BOSSES 数值与技能集（chapter 取自表内基准章）。 */
@@ -137,10 +158,11 @@ export class BossController extends EnemyBase {
         this.radius    = t.radius;
         this.goldValue = t.goldValue;
         this.armor     = t.armor;
-        // 四章各有独立轮廓/材质的 Boss 贴图，不能再靠同一白模染色冒充换装。
+        // 四章各有独立轮廓/材质的 Boss 贴图，不能再靠同一白模染色冒充换装；
+        // 第5章暂无独立贴图，复用 enemy_boss 素体+表中染色（tintColor）。
         // glowColor 继续承担预警、弹幕和 HUD 主题色，Sprite 本体保持原画色。
         this.spriteKey = t.spriteKey;
-        this.tintColor = '#ffffff';
+        this.tintColor = t.tintColor ?? '#ffffff';
         // Boss 应该有明显区别于场上最大常规怪(miniboss, radius=30)的体型压迫感，
         // 但 radius 本身被碰撞判定/近战距离/边界clamp直接消费（见 update() 的近战
         // 判定和 clamp 调用），不能直接调大，否则会连带把命中体积也放大破坏平衡。
@@ -185,15 +207,18 @@ export class BossController extends EnemyBase {
         if (this._slowTimer > 0) { this._slowTimer -= dt; if (this._slowTimer <= 0) { this._slowTimer = 0; this.slowMult = 1; } }
         if (this.frozen > 0) { this.frozen -= dt; if (this.frozen <= 0) this.frozen = 0; return; }
 
-        // 阶段判断
+        // 阶段判断（灭世机神不走 66%/33% 通用阶段，改用 20% 血最终形态切换）
         const pct = this.hp / this.maxHp;
-        if (pct < 0.33 && this.phase < 3) this._enterPhase(3, game);
-        else if (pct < 0.66 && this.phase < 2) this._enterPhase(2, game);
+        if (!this._usesInvaderSkills()) {
+            if (pct < 0.33 && this.phase < 3) this._enterPhase(3, game);
+            else if (pct < 0.66 && this.phase < 2) this._enterPhase(2, game);
+        }
 
-        // 测试房间专属 Boss 技能状态机（机械高达/深海恐惧，文档 boss.docx）
+        // 测试房间专属 Boss 技能状态机（机械高达/深海恐惧/灭世机神，文档 boss.docx 与用户设计稿）
         if (this.bossKind === 'mech') this._updateMechSkills(dt, player, game);
         else if (this.bossKind === 'abyss') this._updateAbyssSkills(dt, player, game);
         else if (this._isDocBoss()) this._updateDocBossSkills(dt, player, game);
+        else if (this._usesInvaderSkills()) this._updateInvaderSkills(dt, player, game);
 
         // Boss技能先给出能量环前摇，再发射弹幕，避免子弹凭空出现。
         if (this.skillWindup > 0) {
@@ -201,8 +226,10 @@ export class BossController extends EnemyBase {
             if (this.skillWindup <= 0) this._useSkill(player, game);
         }
 
-        // 飞空（机械高达天空坠击）：在天上不移动、不接触攻击
-        const airborne = this.bossKind === 'mech' && this.mechSkyT > 0;
+        // 飞空（机械高达天空坠击）/最终形态引导（灭世机神）/毁灭激光蓄能与发射（灭世机神）：
+        // 均不移动、不接触攻击（激光是站桩技能）
+        const airborne = (this.bossKind === 'mech' && this.mechSkyT > 0)
+            || (this._usesInvaderSkills() && (this._invFormT > 0 || this.invAimT > 0 || this.invLaserT > 0));
 
         // 冲刺先锁定路线并蓄力，再进入冲刺移动。
         if (airborne) {
@@ -247,8 +274,8 @@ export class BossController extends EnemyBase {
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
 
-        // 技能计时（正式章节 Boss；测试房 Boss 由各自状态机调度）
-        if (!this.bossKind) {
+        // 技能计时（正式章节 Boss 除第5章外；测试房 Boss/灭世机神由各自状态机调度）
+        if (!this.bossKind && !this._usesInvaderSkills()) {
             this._skillTimer  -= dt;
             this._summonTimer -= dt;
             this._chargeCd    -= dt;
@@ -385,6 +412,10 @@ export class BossController extends EnemyBase {
                 break;
             case 'mech':  this._mechBladeStormFire(player, game); break;
             case 'abyss': this._abyssWaterSpikes(player, game); break;
+            case 'ch5':
+            case 'invader':
+                this._invaderLaserFire(player, game);
+                break;
         }
     }
 
@@ -572,6 +603,123 @@ export class BossController extends EnemyBase {
             }
         }
         game.audio?.playSfx?.('freeze', 0.7);
+    }
+
+    // ── 灭世机神·天罚（第五章正式Boss / 测试房 'invader'，用户设计稿） ──────
+
+    /** 第五章正式 Boss 与测试房 'invader' 共用同一套技能状态机。 */
+    private _usesInvaderSkills(): boolean {
+        return this.bossKind === 'invader' || this.chapter === 5;
+    }
+
+    /**
+     * 技能状态机：毁灭激光 / 集束导弹 / 震荡波 / 追踪导弹。
+     * 技能5：血量首次掉到剩余 20% → 无敌 + 引导 5 秒 → 最终形态（全技能强化）。
+     */
+    private _updateInvaderSkills(dt: number, player: any, game: any): void {
+        if (this.invAimT > 0) {
+            this.invAimT = Math.max(0, this.invAimT - dt);
+            // 蓄能期间瞄准线实时跟随主角：发射瞬间的角度=主角当前方向，
+            // 而不是蓄能开始时锁定的旧角度（避免主角走位后激光打空）
+            if (player?.alive) {
+                this.invAimAngle = Math.atan2(player.y - this.y, player.x - this.x);
+            }
+        }
+        if (this.invLaserT > 0) this.invLaserT = Math.max(0, this.invLaserT - dt);
+
+        // 技能5：最终形态切换（首次低于20%血量）——恢复至50%血后再进入无敌引导
+        if (!this.finalForm && this.hp / this.maxHp <= 0.2) {
+            this.finalForm = true;
+            this.hp = this.maxHp * 0.5; // 首次掉到20%后恢复至50%血
+            this.invulnerable = true;
+            this._invFormT = 5;
+            // 打断进行中的激光蓄能，避免形态切换期间还在读条
+            this.skillWindup = 0; this.invAimT = 0;
+            game.particles?.heal?.(this.x, this.y);
+            game.floatingText?.spawn?.(this.x, this.y - 130, '能量重铸 +50%血！', '#8fffb0', 20, true);
+            game.floatingText?.spawn?.(this.x, this.y - 100, '⚠ 最终形态 引导中… ⚠', '#ffaa33', 24, true);
+            game.particles?.hexActivate?.(this.x, this.y, '#ffaa33');
+            game.screenShake?.shake?.(12, 0.5);
+            game.audio?.playSfx?.('boss_roar', 0.9);
+            return;
+        }
+        if (this._invFormT > 0) {
+            this._invFormT -= dt;
+            if (this._invFormT <= 0) {
+                this.invulnerable = false;
+                this.speed *= 1.2;
+                game.particles?.explode?.(this.x, this.y, '#ffaa33', 160);
+                game.screenShake?.shake?.(14, 0.4);
+                game.floatingText?.spawn?.(this.x, this.y - 100, '最终形态！', '#ffaa33', 26, true);
+            }
+            return; // 引导期间不移动/不攻击/不调度新技能
+        }
+        if (!player.alive) return;
+
+        // 技能1：毁灭激光 —— 蓄能锁定主角方向，蓄能结束由 _useSkill 发射
+        this._invLaserCd -= dt;
+        if (this._invLaserCd <= 0 && this.skillWindup <= 0) {
+            this._invLaserCd = (this.finalForm ? 7 : 9) + Rng.float(0, 2);
+            const windup = this.finalForm ? 1 : 2;
+            this.invAimAngle = Math.atan2(player.y - this.y, player.x - this.x);
+            this.invAimT = windup;
+            this.skillWindup = windup;
+            this.skillWindupMax = windup;
+            game.floatingText?.spawn?.(this.x, this.y - 90, '毁灭激光蓄能！', '#ff5544', 18, true);
+        }
+
+        // 技能2：集束导弹 —— 上天后落地，落地前区域高亮（GameManager._missileZones 维护）
+        this._invMissileCd -= dt;
+        if (this._invMissileCd <= 0) {
+            this._invMissileCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
+            game.startInvaderMissiles?.(this);
+        }
+
+        // 技能3：震荡波 —— 以自身发出多道扩散波（基础3道 / 最终6道）
+        this._invShockCd -= dt;
+        if (this._invShockCd <= 0) {
+            this._invShockCd = (this.finalForm ? 6 : 8) + Rng.float(0, 2);
+            game.startInvaderShockwaves?.(this);
+        }
+
+        // 技能4：追踪导弹（基础1发 / 最终2发）
+        this._invHomingCd -= dt;
+        if (this._invHomingCd <= 0) {
+            this._invHomingCd = (this.finalForm ? 4.5 : 6) + Rng.float(0, 1.5);
+            this._invaderHomingFire(player, game);
+        }
+    }
+
+    /** 技能1发射：激光沿蓄能锁定角射出直达屏幕外（持续3秒，期间Boss定身），GameManager 负责中速追踪与持续真伤。 */
+    private _invaderLaserFire(_player: any, game: any): void {
+        this.invAimT = 0;
+        this.invLaserT = 3; // 与 GameManager.startInvaderLaser 的 t 同源，站桩发射3秒
+        game.startInvaderLaser?.(this);
+    }
+
+    /**
+     * 技能4：发射追踪导弹（速度280，25伤；最终形态2发×30伤）。
+     * 追踪 4 秒（lifeTime=4）仍未命中主角 → 脱靶原地爆炸，半径 100 圆形范围伤害。
+     */
+    private _invaderHomingFire(player: any, game: any): void {
+        const count = this.finalForm ? 2 : 1;
+        const dmg = this.finalForm ? 30 : 25;
+        for (let i = 0; i < count; i++) {
+            // 双发时两枚朝主角方向略微错开，避免完全重叠
+            const offset = count > 1 ? (i === 0 ? -0.22 : 0.22) : 0;
+            const a = Math.atan2(player.y - this.y, player.x - this.x) + offset;
+            game.enemyBullets?.push({
+                x: this.x, y: this.y,
+                vx: Math.cos(a) * 280, vy: Math.sin(a) * 280,
+                damage: dmg, radius: 13, color: '#ffaa33',
+                life: 4, lifeTime: 4, // 追踪 4 秒后到期
+                owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'homing',
+                explodeOnExpire: true, // 脱靶/到期 → 原地爆炸
+                explodeRadius: 100,    // 100 码圆形范围
+                explodeColor: '#ffaa33',
+            });
+        }
+        game.audio?.playSfx?.('skill_e', 0.7);
     }
 
     override getVisualFacing(player: any, movementX = 1, movementY = 0): [number, number] {

@@ -172,6 +172,8 @@ export class EnemyBase {
     bellAbsorbHp = 0;
     bellAbsorbed = 0;
     bellCounterWaves = 0;
+    /** 支援型无人机"首次血量≤20%召唤攻击无人机"一次性标记。 */
+    _miniSummoned = false;
 
     /** 变异：混沌节拍 — WaveManager 每5秒对随机一批敌人调用此方法施加临时增益。 */
     applyChaosBuff(mult: number, duration: number): void {
@@ -305,6 +307,7 @@ export class EnemyBase {
             if (type === 'triune_priest' || type === 'rail_butcher' || type === 'bell_devourer') {
                 this._miniTimer = 1.35;
             }
+            this._miniSummoned = false;
             // 步态：水栖滑行/重甲/节肢/悬浮
             this.locomotionKind = ({
                 squid: 'skitter', turtle: 'heavy', shrimp: 'skitter',
@@ -1737,11 +1740,12 @@ export class EnemyBase {
     /** 毒刺鬼水母（普通）：隐身循环 / 毒刺 DoT。 */
     private _miniBossJelly(dt: number, player: any, game: any): void {
         this._miniTimer -= dt; this._miniCd1 -= dt;
-        // 技能1 隐身 3 秒并免疫伤害（简化：全免——敌弹无来源过滤做不了只免远程）
+        // 技能1 隐身 3 秒并免疫伤害（简化：全免——敌弹无来源过滤做不了只免远程）；
+        // 隐身技能 CD 10 秒（现形 10 秒后才可再次隐身，2026-08-26 玩家调整）
         if (this._miniTimer <= 0) {
             this.invisible = !this.invisible;
             this.invulnerable = this.invisible;
-            this._miniTimer = this.invisible ? 3 : 2;
+            this._miniTimer = this.invisible ? 3 : 10;
             if (this.invisible) {
                 this._miniSkillOrigin('skill', player.x, player.y);
                 game.floatingText?.spawn?.(this.x, this.y - 40, '隐身…', '#cc88ff', 14, true);
@@ -1770,18 +1774,21 @@ export class EnemyBase {
         }
     }
 
-    /** 支援型无人机（史诗）：治疗 / 能量盾 / 召唤攻击性无人机。 */
+    /** 支援型无人机（史诗）：治疗 / 能量盾 / 首次血量20%召唤3个攻击性无人机。 */
     private _miniBossDroneS(dt: number, player: any, game: any): void {
-        this._miniCd1 -= dt; this._miniCd2 -= dt; this._miniTimer -= dt;
-        // 技能3 召唤 5 个攻击性无人机（环绕散布）
-        if (this._miniTimer <= 0) {
-            this._miniTimer = 10;
+        this._miniCd1 -= dt; this._miniCd2 -= dt;
+        // 技能3（2026-08-26 修复）：原为每10秒召唤5个攻击无人机，
+        // 改为血量首次掉到剩余20%时一次性召唤3个攻击性无人机；
+        // 召唤仍设置 _droneSupportSummonTarget 以驱动帧动画系统的 skill3 通讯动作。
+        if (!this._miniSummoned && this.hp / this.maxHp <= 0.2) {
+            this._miniSummoned = true;
             this._droneSupportSummonTarget = [player.x, player.y];
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const a = Rng.float(0, Math.PI * 2);
                 game.spawnEnemy?.('drone_a', this.x + Math.cos(a) * 90, this.y + Math.sin(a) * 90);
             }
-            game.floatingText?.spawn?.(this.x, this.y - 46, '呼叫无人机支援！', '#ff8888', 16, true);
+            game.particles?.hexActivate?.(this.x, this.y, '#ff8888');
+            game.floatingText?.spawn?.(this.x, this.y - 46, '紧急呼叫无人机支援！', '#ff8888', 16, true);
         }
         // 技能1 对附近随机 5~10 个怪物治疗 40~60 血
         if (this._miniCd1 <= 0) {

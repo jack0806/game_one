@@ -9,11 +9,13 @@ import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin } from '../core/UIStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
+import { SaveSelectUI } from './SaveSelectUI';
+import { LobbyUI } from './LobbyUI';
 
 const { ccclass } = _decorator;
 
 export type ScreenName =
-    | 'menu' | 'charSelect' | 'charDetail' | 'playing'
+    | 'menu' | 'saveSelect' | 'lobby' | 'charSelect' | 'charDetail' | 'playing'
     | 'gameover' | 'chapterClear' | 'pause'
     | MetaPageName;
 
@@ -28,6 +30,8 @@ type BtnCallback = () => void;
 export class ScreenManager extends Component {
     private _panels: Map<ScreenName, Node> = new Map();
     private _metaPages!: MetaPageUI;
+    private _saveSelect!: SaveSelectUI;
+    private _lobby!: LobbyUI;
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
     // 面板结构只构建一次，内容（标题/立绘/属性/技能描述）随 showCharDetail 填充
@@ -42,7 +46,10 @@ export class ScreenManager extends Component {
     private _detailSkillIcons: Sprite[] = [];
 
     // callbacks set by GameManager
-    onPlayPressed?:        BtnCallback;
+    onPlayPressed?:        BtnCallback;   // 进入游戏 → 存档选择
+    onSlotPicked?:         (slot: number) => void;   // 存档选择 → 进入存档大厅
+    onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 角色选择
+    onCharSelectBack?:     BtnCallback;   // 选人页返回 → 回存档大厅
     onTestRoomPressed?:    BtnCallback;   // open test room config
     onCharSelected?:       (char: CharDef) => void;
     onRestartPressed?:     BtnCallback;
@@ -53,8 +60,21 @@ export class ScreenManager extends Component {
 
     onLoad() {
         this._buildMenuPanel();
+        this._saveSelect = new SaveSelectUI(this.node, {
+            onSlotPicked: (slot) => this.onSlotPicked?.(slot),
+            onBack: () => this.transition('saveSelect', 'menu'),
+            onButtonSfx: () => this.onButtonSfx?.(),
+        });
+        for (const [name, panel] of this._saveSelect.entries()) this._panels.set(name as ScreenName, panel);
+        this._lobby = new LobbyUI(this.node, {
+            onPortalPressed: () => this.onLobbyPortal?.(),
+            onMetaPage: (page) => this.transition('lobby', page),
+            onBack: () => this.transition('lobby', 'menu'),
+            onButtonSfx: () => this.onButtonSfx?.(),
+        });
+        for (const [name, panel] of this._lobby.entries()) this._panels.set(name as ScreenName, panel);
         this._metaPages = new MetaPageUI(this.node, {
-            onBack: () => this.transition(this._currentMetaPage(), 'menu'),
+            onBack: () => this.transition(this._currentMetaPage(), 'lobby'),
             onButtonSfx: () => this.onButtonSfx?.(),
         });
         for (const [name, panel] of this._metaPages.entries()) this._panels.set(name, panel);
@@ -68,6 +88,11 @@ export class ScreenManager extends Component {
         this._panels.forEach(p => p.active = false);
     }
 
+    /** 大厅传送门动画逐帧推进（ScreenManager 常驻，面板隐藏时 LobbyUI 自行跳过）。 */
+    update(dt: number) {
+        this._lobby?.update(dt);
+    }
+
     // ── public API ────────────────────────────────────────────
 
     show(name: ScreenName) {
@@ -75,6 +100,10 @@ export class ScreenManager extends Component {
         if (p) p.active = true;
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
             this._metaPages.refresh(name);
+        } else if (name === 'saveSelect') {
+            this._saveSelect.refresh();
+        } else if (name === 'lobby') {
+            this._lobby.refresh();
         }
     }
 
@@ -127,18 +156,7 @@ export class ScreenManager extends Component {
         this._mkBtn(menuActions, '升级  ·  即将开放', 0, -36, 330, 46, new Color(80, 118, 135, 255), true);
         this._mkBtn(menuActions, '设置  ·  即将开放', 0, -96, 330, 46, new Color(80, 118, 135, 255), true);
         this._mkBtn(menuActions, '退出  ·  即将开放', 0, -156, 330, 46, new Color(80, 118, 135, 255), true);
-
-        // 首页元进度导航：三个入口均跳转到独立全屏页面，不再用窄小弹窗。
-        const metaDock = new Node('MetaDock'); metaDock.setParent(p);
-        metaDock.setPosition(new Vec3(0, -322, 0));
-        metaDock.addComponent(UITransform).setContentSize(700, 62);
-
-        const taskBtn = this._mkBtn(metaDock, '任务树', -224, 0, 194, 44, new Color(40, 216, 205, 255));
-        const codexBtn = this._mkBtn(metaDock, '图鉴', 0, 0, 194, 44, new Color(62, 164, 235, 255));
-        const achBtn = this._mkBtn(metaDock, '成就档案', 224, 0, 194, 44, new Color(224, 171, 52, 255));
-        taskBtn.on(Node.EventType.TOUCH_END, () => this.transition('menu', 'tasks'), this);
-        codexBtn.on(Node.EventType.TOUCH_END, () => this.transition('menu', 'codex'), this);
-        achBtn.on(Node.EventType.TOUCH_END, () => this.transition('menu', 'achievements'), this);
+        // 任务树/图鉴/成就档案入口已迁入存档大厅（LobbyUI 情报终端），首页不再展示。
     }
 
     /** 返回按钮只会在三个元进度页面内触发；取当前激活页作为 transition 来源。 */
@@ -155,6 +173,11 @@ export class ScreenManager extends Component {
         const bg = p.addComponent(Graphics);
         bg.fillColor = new Color(10, 10, 20, 240);
         bg.fillRect(-1600, -360, 3200, 720);
+
+        // 选人页位于存档大厅之后：左上角提供返回大厅出口（卡片在 y≤240，
+        // 按钮放 320 高度不与标题/卡片重叠）。
+        const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
+        backBtn.on(Node.EventType.TOUCH_END, () => this.onCharSelectBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);
         tn.setPosition(new Vec3(0, 280, 0));
@@ -518,7 +541,7 @@ export class ScreenManager extends Component {
         styleLabel(sl);
 
         const r = this._mkBtn(p, '重新开始', 0,  -8, 200, 46, new Color(50, 130, 50, 230));
-        const m = this._mkBtn(p, '返回主菜单', 0, -78, 200, 46, new Color(60, 60, 90, 230));
+        const m = this._mkBtn(p, '返回大厅', 0, -78, 200, 46, new Color(60, 60, 90, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onRestartPressed?.(),  this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
     }
@@ -553,7 +576,7 @@ export class ScreenManager extends Component {
         styleLabel(sl);
 
         const c = this._mkBtn(p, '进入下一章', 0, -8, 200, 46, new Color(40, 150, 220, 230));
-        const m = this._mkBtn(p, '返回主菜单', 0, -78, 200, 46, new Color(60, 60, 90, 230));
+        const m = this._mkBtn(p, '返回大厅', 0, -78, 200, 46, new Color(60, 60, 90, 230));
         c.on(Node.EventType.TOUCH_END, () => this.onContinuePressed?.(),  this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(),  this);
     }
@@ -575,8 +598,9 @@ export class ScreenManager extends Component {
         tl.fontSize = 36; tl.color = new Color(200, 200, 240, 255);
         styleLabel(tl);
 
+        // 文案用中性的「退出战斗」：正式局退回存档大厅，测试房退回首页（由 GameManager 按来源分流）
         const r = this._mkBtn(p, '继续游戏', 0,  30, 200, 44, new Color(40, 140, 80, 230));
-        const m = this._mkBtn(p, '返回主菜单', 0, -40, 200, 44, new Color(60, 60, 90, 230));
+        const m = this._mkBtn(p, '退出战斗', 0, -40, 200, 44, new Color(60, 60, 90, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onResumePressed?.(), this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
     }
