@@ -25,6 +25,7 @@
     "assets/scripts/data/AnimationBoundsDB.ts",
     "assets/scripts/data/BossDB.ts",
     "assets/scripts/data/CharacterDB.ts",
+    "assets/scripts/data/DifficultyDB.ts",
     "assets/scripts/data/EffectAnimationDB.ts",
     "assets/scripts/data/MetaProgressionDB.ts",
     "assets/scripts/data/WaveData.ts",

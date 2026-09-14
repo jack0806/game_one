@@ -12,9 +12,10 @@ import { ActorCorpses } from './ActorCorpses';
 import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
 import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 import { animationAlphaTop } from '../data/AnimationBoundsDB';
-import { styleLabel } from './LabelUtils';
+import { styleLabel, refreshAllLabels } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
-import { spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
+import { DifficultyDef } from '../data/DifficultyDB';
+import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS } from '../data/WaveData';
 import { UNIT_CATALOG } from '../data/BossDB';
 import { PlayerController } from '../entities/PlayerController';
@@ -23,7 +24,7 @@ import { BossController }    from '../entities/BossController';
 import { BulletPool }        from '../entities/BulletController';
 import { AugmentManager }    from '../systems/AugmentManager';
 import { WaveManager }       from '../systems/WaveManager';
-import { Economy, ShopItem } from '../systems/Economy';
+import { Economy, ShopItem, GOLD_STAGE_MULT, nextAugRefreshCost } from '../systems/Economy';
 import { SaveSystem }        from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
@@ -33,6 +34,7 @@ import { HUD, HudData }      from '../ui/HUD';
 import { AugSelectUI }       from '../ui/AugSelectUI';
 import { ShopUI }            from '../ui/ShopUI';
 import { ScreenManager }     from '../ui/ScreenManager';
+import { AugShopCtx }        from '../ui/AugSelectUI';
 import { TouchControls }     from '../ui/TouchControls';
 import { StatsPanel, StatsPanelData } from '../ui/StatsPanel';
 import { TestRoomUI } from '../ui/TestRoomUI';
@@ -83,7 +85,7 @@ const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
 ];
 
 export type GameState =
-    | 'menu' | 'saveSelect' | 'lobby' | 'charSelect' | 'playing'
+    | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'playing'
     | 'augSelect' | 'shop' | 'gameover'
     | 'chapterClear' | 'paused' | 'stats'
     | 'testRoom';
@@ -207,6 +209,16 @@ export class GameManager extends Component {
 
     /** Written by WaveData mutation defs' apply(game) hooks (endless mode). */
     _mutationMods: Record<string, any> = {};
+
+    /** 本波海克斯商店已刷新次数（定价：前3次5金币，之后每次溢价75%）。 */
+    private _augRefreshCount = 0;
+
+    /**
+     * 本局作战难度（easy/normal/hard/hell）：大厅 → 难度选择页注入，
+     * EnemyBase/BossController 的 _applyDifficulty 读取 statMult 缩放非移速数值；
+     * 测试房间不注入（undefined = 表内原值），简单难度另带 Boss 技能削减。
+     */
+    _difficulty?: DifficultyDef;
 
     // ── lifecycle ─────────────────────────────────────────────
 
@@ -374,17 +386,28 @@ export class GameManager extends Component {
         this._touchUI.onButtonSfx = () => this._audio.playSfx('button');
         this._hud.setSkillRingsVisible(!sys.hasFeature(sys.Feature.INPUT_TOUCH));
         // 全屏/旋转/窗口尺寸变化后：TouchControls 重设适配策略并重排边缘控件，
-        // 这里跟着把战斗背景与调色层铺满新的可见宽度
-        this._touchUI.onViewResized = () => this._fitBackgroundToVisible();
+        // 这里跟着把战斗背景与调色层铺满新的可见宽度；同时强制刷新全部 Label——
+        // 最大化/还原窗口后字形纹理会停留在旧缩放（用户反馈"字体不跟着刷新"），
+        // resize 是多步视口变化，分三档延迟重刷。
+        this._touchUI.onViewResized = () => {
+            this._fitBackgroundToVisible();
+            this._refreshLabelsAfterResize();
+        };
 
         // Wire screen callbacks
-        // 新流程：首页开始游戏 → 存档选择 → 存档大厅（传送门/任务/成就）→ 选人开战
+        // 新流程：首页开始游戏 → 存档选择 → 存档大厅（传送门/任务/成就）→ 难度选择 → 选人开战
         this._screenMgr.onPlayPressed     = () => this._setState('saveSelect');
         this._screenMgr.onSlotPicked      = (slot) => {
             SaveSystem.selectSlot(slot);
             this._setState('lobby');
         };
-        this._screenMgr.onLobbyPortal     = () => this._setState('charSelect');
+        this._screenMgr.onLobbyPortal     = () => this._setState('difficultySelect');
+        this._screenMgr.onDifficultyPicked = (d) => {
+            this._difficulty = d;
+            this._screenMgr.setRunDifficulty(d);
+            this._setState('charSelect');
+        };
+        this._screenMgr.onDifficultyBack  = () => this._setState('lobby');
         this._screenMgr.onCharSelectBack  = () => this._setState('lobby');
         this._screenMgr.onTestRoomPressed = () => this._startTestRoom();
         this._screenMgr.onCharSelected    = (c) => this._startGame(c);
@@ -412,6 +435,8 @@ export class GameManager extends Component {
         this._testUI.onToggleCeasefire  = (on) => this.setTestCeasefire(on);
         this._testUI.onSelectHero     = (id) => this.selectTestHero(id);
         this._testUI.onGetHero        = () => this._char?.id ?? CHARS[0]!.id;
+        this._testUI.onGrantAugment   = (hexId) => this.grantTestAugment(hexId);
+        this._testUI.onGetAugments    = () => this.getTestAugments();
         this._testUI.onAdvanceBossPhase = () => this.advanceTestBossPhase();
         this._testUI.onCycleChapter   = () => this.cycleTestChapter();
         this._testUI.onToggleTargetPause = (on) => this.setTestTargetPaused(on);
@@ -451,7 +476,7 @@ export class GameManager extends Component {
         // 章节结束/结算页必须清空上一帧战斗残影。此前浮字、金币池和粒子只在
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
         if (s === 'chapterClear' || s === 'gameover' || s === 'menu' || s === 'charSelect'
-            || s === 'saveSelect' || s === 'lobby') {
+            || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect') {
             this._floatText?.clear();
             for (const label of this._floatLabels) label.active = false;
             for (const enemy of this._enemies) {
@@ -474,6 +499,10 @@ export class GameManager extends Component {
                 break;
             case 'lobby':
                 this._screenMgr.show('lobby');
+                this._audio.playBgm('title');
+                break;
+            case 'difficultySelect':
+                this._screenMgr.show('difficultySelect');
                 this._audio.playBgm('title');
                 break;
             case 'charSelect':
@@ -535,6 +564,7 @@ export class GameManager extends Component {
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
         this._mutationMods = {};
+        this._augRefreshCount = 0;
         this._economy.reset();
         this._augMgr.reset();
         this._waveMgr.reset();
@@ -568,6 +598,22 @@ export class GameManager extends Component {
         this._bgLayer.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
         this._bgToneGfx.node.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
         this._applyBackgroundTone(this._chapter);
+    }
+
+    /**
+     * 窗口最大化/还原后强制刷新场景内全部 Label：
+     * 字号 +1 再写回触发字形纹理重建，markForUpdateRenderData 提交重绘。
+     * 视口变化分多帧完成（resizeWithBrowserSize → 设计分辨率 → 相机），
+     * 按 0/200/450ms 三档重刷兜住所有中间态。
+     */
+    private _refreshLabelsAfterResize(): void {
+        const scene = director.getScene();
+        if (!scene) return;
+        for (const delay of [0, 200, 450]) {
+            setTimeout(() => {
+                if (scene.isValid) refreshAllLabels(scene);
+            }, delay);
+        }
     }
 
     /** 四章独立背景调色：越靠后原图荧光越强，覆盖强度相应提高。 */
@@ -631,8 +677,10 @@ export class GameManager extends Component {
         this._telegraphZones = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
-        // 清空无尽变异乘区：测试房间要求单位数值精确等于表内数值
+        // 清空无尽变异乘区：测试房间要求单位数值精确等于表内数值。
+        // 难度乘区同理置空（不注入 _difficulty），Boss 技能也不削减。
         this._mutationMods = {};
+        this._difficulty = undefined;
         this._economy.reset();
         this._augMgr.reset();
         this._waveMgr.reset();
@@ -1853,17 +1901,94 @@ export class GameManager extends Component {
             return;
         }
 
-        // Normal wave clear -> augment pick
-        // _setState hides all panels (incl. any stray chapterClear) before
-        // the augment UI takes over.
+        // Normal wave clear -> 海克斯商店（《海克斯.docx》：每波回来一次，
+        // 提供三张卡供选择，可付费刷新，也可卖出已持有海克斯）
         this._setState('augSelect');
         this._audio.playSfx('levelup');
-        const options = this._augMgr.rollOptions(3, this._waveMgr.wave, this._player.charId);
-        this._augUI.show(options, (aug) => {
-            if (aug) this._augMgr.equip(aug, this._player, this);
-            this._setState('playing');
-            this._waveMgr.startWave(this);
-        });
+        this._augRefreshCount = 0;
+        const options = this._augMgr.rollOptions(3, this._waveMgr.wave);
+        const nextWave = this._waveMgr.wave + 1;
+        this._augUI.show(options, this._buildAugShopCtx(() => {
+            // 第五章 Boss 波开始前提供一次商店（海克斯.docx）
+            if (nextWave === CHAPTERS[CHAPTERS.length - 1].bossWave) {
+                this._openShop(() => { this._setState('playing'); this._waveMgr.startWave(this); });
+            } else {
+                this._setState('playing');
+                this._waveMgr.startWave(this);
+            }
+        }));
+    }
+
+    /** 波间海克斯商店上下文：金币结算 / 购买 / 刷新 / 卖出 / 出现率 / 继续。 */
+    private _buildAugShopCtx(onDone: () => void): AugShopCtx {
+        return {
+            gold: () => this._economy.gold,
+            buy: (card) => {
+                const price = card._price ?? 0;
+                if (!this._economy.spend(price)) return false;
+                if (!this._augMgr.equip(card, this._player, this)) {
+                    // 满格/已满级等装备失败：原路退款
+                    this._economy.addGold(price);
+                    return false;
+                }
+                this._augMgr.recordPurchase(card.rarity, price);
+                // 实付价累计到持有实例（升档叠加，卖出按总额 75% 回收）
+                const inst = this._augMgr.active.find(a => a.id === card.id);
+                if (inst) inst.paid = (inst.paid ?? 0) + price;
+                return true;
+            },
+            refreshCost: () => this._nextAugRefreshCost(),
+            refresh: () => {
+                const cost = this._nextAugRefreshCost();
+                if (!this._economy.spend(cost)) return null;
+                this._augRefreshCount++;
+                return this._augMgr.rollOptions(3, this._waveMgr.wave);
+            },
+            owned: () => this._augMgr.active,
+            sell: (cardLike) => {
+                const inst = this._augMgr.unequip(cardLike.id, this._player, this);
+                if (!inst) return false;
+                const refund = this._augMgr.sellValue(inst);
+                if (refund > 0) this._economy.addGold(refund);
+                return true;
+            },
+            odds: () => this._augRarityOdds(),
+            done: onDone,
+        };
+    }
+
+    /** 三档稀有度出现概率（与 rollOptions 权重同源，页面"出现率"标注用）。 */
+    private _augRarityOdds(): { silver: number; gold: number; prismatic: number } {
+        const w = this._augMgr.rarityWeights(this._waveMgr.wave);
+        const total = w.silver + w.gold + w.prismatic;
+        if (total <= 0) return { silver: 0, gold: 0, prismatic: 0 };
+        const silver = Math.round(w.silver / total * 100);
+        const gold = Math.round(w.gold / total * 100);
+        return { silver, gold, prismatic: Math.max(0, 100 - silver - gold) };
+    }
+
+    /** 刷新定价：前 3 次 5 金币，之后每次较基准溢价 75%（海克斯.docx）。 */
+    private _nextAugRefreshCost(): number {
+        return nextAugRefreshCost(this._augRefreshCount);
+    }
+
+    /** 通用商店（章节结算 / 第五章 Boss 战前共用）。 */
+    private _openShop(onDone: () => void) {
+        this._setState('shop');
+        const items = this._economy.generateShopItems(this._chapter + 1);
+        this._shopUI.show(
+            items,
+            this._economy.gold,
+            (cost, item) => {
+                if (this._economy.spend(cost)) {
+                    this._applyShopItem(item);
+                    this._shopUI.refreshGold(this._economy.gold);
+                    return true;
+                }
+                return false;
+            },
+            onDone,
+        );
     }
 
     // ── update (playing only) ─────────────────────────────────
@@ -3628,6 +3753,7 @@ export class GameManager extends Component {
             shield: p.shield, maxShield: p.maxShield,
             gold: this._economy.gold,
             wave: this._waveMgr.wave, chapter: this._chapter,
+            difficultyName: this._difficulty?.name,
             augments: this._augMgr.active,
             skills: p.getSkillStates(),
             initialPassive: this._char ? { name: this._char.name, desc: this._char.desc } : undefined,
@@ -4047,6 +4173,67 @@ export class GameManager extends Component {
         }
     }
 
+    /**
+     * 海克斯13/14 无人机：跟随玩家常驻的召唤物（复用炮台渲染与子弹链路）。
+     * 攻击型：攻 30/40/50、攻速 1.0、上限 3 架；
+     * 支援型：攻 5/10/15、攻速 0.5、每 3 秒恢复主角 20% 已损失生命、上限 2 架。
+     */
+    spawnHexDrone(player: any, kind: 'attack' | 'support', level: number): void {
+        const tag = kind === 'attack' ? 'hexDroneAttack' : 'hexDroneSupport';
+        const cap = kind === 'attack' ? 3 : 2;
+        const alive = this._turrets.filter(t => t.hexTag === tag && t.alive).length;
+        if (alive >= cap) return;
+        const lvl = Math.min(3, Math.max(1, level));
+        const dmgTable = kind === 'attack' ? [30, 40, 50] : [5, 10, 15];
+        const hpTable  = kind === 'attack' ? [25, 50, 75] : [50, 75, 125];
+        const interval = kind === 'attack' ? 1.0 : 2.0;
+        const side = (alive % 2 === 0 ? -1 : 1) * (56 + Math.floor(alive / 2) * 40);
+        const t: any = {
+            x: player.x + side, y: player.y + 30, r: 12, alive: true, _timer: 0.5,
+            kind: 'turret', hexTag: tag, _aim: 0,
+            dmg: dmgTable[lvl - 1], hp: hpTable[lvl - 1],
+            owner: player, followOwner: true,
+            _followX: side, _followY: 30,
+            _life: Number.POSITIVE_INFINITY, _healT: 3,
+        };
+        t.update = (dt: number, g: GameManager) => {
+            const targetX = player.x + t._followX;
+            const targetY = player.y + t._followY;
+            const followT = Math.min(1, dt * 9);
+            t.x += (targetX - t.x) * followT;
+            t.y += (targetY - t.y) * followT;
+            t._timer -= dt;
+            if (t._timer <= 0) {
+                t._timer = interval;
+                const target = g.getNearestEnemy(t.x, t.y);
+                if (target) {
+                    const [dx, dy] = Vec.normalize(target.x - t.x, target.y - t.y);
+                    t._aim = Math.atan2(dy, dx);
+                    g.bullets.fire(t.x, t.y, dx, dy, t.dmg, {
+                        color: kind === 'attack' ? '#7ad0ff' : '#7dffb0',
+                        r: 4, owner: 'turret', charKey: 'vivian',
+                    });
+                }
+            }
+            if (kind === 'support') {
+                t._healT -= dt;
+                if (t._healT <= 0) {
+                    t._healT = 3;
+                    const missing = Math.max(0, player.stats.maxHp - player.hp);
+                    if (missing > 1) player.heal(missing * 0.2, false);
+                }
+            }
+        };
+        this._turrets.push(t);
+        this._audio.playSfx('hex_activate', 0.6);
+    }
+
+    /** 卖出/卸下无人机海克斯时回收场上对应无人机。 */
+    despawnHexDrones(kind: 'attack' | 'support'): void {
+        const tag = kind === 'attack' ? 'hexDroneAttack' : 'hexDroneSupport';
+        for (const t of this._turrets) if (t.hexTag === tag) t.alive = false;
+    }
+
     spawnClone(player: any): void {
         // 分身不属于"炮台类词条"，不吃 turretBonus 加成——仅炮台/轨道炮台享受该被动。
         const c: any = {
@@ -4286,6 +4473,29 @@ export class GameManager extends Component {
     get augManager()      { return this._augMgr; }
     /** Alias — some call sites use game.augmentManager instead of game.augManager. */
     get augmentManager()  { return this._augMgr; }
+
+    /** 章节金币爆率倍率（《海克斯.docx》：越到后面阶段掉落越多）。 */
+    get goldDropMult(): number {
+        return GOLD_STAGE_MULT[Math.min(Math.max(0, this._chapter), GOLD_STAGE_MULT.length - 1)];
+    }
+
+    // ── 测试房：海克斯授予面板支持 ─────────────────────────
+
+    /** 测试房：点击卡片循环 未持有→Lv1→Lv2→Lv3→卸下。 */
+    grantTestAugment(hexId: string): void {
+        const existing = this._augMgr.active.find(a => a.id === hexId);
+        if (existing) {
+            if ((existing.level ?? 1) >= 3) this._augMgr.unequip(hexId, this._player, this);
+            else this._augMgr.equip({ id: hexId } as AugDef, this._player, this);
+        } else {
+            this._augMgr.equip({ id: hexId } as AugDef, this._player, this);
+        }
+    }
+
+    /** 测试房：当前持有列表（授予面板高亮用）。 */
+    getTestAugments(): AugDef[] {
+        return this._augMgr.active;
+    }
     get bullets()         { return this._bullets; }
     /** Alias — some call sites use game.bulletPool instead of game.bullets. */
     get bulletPool()       { return this._bullets; }
@@ -4333,15 +4543,12 @@ export class GameManager extends Component {
             case 'speed':  p.moveSpeed *= 1 + (item.value ?? 0.1); break;
             case 'damage': p.damageMulti *= 1 + (item.value ?? 0.15); break;
             case 'augment':
-                const opts = this._augMgr.rollOptions(3, this._waveMgr.wave, p.charId);
+                const opts = this._augMgr.rollOptions(3, this._waveMgr.wave);
                 // 商店与强化选择都是全屏模态层。两者同时 active 时，创建顺序较早
                 // 的强化卡会透过商店半透明底板显示，形成“售罄后商店突然透明”的
                 // 视觉穿帮。购买神秘强化时暂停商店，选完再原样恢复售罄状态。
                 this._shopUI.hide();
-                this._augUI.show(opts, (aug) => {
-                    if (aug) this._augMgr.equip(aug, p, this);
-                    this._shopUI.resume();
-                });
+                this._augUI.show(opts, this._buildAugShopCtx(() => { this._shopUI.resume(); }));
                 break;
         }
     }

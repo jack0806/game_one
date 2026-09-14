@@ -182,6 +182,9 @@ export class PlayerController extends Component {
             _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
             _reikPassive: false, chaosBonus: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
             lifestealRate: 0, maxShield: 0,
+            // 海克斯词条字段（data/AugmentDB.ts）：射程/近战多段/弱点标记/不灭协议
+            rangeBonus: 0, meleeExtraHits: 0, weakspotArmed: false,
+            hasHexGuard: false, _hexGuardShieldMult: 2, _hexGuardCd: 0,
         };
 
         this.hp     = this.stats.maxHp;
@@ -288,6 +291,20 @@ export class PlayerController extends Component {
         // armor_up 词条/角色初始 armor 之前只写入 stats.armor 从未在这里读取，是死代码）。
         const mitigation = this.stats.armor / (this.stats.armor + 100);
         amount = Math.max(1, amount * (1 - mitigation));
+        // 海克斯12 不灭协议：受到致命伤或生命只剩 1 滴时触发——生成临时护盾、
+        // 25% 吸血 10 秒，本次伤害保底剩 1 滴血（冷却 75 秒，tick 内递减）。
+        if (this.stats.hasHexGuard && (this.stats._hexGuardCd ?? 0) <= 0 && this.hp - amount <= 1) {
+            this.stats._hexGuardCd = 75;
+            this.grantTempShield(this.stats.maxHp * (this.stats._hexGuardShieldMult ?? 2), 5, game);
+            this.applyBuff('hex_guard_lifesteal', 10, { lifestealRate: 0.25 });
+            this.hp = Math.max(1, this.hp - amount);
+            this._iframeTimer = 0.5;
+            this.playVisualAction('hit');
+            game.floatingText?.spawn(this.x, this.y - 56, '不灭协议！', '#8fd0ff', 22, true);
+            game.particles?.hexActivate?.(this.x, this.y, '#8fd0ff');
+            game.audio?.playSfx?.('hex_activate', 0.9);
+            return;
+        }
         this.hp -= amount;
         // 受击钩子：深海恐惧「海之霸主」期间每受一次伤害 Boss 生成护盾（测试房）
         game.onPlayerHit?.(this, game);
@@ -386,6 +403,8 @@ export class PlayerController extends Component {
         this._invincible  = Math.max(0, this._invincible - dt);
         this._qCd         = Math.max(0, this._qCd - dt * (1 + this.stats.cdReduction));
         this._eCd         = Math.max(0, this._eCd - dt * (1 + this.stats.cdReduction));
+        // 海克斯12 不灭协议：75 秒冷却递减（触发在 takeDamage 内）
+        if (this.stats._hexGuardCd > 0) this.stats._hexGuardCd = Math.max(0, this.stats._hexGuardCd - dt);
         this._cosmosCd    = Math.max(0, this._cosmosCd - dt);
         // 大招R为固定冷却制，冷却时长按角色大招强度分档(见 CharacterDB.ultCd，
         // 强爆发20s/功能型18s/依赖词条15s)。ultChargeRate(储能核心等词条)沿用
@@ -496,28 +515,33 @@ export class PlayerController extends Component {
 
     // ── 近战普攻 ────────────────────────────────────────────
     private _meleeAttack(game: any, lockedTarget?: any, lockedAngle?: number): void {
-        // 远程角色切入近战形态时使用紧凑的形态近战范围（90），近战角色沿用自身攻击距离
+        // 远程角色切入近战形态时使用紧凑的形态近战范围（90），近战角色沿用自身攻击距离；
+        // 海克斯11 延展力场：stats.rangeBonus 加宽近战判定。
         const range = (this.attackForm === 'melee' && this._charDef.attackType !== 'melee')
             ? 90 : this._charDef.attackRange;
         const enemy = lockedTarget ?? game.getNearestEnemy?.(this.x, this.y);
         if (!enemy) return;
-        const inRange = enemy.alive && Vec.dist(this.x, this.y, enemy.x, enemy.y) <= range + this.radius + enemy.radius;
+        const totalRange = range + (this.stats.rangeBonus || 0);
+        const inRange = enemy.alive && Vec.dist(this.x, this.y, enemy.x, enemy.y) <= totalRange + this.radius + enemy.radius;
         if (!lockedTarget && !inRange) return;
         // 挥刃时生成特效，命中点另加冲击；武器挂点不改变攻击范围判定。
         const angle = lockedAngle ?? Math.atan2(enemy.y - this.y, enemy.x - this.x);
         if (this.charId === 'reik' && game.particles?.reikCleave) {
-            game.particles.reikCleave(this.x, this.y, angle, range, 1, this._reikSwingSide++);
+            game.particles.reikCleave(this.x, this.y, angle, totalRange, 1, this._reikSwingSide++);
         } else if (this.charId === 'olia' && game.particles?.timeBlade) {
             const [bladeX, bladeY] = this.getMuzzlePosition();
             game.particles.timeBlade(bladeX, bladeY, angle);
         } else {
-            game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, range, 1);
+            game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, totalRange, 1);
         }
         // 前摇期间目标离开范围或绕到身后时仍挥出动作，但不会隔空/背向扣血。
         const dot = (enemy.x - this.x) * Math.cos(angle) + (enemy.y - this.y) * Math.sin(angle);
         if (inRange && dot >= 0) {
             game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
             this.applyAttackDamage(enemy, game);
+            // 海克斯5 幻影特效（近战形态）：额外多段伤害
+            const extraHits = this.stats.meleeExtraHits || 0;
+            for (let i = 0; i < extraHits && enemy.alive; i++) this.applyAttackDamage(enemy, game);
         }
     }
 
@@ -528,6 +552,12 @@ export class PlayerController extends Component {
      */
     applyAttackDamage(enemy: any, game: any, baseDamage?: number): number {
         let dmg = baseDamage ?? this.getDamage(game);
+        // 海克斯8 弱点透视（近战/技能命中）：消耗标记，本发 3 倍暴击伤害
+        if (this.stats.weakspotArmed) {
+            this.stats.weakspotArmed = false;
+            dmg *= 3;
+            game.floatingText?.spawn(enemy.x, enemy.y - 34, '弱点·三倍暴击！', '#ffe066', 17, true);
+        }
         const isCrit = Rng.chance(this.stats.critRate || 0);
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
@@ -582,7 +612,7 @@ export class PlayerController extends Component {
         if (form === 'melee') {
             const enemy = game.getNearestEnemy?.(this.x, this.y);
             const range = this._charDef.attackType === 'melee' ? this._charDef.attackRange : 90;
-            if (!enemy?.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > range + this.radius + enemy.radius) return false;
+            if (!enemy?.alive || Vec.dist(this.x, this.y, enemy.x, enemy.y) > range + (this.stats.rangeBonus || 0) + this.radius + enemy.radius) return false;
             const dx = enemy.x - this.x, dy = enemy.y - this.y;
             const angle = Math.atan2(dy, dx);
             return this._queueVisualAttack(dx, dy, () => this._meleeAttack(game, enemy, angle));
@@ -595,15 +625,18 @@ export class PlayerController extends Component {
         const dmg    = this.getDamage(game);
         const isCrit = Rng.chance(this.stats.critRate || 0);
 
-        const spawnBullet = (dx: number, dy: number, dmgMult = 1) => {
+        const spawnBullet = (dx: number, dy: number, dmgMult = 1, opts: { homing?: boolean; forceCrit?: boolean } = {}) => {
             const [muzzleX, muzzleY] = this.getMuzzlePosition();
             game.bulletPool?.spawn({
                 x: muzzleX, y: muzzleY, vx: dx * 550, vy: dy * 550,
                 damage: dmg * dmgMult, radius: this._charDef.attackType === 'melee' ? 20 : 5,
-                color: this.color, owner: 'player', isCrit,
+                color: this.color, owner: 'player', isCrit: isCrit || !!opts.forceCrit,
+                homing: !!opts.homing,
                 pierceLeft: this.stats.pierce || 0,
                 bounceLeft: this.stats.bulletBounce || 0,
-                charKey: this.charId, lifeTime: 2,
+                charKey: this.charId,
+                // 海克斯11 延展力场：远程弹寿命随射程加成延长（550px/秒）
+                lifeTime: 2 + (this.stats.rangeBonus || 0) / 550,
             });
         };
 
@@ -617,6 +650,10 @@ export class PlayerController extends Component {
             game.audio?.playSfx?.('shoot');
             const flash = this.charId === 'liana' ? 'ice' : this.charId === 'graf' ? 'chaos' : this.charId === 'olia' ? 'time' : 'cyan';
             game.particles?.weaponFlash?.(muzzleX, muzzleY, ndx, ndy, flash);
+
+            // 海克斯8 弱点透视（远程）：本发主弹自动追踪并造成 3 倍暴击伤害
+            const weakspot = this.stats.weakspotArmed || false;
+            this.stats.weakspotArmed = false;
 
             if (this.stats.novaMode) {
                 // 全方向9发
@@ -632,8 +669,8 @@ export class PlayerController extends Component {
                     spawnBullet(Math.cos(a), Math.sin(a), 0.5);
                 }
             } else {
-                spawnBullet(ndx, ndy, 1);
-                // 额外子弹
+                spawnBullet(ndx, ndy, weakspot ? 3 : 1, { homing: weakspot, forceCrit: weakspot });
+                // 额外子弹（海克斯5 幻影特效·远程分裂）
                 for (let i = 0; i < (this.stats.extraBullets || 0); i++) {
                     const off = Rng.float(-0.15, 0.15);
                     const a   = Math.atan2(ndy, ndx) + off;
@@ -642,7 +679,7 @@ export class PlayerController extends Component {
                 // all_in
                 for (let i = 1; i < (this.stats.allInBullets || 0); i++) {
                     const off = (i / (this.stats.allInBullets - 1) - 0.5) * 0.5;
-                    const a   = Math.atan2(ndy, ndx) + off;
+                    const a = Math.atan2(ndy, ndx) + off;
                     spawnBullet(Math.cos(a), Math.sin(a), 0.8);
                 }
             }

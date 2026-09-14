@@ -16,14 +16,36 @@ interface GoldDrop {
 const DROP_FLOOR = PLAYFIELD_BOTTOM;
 const DROP_SIDE_MARGIN = 12;
 
+/**
+ * 各章节金币爆率倍率（《海克斯.docx》：越到后面阶段掉落越多——
+ * 第一~五阶段最多掉落约 200/500/1200/2000/5000，按当前每章基础
+ * 掉落总量约 500 折算成倍率）。
+ */
+export const GOLD_STAGE_MULT = [0.25, 0.6, 1.4, 2.3, 5.5];
+
+/**
+ * 海克斯商店刷新定价（海克斯.docx）：第一次刷新 5 金币，3 次之后
+ * 每次较基准溢价 75%（第4次 9、第5次 16、第6次 27 …）。
+ */
+export function nextAugRefreshCost(refreshCount: number): number {
+    return refreshCount < 3 ? 5 : Math.round(5 * Math.pow(1.75, refreshCount - 2));
+}
+
 export class Economy {
     gold  = 0;
     parts = 0;
     /** 本局累计获得金币（含已花费），供局末存档统计成就，reset 时清零。 */
     earnedThisRun = 0;
+    /** 海克斯16 点金手：所有获得的金币 ×gainMult（默认 1）。 */
+    gainMult = 1;
     private _drops: GoldDrop[] = [];
 
-    addGold(amount: number): void  { this.gold  += amount; if (amount > 0) this.earnedThisRun += amount; }
+    addGold(amount: number): void  {
+        const gain = Math.round(amount * this.gainMult);
+        if (gain <= 0) return;
+        this.gold += gain;
+        if (gain > 0) this.earnedThisRun += gain;
+    }
     spendGold(amount: number): boolean {
         if (this.gold < amount) return false;
         this.gold -= amount;
@@ -67,7 +89,7 @@ export class Economy {
     /** 测试房清场只移除场上掉落，不改测试角色当前金币。 */
     clearDrops(): void { this._drops = []; }
 
-    reset(): void { this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this._drops = []; }
+    reset(): void { this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this.gainMult = 1; this._drops = []; }
 
     /** Alias used by GameManager / ShopUI. */
     spend(amount: number): boolean { return this.spendGold(amount); }

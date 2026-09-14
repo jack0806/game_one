@@ -4,6 +4,7 @@ import {
 } from 'cc';
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
+import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin } from '../core/UIStyle';
@@ -15,7 +16,8 @@ import { LobbyUI } from './LobbyUI';
 const { ccclass } = _decorator;
 
 export type ScreenName =
-    | 'menu' | 'saveSelect' | 'lobby' | 'charSelect' | 'charDetail' | 'playing'
+    | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
+    | 'playing'
     | 'gameover' | 'chapterClear' | 'pause'
     | MetaPageName;
 
@@ -44,11 +46,15 @@ export class ScreenManager extends Component {
     private _detailSkillHeaders: Label[] = [];
     private _detailSkillDescs: Label[] = [];
     private _detailSkillIcons: Sprite[] = [];
+    /** 选人页标题下的作战难度徽标（setRunDifficulty 填充）。 */
+    private _charDiffLabel!: Label;
 
     // callbacks set by GameManager
     onPlayPressed?:        BtnCallback;   // 进入游戏 → 存档选择
     onSlotPicked?:         (slot: number) => void;   // 存档选择 → 进入存档大厅
-    onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 角色选择
+    onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 难度选择
+    onDifficultyPicked?:   (d: DifficultyDef) => void;   // 难度选择 → 角色选择
+    onDifficultyBack?:     BtnCallback;   // 难度选择返回 → 回存档大厅
     onCharSelectBack?:     BtnCallback;   // 选人页返回 → 回存档大厅
     onTestRoomPressed?:    BtnCallback;   // open test room config
     onCharSelected?:       (char: CharDef) => void;
@@ -78,6 +84,7 @@ export class ScreenManager extends Component {
             onButtonSfx: () => this.onButtonSfx?.(),
         });
         for (const [name, panel] of this._metaPages.entries()) this._panels.set(name, panel);
+        this._buildDifficultySelectPanel();
         this._buildCharSelectPanel();
         // 英雄介绍弹窗在选人页之后构建，保证层级在选人卡之上（点击遮罩不穿透）
         this._buildCharDetailPanel();
@@ -119,6 +126,16 @@ export class ScreenManager extends Component {
     transition(from: ScreenName, to: ScreenName) {
         this.hide(from);
         this.show(to);
+    }
+
+    /** 难度选定后由 GameManager 调用：选人页标题下展示当前作战难度。 */
+    setRunDifficulty(def?: DifficultyDef) {
+        if (!this._charDiffLabel) return;
+        if (!def) { this._charDiffLabel.string = ''; return; }
+        this._charDiffLabel.string =
+            `作战难度 ${def.name}  ·  怪物数值×${def.statMult}` +
+            (def.bossSkillCut ? '  ·  Boss 仅 1/3 技能' : '');
+        this._charDiffLabel.color = Color.fromHEX(new Color(), def.color);
     }
 
     // ── panel builders ────────────────────────────────────────
@@ -167,6 +184,101 @@ export class ScreenManager extends Component {
         return 'tasks';
     }
 
+    // ── 难度选择页 ─────────────────────────────────────────────
+
+    /**
+     * 大厅传送门之后、选人页之前的独立页面：四档难度卡（简单/普通/困难/地狱）。
+     * 点击卡片选定难度并进入角色选择；数值乘区见 data/DifficultyDB.ts。
+     */
+    private _buildDifficultySelectPanel() {
+        const p = this._mkPanel('difficultySelect', 1280, 720);
+
+        const bg = p.addComponent(Graphics);
+        bg.fillColor = new Color(10, 10, 20, 240);
+        bg.fillRect(-1600, -360, 3200, 720);
+
+        const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
+        backBtn.on(Node.EventType.TOUCH_END, () => this.onDifficultyBack?.(), this);
+
+        const tn = new Node('T'); tn.setParent(p);
+        tn.setPosition(new Vec3(0, 280, 0));
+        tn.addComponent(UITransform).setContentSize(500, 44);
+        const tl = tn.addComponent(Label);
+        tl.string = '— 选择作战难度 —';
+        tl.fontSize = 28; tl.color = new Color(255, 215, 90, 255);
+        styleLabel(tl);
+
+        const sub = new Node('Sub'); sub.setParent(p);
+        sub.setPosition(new Vec3(0, 244, 0));
+        sub.addComponent(UITransform).setContentSize(760, 22);
+        const sl = sub.addComponent(Label);
+        sl.string = '难度只影响怪物数值（移速不变）· 选定后再挑选英雄';
+        sl.fontSize = 14; sl.color = new Color(150, 172, 190, 235);
+        styleLabel(sl);
+
+        DIFFICULTIES.forEach((def, i) => {
+            const col = Color.fromHEX(new Color(), def.color);
+            const diffCard = new Node(`Diff_${def.id}`); diffCard.setParent(p);
+            diffCard.setPosition(new Vec3(-435 + i * 300, -20, 0));
+            diffCard.addComponent(UITransform).setContentSize(270, 280);
+
+            const g = diffCard.addComponent(Graphics);
+            g.fillColor = new Color(8, 14, 24, 226);
+            g.fillRect(-135, -140, 270, 280);
+            g.strokeColor = new Color(col.r, col.g, col.b, 190);
+            g.lineWidth = 2;
+            g.rect(-135, -140, 270, 280); g.stroke();
+            // 四角高亮，与选人卡同一视觉语言
+            g.strokeColor = new Color(col.r, col.g, col.b, 255);
+            g.lineWidth = 3;
+            const corner = 16;
+            for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                const x = sx * 133, y = sy * 138;
+                g.moveTo(x, y - sy * corner); g.lineTo(x, y); g.lineTo(x - sx * corner, y);
+                g.stroke();
+            }
+
+            const nameN = new Node('Name'); nameN.setParent(diffCard);
+            nameN.setPosition(new Vec3(0, 96, 0));
+            nameN.addComponent(UITransform).setContentSize(240, 40);
+            const nameLbl = nameN.addComponent(Label);
+            nameLbl.string = def.name;
+            nameLbl.fontSize = 32;
+            nameLbl.color = col;
+            styleLabel(nameLbl);
+
+            const lineN = new Node('Line'); lineN.setParent(diffCard);
+            const lineG = lineN.addComponent(Graphics);
+            lineG.strokeColor = new Color(col.r, col.g, col.b, 90);
+            lineG.lineWidth = 1;
+            lineG.moveTo(-96, 66); lineG.lineTo(96, 66); lineG.stroke();
+
+            const descN = new Node('Desc'); descN.setParent(diffCard);
+            descN.setPosition(new Vec3(0, 8, 0));
+            descN.addComponent(UITransform).setContentSize(240, 92);
+            const descLbl = descN.addComponent(Label);
+            descLbl.string = def.desc;
+            descLbl.fontSize = 16;
+            descLbl.lineHeight = 26;
+            descLbl.color = new Color(212, 224, 240, 245);
+            descLbl.horizontalAlign = HorizontalTextAlignment.CENTER;
+            descLbl.verticalAlign = VerticalTextAlignment.CENTER;
+            descLbl.enableWrapText = true;
+            styleLabel(descLbl);
+
+            const hintN = new Node('Hint'); hintN.setParent(diffCard);
+            hintN.setPosition(new Vec3(0, -108, 0));
+            hintN.addComponent(UITransform).setContentSize(240, 22);
+            const hintLbl = hintN.addComponent(Label);
+            hintLbl.string = '点击进入英雄选择';
+            hintLbl.fontSize = 13;
+            hintLbl.color = new Color(150, 172, 190, 210);
+            styleLabel(hintLbl);
+
+            diffCard.on(Node.EventType.TOUCH_END, () => this.onDifficultyPicked?.(def), this);
+        });
+    }
+
     private _buildCharSelectPanel() {
         const p = this._mkPanel('charSelect', 1280, 720);
 
@@ -186,6 +298,15 @@ export class ScreenManager extends Component {
         tl.string = '— 选择角色 —';
         tl.fontSize = 28; tl.color = new Color(255, 215, 90, 255);
         styleLabel(tl);
+
+        // 标题下的作战难度徽标：玩家在难度选择页点选后由 setRunDifficulty() 填充
+        const diffN = new Node('DiffBadge'); diffN.setParent(p);
+        diffN.setPosition(new Vec3(0, 250, 0));
+        diffN.addComponent(UITransform).setContentSize(700, 22);
+        this._charDiffLabel = diffN.addComponent(Label);
+        this._charDiffLabel.fontSize = 15;
+        this._charDiffLabel.color = new Color(150, 172, 190, 235);
+        styleLabel(this._charDiffLabel);
 
         // 6 character cards in a 3×2 grid: portrait on top, nameplate button below
         const names  = CHARS.map(c => c.name);

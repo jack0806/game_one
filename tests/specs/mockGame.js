@@ -23,6 +23,7 @@ function makeMockGame(overrides = {}) {
         spawnEnemy() {},
         spawnExplosion() {},
         onWaveCleared() {},
+        onPlayerDeath() {},
     };
     return Object.assign(game, overrides);
 }

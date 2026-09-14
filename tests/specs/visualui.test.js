@@ -58,13 +58,19 @@ test('进入游戏先选存档再进大厅:传送门进选人,对局退出回大
     assert.match(gameSource, /onPlayPressed     = \(\) => this\._setState\('saveSelect'\)/);
     // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
     assert.match(gameSource, /onSlotPicked      = \(slot\) => \{[\s\S]*?SaveSystem\.selectSlot\(slot\);[\s\S]*?this\._setState\('lobby'\);/);
-    // 大厅传送门 → 选人页；选人页可返回大厅
-    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('charSelect'\)/);
+    // 大厅传送门 → 难度选择 → 选人页；难度页/选人页都可返回大厅
+    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('difficultySelect'\)/);
+    assert.match(gameSource, /onDifficultyPicked = \(d\) => \{[\s\S]*?this\._difficulty = d;[\s\S]*?this\._setState\('charSelect'\);/);
+    assert.match(gameSource, /onDifficultyBack  = \(\) => this\._setState\('lobby'\)/);
     assert.match(gameSource, /onCharSelectBack  = \(\) => this\._setState\('lobby'\)/);
     // 状态机加入新状态并显示对应面板
-    assert.match(gameSource, /'menu' \| 'saveSelect' \| 'lobby' \| 'charSelect' \| 'playing'/);
+    assert.match(gameSource, /'menu' \| 'saveSelect' \| 'lobby' \| 'difficultySelect' \| 'charSelect' \| 'playing'/);
     assert.match(gameSource, /case 'saveSelect':[\s\S]*?this\._screenMgr\.show\('saveSelect'\)/);
     assert.match(gameSource, /case 'lobby':[\s\S]*?this\._screenMgr\.show\('lobby'\)/);
+    assert.match(gameSource, /case 'difficultySelect':[\s\S]*?this\._screenMgr\.show\('difficultySelect'\)/);
+    // 难度选择页由 DIFFICULTIES 数据驱动四张卡；测试房间不注入难度
+    assert.match(screenSource, /DIFFICULTIES\.forEach/);
+    assert.match(gameSource, /this\._difficulty = undefined;/);
     // 对局内退出按会话来源分流：正式局回大厅、测试房回首页
     assert.match(gameSource, /this\._setState\(this\._pauseReturn === 'testRoom' \? 'menu' : 'lobby'\)/);
     assert.match(gameSource, /this\._pauseReturn = 'playing';/);
@@ -332,7 +338,10 @@ test('全面屏横屏铺满：宽于16:9用FIXED_HEIGHT横向延展,边缘控件
     assert.match(gameSource, /applyScreenPolicy\(\);/);
     // 战斗背景与调色层按可见宽度铺满（resize后由 onViewResized 重新铺）
     assert.match(gameSource, /private _fitBackgroundToVisible/);
-    assert.match(gameSource, /this\._touchUI\.onViewResized = \(\) => this\._fitBackgroundToVisible\(\);/);
+    // resize 后除铺满背景外，还要强制刷新全部 Label（最大化窗口后字形不跟随缩放的修复）
+    assert.match(gameSource, /this\._touchUI\.onViewResized = \(\) => \{[\s\S]*?this\._fitBackgroundToVisible\(\);[\s\S]*?this\._refreshLabelsAfterResize\(\);/);
+    assert.match(gameSource, /refreshAllLabels/);
+    assert.match(fs.readFileSync(path.join(root, 'assets/scripts/core/LabelUtils.ts'), 'utf8'), /export function refreshAllLabels/);
     // 触控层：摇杆/触摸区贴左缘，技能按钮与右上角按钮贴右缘
     assert.match(touchSource, /private _layoutByVisible\(\)/);
     assert.match(touchSource, /this\._joyHomeX = -right \+ 190;/);

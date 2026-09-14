@@ -172,7 +172,7 @@ export class LobbyUI {
         });
 
         this._mkLabel(portal, 0, -180, 340, 40, '出击传送门', 26, WHITE);
-        this._mkLabel(portal, 0, -212, 340, 24, '进入战斗  ·  选择英雄', 13, CYAN);
+        this._mkLabel(portal, 0, -212, 340, 24, '选择难度  ·  选择英雄', 13, CYAN);
     }
 
     /** t=0 画静态门体；t>0 按时间推进旋转/脉冲/环绕粒子。 */

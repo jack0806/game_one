@@ -33,6 +33,12 @@ export class BossController extends EnemyBase {
 
     /** 测试房间专属 Boss 技能集（'mech' | 'abyss' | 'invader'），正式章节 Boss 无此字段。 */
     bossKind?: string;
+    /**
+     * 难度技能削减分母（简单难度 = 3）：Boss 只保留原本 1/3 的技能，
+     * 0 = 技能完整。由 init() 从 game._difficulty.bossSkillCut 读取；
+     * 测试房间无难度注入，恒为 0（技能完整，便于逐项验收）。
+     */
+    bossSkillCut = 0;
     // mech 状态
     mechSlashT = 0;            // 横劈前摇剩余
     mechSlashAngle = 0;        // 高亮扇形朝向（开局锁定主角方向）
@@ -103,6 +109,9 @@ export class BossController extends EnemyBase {
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
         this._setupForChapter(this.chapter);
+        // 难度乘区：Boss 同样吃非移速数值缩放；简单难度额外开启技能削减。
+        this._applyDifficulty(game);
+        this.bossSkillCut = game?._difficulty?.bossSkillCut ?? 0;
     }
 
     /** Called by GameManager.spawnEnemy('boss') — chapter is 0-based。 */
@@ -284,8 +293,11 @@ export class BossController extends EnemyBase {
                 this._skillTimer = Math.max(2.2, 5 - this.phase * 0.8);
                 this.skillWindup = this.skillWindupMax;
             }
-            if (this._summonTimer <= 0) { this._summonTimer = Math.max(7, 12 - this.phase); this._summon(game); }
-            if (this._chargeCd <= 0 && !this.isCharging && this.chargeWindup <= 0) {
+            // 简单难度：弹幕主技/召唤/冲锋共 3 项技能 → 仅保留弹幕主技（1/3）
+            if (!this.bossSkillCut && this._summonTimer <= 0) {
+                this._summonTimer = Math.max(7, 12 - this.phase); this._summon(game);
+            }
+            if (!this.bossSkillCut && this._chargeCd <= 0 && !this.isCharging && this.chargeWindup <= 0) {
                 this._chargeCd = Math.max(7, 10 - this.phase);
                 this._startCharge(player);
             }
@@ -322,7 +334,8 @@ export class BossController extends EnemyBase {
             game.clearDocBossMechanics?.(this);
             game.clearTaggedEnemyBullets?.(`doc_${this.bossKind}`);
             this.docSkillTimer = 1.2;
-            if (phase === 3) this.docSkillIndex = 4;
+            // 简单难度技能削减：三阶段不再强制第 5 招终技（技能池本身见 _updateDocBossSkills）
+            if (phase === 3 && !this.bossSkillCut) this.docSkillIndex = 4;
         }
         game.screenShake?.shake(10, 0.32);
         game.floatingText?.spawn(640, 200, `⚠ PHASE ${phase} ⚠`, this.glowColor, 28, true);
@@ -353,9 +366,11 @@ export class BossController extends EnemyBase {
         else if (this.phase === 2) pool = [0, 1, 2, 3];
         else if (this.bossKind === 'manyfold') pool = [4, 1];
         else pool = [0, 1, 2, 3, 4];
+        // 简单难度：5 招技能 → 仅保留第 1 招（1/3，向下取整）
+        if (this.bossSkillCut) pool = [0];
 
         let skill: number;
-        if (this.phase === 3 && !this._docFinalUsed) {
+        if (!this.bossSkillCut && this.phase === 3 && !this._docFinalUsed) {
             skill = 4;
             this._docFinalUsed = true;
         } else {
@@ -491,9 +506,10 @@ export class BossController extends EnemyBase {
                 game.floatingText?.spawn?.(this.x, this.y - 90, '横劈蓄力！', '#aaddff', 18, true);
             }
         }
-        // 技能调度：剑气风暴 / 光剑 / 天空坠击
+        // 技能调度：剑气风暴 / 光剑 / 天空坠击。
+        // 简单难度技能削减：横劈/剑气风暴/光剑/天空坠击共 4 项 → 仅保留横劈
         this._skillTimer -= dt;
-        if (this._skillTimer <= 0 && this.skillWindup <= 0 && this.mechSlashT <= 0 && this.mechSkyT <= 0) {
+        if (!this.bossSkillCut && this._skillTimer <= 0 && this.skillWindup <= 0 && this.mechSlashT <= 0 && this.mechSkyT <= 0) {
             this._skillTimer = 6 + Rng.float(0, 2);
             const r = Rng.int(0, 2);
             if (r === 0) {
@@ -550,33 +566,34 @@ export class BossController extends EnemyBase {
     private _updateAbyssSkills(dt: number, player: any, game: any): void {
         // 海之霸主：场景边缘 8 道水柱（GameManager._pillars 维护）
         this._abyssPillarCd -= dt;
-        if (this._abyssPillarCd <= 0) {
+        if (!this.bossSkillCut && this._abyssPillarCd <= 0) {
             this._abyssPillarCd = 22;
             this.visualAbyssSkillIndex = 2; this.visualAbyssSkillT = 0.68;
             game.startPillarStorm?.(this);
         }
         // 冰冻区域：随机 4 个预告区（GameManager._telegraphZones 维护）
         this._abyssZoneCd -= dt;
-        if (this._abyssZoneCd <= 0) {
+        if (!this.bossSkillCut && this._abyssZoneCd <= 0) {
             this._abyssZoneCd = 15;
             this.visualAbyssSkillIndex = 3; this.visualAbyssSkillT = 0.68;
             game.startTelegraphZones?.(this);
         }
         // 水分身冲锋
         this._abyssCloneCd -= dt;
-        if (this._abyssCloneCd <= 0 && player.alive) {
+        if (!this.bossSkillCut && this._abyssCloneCd <= 0 && player.alive) {
             this._abyssCloneCd = 14;
             this.visualAbyssSkillIndex = 4; this.visualAbyssSkillT = 0.68;
             game.spawnWaterClone?.(this, player);
         }
         // 消耗水柱召唤深海鱿鱼
         this._abyssSquidCd -= dt;
-        if (this._abyssSquidCd <= 0) {
+        if (!this.bossSkillCut && this._abyssSquidCd <= 0) {
             this._abyssSquidCd = 18;
             this.visualAbyssSkillIndex = 5; this.visualAbyssSkillT = 0.72;
             game.abyssSummonSquid?.(this);
         }
-        // 大水刺：随机 3 方向各 3 发（复用 skillWindup 前摇）
+        // 大水刺：随机 3 方向各 3 发（复用 skillWindup 前摇）。
+        // 简单难度技能削减：5 项技能 → 仅保留大水刺（1/3 向下取整）
         this._skillTimer -= dt;
         if (this._skillTimer <= 0 && this.skillWindup <= 0) {
             this._skillTimer = 5 + Rng.float(0, 2);
@@ -627,8 +644,9 @@ export class BossController extends EnemyBase {
         }
         if (this.invLaserT > 0) this.invLaserT = Math.max(0, this.invLaserT - dt);
 
-        // 技能5：最终形态切换（首次低于20%血量）——恢复至50%血后再进入无敌引导
-        if (!this.finalForm && this.hp / this.maxHp <= 0.2) {
+        // 技能5：最终形态切换（首次低于20%血量）——恢复至50%血后再进入无敌引导。
+        // 简单难度技能削减：4 主技能 + 最终形态共 5 项 → 仅保留毁灭激光（1/3 向下取整）
+        if (!this.bossSkillCut && !this.finalForm && this.hp / this.maxHp <= 0.2) {
             this.finalForm = true;
             this.hp = this.maxHp * 0.5; // 首次掉到20%后恢复至50%血
             this.invulnerable = true;
@@ -670,21 +688,21 @@ export class BossController extends EnemyBase {
 
         // 技能2：集束导弹 —— 上天后落地，落地前区域高亮（GameManager._missileZones 维护）
         this._invMissileCd -= dt;
-        if (this._invMissileCd <= 0) {
+        if (!this.bossSkillCut && this._invMissileCd <= 0) {
             this._invMissileCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderMissiles?.(this);
         }
 
         // 技能3：震荡波 —— 以自身发出多道扩散波（基础3道 / 最终6道）
         this._invShockCd -= dt;
-        if (this._invShockCd <= 0) {
+        if (!this.bossSkillCut && this._invShockCd <= 0) {
             this._invShockCd = (this.finalForm ? 6 : 8) + Rng.float(0, 2);
             game.startInvaderShockwaves?.(this);
         }
 
         // 技能4：追踪导弹（基础1发 / 最终2发）
         this._invHomingCd -= dt;
-        if (this._invHomingCd <= 0) {
+        if (!this.bossSkillCut && this._invHomingCd <= 0) {
             this._invHomingCd = (this.finalForm ? 4.5 : 6) + Rng.float(0, 1.5);
             this._invaderHomingFire(player, game);
         }

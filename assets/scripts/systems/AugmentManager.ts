@@ -1,167 +1,210 @@
 // ============================================================
-//  AugmentManager.ts — 词条管理器
+//  AugmentManager.ts — 海克斯管理器（等级/定价/卖出）
 // ============================================================
-import { AUGMENT_DB, AugmentDef } from '../data/AugmentDB';
-import { CHARACTERS } from '../data/CharacterDB';
+// 2026-09-14 按用户《海克斯.docx》重做：
+//  · 格子：初始 5 个（文档：任务可解锁到 8，暂未实现任务钩子）；
+//  · 等级：同一海克斯再次获得即升 1 档（Lv.1→2→3），升档不占新格子；
+//  · 一次性海克斯（15/17）生效后即消耗，不占格子；
+//  · 定价：基准价 × 同稀有度购买次数溢价（银/金 +10%/次，彩 +100%/次）；
+//  · 卖出：卸下词条回收购买价 75%（退款经 GameManager 走 Economy）。
+import { AUGMENT_DB, AugmentDef, HexRarity, rarityForLevel } from '../data/AugmentDB';
 import { Rng } from '../core/MathUtils';
+
+/** 稀有度出售溢价：银/金每买 1 张该稀有度涨价 10%，彩涨 100%。 */
+const SURGE_RATE: Record<HexRarity, number> = { silver: 0.10, gold: 0.10, prismatic: 1.0 };
 
 export class AugmentManager {
     active: AugmentDef[]   = [];
-    maxSlots: number       = 6;
-    synergyActive: string[] = [];
-    onNextAugment: (() => void) | null = null;
+    /** 文档：角色初始 5 个海克斯待开发格子。 */
+    maxSlots: number       = 5;
+    /** 海克斯15 进阶蓝图：下一个新获得的海克斯 +1 档（消费后清零）。 */
+    nextLevelBonus         = 0;
+    /** 本局各稀有度已购张数（定价溢价用）。 */
+    boughtPerRarity: Record<string, number> = { silver: 0, gold: 0, prismatic: 0 };
+    /** 格雷夫被动递归防护：免费追加装备期间不再触发二次追加。 */
+    private _inChaosBonus = false;
+
+    // ── 定价 ──────────────────────────────────────────────
+
+    /** 当前买下这张卡的价格（按档位稀有度基准价 × 同稀有度累计溢价；卖出回收 75%）。 */
+    priceOf(def: AugmentDef, level = 1): number {
+        const rarity = rarityForLevel(def, level);
+        const base = def.prices[Math.min(def.prices.length, Math.max(1, level)) - 1];
+        const surge = 1 + SURGE_RATE[rarity] * (this.boughtPerRarity[rarity] || 0);
+        return Math.round(base * surge);
+    }
+
+    /** 记一次成功购买（涨价与回收价都以实付为准）。 */
+    recordPurchase(rarity: HexRarity, paid: number): void {
+        this.boughtPerRarity[rarity] = (this.boughtPerRarity[rarity] || 0) + 1;
+    }
+
+    /** 卖出回收价 = 实付 × 75%。 */
+    sellValue(inst: AugmentDef): number {
+        return Math.round((inst.paid ?? 0) * 0.75);
+    }
 
     // ── 生成选项 ──────────────────────────────────────────
-    rollOptions(n = 3, wave = 1, charId?: string): AugmentDef[] {
-        const blueW   = Math.max(10, 65 - wave * 1.5);
-        const purpleW = Math.min(60, 30 + wave * 1.2);
-        const orangeW = Math.min(25, Math.max(0, (wave - 5) * 1.2));
-        const goldW   = Math.min(5,  Math.max(0, (wave - 15) * 0.3));
-        const weights = { blue: blueW, purple: purpleW, orange: orangeW, gold: goldW };
 
-        const isFull = this.active.length >= this.maxSlots;
+    /** 当前波次的三档稀有度权重（商店页"出现率"标注与 rollOptions 共用）。 */
+    rarityWeights(wave: number): Record<HexRarity, number> {
+        return {
+            silver:    Math.max(12, 55 - wave * 2),
+            gold:      Math.min(55, 25 + wave * 2.5),
+            prismatic: Math.min(28, Math.max(0, (wave - 3) * 2)),
+        };
+    }
+
+    /**
+     * 三选一卡池（等级即稀有度）：银档 → 各家族的 Lv.1 卡，金档 → Lv.2，
+     * 彩档 → Lv.3。已持有家族只会刷出比当前更高的档位（升级卡）；
+     * 一次性海克斯任意档位可重复出现。
+     */
+    rollOptions(n = 3, wave = 1): AugmentDef[] {
+        const weights = this.rarityWeights(wave);
         const results: AugmentDef[] = [];
-        const usedIds = new Set<string>();
 
         for (let i = 0; i < n; i++) {
-            // 满格时 80% 概率出升级卡
-            if (isFull && Rng.chance(0.8) && this.active.length > 0) {
-                const upgradable = this.active.filter(a => (a.tier || 1) < 3);
-                if (upgradable.length > 0) {
-                    const inst = Rng.pick(upgradable);
-                    const card = this._makeUpgradeCard(inst);
-                    if (!usedIds.has(card.id)) { usedIds.add(card.id); results.push(card); continue; }
-                }
-            }
-            // 普通词条（按角色攻击方式过滤掉不适配的纯弹道词条）。
-            // 已装备的同名词条一律排除：强化已有词条走"升级卡"路径，
-            // 否则同名会二次装备，M面板出现两行重复词条。
-            const avail = this._filterForChar(AUGMENT_DB.filter(a => !usedIds.has(a.id) && !this.active.find(x => x.id === a.id)), charId);
-            const card = this._rollOneFromPool(avail, weights, charId);
-            if (card) { usedIds.add(card.id); results.push({ ...card, tier: 1 }); }
+            const rarity = this._rollRarity(weights);
+            if (!rarity) continue;
+            const level = rarity === 'silver' ? 1 : rarity === 'gold' ? 2 : 3;
+            const pool = AUGMENT_DB.filter(a => {
+                if (a.prices.length < level) return false;      // 该海克斯没有这一档
+                if (results.find(r => r.id === a.id)) return false;
+                const owned = this.active.find(x => x.id === a.id);
+                if (owned && !a.oneShot) return (owned.level ?? 1) < level;
+                return true;
+            });
+            if (!pool.length) continue;
+            const def = Rng.pick(pool);
+            const owned = this.active.find(x => x.id === def.id);
+            results.push(this._makeCard(def, level, !!owned));
         }
         return results;
     }
 
-    /**
-     * 按角色攻击方式过滤词条：attackType:'ranged' 的纯弹道词条（穿透/多重/反弹/
-     * 弹幕等）只作用于 spawn 出去的子弹，近战角色拿到即死词条——近战(reik)的
-     * 候选池与混沌加成池都不得出现。反向同理（未来若有 melee 专属词条）。
-     */
-    private _filterForChar(pool: AugmentDef[], charId?: string): AugmentDef[] {
-        const atk = charId ? CHARACTERS[charId]?.attackType : undefined;
-        if (!atk) return pool;
-        return pool.filter(a => !a.attackType || a.attackType === atk);
-    }
-
-    private _rollOneFromPool(pool: AugmentDef[], weights: Record<string, number>, charId?: string): AugmentDef | null {
-        const avail = pool.filter(a => (weights[a.rarity] || 0) > 0);
-        if (!avail.length) return null;
-        const totalW = avail.reduce((s, a) => s + (weights[a.rarity] || 0) * (charId && (a.affinity?.indexOf(charId) ?? -1) >= 0 ? 2.5 : 1), 0);
-        if (totalW <= 0) return null;
-        let r = Math.random() * totalW;
-        for (const a of avail) {
-            r -= (weights[a.rarity] || 0) * (charId && (a.affinity?.indexOf(charId) ?? -1) >= 0 ? 2.5 : 1);
-            if (r <= 0) return a;
+    private _rollRarity(weights: Record<HexRarity, number>): HexRarity | null {
+        const entries = (Object.keys(weights) as HexRarity[]).filter(k => weights[k] > 0);
+        const total = entries.reduce((s, k) => s + weights[k], 0);
+        if (total <= 0) return null;
+        let r = Math.random() * total;
+        for (const k of entries) {
+            r -= weights[k];
+            if (r <= 0) return k;
         }
-        return avail[avail.length - 1];
+        return entries[entries.length - 1];
     }
 
-    private _makeUpgradeCard(inst: AugmentDef): AugmentDef {
-        const curTier = inst.tier || 1;
-        const nxtTier = curTier + 1;
-        return Object.assign({}, inst, {
-            _upgrade:     true,
-            _targetId:    inst.id,
-            _tierFrom:    curTier,
-            _tierTo:      nxtTier,
-            _tierMult:    nxtTier === 2 ? 0.8 : 0.6,
-            desc:         `[升级 Lv.${nxtTier}] ${inst.desc || ''} — ${nxtTier === 2 ? '+80%效果' : '+60%效果'}`,
-            _upgradeLabel: `Lv.${nxtTier}升级`,
-        });
+    /** 生成一张可购买卡（档位稀有度着色、文案、当前含溢价价格）。 */
+    private _makeCard(def: AugmentDef, level: number, isUpgrade: boolean): AugmentDef {
+        return {
+            ...def,
+            level,
+            tier: level,
+            rarity: rarityForLevel(def, level),
+            desc: def.descAt(level),
+            _isUpgrade: isUpgrade,
+            _price: this.priceOf(def, level),
+        };
     }
 
-    // ── 装备词条 ──────────────────────────────────────────
-    // _fromChaosBonus: 内部递归标记，防止格雷夫被动(chaosBonus)无限触发自身。
-    equip(aug: AugmentDef, player: any, game: any, _fromChaosBonus = false): boolean {
-        // 升级分支
-        if ((aug as any)._upgrade) {
-            const existing = this.active.find(a => a.id === (aug as any)._targetId);
-            if (existing) {
-                existing.tier = (aug as any)._tierTo;
-                if (existing.onEquip) existing.onEquip(player, game, (aug as any)._tierMult);
-                return true;
+    // ── 装备 / 升档 / 卸下 ────────────────────────────────
+
+    /**
+     * 购买/授予一张卡。card.level 缺省 1；传入已持有的 id 时按 +1 档处理。
+     * 一次性海克斯立即生效不入列。返回是否成功（满格/已满级返回 false）。
+     */
+    equip(card: AugmentDef, player: any, game: any): boolean {
+        const def = AUGMENT_DB.find(a => a.id === card.id) ?? card;
+        const existing = this.active.find(a => a.id === def.id);
+
+        // 一次性：立即生效并消耗（不占格子）
+        if (def.oneShot) {
+            const oneShot = { ...def, level: card.level ?? 1 };
+            oneShot.onLevel?.(player, game, 0, card.level ?? 1);
+            return true;
+        }
+
+        if (existing) {
+            const from = existing.level ?? 1;
+            if (from >= 3) return false;
+            const to = Math.min(3, Math.max(from + 1, card.level ?? from + 1));
+            existing.level = to;
+            existing.tier = to;
+            existing.rarity = rarityForLevel(def, to);
+            existing.desc = def.descAt(to);
+            existing.onLevel?.(player, game, from, to);
+            return true;
+        }
+
+        if (this.active.length >= this.maxSlots) return false;
+
+        // 海克斯15：新获得的第一个海克斯提升一档
+        let level = card.level ?? 1;
+        if (this.nextLevelBonus > 0) {
+            level = Math.min(3, level + this.nextLevelBonus);
+            this.nextLevelBonus = 0;
+        }
+        const inst: AugmentDef = {
+            ...def,
+            level, tier: level,
+            rarity: rarityForLevel(def, level),
+            desc: def.descAt(level),
+            paid: card.paid ?? card._price ?? 0,
+        };
+        this.active.push(inst);
+        inst.onLevel?.(player, game, 0, level);
+        // 格雷夫被动(chaosBonus)：获得海克斯时额外随机获得一个（1 档，不占格子溢出）
+        if (player?.stats?.chaosBonus && !this._inChaosBonus && this.active.length < this.maxSlots) {
+            this._inChaosBonus = true;
+            try {
+                const pool = AUGMENT_DB.filter(a =>
+                    !this.active.find(x => x.id === a.id) && !a.oneShot);
+                if (pool.length) {
+                    const bonus = Rng.pick(pool);
+                    this.equip(this._makeCard(bonus, 1, false), player, game);
+                }
+            } finally {
+                this._inChaosBonus = false;
             }
         }
-        // 满员不再静默失败（旧版直接 return false：玩家选满 6 个后再选新词条毫无
-        // 效果、也不出现在M面板）。改为替换最早装备的词条(FIFO)，新选择一定生效；
-        // 浮字告知被换下的词条，给玩家明确反馈。
-        if (this.active.length >= this.maxSlots) {
-            const removed = this.active.shift() as AugmentDef;
-            game?.floatingText?.spawn?.(
-                player?.x ?? 0, (player?.y ?? 0) - 70,
-                `词条栏已满：${removed.name} 被 ${aug.name} 替换`, '#ffaa44', 15, true,
-            );
-        }
-        const inst: AugmentDef = { ...aug, tier: 1 };
-        this.active.push(inst);
-        if (inst.onEquip) inst.onEquip(player, game, 1);
-        // 六芒永恒钩子
-        if (this.onNextAugment) { this.onNextAugment(); this.onNextAugment = null; }
-        // 格雷夫被动(chaosBonus)：获得词条时额外随机获得一个（对齐 CharacterDB.ts 的
-        // desc: '获得词条时额外随机一个，混沌本质'）。_fromChaosBonus 防止连锁触发。
-        if (!_fromChaosBonus && player?.stats?.chaosBonus && this.active.length < this.maxSlots) {
-            const bonus = this._rollOneFromPool(
-                this._filterForChar(
-                    AUGMENT_DB.filter(a => !this.active.find(x => x.id === a.id)),
-                    player?.charId,
-                ),
-                { blue: 65, purple: 30, orange: 5, gold: 1 },
-            );
-            if (bonus) this.equip(bonus, player, game, true);
-        }
         return true;
+    }
+
+    /**
+     * 卖出/卸下已持有的海克斯：数值型钩子按 onLevel(level, 0) 回退加成。
+     * 返回该实例（含 paid 供退款），未找到返回 null。
+     */
+    unequip(id: string, player: any, game: any): AugmentDef | null {
+        const idx = this.active.findIndex(a => a.id === id);
+        if (idx < 0) return null;
+        const inst = this.active[idx];
+        inst.onLevel?.(player, game, inst.level ?? 1, 0);
+        this.active.splice(idx, 1);
+        return inst;
     }
 
     // ── 事件分发 ──────────────────────────────────────────
     dispatchHit(player: any, enemy: any, dmg: number, game: any): void {
         for (const a of this.active) if (a.onHit) a.onHit(player, enemy, dmg, game);
     }
-
     dispatchKill(player: any, enemy: any, dmg: number, game: any): void {
         for (const a of this.active) if (a.onKill) a.onKill(player, enemy, dmg, game);
     }
-
     dispatchUpdate(player: any, dt: number, game: any): void {
         for (const a of this.active) if (a.onUpdate) a.onUpdate(player, dt, game);
     }
-
     dispatchWaveStart(player: any, game: any): void {
         for (const a of this.active) if (a.onWaveStart) a.onWaveStart(player, game);
     }
-
     dispatchSkill(player: any, game: any): void {
         for (const a of this.active) if (a.onSkill) a.onSkill(player, game);
     }
 
-    // ── 随机移除（混沌神明） ───────────────────────────────
-    removeRandom(): void {
-        if (!this.active.length) return;
-        const idx = Rng.int(0, this.active.length - 1);
-        this.active.splice(idx, 1);
-    }
-
-    // ── 复制随机词条效果（六芒永恒） ──────────────────────
-    duplicateRandom(player: any, game: any): void {
-        if (!this.active.length) return;
-        const src = Rng.pick(this.active);
-        if (src.onEquip) src.onEquip(player, game, 0.5);
-    }
-
     reset(): void {
-        this.active     = [];
-        this.maxSlots   = 6;
-        this.onNextAugment = null;
-        this.synergyActive = [];
+        this.active = [];
+        this.maxSlots = 5;
+        this.nextLevelBonus = 0;
+        this.boughtPerRarity = { silver: 0, gold: 0, prismatic: 0 };
     }
 }

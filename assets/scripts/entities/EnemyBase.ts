@@ -216,9 +216,25 @@ export class EnemyBase {
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
         this._applyTypeDef(type, scale, game);
+        this._applyDifficulty(game);
         this._applyMutations(game);
         // 精英增强
         if (this.isElite) { this.maxHp *= 3; this.hp = this.maxHp; this.damage *= 1.5; this.goldValue *= 3; }
+    }
+
+    /**
+     * 难度乘区（easy 0.25 / normal 0.5 / hard 1 / hell 1.5）：
+     * 只缩放非移速数值（血量/护盾/伤害/护甲/赏金），移速与攻击节奏保持表值。
+     * game._difficulty 由 GameManager 在开局注入；测试房间不注入 = 原值。
+     */
+    _applyDifficulty(game: any): void {
+        const mult = game?._difficulty?.statMult;
+        if (!mult || mult === 1) return;
+        this.maxHp *= mult; this.hp = this.maxHp;
+        if (this.maxShieldHp > 0) { this.maxShieldHp *= mult; this.shieldHp = this.maxShieldHp; }
+        this.damage  *= mult;
+        this.armor   *= mult;
+        this.goldValue *= mult;
     }
 
     private _applyTypeDef(type: string, scale: number, _game: any): void {
@@ -504,7 +520,8 @@ export class EnemyBase {
         }
         this.hp    = 0;
         this.alive = false;
-        game.economy?.spawnDrop(this.x, this.y, this.goldValue);
+        // 金币爆率随章节阶段递增（《海克斯.docx》：越到后面掉落越多）
+        game.economy?.spawnDrop(this.x, this.y, Math.max(1, Math.round(this.goldValue * (game.goldDropMult ?? 1))));
         if (this.type === 'gold_scavenger' && this._scavengerAge <= 5) {
             game.economy?.spawnDrop(this.x, this.y, 6);
             game.floatingText?.spawn?.(this.x, this.y - 34, '截获！ +6', '#ffd75a', 17, true);

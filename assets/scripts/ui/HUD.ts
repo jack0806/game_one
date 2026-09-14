@@ -23,6 +23,8 @@ export interface HudData {
     bossHp?: number;
     bossMaxHp?: number;
     bossName?: string;
+    /** 本局难度名（测试房间缺省 = 不显示）。 */
+    difficultyName?: string;
 }
 
 @ccclass('HUD')
@@ -208,7 +210,7 @@ export class HUD extends Component {
     refresh(d: HudData) {
         this._refreshHp(d);
         this._refreshGold(d.gold);
-        this._refreshWave(d.wave, d.chapter);
+        this._refreshWave(d);
         this._refreshBoss(d);
         this._refreshSkills(d.skills);
     }
@@ -238,8 +240,11 @@ export class HUD extends Component {
         this._goldLabel.string = `⬡ ${gold}`;
     }
 
-    private _refreshWave(wave: number, ch: number) {
-        this._waveLabel.string = `第${ch + 1}章 · 第${wave}波`;
+    private _refreshWave(d: HudData) {
+        // 测试房间无难度注入，波次行不显示难度后缀
+        this._waveLabel.string = d.difficultyName
+            ? `第${d.chapter + 1}章 · 第${d.wave}波 · ${d.difficultyName}`
+            : `第${d.chapter + 1}章 · 第${d.wave}波`;
     }
 
     private _refreshBoss(d: HudData) {

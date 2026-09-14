@@ -15,6 +15,9 @@ export const RARITY_COLOR: Record<string, string> = {
     purple: '#aa44ff',
     orange: '#ff8800',
     gold:   '#ffd700',
+    // 海克斯.docx 稀有度（2026-09-14 新海克斯体系使用）
+    silver:    '#a8bccc',
+    prismatic: '#ff6ec7',
 };
 
 export const RARITY_LABEL: Record<string, string> = {
@@ -22,6 +25,9 @@ export const RARITY_LABEL: Record<string, string> = {
     purple: '紫色',
     orange: '橙色',
     gold:   '金色',
+    // 'gold' 键与旧蓝色系冲突，海克斯的金色沿用 'gold'；银/彩为新增键
+    silver:    '银色',
+    prismatic: '彩色',
 };
 
 /** 章节 Boss 波次偏移（每章5波，第5波为Boss；BOSS_WAVE_OFFSET 已被 WaveData 的 bossWave 取代，保留兼容） */

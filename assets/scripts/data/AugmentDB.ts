@@ -1,73 +1,77 @@
 // ============================================================
-//  AugmentDB.ts — 50 个词条定义（纯数据层）
+//  AugmentDB.ts — 海克斯强化定义（纯数据层）
 // ============================================================
+// 2026-09-14 按用户《海克斯.docx》全量重做：旧 50 词条整体废弃，
+// 换成 18 个海克斯（功能性 5 / 技能性 9 / 一次性 4），每个海克斯的
+// 三档数值直接对应 Lv.1/2/3（"同步不同数值生成不同等级的强化"）。
+// 稀有度与定价按文档：银 15-50 / 金 100-250 / 彩 500-1000，
+// 购买后同稀有度溢价 10%（彩 100%），卖出回收购买价 75%（见
+// AugmentManager / AugSelectUI / GameManager 的商店接线）。
 import { Rng, Vec } from '../core/MathUtils';
+
+export type HexRarity = 'silver' | 'gold' | 'prismatic';
+
+/** 档位 → 稀有度：Lv.1=银 / Lv.2=金 / Lv.3=彩（2026-09-14 用户要求：同一效果的三档数值直接做成银金彩三个海克斯）。 */
+export const LEVEL_RARITY: HexRarity[] = ['silver', 'gold', 'prismatic'];
+
+/** 取某档位的稀有度；单档海克斯（蓝图/壁垒）固定用其自身稀有度。 */
+export function rarityForLevel(def: AugmentDef, level: number): HexRarity {
+    if (def.prices.length <= 1) return def.rarity;
+    return LEVEL_RARITY[Math.min(3, Math.max(1, level)) - 1];
+}
 
 export interface AugmentDef {
     id: string;
-    rarity: 'blue' | 'purple' | 'orange' | 'gold';
+    /** 文档编号（海克斯1~18），测试房授予面板按此排序展示。 */
+    index: number;
+    /** 基准稀有度（单档海克斯的实际稀有度；多档海克斯档位稀有度见 rarityForLevel）。 */
+    rarity: HexRarity;
     icon: string;
     name: string;
-    tags: string[];
-    desc: string;
-    affinity?: string[];
+    category: '功能' | '技能' | '一次性';
     /**
-     * 词条适配的攻击方式；不写=通用。
-     * 'ranged' 的纯弹道词条（穿透/多重/反弹/弹幕等）只消费 stats 里的子弹字段，
-     * 近战角色(_shoot直接走_meleeAttack,从不spawn子弹)拿到即死词条，
-     * 会在 rollOptions/混沌加成池里被按角色 attackType 过滤掉。
+     * 分档售价：索引 0/1/2 对应 Lv.1(银)/Lv.2(金)/Lv.3(彩)，
+     * 落在文档区间 银15-50 / 金100-250 / 彩500-1000。
+     * 单档海克斯（hex15 进阶蓝图·彩 / hex18 应急壁垒·银）只有一个价格。
      */
-    attackType?: 'melee' | 'ranged';
+    prices: number[];
+    /** Lv.1/2/3 三档数值，钩子按 values[level-1] 取值。 */
+    values: number[];
+    /** 生成某一档的展示文案（卡片/M面板共用，装备时填充 desc 字段）。 */
+    descAt: (level: number) => string;
+    /** 一次性海克斯：生效后不占格子、不留在列表（15/17）。 */
+    oneShot?: boolean;
+    /**
+     * 装备/升档/卸下钩子：from=0 首次装备，to=0 卖出卸下，
+     * 其余为 from→to 的档位切换。数值型海克斯按"先除旧再加新"精确换档。
+     */
+    onLevel?:  (p: any, game: any, from: number, to: number) => void;
+    onHit?:    (p: any, enemy: any, dmg: number, game: any) => void;
+    onKill?:   (p: any, enemy: any, dmg: number, game: any) => void;
+    onUpdate?: (p: any, dt: number, game?: any) => void;
+    // ── 以下为运行期实例字段（装备拷贝时生成） ──
+    /** 当前档位 1~3（tier 为兼容字段）。 */
+    level?: number;
     tier?: number;
-    // 词条钩子
-    onEquip?:     (p: any, game: any, mult?: number) => void;
-    onHit?:       (p: any, enemy: any, dmg: number, game: any) => void;
-    onKill?:      (p: any, enemy: any, dmg: number, game: any) => void;
-    onUpdate?:    (p: any, dt: number, game?: any) => void;
-    onWaveStart?: (p: any, game?: any) => void;
-    onSkill?:     (p: any, game: any) => void;
-    // 内部状态（每个实例应深拷贝）
+    desc?: string;
+    /** 购入实付金币（卖出回收 75% 用）。 */
+    paid?: number;
     [key: string]: any;
 }
 
 // Type alias for compatibility
 export type AugDef = AugmentDef;
 
-// ── 辅助函数 ──────────────────────────────────────────────
-export function chainLightning(player: any, sourceEnemy: any, dmg: number, bounces: number, game: any, visited = new Set<any>()): void {
-    if (!game || bounces <= 0) return;
-    visited.add(sourceEnemy);
-    const others = game.enemies.filter((e: any) => !visited.has(e) && e.alive && Vec.dist(e.x, e.y, sourceEnemy.x, sourceEnemy.y) < 220);
-    if (!others.length) return;
-    const target = Rng.pick(others) as any;
-    visited.add(target);
-    game.particles.lightning(sourceEnemy.x, sourceEnemy.y, target.x, target.y, '#ffe500');
-    game.audio?.playSfx?.('lightning');
-    target.takeDamage(dmg, player, game);
-    game.floatingText?.spawn(target.x, target.y - 22, '连锁!', '#ffe500', 13, false);
-    chainLightning(player, target, dmg * 0.8, bounces - 1, game, visited);
-}
+// ── 通用辅助（GameManager / 技能海克斯共用） ─────────────
 
 export function spawnExplosion(player: any, x: number, y: number, dmg: number, radius: number, game: any): void {
     if (!game) return;
-    const mult = (player.stats.explosionMult) || 1;
     game.particles.explode(x, y, '#ff6600', radius);
     game.audio?.playSfx?.('explode');
     game.screenShake.shake(6, 0.2);
-    const hitTargets: any[] = [];
     for (const e of game.enemies) {
         if (e.alive && Vec.dist(e.x, e.y, x, y) < radius) {
-            e.takeDamage(dmg * mult, player, game);
-            hitTargets.push(e);
-        }
-    }
-    if (player.stats?.chainExplosion && hitTargets.length > 3) {
-        const cr = radius * 0.6;
-        for (const t of hitTargets) {
-            game.particles.explode(t.x, t.y, '#ff9900', cr);
-            for (const e2 of game.enemies) {
-                if (e2.alive && Vec.dist(e2.x, e2.y, t.x, t.y) < cr) e2.takeDamage(dmg * mult * 0.5, player, game);
-            }
+            e.takeDamage(dmg, player, game);
         }
     }
 }
@@ -82,281 +86,217 @@ export function applyPoison(enemy: any, dps: number, duration: number): void {
     enemy.dots.push({ type: 'poison', dps, timeLeft: duration, color: '#44ff00' });
 }
 
-// ── 词条数据库 ─────────────────────────────────────────────
+/** 乘区换档辅助：把 stats[key] 从 (1+旧档) 精确换到 (1+新档)。 */
+function swapFactor(obj: any, key: string, fromVal: number, toVal: number): void {
+    if (fromVal > 0) obj[key] /= (1 + fromVal);
+    if (toVal > 0)   obj[key] *= (1 + toVal);
+}
+
+/** 平铺数值换档辅助：加减差值（from=0/to=0 均成立）。 */
+function swapFlat(obj: any, key: string, fromVal: number, toVal: number): void {
+    obj[key] = (obj[key] || 0) + (toVal - fromVal);
+}
+
+// ── 海克斯数据库（编号与数值逐条对应《海克斯.docx》） ──────
 export const AUGMENT_DB: AugmentDef[] = [
-    // ─── 蓝色词条 ─────────────────────────────────────────
-    { id: 'pierce', rarity: 'blue', icon: 'pierce', name: '穿透炮弹', tags: ['pierce'], attackType: 'ranged',
-      desc: '子弹额外穿透 2 个敌人',
-      onEquip(p, _g, mult = 1) { p.stats.pierce += 2 * mult; } },
+    // ─── 功能性海克斯（银） ───────────────────────────────
+    { id: 'hex01', index: 1, rarity: 'silver', icon: 'speed', name: '加速齿轮', category: '功能',
+      prices: [15, 100, 500], values: [0.10, 0.20, 0.30],
+      descAt: (l) => `攻速 +${[10, 20, 30][l - 1]}%`,
+      onLevel(p, _g, from, to) { swapFactor(p.stats, 'attackSpeed', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'chain', rarity: 'blue', icon: 'lightning', name: '连锁闪电', tags: ['lightning'], affinity: ['kai', 'olia'],
-      desc: '击中目标后弹射至2个附近敌人（伤害×70%）',
-      onHit(p, enemy, dmg, game) { chainLightning(p, enemy, dmg * 0.7, 2, game); } },
+    { id: 'hex02', index: 2, rarity: 'silver', icon: 'pierce', name: '力量核心', category: '功能',
+      prices: [16, 110, 520], values: [0.05, 0.10, 0.15],
+      descAt: (l) => `攻击 +${[5, 10, 15][l - 1]}%`,
+      onLevel(p, _g, from, to) { swapFactor(p.stats, 'damage', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'explode', rarity: 'blue', icon: 'explosion', name: '爆炸弹头', tags: ['explosion'],
-      desc: '子弹爆炸，溅射半径 60，溅射伤害×50%',
-      onHit(p, enemy, dmg, game) { spawnExplosion(p, enemy.x, enemy.y, dmg * 0.5, 60, game); } },
-
-    { id: 'burn', rarity: 'blue', icon: 'fire', name: '燃烧弹', tags: ['fire'],
-      desc: '子弹命中附带3秒燃烧（每秒 15% 普攻伤害）',
-      onHit(p, enemy, _dmg, game) { applyBurn(enemy, p.stats.damage * 0.15, 3); if (game?.particles) game.particles.ignite(enemy.x, enemy.y); } },
-
-    { id: 'poison', rarity: 'blue', icon: 'poison', name: '毒液涂层', tags: ['poison'],
-      desc: '命中附带毒，5秒总伤害×80%',
-      onHit(_p, enemy, dmg, game) { applyPoison(enemy, dmg * 0.8 / 5, 5); if (game?.particles) game.particles.toxin(enemy.x, enemy.y); } },
-
-    { id: 'crit_rate', rarity: 'blue', icon: 'crit', name: '精准射击', tags: ['crit'],
-      desc: '暴击率 +20%，移动速度 -5%',
-      onEquip(p, _g, mult = 1) { p.stats.critRate += 0.20 * mult; p.stats.speed *= (1 - 0.05 * mult); } },
-
-    { id: 'crit_dmg', rarity: 'blue', icon: 'crit', name: '暴击强化', tags: ['crit'],
-      desc: '暴击伤害 +60%，最大 HP -8%',
-      onEquip(p, _g, mult = 1) {
-          p.stats.critDmg += 0.60 * mult;
-          p.stats.maxHp = Math.max(1, p.stats.maxHp * (1 - 0.08 * mult));
+    { id: 'hex03', index: 3, rarity: 'silver', icon: 'heart', name: '生命涌泉', category: '功能',
+      prices: [18, 120, 550], values: [0.10, 0.15, 0.30],
+      descAt: (l) => `血量 +${[10, 15, 30][l - 1]}%`,
+      onLevel(p, _g, from, to) {
+          swapFactor(p.stats, 'maxHp', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
           p.hp = Math.min(p.hp, p.stats.maxHp);
       } },
 
-    { id: 'double_shot', rarity: 'blue', icon: 'pierce', name: '双重射击', tags: ['bullet'], attackType: 'ranged',
-      desc: '每次攻击同时发射 2 颗子弹（第二颗×70%）',
-      onEquip(p, _g, _mult = 1) { p.stats.extraBullets += 1; } },
+    { id: 'hex07', index: 7, rarity: 'silver', icon: 'crit', name: '精准仪轨', category: '功能',
+      prices: [20, 130, 580], values: [0.05, 0.10, 0.20],
+      descAt: (l) => `暴击几率 +${[5, 10, 20][l - 1]}%`,
+      onLevel(p, _g, from, to) { swapFlat(p.stats, 'critRate', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'attack_spd', rarity: 'blue', icon: 'speed', name: '急速装填', tags: ['speed'],
-      desc: '攻速 +25%，移动速度 -4%',
-      onEquip(p, _g, mult = 1) { p.stats.attackSpeed *= (1 + 0.25 * mult); p.stats.speed *= (1 - 0.04 * mult); } },
+    { id: 'hex11', index: 11, rarity: 'silver', icon: 'pierce', name: '延展力场', category: '功能',
+      prices: [25, 150, 620], values: [20, 30, 50],
+      descAt: (l) => `攻击距离 +${[20, 30, 50][l - 1]} 码`,
+      onLevel(p, _g, from, to) { swapFlat(p.stats, 'rangeBonus', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'lifesteal', rarity: 'blue', icon: 'lifesteal', name: '吸血子弹', tags: ['lifesteal'],
-      desc: '每次命中回复伤害量×4% HP，护甲 -10',
-      onEquip(p, _g, mult = 1) { p.stats.armor = Math.max(0, p.stats.armor - 10 * mult); },
-      onHit(p, _enemy, dmg, game) {
-          // 高频吸血只显示小绿字，不能每颗子弹都铺一张完整治疗法阵。
-          p.heal(Math.min(dmg * 0.04, p.stats.maxHp * 0.03), false);
-      } },
-
-    { id: 'bounce', rarity: 'blue', icon: 'bounce', name: '反弹弹道', tags: ['bounce'], attackType: 'ranged',
-      desc: '子弹可在边界弹射2次不消失',
-      onEquip(p, _g, mult = 1) { p.stats.bulletBounce += 2 * mult; } },
-
-    { id: 'hp_up', rarity: 'blue', icon: 'heart', name: '钢铁意志', tags: ['defense'],
-      desc: '最大 HP +50',
-      onEquip(p, _g, mult = 1) { p.stats.maxHp += 50 * mult; p.hp = Math.min(p.hp + 50 * mult, p.stats.maxHp); } },
-
-    { id: 'armor_up', rarity: 'blue', icon: 'shield', name: '厚甲', tags: ['defense', 'armor'],
-      desc: '护甲 +20',
-      onEquip(p, _g, mult = 1) { p.stats.armor += 20 * mult; } },
-
-    { id: 'regen', rarity: 'blue', icon: 'heart', name: '急救套件', tags: ['defense'],
-      desc: '每12秒自动回复 6% HP',
-      _timer: 0,
-      onUpdate(p, dt) { this._timer += dt; if (this._timer >= 12) { this._timer = 0; p.heal(p.stats.maxHp * 0.06); } } },
-
-    { id: 'wave_heal', rarity: 'blue', icon: 'heart', name: '波次预备', tags: ['defense'],
-      desc: '每波开始时回复 8% HP',
-      onWaveStart(p) { p.heal(p.stats.maxHp * 0.08); } },
-
-    { id: 'combo_dmg', rarity: 'blue', icon: 'combo', name: '连击倍率', tags: ['combo'],
-      desc: '连击>20/50/100 分别+5%/15%/30%伤害',
-      onEquip(p, _g, _mult = 1) { p.stats._comboDmgAug = true; } },
-
-    { id: 'gold_magnet', rarity: 'blue', icon: 'gold', name: '金币磁铁', tags: ['economy'],
-      desc: '金币拾取范围×3，最大 HP -20',
-      onEquip(p, _g, mult = 1) {
-          p.stats.goldPickupRange *= (1 + 2 * mult);
-          p.stats.maxHp = Math.max(1, p.stats.maxHp - 20 * mult);
-          p.hp = Math.min(p.hp, p.stats.maxHp);
-      } },
-
-    { id: 'elite_hunt', rarity: 'blue', icon: 'crit', name: '精英猎手', tags: ['offense'],
-      desc: '对精英/Boss伤害 +25%',
-      onEquip(p, _g, mult = 1) { p.stats.eliteBonus += 0.25 * mult; } },
-
-    { id: 'skill_cd', rarity: 'blue', icon: 'speed', name: '高速装弹', tags: ['skill'],
-      desc: '技能 CD -15%',
-      onEquip(p, _g, mult = 1) { p.stats.cdReduction += 0.15 * mult; } },
-
-    { id: 'ultimate_cd', rarity: 'blue', icon: 'lightning', name: '储能核心', tags: ['ultimate'],
-      desc: '终极充能速度 +25%',
-      onEquip(p, _g, mult = 1) { p.stats.ultChargeRate += 0.25 * mult; } },
-
-    // ─── 紫色词条 ─────────────────────────────────────────
-    { id: 'turret', rarity: 'purple', icon: 'summon', name: '海克斯炮台', tags: ['turret', 'summon'], affinity: ['vivian'],
-      desc: '召唤 1 个自动炮台，持续存在，伤害=玩家×55%；移动速度 -5%（装备负重）',
-      onEquip(p, game, mult = 1) { game.spawnTurret(p, 0.55 + 0.25 * mult); p.stats.speed *= (1 - 0.05 * mult); } },
-
-    { id: 'shadow_clone', rarity: 'purple', icon: 'summon', name: '暗影分身', tags: ['clone', 'summon'], affinity: ['vivian', 'graf'],
-      desc: '生成分身跟随8秒，每次攻击造成玩家×60%伤害',
-      onEquip(p, game, _mult = 1) { game.spawnClone(p); } },
-
-    { id: 'barrage', rarity: 'purple', icon: 'pierce', name: '弹幕之心', tags: ['bullet', 'barrage'], attackType: 'ranged',
-      desc: '普攻变为5发散射，单发伤害×50%',
-      onEquip(p, _g, _mult = 1) { p.stats.barrageMode = true; } },
-
-    { id: 'freeze_field', rarity: 'purple', icon: 'ice', name: '冻结磁场', tags: ['ice', 'field'],
-      desc: '每次使用技能后，周围 120px敌人减速70%/3s',
-      onSkill(p, game) { game.slowEnemiesAround(p.x, p.y, 120, 0.3, 3); } },
-
-    { id: 'black_hole', rarity: 'purple', icon: 'chaos', name: '黑洞引擎', tags: ['black_hole', 'field'],
-      desc: '每5秒在敌人最密集处自动生成黑洞：吸附半径160，5s后爆炸',
-      _timer: 0, _mult: 1,
-      // 2026-09-07 重做：不再替换 E 技能（E 保持角色原技能），改为独立
-      // 定时器自动施放——每 5 秒在敌人最密集处落一个黑洞（见
-      // GameManager.spawnAutoBlackHole：持续牵引 5s 后爆炸）。
-      onEquip(p, _g, mult = 1) { this._mult = mult; this._timer = 5; },
+    // ─── 技能海克斯（金） ─────────────────────────────────
+    { id: 'hex04', index: 4, rarity: 'gold', icon: 'explosion', name: '裂变脉冲', category: '技能',
+      prices: [30, 120, 500], values: [1, 2, 5],
+      descAt: (l) => `每 3 秒在敌群中引爆 ${[1, 2, 5][l - 1]} 个半径 100 码的范围伤害（伤害=攻击力）`,
+      _t: 3,
+      onLevel(_p, _g, _from, to) { this._t = to ? 3 : 0; },
       onUpdate(p, dt, game) {
-          this._timer -= dt;
-          if (this._timer > 0) return;
-          // 场上没怪时不消耗周期：0.5 秒后重试，敌群一出现立刻落黑洞
-          this._timer = game?.spawnAutoBlackHole
-              ? (game.spawnAutoBlackHole(p, this._mult) ? 5 : 0.5)
-              : 5;
-      } },
-
-    { id: 'death_explode', rarity: 'purple', icon: 'explosion', name: '死亡爆破', tags: ['explosion', 'death'],
-      desc: '击杀时，以死亡点为中心爆炸（80px，伤害×80%）',
-      onKill(p, enemy, dmg, game) { spawnExplosion(p, enemy.x, enemy.y, dmg * 0.8, 80, game); } },
-
-    { id: 'shield_regen', rarity: 'purple', icon: 'shield', name: '能量护盾', tags: ['shield', 'defense'],
-      desc: '获得 150 点护盾，每 12秒重充',
-      _timer: 0, _cap: 0,
-      // 之前重充逻辑硬编码上限150，升级到Lv.2/3(mult<1时叠加)后初始护盾会变多但重充上限
-      // 一直卡在150——这里改成用_cap累计升级后的总上限，重充时也用同一个上限。
-      onEquip(p, _g, mult = 1) {
-          const gain = 150 * mult;
-          this._cap += gain;
-          p.maxShield = Math.max(p.maxShield || 0, this._cap);
-          p.shield = Math.min((p.shield || 0) + gain, p.maxShield);
-      },
-      onUpdate(p, dt) {
-          this._timer += dt;
-          if (this._timer >= 12) {
-              this._timer = 0;
-              p.maxShield = Math.max(p.maxShield || 0, this._cap);
-              p.shield = Math.min((p.shield || 0) + this._cap, p.maxShield);
+          if (!this._t) return;
+          this._t -= dt;
+          if (this._t > 0) return;
+          this._t = 3;
+          const alive = (game?.enemies || []).filter((e: any) => e.alive);
+          if (!alive.length) { this._t = 0.5; return; }
+          const n = this.values[(this.level ?? 1) - 1];
+          const dmg = p.getDamage?.(game) ?? p.stats.damage;
+          for (let i = 0; i < n; i++) {
+              const target: any = Rng.pick(alive);
+              spawnExplosion(p, target.x, target.y, dmg, 100, game);
           }
       } },
 
-    { id: 'chain_explosion', rarity: 'purple', icon: 'explosion', name: '引爆连锁', tags: ['explosion', 'lightning'],
-      desc: '爆炸命中>3个目标时，触发追加连环爆炸（×50%）',
-      onEquip(p, _g, _mult = 1) { p.stats.chainExplosion = true; } },
-
-    { id: 'berserk', rarity: 'purple', icon: 'fire', name: '狂暴化', tags: ['berserk', 'combo'], affinity: ['reik'],
-      desc: '击杀 20 个后进入狂暴 10s（攻速+60%，伤害+40%）',
-      _killCount: 0,
-      onKill(p, _enemy, _dmg, _game) { this._killCount++; if (this._killCount >= 20) { this._killCount = 0; p.applyBuff('berserk', 10, { atkSpd: 1.6, dmgMult: 1.4 }); } } },
-
-    // ─── 橙色词条 ─────────────────────────────────────────
-    { id: 'overload', rarity: 'orange', icon: 'lightning', name: '超载海克斯', tags: ['overload'],
-      desc: '持有 5 个词条时，所有词条效果×1.5；移动速度 -8%',
-      onEquip(p, _g, mult = 1) { p.stats._overloadCheck = true; p.stats.speed *= (1 - 0.08 * mult); } },
-
-    { id: 'turret_army', rarity: 'orange', icon: 'summon', name: '炮台军团', tags: ['turret', 'summon'],
-      desc: '持有炮台类词条时，新召唤的炮台数量×3，攻速×1.5',
-      onEquip(p, game, _mult = 1) { if (game.checkTurretArmy) game.checkTurretArmy(p); } },
-
-    { id: 'barrage_nova', rarity: 'orange', icon: 'pierce', name: '弹幕宇宙', tags: ['bullet', 'barrage'], attackType: 'ranged',
-      desc: '普攻同时发射 9颗子弹（全方向，单颗×35%）',
-      onEquip(p, _g, _mult = 1) { p.stats.novaMode = true; } },
-
-    { id: 'chaos_protocol', rarity: 'orange', icon: 'chaos', name: '混沌协议', tags: ['chaos'],
-      desc: '每次击杀 15% 概率随机触发一个词条最强效果',
-      onKill(p, enemy, dmg, game) { if (Rng.chance(0.15) && game.triggerRandomAugment) game.triggerRandomAugment(p); } },
-
-    { id: 'infinite_chain', rarity: 'orange', icon: 'lightning', name: '无限弹链', tags: ['lightning', 'chain'],
-      desc: '攻击积累弹链层，每 10 层发射全屏激光扫射',
-      _stack: 0,
-      onHit(p, _enemy, _dmg, game) { this._stack++; if (this._stack >= 10) { this._stack = 0; if (game.laserSweep) game.laserSweep(p); } } },
-
-    { id: 'blood_awakening', rarity: 'orange', icon: 'fire', name: '血战觉醒', tags: ['berserk', 'defense'],
-      desc: 'HP<25% 时，全属性×2，持续至HP 回到 40%',
-      onEquip(p, _g, _mult = 1) { p.stats._bloodAwakening = true; } },
-
-    { id: 'death_domain', rarity: 'orange', icon: 'explosion', name: '死亡域', tags: ['explosion', 'death'],
-      desc: '击杀时创建死亡域（半径 80，持续 3s 持续伤害）',
-      onKill(p, enemy, dmg, game) { if (game.spawnDeathZone) game.spawnDeathZone(enemy.x, enemy.y, 80, 3, p.stats.damage * 0.3); } },
-
-    { id: 'time_shard', rarity: 'orange', icon: 'speed', name: '时间碎裂', tags: ['time'],
-      desc: '每波前 3 秒：自身攻速×3，敌人减速 50%',
-      onWaveStart(p, game) { p.applyBuff('timeStart', 3, { atkSpd: 3 }); if (game?.slowAllEnemies) game.slowAllEnemies(0.5, 3); } },
-
-    { id: 'hex_vortex', rarity: 'orange', icon: 'chaos', name: '海克斯漩涡', tags: ['field'],
-      desc: '地图上每20s 生成旋涡，吸附并持续伤害经过敌人',
-      _timer: 0,
-      onUpdate(p, dt, game) { this._timer += dt; if (this._timer >= 20) { this._timer = 0; if (game?.spawnVortex) game.spawnVortex(p); } } },
-
-    { id: 'all_in', rarity: 'orange', icon: 'chaos', name: '全力豪赌', tags: ['chaos', 'offense'], attackType: 'ranged',
-      desc: '攻速-30%，但每次攻击触发三发弹幕',
-      onEquip(p, _g, mult = 1) {
-          if (mult >= 1) { p.stats.attackSpeed *= 0.7; p.stats.allInBullets = 3; }
-          else { p.stats.allInBullets = (p.stats.allInBullets || 3) + Math.round(2 * mult); }
+    { id: 'hex05', index: 5, rarity: 'gold', icon: 'bounce', name: '幻影特效', category: '技能',
+      prices: [35, 150, 550], values: [1, 3, 5],
+      descAt: (l) => `额外攻击特效 +${[1, 3, 5][l - 1]} 个（远程分裂子弹 / 近战多段伤害）`,
+      onLevel(p, _g, from, to) {
+          const d = (to ? this.values[to - 1] : 0) - (from ? this.values[from - 1] : 0);
+          if (p._charDef?.attackType === 'melee') swapFlat(p.stats, 'meleeExtraHits', 0, d);
+          else swapFlat(p.stats, 'extraBullets', 0, d);
       } },
 
-    // ─── 金色词条 ─────────────────────────────────────────
-    { id: 'hex_privilege', rarity: 'gold', icon: 'gold', name: '六角特权', tags: ['slot'],
-      desc: '词条携带上限从 6 提升至 10',
-      onEquip(p, game, mult = 1) {
-          const bonus = Math.round(4 * mult);
-          p.stats.maxAugments = (p.stats.maxAugments || 6) + bonus;
-          const am = game.augmentManager;
-          if (am) am.maxSlots = (am.maxSlots || 6) + bonus;
+    { id: 'hex06', index: 6, rarity: 'prismatic', icon: 'crit', name: '死神之瞳', category: '技能',
+      prices: [50, 250, 650], values: [0.005, 0.01, 0.02],
+      descAt: (l) => `${[0.5, 1, 2][l - 1]}% 概率发现弱点秒杀怪物，每击杀 +0.05%（上限 5%），对 Boss 转化为 300 点伤害`,
+      _rate: 0.005,
+      onLevel(_p, _g, _from, to) { this._rate = to ? this.values[to - 1] : 0; },
+      onHit(p, enemy, _dmg, game) {
+          if (!this._rate || !Rng.chance(this._rate)) return;
+          if (enemy.isBoss) {
+              enemy.takeDamage(300, p, game);
+              game?.floatingText?.spawn?.(enemy.x, enemy.y - 30, '弱点·300', '#ff5ad8', 16, true);
+          } else {
+              enemy.takeDamage(1e9, p, game);
+              game?.floatingText?.spawn?.(enemy.x, enemy.y - 30, '弱点·秒杀！', '#ff5ad8', 18, true);
+          }
+          game?.particles?.hexActivate?.(enemy.x, enemy.y, '#ff5ad8');
+      },
+      onKill() { this._rate = Math.min(0.05, this._rate + 0.0005); } },
+
+    { id: 'hex08', index: 8, rarity: 'gold', icon: 'lightning', name: '弱点透视', category: '技能',
+      prices: [40, 160, 600], values: [0.30, 0.40, 0.50],
+      descAt: (l) => `${[30, 40, 50][l - 1]}% 概率发现怪物弱点，下一发攻击自动追踪并造成 3 倍暴击伤害`,
+      onHit(p, enemy, _dmg, game) {
+          if (p.stats.weakspotArmed || !Rng.chance(this.values[(this.level ?? 1) - 1])) return;
+          p.stats.weakspotArmed = true;
+          game?.floatingText?.spawn?.(enemy.x, enemy.y - 26, '弱点已标记！', '#ffe066', 15, true);
       } },
 
-    // 之前 hasTimeParadox 只写入不读取，是死代码。这里实现为"每波一次撤销死亡"：
-    // 在 PlayerController.takeDamage() 濒死判定时消费该flag，回复50%HP并给予短暂无敌，
-    // 而不是完整的"回到波次起点"状态快照回滚——后者需要整局状态序列化，超出核心玩法QA范围。
-    { id: 'time_paradox', rarity: 'gold', icon: 'heart', name: '时间悖论', tags: ['time'],
-      desc: '每波可倒流时间一次（撤销上一次死亡或回到波次起点）',
-      onEquip(p, _g, _mult = 1) { p.stats.hasTimeParadox = true; p.stats._timeParadoxUsed = false; },
-      onWaveStart(p) { p.stats._timeParadoxUsed = false; } },
-
-    { id: 'core_overflow', rarity: 'gold', icon: 'shield', name: '核心溢出', tags: ['defense', 'berserk'],
-      desc: 'HP<20% 触发：10s 无敌+全属性×3，到期回满至 50%',
-      onEquip(p, _g, _mult = 1) { p.stats._coreOverflow = true; } },
-
-    // 之前 hasCosmos 只写入不读取，是死代码。对齐 hexblast-py entities/player.py 的实现：
-    // R 键触发（与大招 R 共用按键，走独立30s CD），消费点在 PlayerController.tick()。
-    // “互相攻击”部分沿用 hexblast-py 自身也未实现的半成品行为（仅变色+5s后统一爆炸），
-    // 记为已知限制，而非本次移植引入的新缺口。
-    { id: 'cosmos_law', rarity: 'gold', icon: 'chaos', name: '宇宙法则', tags: ['chaos'],
-      desc: '激活后5s 内所有敌人成为友方互相攻击，5s 后全体爆炸',
-      onEquip(p, _g, _mult = 1) { p.stats.hasCosmos = true; } },
-
-    // 之前 hasEternal 只写入不读取，是死代码。这里实现为：任意技能(Q/E/闪避)触发时，
-    // 若持有该词条且自身30s CD已就绪，则将所有技能CD清零并进入10s攻速/伤害×2的
-    // "永恒状态"增益（对齐 desc 的"CD归零+10s永恒状态"）。消费点见 PlayerController。
-    { id: 'eternal_machine', rarity: 'gold', icon: 'lightning', name: '永恒机器', tags: ['skill', 'ultimate'],
-      desc: '所有技能 CD 归零，进入 10s 永恒状态',
-      _cd: 0,
-      onEquip(p, _g, _mult = 1) { p.stats.hasEternal = true; },
-      onUpdate(_p, dt) { this._cd = Math.max(0, this._cd - dt); },
-      onSkill(p, game) {
-          if (!p.stats.hasEternal || this._cd > 0) return;
-          this._cd = 30;
-          p.resetCooldowns?.();
-          p.applyBuff('eternal_machine', 10, { atkSpd: 2, dmgMult: 2 });
-          game?.floatingText?.spawn(p.x, p.y - 50, '永恒机器！', '#ffff66', 24, true);
+    { id: 'hex09', index: 9, rarity: 'gold', icon: 'shield', name: '破甲重铸', category: '技能',
+      prices: [45, 140, 500], values: [0.5, 0.65, 0.8],
+      descAt: (l) => `将当前全部护甲转化为攻击力（转化率 1:${[0.5, 0.65, 0.8][l - 1]}，已转化部分不随卖出退还）`,
+      onLevel(p, _g, _from, to) {
+          if (to === 0 || p.stats.armor <= 0) return;
+          const bonus = Math.floor(p.stats.armor * this.values[to - 1]);
+          p.stats.armor = 0;
+          p.stats.damage += bonus;
       } },
 
-    { id: 'big_bang', rarity: 'gold', icon: 'explosion', name: '大爆炸理论', tags: ['explosion'],
-      desc: '所有爆炸范围×5，伤害×5',
-      onEquip(p, _g, mult = 1) { p.stats.explosionMult = (p.stats.explosionMult || 0) + 5 * mult; } },
+    { id: 'hex10', index: 10, rarity: 'gold', icon: 'lightning', name: '制导蜂群', category: '技能',
+      prices: [45, 180, 650], values: [1, 2, 5],
+      descAt: (l) => `每 3 秒发射 ${[1, 2, 5][l - 1]} 枚 ${[10, 20, 50][l - 1]} 伤害的自动追踪导弹`,
+      _t: 3,
+      onLevel(_p, _g, _from, to) { this._t = to ? 3 : 0; },
+      onUpdate(p, dt, game) {
+          if (!this._t) return;
+          this._t -= dt;
+          if (this._t > 0) return;
+          this._t = 3;
+          const lvl = this.level ?? 1;
+          const n = this.values[lvl - 1];
+          const dmg = [10, 20, 50][lvl - 1];
+          for (let i = 0; i < n; i++) {
+              const a = Rng.float(0, Math.PI * 2);
+              game?.bullets?.spawn?.({
+                  x: p.x, y: p.y,
+                  vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                  damage: dmg, radius: 6, color: '#ffd34d', owner: 'player',
+                  charKey: p.charId ?? '', lifeTime: 4, homing: true,
+              });
+          }
+          game?.audio?.playSfx?.('skill_e', 0.5);
+      } },
 
-    { id: 'chaos_god', rarity: 'gold', icon: 'chaos', name: '混沌神明', tags: ['chaos', 'overload'],
-      desc: '神明状态：所有词条效果×5，但每 10s 随机丢失 1 个词条',
-      _timer: 0,
-      onEquip(p, _g, _mult = 1) { p.stats.chaosGodActive = true; },
-      onUpdate(p, dt, game) { if (p.stats.chaosGodActive) { this._timer += dt; if (this._timer >= 10) { this._timer = 0; if (game?.augmentManager?.removeRandom) game.augmentManager.removeRandom(); } } } },
+    { id: 'hex12', index: 12, rarity: 'prismatic', icon: 'shield', name: '不灭协议', category: '技能',
+      prices: [50, 250, 850], values: [1.5, 2, 2.5],
+      descAt: (l) => `受到致命伤或只剩 1 滴血时，生成 ${[1.5, 2, 2.5][l - 1]} 倍最大生命的护盾 5 秒 + 25% 吸血 10 秒（冷却 75 秒）`,
+      // 触发与 75 秒冷却都在 PlayerController.takeDamage/tick 内消费 stats.hasHexGuard。
+      onLevel(p, _g, _from, to) {
+          p.stats.hasHexGuard = to > 0;
+          if (to > 0) p.stats._hexGuardShieldMult = this.values[to - 1];
+      } },
 
-    { id: 'six_prism', rarity: 'gold', icon: 'gold', name: '六芒永恒', tags: ['slot', 'overload'],
-      desc: '每当获得新词条时，随机免费复制一个已有词条效果',
-      onEquip(p, game, _mult = 1) { const am = game.augmentManager; if (am) am.onNextAugment = () => am.duplicateRandom(p, game); } },
+    { id: 'hex13', index: 13, rarity: 'gold', icon: 'summon', name: '猎杀无人机', category: '技能',
+      prices: [50, 210, 700], values: [30, 40, 50],
+      descAt: (l) => `每 15 秒召唤攻击无人机（攻 ${[30, 40, 50][l - 1]} / 攻速 1.0 / 血 ${[25, 50, 75][l - 1]}），上限 3 架`,
+      _t: 3,
+      onLevel(_p, game, _from, to) { this._t = to ? 3 : 0; if (!to) game?.despawnHexDrones?.('attack'); },
+      onUpdate(p, dt, game) {
+          if (!this._t) return;
+          this._t -= dt;
+          if (this._t > 0) return;
+          this._t = 15;
+          game?.spawnHexDrone?.(p, 'attack', this.level ?? 1);
+      } },
 
-    { id: 'death_note', rarity: 'gold', icon: 'crit', name: '死亡笔记', tags: ['offense'],
-      desc: '攻击记录伤害，每 8s 对所有目标补造记录总量×50%',
-      _accum: 0, _timer: 0,
-      onHit(_p, _enemy, dmg) { this._accum += dmg; },
-      onUpdate(_p, dt, game) { this._timer += dt; if (this._timer >= 8) { this._timer = 0; if (game?.damageAllEnemies) game.damageAllEnemies(this._accum * 0.5); this._accum = 0; } } },
+    { id: 'hex14', index: 14, rarity: 'gold', icon: 'summon', name: '支援无人机', category: '技能',
+      prices: [48, 200, 680], values: [5, 10, 15],
+      descAt: (l) => `每 15 秒召唤支援无人机（攻 ${[5, 10, 15][l - 1]} / 攻速 0.5 / 血 ${[50, 75, 125][l - 1]}），每 3 秒恢复主角 20% 已损失生命，上限 2 架`,
+      _t: 3,
+      onLevel(_p, game, _from, to) { this._t = to ? 3 : 0; if (!to) game?.despawnHexDrones?.('support'); },
+      onUpdate(p, dt, game) {
+          if (!this._t) return;
+          this._t -= dt;
+          if (this._t > 0) return;
+          this._t = 15;
+          game?.spawnHexDrone?.(p, 'support', this.level ?? 1);
+      } },
 
-    { id: 'absolute_zero', rarity: 'gold', icon: 'ice', name: '绝对零度', tags: ['ice'],
-      desc: '每波开始：冻结全场敌人 5秒',
-      onWaveStart(_p, game) { if (game?.freezeAllEnemies) game.freezeAllEnemies(5); } },
+    // ─── 一次性海克斯 ─────────────────────────────────────
+    { id: 'hex15', index: 15, rarity: 'prismatic', icon: 'gold', name: '进阶蓝图', category: '一次性',
+      prices: [500], values: [1], oneShot: true,
+      descAt: () => '下一个获得的海克斯强化提升一个等级（最高 Lv.3）',
+      onLevel(_p, game) { const am = game?.augmentManager; if (am) am.nextLevelBonus = (am.nextLevelBonus || 0) + 1; } },
+
+    { id: 'hex16', index: 16, rarity: 'silver', icon: 'gold', name: '点金手', category: '一次性',
+      prices: [40, 200, 800], values: [0.5, 1, 1.5],
+      descAt: (l) => `获得的金币增加 ${[0.5, 1, 1.5][l - 1]} 倍`,
+      onLevel(_p, game, from, to) {
+          const eco = game?.economy;
+          if (!eco) return;
+          swapFactor(eco, 'gainMult', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+      } },
+
+    { id: 'hex17', index: 17, rarity: 'silver', icon: 'gold', name: '战争红利', category: '一次性',
+      prices: [35, 180, 750], values: [500, 1000, 2000], oneShot: true,
+      descAt: (l) => `立刻获得 ${[500, 1000, 2000][l - 1]} 金币`,
+      onLevel(_p, game, _from, to) { game?.economy?.addGold(this.values[to - 1]); } },
+
+    { id: 'hex18', index: 18, rarity: 'silver', icon: 'heart', name: '应急壁垒', category: '一次性',
+      prices: [35], values: [50],
+      descAt: () => '得到 50 点护盾，护盾被打破后 5 秒内每秒回复 10 点生命',
+      _hadShield: false, _regenT: 0,
+      onLevel(p, game, _from, to) {
+          if (to > 0) { p.grantTempShield?.(50, 9999, game); this._hadShield = p.shield > 0; this._regenT = 0; }
+      },
+      onUpdate(p, dt) {
+          const has = p.shield > 0;
+          if (this._hadShield && !has) {
+              // 护盾刚被打破：启动 5 秒 × 10/秒 回血（只触发一次）
+              this._hadShield = false;
+              this._regenT = 5;
+          }
+          if (this._regenT > 0) {
+              this._regenT -= dt;
+              p.heal(10 * dt, false);
+          }
+      } },
 ];
+
+/** 按文档编号取海克斯定义。 */
+export function getHexByIndex(index: number): AugmentDef | undefined {
+    return AUGMENT_DB.find(a => a.index === index);
+}

@@ -80,14 +80,14 @@ test('6个角色的skillIcons(q/e/r)全部落在合法的ui_icon_*共享图标集合内', () => {
     }
 });
 
-test('49条词条的icon字段全部落在合法的ui_icon_*共享图标集合内', () => {
+test('18个海克斯的icon字段全部落在合法的ui_icon_*共享图标集合内', () => {
     const validIcons = fs.readdirSync(ART_DIR)
         .filter(f => f.startsWith('ui_icon_') && f.endsWith('.png'))
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
 
-    // 冲刺功能砍掉后 phase_dash（冲刺变传送）词条一并删除：49条
-    assert.equal(AUGMENT_DB.length, 49, '词条数量应为49（冲刺移除后phase_dash一并删除）');
+    // 2026-09-14 《海克斯.docx》重做：旧 49 词条整体替换为 18 个海克斯
+    assert.equal(AUGMENT_DB.length, 18, '海克斯数量应为18');
     for (const a of AUGMENT_DB) {
-        assert.ok(validIcons.includes(a.icon), `词条${a.id}的icon '${a.icon}' 不在合法图标集合内`);
+        assert.ok(validIcons.includes(a.icon), `海克斯${a.id}的icon '${a.icon}' 不在合法图标集合内`);
     }
 });

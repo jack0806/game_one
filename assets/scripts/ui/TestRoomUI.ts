@@ -9,6 +9,8 @@ import { applyArtSprite } from '../core/SpriteUtils';
 import { clamp } from '../core/MathUtils';
 import { UNIT_CATALOG, UnitCategory } from '../data/BossDB';
 import { CHARS } from '../data/CharacterDB';
+import { AUGMENT_DB, rarityForLevel } from '../data/AugmentDB';
+import { RARITY_COLOR } from '../core/Constants';
 
 const { ccclass } = _decorator;
 const UNIT_PAGE_SIZE = 6;
@@ -31,6 +33,10 @@ export class TestRoomUI extends Component {
     onSelectHero?:     (charId: string) => void;
     /** 查询当前出战英雄（浮层高亮用）。 */
     onGetHero?:        () => string;
+    /** 海克斯授予面板：点击卡片授予/升档（满级点击卸下）。 */
+    onGrantAugment?:   (hexId: string) => void;
+    /** 查询当前持有海克斯（面板高亮用）。 */
+    onGetAugments?:    () => any[];
     onAdvanceBossPhase?: () => void;
     /** 轮换测试背景并返回新的1-based章节号。 */
     onCycleChapter?:   () => number;
@@ -55,12 +61,15 @@ export class TestRoomUI extends Component {
     private _tabs: { g: Graphics; key: UnitCategory }[] = [];
     private _heroPanel!: Node;
     private _heroCards: { g: Graphics; id: string }[] = [];
+    private _augPanel!: Node;
+    private _augCards: { g: Graphics; id: string; lvLbl: Label }[] = [];
 
     onLoad() {
         // 工具条固定在画布底部（local y=-312 覆盖底部 96px，避开顶部 HUD 区）
         this.node.setPosition(new Vec3(0, -312, 0));
         this._buildToolbar();
         this._buildHeroPanel();
+        this._buildAugPanel();
         this.node.active = false;
     }
 
@@ -82,6 +91,7 @@ export class TestRoomUI extends Component {
         this._refreshTabs();
         this._rebuildCards();
         this._hideHeroPanel();
+        this._hideAugPanel();
     }
 
     // ── builders ──────────────────────────────────────────────
@@ -199,6 +209,13 @@ export class TestRoomUI extends Component {
             this._visualGuides = !this._visualGuides;
             this._guideLbl.string = this._visualGuides ? '定位:开' : '定位:关';
             this.onToggleVisualGuides?.(this._visualGuides);
+        }, this);
+
+        // 海克斯授予入口：行1 已满，按钮浮在工具条上沿右角（测试房专属工具）
+        const augBtn = this._mkSmallBtn(this.node, '强化', 600, 66, 76, 30, new Color(128, 52, 96, 245));
+        augBtn.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._showAugPanel();
         }, this);
 
         this._refreshCount();
@@ -446,6 +463,141 @@ export class TestRoomUI extends Component {
             this._heroCards.push({ g, id: def.id });
         }
         this._refreshHeroCards();
+    }
+
+    // ── 海克斯授予浮层 ─────────────────────────────────────
+
+    /** 打开海克斯授予面板：18 个海克斯全部可见，点击循环 授予→升档→满级卸下。 */
+    private _showAugPanel() {
+        this._hideHeroPanel();
+        this._refreshAugCards();
+        this._augPanel.active = true;
+        this._augPanel.setSiblingIndex(this.node.children.length - 1);
+    }
+
+    private _hideAugPanel() {
+        if (this._augPanel) this._augPanel.active = false;
+    }
+
+    /** 按 GameManager 当前持有列表刷新卡片等级高亮。 */
+    private _refreshAugCards() {
+        const owned = this.onGetAugments?.() ?? [];
+        for (const c of this._augCards) {
+            const def = AUGMENT_DB.find(a => a.id === c.id);
+            if (!def) continue;
+            const inst = owned.find((a: any) => a.id === c.id);
+            const lvl = inst?.level ?? 0;
+            // 边框色随档位稀有度走（Lv.1银 / Lv.2金 / Lv.3彩），未持有时用银档色淡化
+            const rarity = rarityForLevel(def, lvl > 0 ? lvl : 1);
+            const col = Color.fromHEX(new Color(), RARITY_COLOR[rarity] ?? '#888888');
+            c.g.clear();
+            c.g.fillColor = lvl > 0
+                ? new Color(Math.floor(col.r * 0.18), Math.floor(col.g * 0.18), Math.floor(col.b * 0.18), 245)
+                : new Color(14, 20, 30, 245);
+            c.g.fillRect(-88, -72, 176, 144);
+            c.g.strokeColor = lvl > 0 ? col : new Color(col.r, col.g, col.b, 110);
+            c.g.lineWidth = lvl > 0 ? 2 : 1;
+            c.g.rect(-88, -72, 176, 144);
+            c.g.stroke();
+            c.lvLbl.string = def.oneShot
+                ? '一次性·点击生效'
+                : lvl > 0 ? `Lv${lvl}${lvl >= 3 ? '·点击卸下' : ''}` : '未持有';
+            c.lvLbl.color = lvl > 0
+                ? new Color(140, 255, 170, 255)
+                : new Color(160, 168, 180, 220);
+        }
+    }
+
+    /** 海克斯授予浮层：遮罩 + 6×3 卡片矩阵（名称/等级/一档说明）。 */
+    private _buildAugPanel() {
+        const panel = this._augPanel = new Node('AugPanel'); panel.setParent(this.node);
+        panel.active = false;
+
+        const dim = new Node('Dim'); dim.setParent(panel);
+        dim.addComponent(UITransform).setContentSize(1280, 720);
+        const dg = dim.addComponent(Graphics);
+        dg.fillColor = new Color(0, 0, 0, 160);
+        dg.fillRect(-640, -48, 1280, 720);
+        dim.on(Node.EventType.TOUCH_END, () => this._hideAugPanel(), this);
+
+        const box = new Node('Box'); box.setParent(panel);
+        box.setPosition(new Vec3(0, 312, 0));
+        box.addComponent(UITransform).setContentSize(1150, 560);
+        box.addComponent(BlockInputEvents);
+        const bg = box.addComponent(Graphics);
+        bg.fillColor = new Color(8, 13, 23, 250);
+        bg.fillRect(-575, -280, 1150, 560);
+        bg.strokeColor = new Color(150, 110, 200, 235);
+        bg.lineWidth = 2; bg.rect(-575, -280, 1150, 560); bg.stroke();
+
+        const tn = new Node('T'); tn.setParent(box);
+        tn.setPosition(new Vec3(0, 248, 0));
+        tn.addComponent(UITransform).setContentSize(500, 32);
+        const tl = tn.addComponent(Label);
+        tl.string = '— 海克斯授予 —';
+        tl.fontSize = 22; tl.color = new Color(255, 215, 90, 255);
+        styleLabel(tl);
+
+        const sub = new Node('Sub'); sub.setParent(box);
+        sub.setPosition(new Vec3(0, 222, 0));
+        sub.addComponent(UITransform).setContentSize(700, 20);
+        const sl = sub.addComponent(Label);
+        sl.string = '点击卡片授予 / 升档（Lv.3 后点击卸下）· 一次性海克斯点击即生效';
+        sl.fontSize = 12; sl.color = new Color(150, 168, 184, 225);
+        styleLabel(sl);
+
+        AUGMENT_DB.forEach((def, i) => {
+            const col = i % 6, row = Math.floor(i / 6);
+            const card = new Node(`Hex_${def.id}`); card.setParent(box);
+            card.setPosition(new Vec3(-480 + col * 192, 142 - row * 160, 0));
+            card.addComponent(UITransform).setContentSize(176, 144);
+            const g = card.addComponent(Graphics);
+
+            const iN = new Node('Icon'); iN.setParent(card);
+            iN.setPosition(new Vec3(0, 46, 0));
+            iN.addComponent(UITransform).setContentSize(40, 40);
+            const sp = iN.addComponent(Sprite);
+            sp.sizeMode = Sprite.SizeMode.CUSTOM;
+            sp.trim = false;
+            applyArtSprite(sp, `ui_icon_${def.icon}`);
+
+            const nN = new Node('Nm'); nN.setParent(card);
+            nN.setPosition(new Vec3(0, 12, 0));
+            nN.addComponent(UITransform).setContentSize(168, 20);
+            const nl = nN.addComponent(Label);
+            nl.string = def.name; nl.fontSize = 13;
+            nl.color = new Color(228, 236, 244, 255);
+            nl.overflow = Label.Overflow.SHRINK;
+            styleLabel(nl);
+
+            const lN = new Node('Lv'); lN.setParent(card);
+            lN.setPosition(new Vec3(0, -10, 0));
+            lN.addComponent(UITransform).setContentSize(168, 18);
+            const lvLbl = lN.addComponent(Label);
+            lvLbl.string = '未持有'; lvLbl.fontSize = 12;
+            styleLabel(lvLbl);
+
+            const dN = new Node('Desc'); dN.setParent(card);
+            dN.setPosition(new Vec3(0, -48, 0));
+            dN.addComponent(UITransform).setContentSize(166, 42);
+            const dl = dN.addComponent(Label);
+            dl.string = def.descAt(1);
+            dl.fontSize = 10; dl.lineHeight = 14;
+            dl.color = new Color(178, 190, 204, 235);
+            dl.horizontalAlign = HorizontalTextAlignment.CENTER;
+            dl.verticalAlign = VerticalTextAlignment.CENTER;
+            dl.overflow = Label.Overflow.SHRINK;
+            dl.enableWrapText = true;
+            styleLabel(dl, { outlineWidth: 1 });
+
+            card.on(Node.EventType.TOUCH_END, () => {
+                this.onButtonSfx?.();
+                this.onGrantAugment?.(def.id);
+                this._refreshAugCards();
+            }, this);
+            this._augCards.push({ g, id: def.id, lvLbl });
+        });
+        this._refreshAugCards();
     }
 
     /** 小型按钮工厂：皮肤 + 居中文字（音效由调用方挂）。 */

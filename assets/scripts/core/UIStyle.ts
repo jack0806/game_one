@@ -1,12 +1,23 @@
 // ============================================================
 //  UIStyle.ts — Hexblast 代码原生 UI 视觉组件
 // ============================================================
-import { Color, Graphics, Node, Vec3 } from 'cc';
+import { Color, Component, Graphics, Node, Vec3 } from 'cc';
 
 export interface HexButtonSkin {
     setDisabled(disabled: boolean): void;
 }
 type ButtonVisualState = 'normal' | 'hover' | 'pressed' | 'disabled';
+
+/**
+ * 皮肤重绘代理：按钮常在所属页面仍隐藏时创建（如强化弹窗 onLoad），
+ * 此时下发的 Graphics 绘制命令在页面激活后会丢失——表现就是
+ * "按钮背景/边框看不见，鼠标放上去（触发 hover 重绘）才显示"。
+ * 挂一个空组件在 onEnable（每次激活）时强制重绘皮肤即可根治。
+ */
+class HexSkinRelay extends Component {
+    redraw: (() => void) | null = null;
+    onEnable() { this.redraw?.(); }
+}
 
 function clippedRect(g: Graphics, w: number, h: number, cut: number, offsetY = 0): void {
     const l = -w / 2, r = w / 2, b = -h / 2 + offsetY, t = h / 2 + offsetY;
@@ -86,6 +97,11 @@ export function applyHexButtonSkin(
     node.on(Node.EventType.TOUCH_CANCEL, () => setState(disabled ? 'disabled' : 'normal', 1));
 
     draw();
+    // 页面激活时皮肤可能因"隐藏状态下绘制丢失"而不可见，onEnable 强制重绘兜底
+    try {
+        const relay = node.addComponent(HexSkinRelay);
+        relay.redraw = draw;
+    } catch { /* headless/测试环境无组件系统时忽略 */ }
     return {
         setDisabled(value: boolean) {
             disabled = value;

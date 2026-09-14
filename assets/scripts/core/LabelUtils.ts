@@ -13,7 +13,7 @@
 // outlineWidth 会按当前 fontSize 自动选取（大字号描边更粗，小字号避免
 // 描边把字形吃掉变成黑团）。
 
-import { Label, Color } from 'cc';
+import { Label, Color, Node } from 'cc';
 
 export interface LabelStyleOpts {
     /** 是否加黑色描边，默认 true。 */
@@ -33,4 +33,26 @@ export function styleLabel(lbl: Label, opts: LabelStyleOpts = {}): void {
         lbl.outlineColor  = opts.outlineColor ?? new Color(0, 0, 0, 200);
         lbl.outlineWidth  = opts.outlineWidth ?? (lbl.fontSize >= 22 ? 3 : 2);
     }
+}
+
+/**
+ * 强制刷新子树内全部 Label 的字形渲染数据。
+ * 窗口最大化/还原/进全屏后，画布缩放变化但 Label 的字形纹理与渲染数据
+ * 可能停留在旧尺寸（用户反馈"字体不会跟着刷新"）：这里对每个 Label 做
+ * 一次 fontSize +1 再写回的脏标记（两次触发重建）并 markForUpdateRenderData
+ * 提交重绘，让文字按新缩放重新光栅化。仅在 resize 等低频事件调用。
+ */
+export function refreshAllLabels(root: Node): void {
+    if (!root || !root.isValid) return;
+    const lbl = root.getComponent(Label);
+    if (lbl && lbl.isValid) {
+        const fs = lbl.fontSize;
+        if (fs > 0) {
+            lbl.fontSize = fs + 1;
+            lbl.fontSize = fs;
+        }
+        lbl.markForUpdateRenderData?.();
+    }
+    const children = root.children;
+    for (let i = 0; i < children.length; i++) refreshAllLabels(children[i]);
 }
