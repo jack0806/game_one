@@ -5,7 +5,7 @@ import {
 import { Economy, ShopItem } from '../systems/Economy';
 import { RARITY_COLOR } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -64,18 +64,30 @@ export class ShopUI extends Component {
         const n = new Node('Dimmer'); n.setParent(this.node);
         n.addComponent(UITransform).setContentSize(1280, 720);
         const g = n.addComponent(Graphics);
-        g.fillColor = new Color(0, 0, 0, 218);
-        g.fillRect(-640, -360, 1280, 720);
+        const drawDim = () => {
+            g.clear();
+            g.fillColor = new Color(0, 0, 0, 218);
+            g.fillRect(-640, -360, 1280, 720);
+        };
 
         // 商品列表拥有自己的近乎不透明金属面板。即使未来再叠确认框，底层
         // 战斗/强化卡也不会穿过六行商品文字造成“整个商店变透明”的错觉。
         const panel = new Node('ShopPanel'); panel.setParent(this.node);
         panel.addComponent(UITransform).setContentSize(640, 560);
         const pg = panel.addComponent(Graphics);
-        pg.fillColor = new Color(8, 13, 23, 252);
-        pg.fillRect(-320, -280, 640, 560);
-        pg.strokeColor = new Color(105, 145, 175, 235);
-        pg.lineWidth = 2; pg.rect(-320, -280, 640, 560); pg.stroke();
+        const drawPanel = () => {
+            pg.clear();
+            pg.fillColor = new Color(8, 13, 23, 252);
+            pg.fillRect(-320, -280, 640, 560);
+            pg.strokeColor = new Color(105, 145, 175, 235);
+            pg.lineWidth = 2; pg.rect(-320, -280, 640, 560); pg.stroke();
+        };
+        drawDim();
+        drawPanel();
+        // 遮罩/面板为一次性绘制：节点 停用→再激活（如神秘强化二级弹窗往返回来）
+        // 后内容会丢，激活时重画兜底。
+        attachEnableRedraw(n, drawDim);
+        attachEnableRedraw(panel, drawPanel);
     }
 
     private _buildTitle() {

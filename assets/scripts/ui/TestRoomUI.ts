@@ -4,7 +4,7 @@ import {
     HorizontalTextAlignment, VerticalTextAlignment
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { clamp } from '../core/MathUtils';
 import { UNIT_CATALOG, UnitCategory } from '../data/BossDB';
@@ -60,8 +60,12 @@ export class TestRoomUI extends Component {
     private _unitCards: Node[] = [];
     private _tabs: { g: Graphics; key: UnitCategory }[] = [];
     private _heroPanel!: Node;
+    private _heroDimG!: Graphics;
+    private _heroBoxG!: Graphics;
     private _heroCards: { g: Graphics; id: string }[] = [];
     private _augPanel!: Node;
+    private _augDimG!: Graphics;
+    private _augBoxG!: Graphics;
     private _augCards: { g: Graphics; id: string; lvLbl: Label }[] = [];
 
     onLoad() {
@@ -71,6 +75,15 @@ export class TestRoomUI extends Component {
         this._buildHeroPanel();
         this._buildAugPanel();
         this.node.active = false;
+    }
+
+    /**
+     * 暂停（_setState 把整个工具条 active=false）时收起英雄/海克斯浮层：
+     * 暂停面板是模态的，恢复战斗后不应残留挡住战场的半开浮层。
+     */
+    onDisable() {
+        this._hideAugPanel();
+        this._hideHeroPanel();
     }
 
     /** 每次进入测试房间时复位工具条状态（无敌/数量/分类不跨房保留）。 */
@@ -97,18 +110,26 @@ export class TestRoomUI extends Component {
     // ── builders ──────────────────────────────────────────────
 
     private _buildToolbar() {
-        // 底部常驻条：半透明金属底 + 顶部描边（位置 local y=-312，覆盖画布底部 96px）
-        const g = this.node.addComponent(Graphics);
+        this.node.addComponent(Graphics);
+        this._drawToolbarBg();
+        // 暂停/恢复会让本节点 停用→再激活，一次性底板绘制随之丢失，激活时重画兜底
+        attachEnableRedraw(this.node, () => this._drawToolbarBg());
+
+        this._buildRow1();
+        this._buildTabs();
+        this._rebuildCards();
+    }
+
+    /** 底部常驻条：半透明金属底 + 顶部描边（位置 local y=-312，覆盖画布底部 96px）。 */
+    private _drawToolbarBg() {
+        const g = this.node.getComponent(Graphics)!;
+        g.clear();
         g.fillColor = new Color(6, 12, 20, 235);
         g.fillRect(-640, -48, 1280, 96);
         g.strokeColor = new Color(90, 160, 210, 160);
         g.lineWidth = 2; g.moveTo(-640, 48); g.lineTo(640, 48); g.stroke();
         g.strokeColor = new Color(30, 60, 90, 120);
         g.lineWidth = 1; g.rect(-640, -48, 1280, 96); g.stroke();
-
-        this._buildRow1();
-        this._buildTabs();
-        this._rebuildCards();
     }
 
     /** 行1：数量 −/+ | 无敌 | 英雄 | 停火 | 清场 | 返回主页 */
@@ -251,6 +272,7 @@ export class TestRoomUI extends Component {
                 this._refreshTabs();
                 this._rebuildCards();
             }, this);
+            attachEnableRedraw(tab, () => this._refreshTabs());
             this._tabs.push({ g, key: cat.key });
         });
         this._refreshTabs();
@@ -280,12 +302,17 @@ export class TestRoomUI extends Component {
             card.addComponent(UITransform).setContentSize(116, 34);
             const cg = card.addComponent(Graphics);
             const col = Color.fromHEX(new Color(), entry.color);
-            cg.fillColor = new Color(
-                Math.floor(col.r * 0.22), Math.floor(col.g * 0.22), Math.floor(col.b * 0.22), 245);
-            cg.fillRect(-58, -17, 116, 34);
-            cg.strokeColor = new Color(col.r, col.g, col.b, 150);
-            cg.lineWidth = 1.5;
-            cg.rect(-58, -17, 116, 34); cg.stroke();
+            const drawCard = () => {
+                cg.clear();
+                cg.fillColor = new Color(
+                    Math.floor(col.r * 0.22), Math.floor(col.g * 0.22), Math.floor(col.b * 0.22), 245);
+                cg.fillRect(-58, -17, 116, 34);
+                cg.strokeColor = new Color(col.r, col.g, col.b, 150);
+                cg.lineWidth = 1.5;
+                cg.rect(-58, -17, 116, 34); cg.stroke();
+            };
+            drawCard();
+            attachEnableRedraw(card, drawCard);
 
             const ln = new Node('L'); ln.setParent(card);
             ln.addComponent(UITransform).setContentSize(112, 30);
@@ -379,7 +406,7 @@ export class TestRoomUI extends Component {
     }
 
     private _hideHeroPanel() {
-        this._heroPanel.active = false;
+        if (this._heroPanel) this._heroPanel.active = false;
     }
 
     private _refreshHeroCards() {
@@ -395,6 +422,20 @@ export class TestRoomUI extends Component {
         }
     }
 
+    /** 英雄浮层的遮罩 + 底板（一次性结构，可重复重绘）。 */
+    private _drawHeroChrome() {
+        this._heroDimG.clear();
+        this._heroDimG.fillColor = new Color(0, 0, 0, 150);
+        this._heroDimG.fillRect(-640, -48, 1280, 720);
+
+        const bg = this._heroBoxG;
+        bg.clear();
+        bg.fillColor = new Color(8, 13, 23, 250);
+        bg.fillRect(-450, -160, 900, 320);
+        bg.strokeColor = new Color(105, 145, 175, 235);
+        bg.lineWidth = 2; bg.rect(-450, -160, 900, 320); bg.stroke();
+    }
+
     /** 英雄选择浮层：全屏半透明遮罩 + 3×2 角色卡，点卡即切换并关闭。 */
     private _buildHeroPanel() {
         const panel = this._heroPanel = new Node('HeroPanel'); panel.setParent(this.node);
@@ -403,9 +444,7 @@ export class TestRoomUI extends Component {
         // 遮罩从工具条局部坐标铺满整屏，点遮罩关闭（不挡正式 HUD 之外的战斗区交互）
         const dim = new Node('Dim'); dim.setParent(panel);
         dim.addComponent(UITransform).setContentSize(1280, 720);
-        const dg = dim.addComponent(Graphics);
-        dg.fillColor = new Color(0, 0, 0, 150);
-        dg.fillRect(-640, -48, 1280, 720);
+        this._heroDimG = dim.addComponent(Graphics);
         dim.on(Node.EventType.TOUCH_END, () => this._hideHeroPanel(), this);
 
         // 面板全局居中（工具条局部 y=312）
@@ -415,11 +454,11 @@ export class TestRoomUI extends Component {
         // 面板必须截断输入，避免点击英雄卡时事件穿透到底层 Dim，出现
         // “浮层关闭但没有换人”的假成功。子卡仍会先收到 TOUCH_END。
         box.addComponent(BlockInputEvents);
-        const bg = box.addComponent(Graphics);
-        bg.fillColor = new Color(8, 13, 23, 250);
-        bg.fillRect(-450, -160, 900, 320);
-        bg.strokeColor = new Color(105, 145, 175, 235);
-        bg.lineWidth = 2; bg.rect(-450, -160, 900, 320); bg.stroke();
+        this._heroBoxG = box.addComponent(Graphics);
+        this._drawHeroChrome();
+        // 浮层随工具条整体 停用→再激活（暂停/恢复）后遮罩与底板绘制会丢，激活时重画
+        attachEnableRedraw(dim, () => this._drawHeroChrome());
+        attachEnableRedraw(box, () => this._drawHeroChrome());
 
         const tn = new Node('T'); tn.setParent(box);
         tn.setPosition(new Vec3(0, 130, 0));
@@ -460,6 +499,7 @@ export class TestRoomUI extends Component {
                 this.onSelectHero?.(def.id);
                 this._hideHeroPanel();
             }, this);
+            attachEnableRedraw(card, () => this._refreshHeroCards());
             this._heroCards.push({ g, id: def.id });
         }
         this._refreshHeroCards();
@@ -508,6 +548,20 @@ export class TestRoomUI extends Component {
         }
     }
 
+    /** 海克斯浮层的遮罩 + 底板（一次性结构，可重复重绘）。 */
+    private _drawAugChrome() {
+        this._augDimG.clear();
+        this._augDimG.fillColor = new Color(0, 0, 0, 160);
+        this._augDimG.fillRect(-640, -48, 1280, 720);
+
+        const bg = this._augBoxG;
+        bg.clear();
+        bg.fillColor = new Color(8, 13, 23, 250);
+        bg.fillRect(-575, -280, 1150, 560);
+        bg.strokeColor = new Color(150, 110, 200, 235);
+        bg.lineWidth = 2; bg.rect(-575, -280, 1150, 560); bg.stroke();
+    }
+
     /** 海克斯授予浮层：遮罩 + 6×3 卡片矩阵（名称/等级/一档说明）。 */
     private _buildAugPanel() {
         const panel = this._augPanel = new Node('AugPanel'); panel.setParent(this.node);
@@ -515,20 +569,18 @@ export class TestRoomUI extends Component {
 
         const dim = new Node('Dim'); dim.setParent(panel);
         dim.addComponent(UITransform).setContentSize(1280, 720);
-        const dg = dim.addComponent(Graphics);
-        dg.fillColor = new Color(0, 0, 0, 160);
-        dg.fillRect(-640, -48, 1280, 720);
+        this._augDimG = dim.addComponent(Graphics);
         dim.on(Node.EventType.TOUCH_END, () => this._hideAugPanel(), this);
 
         const box = new Node('Box'); box.setParent(panel);
         box.setPosition(new Vec3(0, 312, 0));
         box.addComponent(UITransform).setContentSize(1150, 560);
         box.addComponent(BlockInputEvents);
-        const bg = box.addComponent(Graphics);
-        bg.fillColor = new Color(8, 13, 23, 250);
-        bg.fillRect(-575, -280, 1150, 560);
-        bg.strokeColor = new Color(150, 110, 200, 235);
-        bg.lineWidth = 2; bg.rect(-575, -280, 1150, 560); bg.stroke();
+        this._augBoxG = box.addComponent(Graphics);
+        this._drawAugChrome();
+        // 浮层随工具条整体 停用→再激活（暂停/恢复）后遮罩与底板绘制会丢，激活时重画
+        attachEnableRedraw(dim, () => this._drawAugChrome());
+        attachEnableRedraw(box, () => this._drawAugChrome());
 
         const tn = new Node('T'); tn.setParent(box);
         tn.setPosition(new Vec3(0, 248, 0));
@@ -595,6 +647,7 @@ export class TestRoomUI extends Component {
                 this.onGrantAugment?.(def.id);
                 this._refreshAugCards();
             }, this);
+            attachEnableRedraw(card, () => this._refreshAugCards());
             this._augCards.push({ g, id: def.id, lvLbl });
         });
         this._refreshAugCards();

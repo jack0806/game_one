@@ -24,10 +24,9 @@ test('initBossKind(invader)套用第五章档位数值', () => {
 test('开场释放节奏放缓:初始冷却拉长,不进场就连环放技能', () => {
     const game = makeMockGame();
     const boss = makeInvader(game);
-    // 追踪弹6秒/激光8秒/震荡波10秒/导弹14秒后才有第一轮技能
+    // 追踪弹6秒/网格激光8秒/导弹14秒后才有第一轮技能
     assert.equal(boss._invHomingCd, 6, '追踪弹初始冷却6秒');
-    assert.equal(boss._invLaserCd, 8, '激光初始冷却8秒');
-    assert.equal(boss._invShockCd, 10, '震荡波初始冷却10秒');
+    assert.equal(boss._invLaserCd, 8, '网格激光初始冷却8秒');
     assert.equal(boss._invMissileCd, 14, '导弹初始冷却14秒');
 });
 
@@ -37,11 +36,13 @@ test('第五章正式Boss(initBoss(4))与invader共用技能集', () => {
     boss.initBoss(4, game);
     assert.equal(boss.chapter, 5);
     assert.equal(boss.label, '灭世机神·天罚');
-    // chapter===5 时走 invader 技能状态机（_usesInvaderSkills 为真）——用激光蓄能验证
+    // chapter===5 时走 invader 技能状态机（_usesInvaderSkills 为真）——用网格激光调度验证
+    const fired = [];
+    game.startInvaderLaserGrid = () => fired.push(1);
     boss._invLaserCd = 0;
     const player = makePlayer({ x: 400, y: 0 });
     boss.update(0.016, player, game);
-    assert.ok(boss.skillWindup > 0, '第5章正式Boss也应启动毁灭激光蓄能');
+    assert.equal(fired.length, 1, '第5章正式Boss也应调度天罚网格激光');
 });
 
 test('技能5:血量首次掉到20%进入无敌引导5秒,结束后进入最终形态', () => {
@@ -65,59 +66,46 @@ test('技能5:血量首次掉到20%进入无敌引导5秒,结束后进入最终�
     assert.ok(boss.speed > speedBefore, '最终形态移速提升');
 });
 
-test('技能1:毁灭激光2秒蓄能后发射,最终形态蓄能1秒', () => {
-    const game = makeMockGame();
+test('技能1:天罚网格激光(激光×震荡波融合)冷却到点直接调度,发射期间Boss定身', () => {
     const fired = [];
-    game.startInvaderLaser = (b) => fired.push(b);
+    const game = makeMockGame();
+    game.startInvaderLaserGrid = (b) => fired.push(b);
     const boss = makeInvader(game);
     const player = makePlayer({ x: 400, y: 0 });
     boss.x = 100; boss.y = 100;
-    // 蓄能角度在状态机阶段锁定（早于本帧移动/边缘clamp），用 update 前的位置推算期望值
-    const aimAtSchedule = Math.atan2(player.y - boss.y, player.x - boss.x);
     boss._invLaserCd = 0;
     boss.update(0.016, player, game);
-    assert.ok(boss.skillWindup > 0, '激光应先进入蓄能');
-    assert.ok(Math.abs(boss.skillWindup - 2) < 0.02, '基础蓄能2秒');
-    assert.ok(Math.abs(boss.invAimAngle - aimAtSchedule) < 1e-9, '蓄能开始时瞄准主角方向');
-    // 蓄能期间瞄准线实时跟随主角：主角走位后发射方向应对准主角当前位置
-    player.x = 300; player.y = 200;
-    boss.update(0.1, player, game);
-    assert.ok(
-        Math.abs(boss.invAimAngle - Math.atan2(player.y - boss.y, player.x - boss.x)) < 1e-9,
-        '蓄能期间瞄准线跟随主角移动',
-    );
-    boss.update(2.1, player, game);
-    assert.equal(fired.length, 1, '蓄能结束应发射激光');
-    // 激光持续期间 Boss 站桩定身
-    assert.ok(boss.invLaserT > 0, '激光持续3秒');
+    assert.equal(fired.length, 1, '冷却到点直接交由 GameManager 划分网格(不再蓄能瞄准)');
+    assert.equal(fired[0], boss, '回调携带 Boss 引用');
+    assert.equal(boss.skillWindup, 0, '旧蓄能前摇已随技能融合移除');
+    assert.ok(boss._invLaserCd > 9, '融合技覆盖面更大,循环冷却重置为12秒档');
+    // 发射期间(invLaserT 由 GameManager 的 fire 阶段置 2)Boss 站桩定身
+    boss.invLaserT = 2;
     const xBefore = boss.x, yBefore = boss.y;
     boss.update(1, player, game);
-    assert.equal(boss.x, xBefore, '激光发射期间Boss定身');
-    assert.equal(boss.y, yBefore, '激光发射期间Boss定身');
+    assert.equal(boss.x, xBefore, '网格激光发射期间Boss定身');
+    assert.equal(boss.y, yBefore, '网格激光发射期间Boss定身');
+    assert.ok(boss.invLaserT < 2, '发射计时随帧递减');
 
-    // 最终形态：蓄能缩短为1秒
+    // 最终形态冷却缩短为 9 秒档
     fired.length = 0;
     const boss2 = makeInvader(game, { finalForm: true });
     boss2._invLaserCd = 0;
     boss2.update(0.016, player, game);
-    assert.ok(Math.abs(boss2.skillWindup - 1) < 0.02, '最终形态蓄能1秒');
-    boss2.update(1.1, player, game);
-    assert.equal(fired.length, 1, '最终形态蓄能结束同样发射');
+    assert.equal(fired.length, 1, '最终形态同样调度网格激光(横竖各2份由GameManager划分)');
+    assert.ok(boss2._invLaserCd > 6 && boss2._invLaserCd <= 11, '最终形态冷却9秒档');
 });
 
-test('技能2/3:集束导弹与震荡波按冷却调度', () => {
-    let missiles = 0, shockwaves = 0;
+test('技能2:集束导弹按冷却调度(震荡波已并入网格激光)', () => {
+    let missiles = 0;
     const game = makeMockGame({
         startInvaderMissiles: () => missiles++,
-        startInvaderShockwaves: () => shockwaves++,
     });
     const boss = makeInvader(game);
     const player = makePlayer({ x: 400, y: 0 });
     boss._invMissileCd = 0;
-    boss._invShockCd = 0;
     boss.update(0.016, player, game);
     assert.equal(missiles, 1, '导弹按冷却触发');
-    assert.equal(shockwaves, 1, '震荡波按冷却触发');
 });
 
 test('技能4:追踪导弹速度280伤害25,追踪4秒脱靶100码爆炸,最终形态双发30伤', () => {

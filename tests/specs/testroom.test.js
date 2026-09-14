@@ -225,17 +225,27 @@ test('机械高达升空直接消失:带走自身弹幕,不留残余攻击', () 
     assert.match(bossSource, /game\.clearTaggedEnemyBullets\?\.\('mech'\);/, '升空瞬间清除自身弹幕');
 });
 
-test('灭世机神·天罚场景系统:激光站桩定身/导弹半径100-150/震荡波', () => {
-    assert.match(gameSource, /startInvaderLaser\(boss: BossController\): void/, '激光发射入口');
+test('灭世机神·天罚场景系统:网格激光(激光×震荡波融合)3×3网格/导弹半径100-150', () => {
+    assert.match(gameSource, /startInvaderLaserGrid\(boss: BossController\): void/, '网格激光入口');
+    assert.doesNotMatch(gameSource, /startInvaderShockwaves/, '震荡波已并入网格激光');
+    assert.doesNotMatch(gameSource, /startInvaderLaser\(/, '旧旋转激光已并入网格激光');
     assert.match(gameSource, /const radius = boss\.finalForm \? 150 : 100;/, '导弹半径基础100/最终150');
-    assert.match(gameSource, /startInvaderShockwaves\(boss: BossController\): void/, '震荡波入口');
+    assert.match(gameSource, /startInvaderMissiles\(boss: BossController\): void/, '集束导弹入口');
     assert.match(gameSource, /private _updateInvaderField\(dt: number\): void/, '场景系统推进');
-    assert.match(gameSource, /const aa = -laser\.angle; \/\/ 画布角 → 本地角（y 翻转），与伤害判定严格一致/, '激光渲染角度翻转,与伤害判定一致');
-    assert.match(gameSource, /width: 11, \/\/ 与渲染最外层辉光半宽\(22\/2\)一致/, '激光伤害宽度与显示光束一致');
-    assert.match(gameSource, /turnSpeed: boss\.finalForm \? 305 : 290, \/\/ 激光转向横向速度（原275\/290各加快15码）/, '激光转向速度基础290/最终305(各加快15码)');
-    assert.match(gameSource, /lockT: 0\.5, \/\/ 引导结束后先沿射出方向停顿0\.5秒,再开始追击主角/, '激光引导结束后停顿0.5秒再追击');
-    const bossSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
-    assert.match(bossSource, /this\.invAimT > 0 \|\| this\.invLaserT > 0/, '激光蓄能与发射期间Boss定身');
+    // 3×3 网格：竖3列×横3行危险标记，普通随机单向2份/最终横竖各2份
+    assert.match(gameSource, /const cols: \[boolean, boolean, boolean\] = \[false, false, false\]/, '竖向3列危险标记');
+    assert.match(gameSource, /const rows: \[boolean, boolean, boolean\] = \[false, false, false\]/, '横向3行危险标记');
+    assert.match(gameSource,
+        /if \(boss\.finalForm\) \{[\s\S]*?mark2of3\(cols\); mark2of3\(rows\);[\s\S]*?\} else if \(Rng\.float\(0, 1\) < 0\.5\) \{[\s\S]*?mark2of3\(cols\);[\s\S]*?\} else \{[\s\S]*?mark2of3\(rows\);/,
+        '普通形态随机2列或2行,最终形态2列+2行(安全区仅剩1格)');
+    assert.match(gameSource, /phase: 'warn', timer: 2,/, '危险带闪烁预警2秒');
+    assert.match(gameSource, /phase = 'fire';[\s\S]*?timer = 2;/, '发射持续2秒');
+    assert.match(gameSource, /dmg: boss\.finalForm \? 30 : 20,/, '每次命中真伤普通20/最终30');
+    assert.match(gameSource, /this\._boss\.invLaserT = 2;/, '发射期间Boss站桩定身');
+    assert.match(gameSource, /p\.takeTrueDamage\(grid\.dmg, this\);/, '接触危险带结算真伤');
+    const bossSource2 = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
+    assert.match(bossSource2, /game\.startInvaderLaserGrid\?\.\(this\);/, 'Boss冷却到点直接调度网格激光');
+    assert.match(bossSource2, /this\._invFormT > 0 \|\| this\.invLaserT > 0/, '网格激光发射期间Boss定身');
 });
 
 test('暂停/详情面板返回状态跟随测试房间', () => {

@@ -46,6 +46,19 @@ const MUTED = new Color(145, 166, 184, 255);
 const CYAN = new Color(40, 224, 218, 255);
 const GOLD = new Color(255, 205, 82, 255);
 
+/** 任务树三分支的展示文案与主题色：主线青 / 支线紫 / 挑战橙。 */
+const BRANCH_LABEL: Record<QuestBranch, string> = {
+    main: '主线链路', side: '支线委托', challenge: '挑战试炼',
+};
+const BRANCH_SHORT: Record<QuestBranch, string> = {
+    main: '主线', side: '支线', challenge: '挑战',
+};
+const BRANCH_COLOR: Record<QuestBranch, Color> = {
+    main: CYAN,
+    side: new Color(174, 101, 255, 255),
+    challenge: new Color(255, 130, 70, 255),
+};
+
 function hexColor(hex: string, alpha = 255): Color {
     const c = Color.fromHEX(new Color(), hex);
     c.a = alpha;
@@ -159,17 +172,19 @@ export class MetaPageUI {
     private _buildTaskPage(): void {
         const page = this._mkPage('tasks', '行动任务树', 'MISSION NETWORK / 占位数据', 'bg_chapter2', CYAN);
         const mainTab = this._mkButton(page, '主线任务', -507, 221, 154, 42, CYAN);
-        const sideTab = this._mkButton(page, '支线任务', -337, 221, 154, 42, new Color(174, 101, 255, 255));
+        const sideTab = this._mkButton(page, '支线任务', -337, 221, 154, 42, BRANCH_COLOR.side);
+        const challengeTab = this._mkButton(page, '挑战任务', -167, 221, 154, 42, BRANCH_COLOR.challenge);
         mainTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('main'));
         sideTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('side'));
+        challengeTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('challenge'));
         this._taskBranchLabel = this._mkLabel(page, 48, 222, 370, 28, '', 13, MUTED, HorizontalTextAlignment.RIGHT);
 
         const treePanel = new Node('TaskTreePanel'); treePanel.setParent(page);
         treePanel.setPosition(new Vec3(-178, -35, 0));
         const treeG = treePanel.addComponent(Graphics); drawPanel(treeG, 856, 478, CYAN);
-        this._mkLabel(treePanel, -217, 208, 350, 26, '任务链路 / 点击节点查看详情', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(treePanel, -217, 208, 380, 26, '任务链路 / 点击节点查看详情', 13, MUTED, HorizontalTextAlignment.LEFT);
 
-        for (const branch of ['main', 'side'] as QuestBranch[]) {
+        for (const branch of ['main', 'side', 'challenge'] as QuestBranch[]) {
             const root = new Node(`${branch}_tree`); root.setParent(treePanel);
             this._taskRoots.set(branch, root);
             const defs = questsByBranch(branch);
@@ -178,9 +193,10 @@ export class MetaPageUI {
                 new Vec3(95, 72, 0), new Vec3(300, -60, 0),
             ];
 
+            const accent = BRANCH_COLOR[branch];
             const links = new Node('Links'); links.setParent(root);
             const lg = links.addComponent(Graphics);
-            lg.strokeColor = branch === 'main' ? new Color(40, 224, 218, 115) : new Color(184, 104, 255, 115);
+            lg.strokeColor = new Color(accent.r, accent.g, accent.b, 115);
             lg.lineWidth = 3;
             for (let i = 0; i < Math.min(defs.length, pos.length) - 1; i++) {
                 const a = pos[i], b = pos[i + 1];
@@ -224,7 +240,7 @@ export class MetaPageUI {
         this._taskRoots.forEach((root, key) => root.active = key === branch);
         const defs = questsByBranch(branch);
         const done = defs.filter(d => d.state === 'completed').length;
-        this._taskBranchLabel.string = `${branch === 'main' ? '主线链路' : '支线委托'}  ·  已完成 ${done}/${defs.length}`;
+        this._taskBranchLabel.string = `${BRANCH_LABEL[branch]}  ·  已完成 ${done}/${defs.length}`;
         const selected = defs.find(d => d.id === this._taskSelected) ??
             defs.find(d => d.state === 'active') ?? defs[0];
         if (selected) this._selectQuest(selected);
@@ -233,7 +249,7 @@ export class MetaPageUI {
     private _selectQuest(def: QuestDef): void {
         this._taskSelected = def.id;
         for (const view of this._taskViews) this._drawTaskNode(view, view.def.id === def.id);
-        this._taskDetailChapter.string = `${def.branch === 'main' ? '主线' : '支线'} · ${def.chapter}`;
+        this._taskDetailChapter.string = `${BRANCH_SHORT[def.branch]} · ${def.chapter}`;
         this._taskDetailName.string = def.name;
         this._taskDetailDesc.string = def.desc;
         this._taskDetailObjective.string = `目标  ${def.objective}`;

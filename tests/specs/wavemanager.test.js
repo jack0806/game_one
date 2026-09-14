@@ -16,9 +16,22 @@ function drainSpawning(wm, game, spawned) {
 test('ENEMY_COUNT_BY_WAVE 数量随波次增长,难度倍率正确,且存在48的封顶', () => {
     // 2026-09-07 密度上调:6+3/wave/封顶48(旧为4+2/wave/封顶28)
     assert.equal(ENEMY_COUNT_BY_WAVE(1, 'normal'), 9);   // min(6+3,48)=9
-    assert.equal(ENEMY_COUNT_BY_WAVE(20, 'normal'), 48); // min(6+60,48)=48 封顶
+    assert.equal(ENEMY_COUNT_BY_WAVE(20, 'normal'), 96); // min(6+60,48)=48 封顶 ×2(第三章起翻倍)
     assert.equal(ENEMY_COUNT_BY_WAVE(1, 'nightmare'), 13); // floor(9*1.5)
     assert.equal(ENEMY_COUNT_BY_WAVE(1, 'chaos'), 18);    // 9*2
+});
+
+test('从第三章开始怪物数量×2:第10波(第二章)不翻倍,第11波(第三章)起翻倍', () => {
+    // 第一章/第二章维持原曲线
+    assert.equal(ENEMY_COUNT_BY_WAVE(10, 'normal'), 36, '第10波属第二章,不翻倍');
+    // 第三章边界:第11波 base=39 → ×2
+    assert.equal(ENEMY_COUNT_BY_WAVE(11, 'normal'), 78, '第11波属第三章,数量翻倍');
+    // 第四/五章与无尽沿用阶段同样翻倍;难度倍率与章节倍率叠乘
+    assert.equal(ENEMY_COUNT_BY_WAVE(16, 'normal'), 96, '第16波(第四章) min(54,48)=48 ×2');
+    assert.equal(ENEMY_COUNT_BY_WAVE(11, 'nightmare'), 117, 'floor(39×1.5×2)=117 难度与章节倍率叠乘');
+    assert.equal(ENEMY_COUNT_BY_WAVE(11, 'chaos'), 156, '39×2×2=156');
+    // Boss 波的小怪同样翻倍(WaveManager 按本函数取量)
+    assert.equal(ENEMY_COUNT_BY_WAVE(15, 'normal'), 96, '第15波(第三章Boss波) min(51,48)=48 ×2');
 });
 
 test('startWave在Boss波(第5波)先刷boss再正常刷小怪', () => {

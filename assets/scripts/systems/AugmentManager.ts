@@ -3,8 +3,10 @@
 // ============================================================
 // 2026-09-14 按用户《海克斯.docx》重做：
 //  · 格子：初始 5 个（文档：任务可解锁到 8，暂未实现任务钩子）；
+//    功能性海克斯不占这 5 格（独立 functional 列表，数量不设上限）；
 //  · 等级：同一海克斯再次获得即升 1 档（Lv.1→2→3），升档不占新格子；
-//  · 一次性海克斯（15/17）生效后即消耗，不占格子；
+//  · 一次性海克斯（15/17）每局只能选择一次：生效即消耗、不占格子，
+//    本局商店不再刷出（16/18 为持久型，正常升档占格）；
 //  · 定价：基准价 × 同稀有度购买次数溢价（银/金 +10%/次，彩 +100%/次）；
 //  · 卖出：卸下词条回收购买价 75%（退款经 GameManager 走 Economy）。
 import { AUGMENT_DB, AugmentDef, HexRarity, rarityForLevel } from '../data/AugmentDB';
@@ -14,15 +16,30 @@ import { Rng } from '../core/MathUtils';
 const SURGE_RATE: Record<HexRarity, number> = { silver: 0.10, gold: 0.10, prismatic: 1.0 };
 
 export class AugmentManager {
+    /** 技能/持久型海克斯（占 maxSlots 格）。 */
     active: AugmentDef[]   = [];
+    /** 功能性海克斯：不占 5 格的独立持有列表（可升档/卖出，数量无上限）。 */
+    functional: AugmentDef[] = [];
     /** 文档：角色初始 5 个海克斯待开发格子。 */
     maxSlots: number       = 5;
     /** 海克斯15 进阶蓝图：下一个新获得的海克斯 +1 档（消费后清零）。 */
     nextLevelBonus         = 0;
     /** 本局各稀有度已购张数（定价溢价用）。 */
     boughtPerRarity: Record<string, number> = { silver: 0, gold: 0, prismatic: 0 };
+    /** 本局已选用过的一次性海克斯 id（只能选择一次，商店不再刷出）。 */
+    private _oneShotUsed: Set<string> = new Set();
     /** 格雷夫被动递归防护：免费追加装备期间不再触发二次追加。 */
     private _inChaosBonus = false;
+
+    /** 全部持有（技能 + 功能），展示/统计/事件分发用。 */
+    all(): AugmentDef[] {
+        return this.active.concat(this.functional);
+    }
+
+    /** 按 id 查两份持有列表中的实例。 */
+    ownedOf(id: string): AugmentDef | undefined {
+        return this.active.find(a => a.id === id) ?? this.functional.find(a => a.id === id);
+    }
 
     // ── 定价 ──────────────────────────────────────────────
 
@@ -57,8 +74,8 @@ export class AugmentManager {
 
     /**
      * 三选一卡池（等级即稀有度）：银档 → 各家族的 Lv.1 卡，金档 → Lv.2，
-     * 彩档 → Lv.3。已持有家族只会刷出比当前更高的档位（升级卡）；
-     * 一次性海克斯任意档位可重复出现。
+     * 彩档 → Lv.3。已持有家族（技能或功能）只会刷出比当前更高的档位（升级卡）；
+     * 一次性海克斯本局未选用时任意档位可出现，选用后整局不再刷出。
      */
     rollOptions(n = 3, wave = 1): AugmentDef[] {
         const weights = this.rarityWeights(wave);
@@ -71,13 +88,14 @@ export class AugmentManager {
             const pool = AUGMENT_DB.filter(a => {
                 if (a.prices.length < level) return false;      // 该海克斯没有这一档
                 if (results.find(r => r.id === a.id)) return false;
-                const owned = this.active.find(x => x.id === a.id);
+                if (a.oneShot && this._oneShotUsed.has(a.id)) return false;
+                const owned = this.ownedOf(a.id);
                 if (owned && !a.oneShot) return (owned.level ?? 1) < level;
                 return true;
             });
             if (!pool.length) continue;
             const def = Rng.pick(pool);
-            const owned = this.active.find(x => x.id === def.id);
+            const owned = this.ownedOf(def.id);
             results.push(this._makeCard(def, level, !!owned));
         }
         return results;
@@ -112,18 +130,25 @@ export class AugmentManager {
 
     /**
      * 购买/授予一张卡。card.level 缺省 1；传入已持有的 id 时按 +1 档处理。
-     * 一次性海克斯立即生效不入列。返回是否成功（满格/已满级返回 false）。
+     * 功能性海克斯走 functional 列表不占 5 格；一次性海克斯（15/17）每局
+     * 只能选择一次，生效即消耗不入列。opts.force 供测试房沙盒无限授予
+     * （绕过每局一次限制）。返回是否成功（满格/已满级/已用过返回 false）。
      */
-    equip(card: AugmentDef, player: any, game: any): boolean {
+    equip(card: AugmentDef, player: any, game: any, opts?: { force?: boolean }): boolean {
         const def = AUGMENT_DB.find(a => a.id === card.id) ?? card;
-        const existing = this.active.find(a => a.id === def.id);
 
-        // 一次性：立即生效并消耗（不占格子）
+        // 一次性（15/17）：每局只能选择一次，立即生效并消耗（不占格子）
         if (def.oneShot) {
+            if (this._oneShotUsed.has(def.id) && !opts?.force) return false;
+            this._oneShotUsed.add(def.id);
             const oneShot = { ...def, level: card.level ?? 1 };
             oneShot.onLevel?.(player, game, 0, card.level ?? 1);
             return true;
         }
+
+        const isFunctional = def.category === '功能';
+        const list = isFunctional ? this.functional : this.active;
+        const existing = list.find(a => a.id === def.id);
 
         if (existing) {
             const from = existing.level ?? 1;
@@ -137,7 +162,8 @@ export class AugmentManager {
             return true;
         }
 
-        if (this.active.length >= this.maxSlots) return false;
+        // 功能性不占格；技能/持久型一次性占格，满 5 格拒绝
+        if (!isFunctional && this.active.length >= this.maxSlots) return false;
 
         // 海克斯15：新获得的第一个海克斯提升一档
         let level = card.level ?? 1;
@@ -152,14 +178,14 @@ export class AugmentManager {
             desc: def.descAt(level),
             paid: card.paid ?? card._price ?? 0,
         };
-        this.active.push(inst);
+        list.push(inst);
         inst.onLevel?.(player, game, 0, level);
         // 格雷夫被动(chaosBonus)：获得海克斯时额外随机获得一个（1 档，不占格子溢出）
         if (player?.stats?.chaosBonus && !this._inChaosBonus && this.active.length < this.maxSlots) {
             this._inChaosBonus = true;
             try {
                 const pool = AUGMENT_DB.filter(a =>
-                    !this.active.find(x => x.id === a.id) && !a.oneShot);
+                    !this.ownedOf(a.id) && !a.oneShot);
                 if (pool.length) {
                     const bonus = Rng.pick(pool);
                     this.equip(this._makeCard(bonus, 1, false), player, game);
@@ -172,39 +198,47 @@ export class AugmentManager {
     }
 
     /**
-     * 卖出/卸下已持有的海克斯：数值型钩子按 onLevel(level, 0) 回退加成。
+     * 卖出/卸下已持有的海克斯（技能或功能列表均支持）：
+     * 数值型钩子按 onLevel(level, 0) 回退加成。
      * 返回该实例（含 paid 供退款），未找到返回 null。
      */
     unequip(id: string, player: any, game: any): AugmentDef | null {
-        const idx = this.active.findIndex(a => a.id === id);
+        let list = this.active;
+        let idx = this.active.findIndex(a => a.id === id);
+        if (idx < 0) {
+            list = this.functional;
+            idx = this.functional.findIndex(a => a.id === id);
+        }
         if (idx < 0) return null;
-        const inst = this.active[idx];
+        const inst = list[idx];
         inst.onLevel?.(player, game, inst.level ?? 1, 0);
-        this.active.splice(idx, 1);
+        list.splice(idx, 1);
         return inst;
     }
 
     // ── 事件分发 ──────────────────────────────────────────
     dispatchHit(player: any, enemy: any, dmg: number, game: any): void {
-        for (const a of this.active) if (a.onHit) a.onHit(player, enemy, dmg, game);
+        for (const a of this.all()) if (a.onHit) a.onHit(player, enemy, dmg, game);
     }
     dispatchKill(player: any, enemy: any, dmg: number, game: any): void {
-        for (const a of this.active) if (a.onKill) a.onKill(player, enemy, dmg, game);
+        for (const a of this.all()) if (a.onKill) a.onKill(player, enemy, dmg, game);
     }
     dispatchUpdate(player: any, dt: number, game: any): void {
-        for (const a of this.active) if (a.onUpdate) a.onUpdate(player, dt, game);
+        for (const a of this.all()) if (a.onUpdate) a.onUpdate(player, dt, game);
     }
     dispatchWaveStart(player: any, game: any): void {
-        for (const a of this.active) if (a.onWaveStart) a.onWaveStart(player, game);
+        for (const a of this.all()) if (a.onWaveStart) a.onWaveStart(player, game);
     }
     dispatchSkill(player: any, game: any): void {
-        for (const a of this.active) if (a.onSkill) a.onSkill(player, game);
+        for (const a of this.all()) if (a.onSkill) a.onSkill(player, game);
     }
 
     reset(): void {
         this.active = [];
+        this.functional = [];
         this.maxSlots = 5;
         this.nextLevelBonus = 0;
         this.boughtPerRarity = { silver: 0, gold: 0, prismatic: 0 };
+        this._oneShotUsed = new Set();
     }
 }

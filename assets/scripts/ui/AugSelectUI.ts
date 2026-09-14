@@ -6,7 +6,7 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -98,8 +98,15 @@ export class AugSelectUI extends Component {
         const g = n.addComponent(Graphics);
         // 完全不透明遮罩：弹窗期间压住底下的商店商品/战场画面，避免文字被
         // 压花的商品图标干扰(见用户反馈"移到上面 为不透明模式")。
-        g.fillColor = new Color(0, 0, 0, 255);
-        g.fillRect(-640, -360, 1280, 720);
+        const draw = () => {
+            g.clear();
+            g.fillColor = new Color(0, 0, 0, 255);
+            g.fillRect(-640, -360, 1280, 720);
+        };
+        draw();
+        // 遮罩是构建期一次性绘制：节点 停用→再激活（如神秘强化二级弹窗往返回来）
+        // 后内容会丢、战场会透出来，激活时重画兜底。
+        attachEnableRedraw(n, draw);
     }
 
     private _buildTitle() {
@@ -235,14 +242,14 @@ export class AugSelectUI extends Component {
         skip.on(Node.EventType.TOUCH_END, () => this._skip(), this);
     }
 
-    /** 底部：已持有海克斯（格子使用量 + 卖出标签）。 */
+    /** 底部：已持有海克斯（技能 5 格 + 功能双行展示，功能性海克斯不占技能格）。 */
     private _buildOwnedStrip() {
         this._chipRoot = new Node('OwnedStrip'); this._chipRoot.setParent(this.node);
-        this._chipRoot.setPosition(new Vec3(0, -278, 0));
+        this._chipRoot.setPosition(new Vec3(0, -284, 0));
 
         const oN = new Node('OwnedLbl'); oN.setParent(this._chipRoot);
-        oN.setPosition(new Vec3(-470, 34, 0));
-        oN.addComponent(UITransform).setContentSize(200, 26);
+        oN.setPosition(new Vec3(-486, 58, 0));
+        oN.addComponent(UITransform).setContentSize(300, 26);
         this._ownedLbl = oN.addComponent(Label);
         this._ownedLbl.fontSize = 15;
         this._ownedLbl.color = new Color(170, 190, 208, 255);
@@ -250,21 +257,23 @@ export class AugSelectUI extends Component {
         styleLabel(this._ownedLbl);
 
         const hint = new Node('Hint'); hint.setParent(this._chipRoot);
-        hint.setPosition(new Vec3(250, 34, 0));
+        hint.setPosition(new Vec3(280, 58, 0));
         hint.addComponent(UITransform).setContentSize(700, 26);
         const hl = hint.addComponent(Label);
-        hl.string = '点击持有标签可卖出（回收 75% 购买价）';
+        hl.string = '点击持有标签可卖出（回收 75% 购买价）· 功能性海克斯不占技能格';
         hl.fontSize = 13;
         hl.color = new Color(140, 158, 174, 220);
         styleLabel(hl);
 
-        for (let i = 0; i < 8; i++) {
+        // 双行 × 5 = 10 格：技能格满 5 时功能海克斯仍全部可见
+        for (let i = 0; i < 10; i++) {
+            const col = i % 5, row = Math.floor(i / 5);
             const chip = new Node(`Chip${i}`); chip.setParent(this._chipRoot);
-            chip.setPosition(new Vec3(-360 + i * 205, -12, 0));
-            chip.addComponent(UITransform).setContentSize(196, 44);
+            chip.setPosition(new Vec3(-392 + col * 196, row === 0 ? 12 : -40, 0));
+            chip.addComponent(UITransform).setContentSize(188, 44);
             const g = chip.addComponent(Graphics);
             const ln = new Node('L'); ln.setParent(chip);
-            ln.addComponent(UITransform).setContentSize(192, 40);
+            ln.addComponent(UITransform).setContentSize(184, 40);
             const label = ln.addComponent(Label);
             label.fontSize = 13;
             label.color = new Color(228, 236, 244, 255);
@@ -336,22 +345,25 @@ export class AugSelectUI extends Component {
 
     private _refreshChips() {
         const owned = this._ctx?.owned() ?? [];
-        this._ownedLbl.string = `已持有 ${owned.length}/${this._ctx ? 5 : 5} 格`;
+        // 功能性海克斯不占 5 个技能格：计数分开显示，卖出标签加 [功] 前缀区分
+        const funcCount = owned.filter(o => o.category === '功能').length;
+        this._ownedLbl.string = `技能 ${owned.length - funcCount}/5 格   ·   功能 ${funcCount}（不占格）`;
         for (let i = 0; i < this._chips.length; i++) {
             const chip = this._chips[i];
             const inst = owned[i];
             if (!inst) { chip.root.active = false; chip.id = ''; continue; }
             chip.root.active = true;
             chip.id = inst.id;
-            chip.label.string = `${inst.name} Lv${inst.level ?? 1} · 卖 ${Math.round((inst.paid ?? 0) * 0.75)} 金币`;
+            const tag = inst.category === '功能' ? '[功] ' : '';
+            chip.label.string = `${tag}${inst.name} Lv${inst.level ?? 1} · 卖 ${Math.round((inst.paid ?? 0) * 0.75)}`;
             const hex = RARITY_COLOR[inst.rarity] ?? '#888888';
             const col = Color.fromHEX(new Color(), hex);
             chip.g.clear();
             chip.g.fillColor = new Color(14, 20, 30, 245);
-            chip.g.fillRect(-98, -22, 196, 44);
+            chip.g.fillRect(-92, -22, 188, 44);
             chip.g.strokeColor = new Color(col.r, col.g, col.b, 150);
             chip.g.lineWidth = 1.5;
-            chip.g.rect(-98, -22, 196, 44);
+            chip.g.rect(-92, -22, 188, 44);
             chip.g.stroke();
         }
     }

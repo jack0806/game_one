@@ -36,23 +36,44 @@ test('同一海克斯重复装备升档：Lv1→Lv2→Lv3，攻速按档位精�
     const base = p.stats.attackSpeed;
 
     am.equip({ id: 'hex01' }, p, game);   // Lv1 +10%
-    assert.equal(am.active.length, 1);
-    assert.equal(am.active[0].level, 1);
+    assert.equal(am.functional.length, 1, '功能性海克斯入 functional 列表');
+    assert.equal(am.active.length, 0, '功能性海克斯不占技能格');
+    assert.equal(am.functional[0].level, 1);
     assert.ok(Math.abs(p.stats.attackSpeed - base * 1.10) < 1e-9);
 
     am.equip({ id: 'hex01' }, p, game);   // Lv2 +20%
-    assert.equal(am.active.length, 1, '升档不占新格子');
-    assert.equal(am.active[0].level, 2);
+    assert.equal(am.functional.length, 1, '升档不占新格子');
+    assert.equal(am.functional[0].level, 2);
     assert.ok(Math.abs(p.stats.attackSpeed - base * 1.20) < 1e-9);
 
     am.equip({ id: 'hex01' }, p, game);   // Lv3 +30%
-    assert.equal(am.active[0].level, 3);
+    assert.equal(am.functional[0].level, 3);
     assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9);
 
     assert.equal(am.equip({ id: 'hex01' }, p, game), false, '满级后再装备失败');
 });
 
-test('一次性海克斯（17 立得金币）立即生效且不占格子', () => {
+test('功能性海克斯不占 5 个技能格：数量无上限，技能格独立计算', () => {
+    const am = new AugmentManager();
+    const game = makeMockGame();
+    const p = makeStatsPlayer();
+    // 全部 5 个功能性海克斯（01/02/03/07/11）都装上
+    for (const id of ['hex01', 'hex02', 'hex03', 'hex07', 'hex11']) {
+        assert.equal(am.equip({ id }, p, game), true);
+    }
+    assert.equal(am.functional.length, 5);
+    assert.equal(am.active.length, 0, '功能海克斯不占技能格');
+    assert.equal(am.all().length, 5, 'all() 汇总技能+功能');
+    assert.equal(am.ownedOf('hex03').id, 'hex03', 'ownedOf 跨列表查询');
+    // 技能海克斯仍可正常装满 5 格
+    for (const id of ['hex04', 'hex05', 'hex06', 'hex08', 'hex10']) {
+        assert.equal(am.equip({ id }, p, game), true);
+    }
+    assert.equal(am.active.length, 5);
+    assert.equal(am.equip({ id: 'hex13' }, p, game), false, '技能格满后第6个技能海克斯被拒绝');
+});
+
+test('一次性海克斯（17 立得金币）立即生效不占格子，且每局只能选择一次', () => {
     const am = new AugmentManager();
     const game = wireAm(makeMockGame(), am);
     game.economy = { gold: 0, addGold(v) { this.gold += v; } };
@@ -62,19 +83,34 @@ test('一次性海克斯（17 立得金币）立即生效且不占格子', () =>
     assert.equal(ok, true);
     assert.equal(am.active.length, 0, '一次性海克斯不入列');
     assert.equal(game.economy.gold, 1000, 'Lv2 立得 1000 金币');
+
+    // 同一局内第二次选择同一一次性海克斯被拒绝（金币不再重复发放）
+    assert.equal(am.equip({ id: 'hex17', level: 3 }, p, game), false, '每局只能选择一次');
+    assert.equal(game.economy.gold, 1000);
+
+    // 商店卡池不再刷出已消耗的一次性海克斯（15/17）
+    for (let i = 0; i < 40; i++) {
+        for (const card of am.rollOptions(3, 8)) {
+            assert.notEqual(card.id, 'hex17', '已选用的整局不再出现');
+        }
+    }
+    // force 供测试房沙盒绕过限制重复授予
+    assert.equal(am.equip({ id: 'hex17', level: 1 }, p, game, { force: true }), true);
+    assert.equal(game.economy.gold, 1500);
 });
 
 test('满格后新海克斯装备失败，升档不受格子限制', () => {
     const am = new AugmentManager();
     const game = makeMockGame();
     const p = makeStatsPlayer();
-    for (const id of ['hex01', 'hex02', 'hex03', 'hex07', 'hex11']) {
+    // 5 个技能海克斯占满技能格（功能性海克斯不占格，不参与满格判定）
+    for (const id of ['hex04', 'hex05', 'hex06', 'hex08', 'hex10']) {
         assert.equal(am.equip({ id }, p, game), true);
     }
     assert.equal(am.active.length, 5);
-    assert.equal(am.equip({ id: 'hex04' }, p, game), false, '第6个非一次性海克斯被拒绝');
+    assert.equal(am.equip({ id: 'hex13' }, p, game), false, '第6个非功能性海克斯被拒绝');
 
-    assert.equal(am.equip({ id: 'hex01' }, p, game), true, '已持有海克斯升档仍可进行');
+    assert.equal(am.equip({ id: 'hex04' }, p, game), true, '已持有海克斯升档仍可进行');
     assert.equal(am.active[0].level, 2);
 });
 
@@ -109,7 +145,7 @@ test('卖出回退加成并回收75%实付价', () => {
     assert.ok(Math.abs(p.stats.damage - base) < 1e-9, '卖出后攻击加成回退');
 });
 
-test('海克斯15 进阶蓝图：下一个新海克斯 +1 档（封顶3）', () => {
+test('海克斯15 进阶蓝图：下一个新海克斯 +1 档（封顶3，功能海克斯同样受益）', () => {
     const am = new AugmentManager();
     const game = wireAm(makeMockGame(), am);
     const p = makeStatsPlayer();
@@ -119,7 +155,7 @@ test('海克斯15 进阶蓝图：下一个新海克斯 +1 档（封顶3）', () 
     assert.equal(am.active.length, 0, '蓝图本身是一次性');
 
     am.equip({ id: 'hex03' }, p, game);
-    assert.equal(am.active[0].level, 2, '新海克斯直接 Lv2');
+    assert.equal(am.functional[0].level, 2, '新功能海克斯直接 Lv2（不占格也吃蓝图加成）');
     assert.equal(am.nextLevelBonus, 0, '加成已消费');
 });
 

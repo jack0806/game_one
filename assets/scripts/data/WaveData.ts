@@ -82,8 +82,11 @@ export const MUTATIONS: MutationDef[] = [
 
 // 2026-09-07 玩家反馈"怪的密度还是太低"：总量曲线整体上调——
 // 起点 4+2/wave/封顶28 → 6+3/wave/封顶48（后期同屏约为旧版两倍）。
+// 2026-09-14 玩家要求：从第三章开始（全局波次11起，含无尽沿用章节）怪物数量×2，
+// 封顶同步翻倍到 96。
 export const ENEMY_COUNT_BY_WAVE = (wave: number, difficulty: 'normal' | 'nightmare' | 'chaos'): number => {
     const base = Math.min(6 + wave * 3, 48);
     const mult = { normal: 1, nightmare: 1.5, chaos: 2 }[difficulty] || 1;
-    return Math.floor(base * mult);
+    const chapterMult = chapterForWave(wave) >= 3 ? 2 : 1;
+    return Math.floor(base * mult * chapterMult);
 };

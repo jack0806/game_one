@@ -174,12 +174,21 @@ export class GameManager extends Component {
     private _abyssStormShots = 0;
     /** 测试房间冰冻预告区（深海恐惧）：3s 闪烁后玩家在区内则冰冻 1.5s。 */
     private _telegraphZones: { x: number; y: number; r: number; timer: number }[] = [];
-    /** 灭世机神·毁灭激光：从发射点沿 angle 延伸出屏，中速转向主角（基础290/最终305码/秒）；命中按 dps 连续真伤。 */
-    private _invLaser?: { x: number; y: number; angle: number; t: number; dps: number; _fxT: number; width: number; turnSpeed: number; lockT: number };
+    /**
+     * 灭世机神·天罚网格激光（毁灭激光×震荡波融合技）：战场竖分 3 列 × 横分 3 行。
+     * warn 2 秒危险带闪烁预警 → fire 2 秒危险带全量激光；普通形态随机 2 列或 2 行，
+     * 最终形态 2 列 + 2 行（安全区仅剩 1 格）。接触危险带每 0.8s 结算一次真伤（20/30）。
+     */
+    private _invGrid?: {
+        phase: 'warn' | 'fire';
+        timer: number;                                  // 当前阶段剩余秒数
+        cols: [boolean, boolean, boolean];              // 危险列标记（其余为安全列）
+        rows: [boolean, boolean, boolean];              // 危险行标记（其余为安全行）
+        dmg: number;                                    // 每次命中真伤（普通 20 / 最终 30）
+        hitCd: number;                                  // 命中结算间隔剩余
+    };
     /** 灭世机神·集束导弹预告区：闪烁 timer 秒后落地爆炸（半径 r 内玩家受伤）。 */
     private _missileZones: { x: number; y: number; r: number; timer: number; dmg: number }[] = [];
-    /** 灭世机神·震荡波：从 Boss 扩散的圆环，碰到玩家造成一次伤害。 */
-    private _shockwaves: { x: number; y: number; r: number; spd: number; dmg: number; delay: number; hitDone: boolean }[] = [];
 
     // ── extra runtime state (turrets / zones / enemy bullets / stats) ──
     private _turrets:      any[] = [];
@@ -764,9 +773,8 @@ export class GameManager extends Component {
         this._boss = undefined;
         this._pillars = [];
         this._telegraphZones = [];
-        this._invLaser = undefined;
+        this._invGrid = undefined;
         this._missileZones = [];
-        this._shockwaves = [];
         this._turrets = [];
         this._bullets?.reset();
         this._particles?.clear();
@@ -1681,22 +1689,37 @@ export class GameManager extends Component {
         this._audio.playSfx('boss_roar', 0.7);
     }
 
-    // ── 灭世机神·天罚技能场景系统（毁灭激光 / 集束导弹 / 震荡波） ──
+    // ── 灭世机神·天罚技能场景系统（天罚网格激光 / 集束导弹） ──
 
-    /** 技能1发射：沿蓄能锁定角从 Boss 位置射出直达屏幕外，持续期间 Boss 站桩定身，中速转向主角。 */
-    startInvaderLaser(boss: BossController): void {
-        this._invLaser = {
-            x: boss.x, y: boss.y,
-            angle: boss.invAimAngle,
-            t: boss.invLaserT || 3, // 与 BossController.invLaserT 同源（站桩时长）
-            dps: boss.finalForm ? 30 : 20, // 每秒持续真伤（最终形态 30）
-            _fxT: 0,
-            width: 11, // 与渲染最外层辉光半宽(22/2)一致，伤害带=光束+玩家体积
-            turnSpeed: boss.finalForm ? 305 : 290, // 激光转向横向速度（原275/290各加快15码）
-            lockT: 0.5, // 引导结束后先沿射出方向停顿0.5秒,再开始追击主角
+    /**
+     * 技能1：天罚网格激光（毁灭激光×震荡波融合）。战场竖分 3 列 × 横分 3 行：
+     * 普通形态随机 2 列或 2 行为危险带，最终形态 2 列 + 2 行（安全区仅剩 1 格）。
+     * 危险带闪烁预警 2 秒 → 全带发射激光 2 秒（期间 Boss 站桩定身，见 _updateInvaderField）。
+     */
+    startInvaderLaserGrid(boss: BossController): void {
+        // 危险带选择：3 条中随机留 1 条安全（等价随机 2/3 为危险）
+        const mark2of3 = (arr: [boolean, boolean, boolean]) => {
+            const safe = Math.floor(Rng.float(0, 3));
+            arr[(safe + 1) % 3] = true;
+            arr[(safe + 2) % 3] = true;
         };
-        this._particles.explode(boss.x, boss.y, '#ff5544', 70);
-        this._audio.playSfx('skill_q', 0.9);
+        const cols: [boolean, boolean, boolean] = [false, false, false];
+        const rows: [boolean, boolean, boolean] = [false, false, false];
+        if (boss.finalForm) {
+            mark2of3(cols); mark2of3(rows);   // 最终形态：横竖各 2 份
+        } else if (Rng.float(0, 1) < 0.5) {
+            mark2of3(cols);                    // 普通形态：竖 2 份 或 横 2 份（随机方向）
+        } else {
+            mark2of3(rows);
+        }
+        this._invGrid = {
+            phase: 'warn', timer: 2,           // 危险带闪烁预警 2 秒
+            cols, rows,
+            dmg: boss.finalForm ? 30 : 20,     // 每次命中真伤（普通 20 / 最终 30）
+            hitCd: 0,
+        };
+        this._floatText.spawn(boss.x, boss.y - 90, '天罚·网格激光！', '#ff5544', 20, true);
+        this._audio.playSfx('skill_e', 0.7);
     }
 
     /**
@@ -1736,61 +1759,45 @@ export class GameManager extends Component {
         this._audio.playSfx('skill_r', 0.8);
     }
 
-    /** 技能3：以自身发出多道扩散震荡波（基础3道 / 最终6道，每道命中玩家一次）。 */
-    startInvaderShockwaves(boss: BossController): void {
-        const count = boss.finalForm ? 6 : 3;
-        const dmg = boss.finalForm ? 10 : 5;
-        for (let i = 0; i < count; i++) {
-            this._shockwaves.push({
-                x: boss.x, y: boss.y, r: boss.radius,
-                spd: boss.finalForm ? 380 : 340,
-                dmg, delay: i * 0.35, hitDone: false,
-            });
-        }
-        this._particles.hexActivate(boss.x, boss.y, '#ffaa33');
-        this._audio.playSfx('skill_e', 0.7);
-        this._floatText.spawn(boss.x, boss.y - 90, '震荡波！', '#ffaa33', 18, true);
-    }
-
-    /** 灭世机神场景系统推进：激光旋转/持续真伤、导弹落地、震荡波扩散。 */
+    /** 灭世机神场景系统推进：网格激光预警/发射与真伤结算、导弹落地。 */
     private _updateInvaderField(dt: number): void {
         const p = this._player;
 
-        // 毁灭激光：引导结束后先沿射出方向停顿0.5秒（lockT），之后才以
-        // turnSpeed(基础290/最终305码/秒) 的横向速度追击主角，距发射点越远转向越慢。
-        // 伤害为连续接触判定：只要主角待在激光束内就一直按 dps 扣真伤（每帧结算），离开即停。
-        const laser = this._invLaser;
-        if (laser) {
-            laser.t -= dt;
-            if (laser.t <= 0 || !this._boss || !this._boss.alive) {
-                this._invLaser = undefined;
-            } else if (p?.alive) {
-                if (laser.lockT > 0) {
-                    laser.lockT -= dt; // 停顿期间保持射出方向，不转向
-                } else {
-                    const want = Math.atan2(p.y - laser.y, p.x - laser.x);
-                    let diff = want - laser.angle;
-                    while (diff > Math.PI) diff -= Math.PI * 2;
-                    while (diff < -Math.PI) diff += Math.PI * 2;
-                    const dist = Math.max(90, Vec.dist(laser.x, laser.y, p.x, p.y));
-                    const maxTurn = (laser.turnSpeed * dt) / dist;
-                    laser.angle += clamp(diff, -maxTurn, maxTurn);
-                }
-
-                // 命中判定：主角到射线距离 < 宽度 → 本帧结算一段真伤（无视护盾/护甲/受击无敌帧）
-                const dx = Math.cos(laser.angle), dy = Math.sin(laser.angle);
-                const rx = p.x - laser.x, ry = p.y - laser.y;
-                if (rx * dx + ry * dy > 0) { // 只判定射线正方向（激光从发射点射出）
-                    const perp = Math.abs(rx * dy - ry * dx);
-                    if (perp < laser.width + (p.radius ?? 16)) {
-                        p.takeTrueDamage(laser.dps * dt, this, { quiet: true });
-                        // 反馈节流：每 0.5s 汇总一次命中特效与伤害浮字，避免逐帧刷屏
-                        laser._fxT -= dt;
-                        if (laser._fxT <= 0) {
-                            laser._fxT = 0.5;
+        // 天罚网格激光：Boss 死亡或进入最终形态无敌引导时立即收场。
+        const grid = this._invGrid;
+        if (grid) {
+            if (!this._boss || !this._boss.alive || this._boss.invulnerable) {
+                this._invGrid = undefined;
+            } else {
+                grid.timer -= dt;
+                if (grid.phase === 'warn') {
+                    // 预警 2 秒：危险带闪烁（渲染层画），期间 Boss 仍可移动
+                    if (grid.timer <= 0) {
+                        grid.phase = 'fire';
+                        grid.timer = 2;      // 发射持续 2 秒
+                        // 发射期间 Boss 站桩定身（与 BossController.invLaserT 同源递减）
+                        this._boss.invLaserT = 2;
+                        this._particles.explode(this._boss.x, this._boss.y, '#ff5544', 90);
+                        this._shake.add(12, 300);
+                        this._audio.playSfx('skill_q', 0.9);
+                    }
+                } else if (grid.timer <= 0) {
+                    this._invGrid = undefined;
+                } else if (p?.alive) {
+                    // 命中判定：玩家中心落在任一危险列/危险行内 → 每 0.8s 结算一次真伤
+                    const colW = CANVAS_W / 3, rowH = PLAYFIELD_BOTTOM / 3;
+                    const col = Math.min(2, Math.floor(p.x / colW));
+                    const row = Math.min(2, Math.floor(p.y / rowH));
+                    grid.hitCd -= dt;
+                    if (grid.cols[col] || grid.rows[row]) {
+                        if (grid.hitCd <= 0) {
+                            grid.hitCd = 0.8;
+                            p.takeTrueDamage(grid.dmg, this);
                             this._particles.hit(p.x, p.y, '#ff5544');
-                            this._floatText.spawn(p.x, p.y - 30, `-${Math.ceil(laser.dps * 0.5)}`, '#ff6655', 16, false);
                         }
+                    } else {
+                        // 离开激光带后短冷却：再次误入很快吃伤，鼓励持续走位
+                        grid.hitCd = Math.min(grid.hitCd, 0.25);
                     }
                 }
             }
@@ -1808,22 +1815,6 @@ export class GameManager extends Component {
                 if (p?.alive && Vec.dist(z.x, z.y, p.x, p.y) < z.r + (p.radius ?? 16)) {
                     p.takeDamage(z.dmg, this, { ignoreIframe: this.state === 'testRoom' });
                     this._floatText.spawn(p.x, p.y - 50, '导弹命中！', '#ffaa33', 18, true);
-                }
-            }
-        }
-
-        // 震荡波：扩散圆环碰到玩家造成一次伤害
-        for (let i = this._shockwaves.length - 1; i >= 0; i--) {
-            const w = this._shockwaves[i];
-            if (w.delay > 0) { w.delay -= dt; continue; }
-            w.r += w.spd * dt;
-            if (w.r > CANVAS_W * 1.3) { this._shockwaves.splice(i, 1); continue; }
-            if (!w.hitDone && p?.alive) {
-                const dist = Vec.dist(w.x, w.y, p.x, p.y);
-                if (Math.abs(dist - w.r) < w.spd * dt + 14) {
-                    w.hitDone = true;
-                    p.takeDamage(w.dmg, this, { ignoreIframe: this.state === 'testRoom' });
-                    this._floatText.spawn(p.x, p.y - 50, '震荡！', '#ffaa33', 18, true);
                 }
             }
         }
@@ -1851,9 +1842,8 @@ export class GameManager extends Component {
         this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
         this._pillars = [];
         this._telegraphZones = [];
-        this._invLaser = undefined;
+        this._invGrid = undefined;
         this._missileZones = [];
-        this._shockwaves = [];
         this._bullets?.reset();
         this._fxPool?.releaseAll();
         this._coinPool?.releaseAll();
@@ -1932,8 +1922,9 @@ export class GameManager extends Component {
                     return false;
                 }
                 this._augMgr.recordPurchase(card.rarity, price);
-                // 实付价累计到持有实例（升档叠加，卖出按总额 75% 回收）
-                const inst = this._augMgr.active.find(a => a.id === card.id);
+                // 实付价累计到持有实例（升档叠加，卖出按总额 75% 回收）；
+                // 一次性海克斯（15/17）生效即消耗，无持有实例
+                const inst = this._augMgr.ownedOf(card.id);
                 if (inst) inst.paid = (inst.paid ?? 0) + price;
                 return true;
             },
@@ -1944,7 +1935,7 @@ export class GameManager extends Component {
                 this._augRefreshCount++;
                 return this._augMgr.rollOptions(3, this._waveMgr.wave);
             },
-            owned: () => this._augMgr.active,
+            owned: () => this._augMgr.all(),
             sell: (cardLike) => {
                 const inst = this._augMgr.unequip(cardLike.id, this._player, this);
                 if (!inst) return false;
@@ -2658,17 +2649,6 @@ export class GameManager extends Component {
             g.strokeColor = new Color(255, 170, 60, alpha);
             g.lineWidth = 3; g.circle(zx, zy, z.r); g.stroke();
         }
-        // 灭世机神·震荡波：扩散圆环，越远越淡
-        for (const w of this._shockwaves) {
-            if (w.delay > 0) continue;
-            const [wx, wy] = this._toLocal(w.x, w.y);
-            const fade = Math.max(0.15, 1 - w.r / (CANVAS_W * 1.2));
-            g.strokeColor = new Color(255, 170, 60, Math.floor(220 * fade));
-            g.lineWidth = 4;
-            g.circle(wx, wy, w.r); g.stroke();
-            g.fillColor = new Color(255, 140, 40, Math.floor(26 * fade));
-            g.circle(wx, wy, w.r); g.fill();
-        }
 
         // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
         for (const t of this._turrets) {
@@ -3205,18 +3185,6 @@ export class GameManager extends Component {
                     g.lineWidth = 2;
                     g.circle(sx, sy, 24 + pulse * 12); g.stroke();
                 }
-                // 灭世机神·毁灭激光蓄能：主角方向瞄准线（浅红预警，越临近越亮）
-                if (e.invAimT > 0) {
-                    const [ax, ay] = this._toLocal(e.x, e.y);
-                    const aLen = 1300;
-                    const aa = -e.invAimAngle; // 画布角 → 本地角（y 翻转）
-                    const urgency = Math.min(1, e.invAimT / 0.5);
-                    g.strokeColor = new Color(255, 80, 40, Math.floor((60 + Math.sin(this._visualTime * 16) * 45 + 45) * urgency));
-                    g.lineWidth = 3;
-                    g.moveTo(ax, ay);
-                    g.lineTo(ax + Math.cos(aa) * aLen, ay + Math.sin(aa) * aLen);
-                    g.stroke();
-                }
             }
 
             // Hit-flash: brief white ring pulse on the sprite's own tint instead of a
@@ -3265,23 +3233,37 @@ export class GameManager extends Component {
             }
         }
 
-        // 灭世机神·毁灭激光：白热核心 + 橙色辉光，从发射点直达屏幕外。
-        // 伤害判定在画布空间(laser.angle)，渲染必须先做 y 翻转(画布角→本地角)，
-        // 否则光束方向与判定方向镜像错位——"伤害和显示的激光不一致"的根因。
-        const laser = this._invLaser;
-        if (laser) {
-            const [lx, ly] = this._toLocal(laser.x, laser.y);
-            const LEN = 1700;
-            const aa = -laser.angle; // 画布角 → 本地角（y 翻转），与伤害判定严格一致
-            const ex = lx + Math.cos(aa) * LEN;
-            const ey = ly + Math.sin(aa) * LEN;
-            const hot = 0.75 + 0.25 * Math.sin(this._visualTime * 40);
-            g.strokeColor = new Color(255, 140, 50, Math.floor(90 + 60 * hot));
-            g.lineWidth = 22; g.moveTo(lx, ly); g.lineTo(ex, ey); g.stroke();
-            g.strokeColor = new Color(255, 70, 30, Math.floor(120 + 80 * hot));
-            g.lineWidth = 12; g.moveTo(lx, ly); g.lineTo(ex, ey); g.stroke();
-            g.strokeColor = new Color(255, 240, 220, Math.floor(210 + 45 * hot));
-            g.lineWidth = 5; g.moveTo(lx, ly); g.lineTo(ex, ey); g.stroke();
+        // 灭世机神·天罚网格激光：3×3 战场网格的危险带覆盖在所有实体之上。
+        // warn：红橙闪烁随倒计时增强（给足 2 秒走位读秒）；fire：橙色辉光 + 白热核心。
+        // 判定在画布空间（网格均分），渲染经 _toLocalRect 转本地坐标，两者严格同源。
+        const grid = this._invGrid;
+        if (grid) {
+            const colW = CANVAS_W / 3, rowH = PLAYFIELD_BOTTOM / 3;
+            const isWarn = grid.phase === 'warn';
+            const urgency = isWarn ? 1 - grid.timer / 2 : 1;   // 预警越临近发射越亮
+            const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * (isWarn ? 13 : 26));
+            for (let i = 0; i < 3; i++) {
+                const bands: [number, number, number, number][] = [];
+                if (grid.cols[i]) bands.push([i * colW, 0, colW, PLAYFIELD_BOTTOM]);
+                if (grid.rows[i]) bands.push([0, i * rowH, CANVAS_W, rowH]);
+                for (const [bx, by, bw, bh] of bands) {
+                    const [lx, ly, lw, lh] = this._toLocalRect(bx, by, bw, bh);
+                    if (isWarn) {
+                        g.fillColor = new Color(255, 70, 40, Math.floor((26 + 64 * urgency) * (0.45 + 0.55 * pulse)));
+                        g.fillRect(lx, ly, lw, lh);
+                        g.strokeColor = new Color(255, 130, 70, Math.floor(90 + 130 * urgency * pulse));
+                        g.lineWidth = 2;
+                        g.rect(lx, ly, lw, lh); g.stroke();
+                    } else {
+                        const hot = 0.75 + 0.25 * pulse;
+                        g.fillColor = new Color(255, 120, 40, Math.floor(80 * hot));
+                        g.fillRect(lx, ly, lw, lh);
+                        const inset = 10;
+                        g.fillColor = new Color(255, 235, 215, Math.floor(150 + 90 * hot));
+                        g.fillRect(lx + inset, ly + inset, lw - inset * 2, lh - inset * 2);
+                    }
+                }
+            }
         }
 
         // Bullets — 玩家、分身和炮台弹携带角色 Sprite；敌弹按威胁类型程序绘制。
@@ -3754,7 +3736,7 @@ export class GameManager extends Component {
             gold: this._economy.gold,
             wave: this._waveMgr.wave, chapter: this._chapter,
             difficultyName: this._difficulty?.name,
-            augments: this._augMgr.active,
+            augments: this._augMgr.all(),
             skills: p.getSkillStates(),
             initialPassive: this._char ? { name: this._char.name, desc: this._char.desc } : undefined,
             bossHp:    this._boss?.hp,
@@ -3796,7 +3778,7 @@ export class GameManager extends Component {
                 { label: '金币',     value: `${this._economy.gold}` },
             ],
             progress: `进度  第${this._chapter + 1}章 · 第${this._waveMgr.wave}波 · 击杀 ${this.kills} · 得分 ${this.score}`,
-            augments:    this._augMgr.active,
+            augments:    this._augMgr.all(),
             skillStates: p.getSkillStates(),
         };
     }
@@ -3997,7 +3979,7 @@ export class GameManager extends Component {
             bossKills:     this.bossKills,
             goldEarned:    this._economy.earnedThisRun,
             maxCombo:      this.maxCombo,
-            augmentCount:  this._augMgr.active.length,
+            augmentCount:  this._augMgr.all().length,
             won,
         });
         for (const a of unlocked) {
@@ -4481,20 +4463,20 @@ export class GameManager extends Component {
 
     // ── 测试房：海克斯授予面板支持 ─────────────────────────
 
-    /** 测试房：点击卡片循环 未持有→Lv1→Lv2→Lv3→卸下。 */
+    /** 测试房：点击卡片循环 未持有→Lv1→Lv2→Lv3→卸下（force 绕过一次性每局一次限制）。 */
     grantTestAugment(hexId: string): void {
-        const existing = this._augMgr.active.find(a => a.id === hexId);
+        const existing = this._augMgr.ownedOf(hexId);
         if (existing) {
             if ((existing.level ?? 1) >= 3) this._augMgr.unequip(hexId, this._player, this);
-            else this._augMgr.equip({ id: hexId } as AugDef, this._player, this);
+            else this._augMgr.equip({ id: hexId } as AugDef, this._player, this, { force: true });
         } else {
-            this._augMgr.equip({ id: hexId } as AugDef, this._player, this);
+            this._augMgr.equip({ id: hexId } as AugDef, this._player, this, { force: true });
         }
     }
 
-    /** 测试房：当前持有列表（授予面板高亮用）。 */
+    /** 测试房：当前持有列表（技能+功能，授予面板高亮用）。 */
     getTestAugments(): AugDef[] {
-        return this._augMgr.active;
+        return this._augMgr.all();
     }
     get bullets()         { return this._bullets; }
     /** Alias — some call sites use game.bulletPool instead of game.bullets. */

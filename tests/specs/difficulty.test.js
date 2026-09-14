@@ -112,27 +112,28 @@ test('简单难度：章节 Boss 整场不召唤不冲锋（3 项技能仅保留
     assert.equal(spawned2.length, 1, '普通难度按阶段召唤 1 只 grunt');
 });
 
-test('简单难度：灭世机神仅保留毁灭激光，导弹/震荡波/追踪弹与最终形态关闭', () => {
+test('简单难度：灭世机神仅保留天罚网格激光，导弹/追踪弹与最终形态关闭', () => {
     const calls = [];
+    let gridFired = 0;
     const game = makeMockGame({
         _difficulty: byId('easy'),
         startInvaderMissiles() { calls.push('missiles'); },
-        startInvaderShockwaves() { calls.push('shock'); },
+        startInvaderLaserGrid() { gridFired++; },
     });
     const boss = makeBoss(game, 4); // 第5章 → invader 技能集
     assert.equal(boss.chapter, 5);
     const player = makePlayer({ x: 400, y: 0 });
     boss._invMissileCd = 0;
-    boss._invShockCd = 0;
     boss._invHomingCd = 0;
     boss.update(0.016, player, game);
-    assert.deepEqual(calls, [], '导弹/震荡波被技能削减关闭');
+    assert.deepEqual(calls, [], '导弹被技能削减关闭');
     assert.equal(game.enemyBullets.length, 0, '追踪弹不发射');
+    assert.equal(gridFired, 0, '网格激光初始冷却未到,不提前调度');
 
-    // 毁灭激光保留：冷却到点进入蓄能
+    // 天罚网格激光保留：冷却到点仍调度（1/3 技能削减后仅存的主技能）
     boss._invLaserCd = 0;
     boss.update(0.016, player, game);
-    assert.ok(boss.skillWindup > 0, '毁灭激光仍正常蓄能');
+    assert.equal(gridFired, 1, '天罚网格激光(融合技)仍正常调度');
 
     // 血量掉到 20% 以下也不触发最终形态（技能5 被削减）
     boss.hp = boss.maxHp * 0.1;

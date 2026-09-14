@@ -114,13 +114,16 @@ test('存档大厅:右侧动画传送门,点击进入选人,左侧展示当前�
     assert.match(screenSource, /name === 'lobby'[\s\S]*?this\._lobby\.refresh\(\)/);
 });
 
-test('任务页使用主支线节点链路、状态着色和独立任务详情', () => {
+test('任务页使用主线/支线/挑战三系列节点链路、状态着色和独立任务详情', () => {
     assert.match(metaSource, /'主线任务'/);
     assert.match(metaSource, /'支线任务'/);
+    assert.match(metaSource, /'挑战任务'/);
     assert.match(metaSource, /new Node\('Links'\)/);
     assert.match(metaSource, /completed: '已完成'/);
     assert.match(metaSource, /active: '进行中'/);
     assert.match(metaSource, /'奖励预览'/);
+    assert.match(metaSource, /challenge: '挑战试炼'/, '挑战系列分支文案');
+    assert.match(metaSource, /for \(const branch of \['main', 'side', 'challenge'\] as QuestBranch\[\]\)/, '三个分支都建树');
 });
 
 test('图鉴显示怪物英雄统计、条目图片和未解锁问号详情', () => {

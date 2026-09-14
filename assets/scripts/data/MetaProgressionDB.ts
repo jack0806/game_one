@@ -4,7 +4,7 @@
 // 当前内容仅用于页面结构与视觉验证。正式策划数据确定后，可直接替换数组
 // 内容；UI 只依赖这些接口，不需要调整节点布局或交互代码。
 
-export type QuestBranch = 'main' | 'side';
+export type QuestBranch = 'main' | 'side' | 'challenge';
 export type QuestState = 'completed' | 'active' | 'available' | 'locked';
 
 export interface QuestDef {
@@ -71,6 +71,32 @@ export const QUESTS: QuestDef[] = [
         desc: '任务内容尚未配置，将在后续版本中替换。',
         objective: '占位目标', progress: 0, goal: 1,
         reward: '未知奖励', rewardIcon: 'chaos', state: 'locked',
+    },
+
+    // ── 挑战任务系列：高难度自限玩法，每条都是独立的挑战试炼 ──
+    {
+        id: 'ch_01', branch: 'challenge', chapter: '试炼 I', name: '裸装出击',
+        desc: '不依赖任何海克斯强化，仅凭英雄基础火力完成第一章的清剿。',
+        objective: '单局不购买海克斯通关第一章', progress: 1, goal: 1,
+        reward: '核心币 × 300', rewardIcon: 'crit', state: 'completed',
+    },
+    {
+        id: 'ch_02', branch: 'challenge', chapter: '试炼 II', name: '连锁风暴',
+        desc: '在敌群中不间断地收割，将连击计数推向极限。',
+        objective: '单局连击达到 80', progress: 46, goal: 80,
+        reward: '强化样本 × 2', rewardIcon: 'combo', state: 'active', prerequisite: 'ch_01',
+    },
+    {
+        id: 'ch_03', branch: 'challenge', chapter: '试炼 III', name: '极简构筑',
+        desc: '只用 2 个技能格迎战最终首领，验证极限操作的可行性。',
+        objective: '技能格占用 ≤ 2 时击败任意章节首领', progress: 0, goal: 1,
+        reward: '核心币 × 500', rewardIcon: 'shield', state: 'available',
+    },
+    {
+        id: 'ch_04', branch: 'challenge', chapter: '终局试炼', name: '地狱朝圣',
+        desc: '在地狱难度的全面压制下走完全部章节，只有最坚定的猎手能够返回。',
+        objective: '地狱难度通关全部章节', progress: 0, goal: 1,
+        reward: '称号「不灭者」', rewardIcon: 'gold', state: 'locked', prerequisite: 'ch_03',
     },
 ];
 

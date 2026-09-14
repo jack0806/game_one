@@ -9,14 +9,22 @@ export interface HexButtonSkin {
 type ButtonVisualState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
 /**
- * 皮肤重绘代理：按钮常在所属页面仍隐藏时创建（如强化弹窗 onLoad），
- * 此时下发的 Graphics 绘制命令在页面激活后会丢失——表现就是
- * "按钮背景/边框看不见，鼠标放上去（触发 hover 重绘）才显示"。
- * 挂一个空组件在 onEnable（每次激活）时强制重绘皮肤即可根治。
+ * 重绘代理：Graphics 的绘制内容在节点 停用→再激活 后会丢失（渲染数据随
+ * onDisable 销毁，重新激活时不会自动重传）——表现就是"底板/遮罩/按钮皮肤
+ * 变透明，悬停（触发重绘）才显示"。挂一个空组件在 onEnable（每次激活）时
+ * 强制重绘即可根治。按钮皮肤、面板底板、全屏遮罩等一次性 Graphics 都应挂上。
  */
-class HexSkinRelay extends Component {
+class EnableRedrawRelay extends Component {
     redraw: (() => void) | null = null;
     onEnable() { this.redraw?.(); }
+}
+
+/** 给节点挂"激活即重绘"代理：redraw 会在该节点每次 onEnable 时执行。 */
+export function attachEnableRedraw(node: Node, redraw: () => void): void {
+    try {
+        const relay = node.addComponent(EnableRedrawRelay);
+        relay.redraw = redraw;
+    } catch { /* headless/测试环境无组件系统时忽略 */ }
 }
 
 function clippedRect(g: Graphics, w: number, h: number, cut: number, offsetY = 0): void {
@@ -98,10 +106,7 @@ export function applyHexButtonSkin(
 
     draw();
     // 页面激活时皮肤可能因"隐藏状态下绘制丢失"而不可见，onEnable 强制重绘兜底
-    try {
-        const relay = node.addComponent(HexSkinRelay);
-        relay.redraw = draw;
-    } catch { /* headless/测试环境无组件系统时忽略 */ }
+    attachEnableRedraw(node, draw);
     return {
         setDisabled(value: boolean) {
             disabled = value;

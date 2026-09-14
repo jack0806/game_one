@@ -73,15 +73,13 @@ export class BossController extends EnemyBase {
     finalForm = false;
     /** 最终形态引导剩余时间（>0 时无敌且不移动/不攻击）。 */
     _invFormT = 0;
-    /** 毁灭激光蓄能期锁定角度（渲染层画瞄准线）。 */
-    invAimAngle = 0;
-    /** 瞄准线剩余时间。 */
-    invAimT = 0;
-    /** 毁灭激光持续剩余（>0 时 Boss 定身站桩发射，与 GameManager.startInvaderLaser 的 t 同源）。 */
+    /**
+     * 天罚网格激光发射剩余（>0 时 Boss 定身站桩）。
+     * 由 GameManager._invGrid 的 fire 阶段置 2，与本类 update 同源递减。
+     */
     invLaserT = 0;
     private _invLaserCd = 8;
     private _invMissileCd = 14;
-    private _invShockCd = 10;
     private _invHomingCd = 6;
 
     override init(type: string, wave: number, game: any): void {
@@ -102,10 +100,10 @@ export class BossController extends EnemyBase {
         this._abyssPillarCd = 8; this._abyssZoneCd = 12;
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
-        this.finalForm = false; this._invFormT = 0; this.invAimT = 0; this.invLaserT = 0;
+        this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
         // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
-        // 进场约6秒才有第一发追踪弹，激光/震荡波/导弹依次排开；循环冷却保持原值
-        this._invLaserCd = 8; this._invMissileCd = 14; this._invShockCd = 10; this._invHomingCd = 6;
+        // 进场约6秒才有第一发追踪弹，网格激光/导弹依次排开；循环冷却保持原值
+        this._invLaserCd = 8; this._invMissileCd = 14; this._invHomingCd = 6;
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
         this._setupForChapter(this.chapter);
@@ -235,10 +233,10 @@ export class BossController extends EnemyBase {
             if (this.skillWindup <= 0) this._useSkill(player, game);
         }
 
-        // 飞空（机械高达天空坠击）/最终形态引导（灭世机神）/毁灭激光蓄能与发射（灭世机神）：
-        // 均不移动、不接触攻击（激光是站桩技能）
+        // 飞空（机械高达天空坠击）/最终形态引导（灭世机神）/天罚网格激光发射（灭世机神）：
+        // 均不移动、不接触攻击（网格激光发射是站桩技能）
         const airborne = (this.bossKind === 'mech' && this.mechSkyT > 0)
-            || (this._usesInvaderSkills() && (this._invFormT > 0 || this.invAimT > 0 || this.invLaserT > 0));
+            || (this._usesInvaderSkills() && (this._invFormT > 0 || this.invLaserT > 0));
 
         // 冲刺先锁定路线并蓄力，再进入冲刺移动。
         if (airborne) {
@@ -427,10 +425,6 @@ export class BossController extends EnemyBase {
                 break;
             case 'mech':  this._mechBladeStormFire(player, game); break;
             case 'abyss': this._abyssWaterSpikes(player, game); break;
-            case 'ch5':
-            case 'invader':
-                this._invaderLaserFire(player, game);
-                break;
         }
     }
 
@@ -630,29 +624,21 @@ export class BossController extends EnemyBase {
     }
 
     /**
-     * 技能状态机：毁灭激光 / 集束导弹 / 震荡波 / 追踪导弹。
+     * 技能状态机：天罚网格激光（毁灭激光×震荡波融合）/ 集束导弹 / 追踪导弹。
      * 技能5：血量首次掉到剩余 20% → 无敌 + 引导 5 秒 → 最终形态（全技能强化）。
      */
     private _updateInvaderSkills(dt: number, player: any, game: any): void {
-        if (this.invAimT > 0) {
-            this.invAimT = Math.max(0, this.invAimT - dt);
-            // 蓄能期间瞄准线实时跟随主角：发射瞬间的角度=主角当前方向，
-            // 而不是蓄能开始时锁定的旧角度（避免主角走位后激光打空）
-            if (player?.alive) {
-                this.invAimAngle = Math.atan2(player.y - this.y, player.x - this.x);
-            }
-        }
         if (this.invLaserT > 0) this.invLaserT = Math.max(0, this.invLaserT - dt);
 
         // 技能5：最终形态切换（首次低于20%血量）——恢复至50%血后再进入无敌引导。
-        // 简单难度技能削减：4 主技能 + 最终形态共 5 项 → 仅保留毁灭激光（1/3 向下取整）
+        // 简单难度技能削减：3 主技能 + 最终形态共 4 项 → 仅保留天罚网格激光（1/3 向下取整）
         if (!this.bossSkillCut && !this.finalForm && this.hp / this.maxHp <= 0.2) {
             this.finalForm = true;
             this.hp = this.maxHp * 0.5; // 首次掉到20%后恢复至50%血
             this.invulnerable = true;
             this._invFormT = 5;
-            // 打断进行中的激光蓄能，避免形态切换期间还在读条
-            this.skillWindup = 0; this.invAimT = 0;
+            // 打断进行中的技能前摇（GameManager 侧网格激光随无敌引导一并收场）
+            this.skillWindup = 0;
             game.particles?.heal?.(this.x, this.y);
             game.floatingText?.spawn?.(this.x, this.y - 130, '能量重铸 +50%血！', '#8fffb0', 20, true);
             game.floatingText?.spawn?.(this.x, this.y - 100, '⚠ 最终形态 引导中… ⚠', '#ffaa33', 24, true);
@@ -674,16 +660,12 @@ export class BossController extends EnemyBase {
         }
         if (!player.alive) return;
 
-        // 技能1：毁灭激光 —— 蓄能锁定主角方向，蓄能结束由 _useSkill 发射
+        // 技能1：天罚网格激光（原毁灭激光+震荡波融合）——冷却到点直接交由
+        // GameManager 划分 3×3 网格：危险带闪烁预警 2 秒 → 全带发射 2 秒（期间本类定身）。
         this._invLaserCd -= dt;
-        if (this._invLaserCd <= 0 && this.skillWindup <= 0) {
-            this._invLaserCd = (this.finalForm ? 7 : 9) + Rng.float(0, 2);
-            const windup = this.finalForm ? 1 : 2;
-            this.invAimAngle = Math.atan2(player.y - this.y, player.x - this.x);
-            this.invAimT = windup;
-            this.skillWindup = windup;
-            this.skillWindupMax = windup;
-            game.floatingText?.spawn?.(this.x, this.y - 90, '毁灭激光蓄能！', '#ff5544', 18, true);
+        if (this._invLaserCd <= 0) {
+            this._invLaserCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
+            game.startInvaderLaserGrid?.(this);
         }
 
         // 技能2：集束导弹 —— 上天后落地，落地前区域高亮（GameManager._missileZones 维护）
@@ -693,26 +675,12 @@ export class BossController extends EnemyBase {
             game.startInvaderMissiles?.(this);
         }
 
-        // 技能3：震荡波 —— 以自身发出多道扩散波（基础3道 / 最终6道）
-        this._invShockCd -= dt;
-        if (!this.bossSkillCut && this._invShockCd <= 0) {
-            this._invShockCd = (this.finalForm ? 6 : 8) + Rng.float(0, 2);
-            game.startInvaderShockwaves?.(this);
-        }
-
-        // 技能4：追踪导弹（基础1发 / 最终2发）
+        // 技能3：追踪导弹（基础1发 / 最终2发）
         this._invHomingCd -= dt;
         if (!this.bossSkillCut && this._invHomingCd <= 0) {
             this._invHomingCd = (this.finalForm ? 4.5 : 6) + Rng.float(0, 1.5);
             this._invaderHomingFire(player, game);
         }
-    }
-
-    /** 技能1发射：激光沿蓄能锁定角射出直达屏幕外（持续3秒，期间Boss定身），GameManager 负责中速追踪与持续真伤。 */
-    private _invaderLaserFire(_player: any, game: any): void {
-        this.invAimT = 0;
-        this.invLaserT = 3; // 与 GameManager.startInvaderLaser 的 t 同源，站桩发射3秒
-        game.startInvaderLaser?.(this);
     }
 
     /**
