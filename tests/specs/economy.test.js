@@ -73,6 +73,22 @@ test('spend()是spendGold的别名', () => {
     assert.equal(eco.gold, 30);
 });
 
+test('refund()原路退款:不吃点金手乘区、不计入本局获得(防刷钱闭环)', () => {
+    const eco = new Economy();
+    eco.addGold(100);
+    eco.gainMult = 1.5;                       // 点金手 Lv1
+    eco.spend(45);
+    eco.refund(45);
+    assert.equal(eco.gold, 100, '购买失败退款必须等额返回,不被 gainMult 放大成68');
+
+    // 对比:真实获得(战争红利/拾取)才吃乘区,并计入本局统计
+    eco.addGold(100);
+    assert.equal(eco.gold, 250, 'addGold 正常获得仍吃乘区');
+    assert.equal(eco.earnedThisRun, 250, 'earnedThisRun 只统计真实获得,退款不计入');
+    assert.equal(eco.refund(0), undefined, '非正数退款为无操作');
+    assert.equal(eco.gold, 250);
+});
+
 test('reset()清空gold/parts/drops', () => {
     const eco = new Economy();
     eco.addGold(100);

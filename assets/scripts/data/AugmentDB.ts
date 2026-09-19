@@ -4,6 +4,8 @@
 // 2026-09-14 按用户《海克斯.docx》全量重做：旧 50 词条整体废弃，
 // 换成 18 个海克斯（功能性 5 / 技能性 9 / 一次性 4），每个海克斯的
 // 三档数值直接对应 Lv.1/2/3（"同步不同数值生成不同等级的强化"）。
+// 2026-09-19 追加元素体系：hex19 元素暴击（单档彩，集齐四元素解锁）+
+// hex20~23 风/火/土/水四元素海克斯（暴击触发元素飞弹齐射 + 元素爆炸）。
 // 稀有度与定价按文档：银 15-50 / 金 100-250 / 彩 500-1000，
 // 购买后同稀有度溢价 10%（彩 100%），卖出回收购买价 75%（见
 // AugmentManager / AugSelectUI / GameManager 的商店接线）。
@@ -47,6 +49,8 @@ export interface AugmentDef {
      */
     onLevel?:  (p: any, game: any, from: number, to: number) => void;
     onHit?:    (p: any, enemy: any, dmg: number, game: any) => void;
+    /** 攻击发生暴击时触发（普攻/子弹暴击结算后分发；海克斯19 元素暴击）。 */
+    onCrit?:   (p: any, enemy: any, dmg: number, game: any) => void;
     onKill?:   (p: any, enemy: any, dmg: number, game: any) => void;
     onUpdate?: (p: any, dt: number, game?: any) => void;
     // ── 以下为运行期实例字段（装备拷贝时生成） ──
@@ -84,6 +88,107 @@ export function applyBurn(enemy: any, dps: number, duration: number): void {
 export function applyPoison(enemy: any, dps: number, duration: number): void {
     if (!enemy.alive) return;
     enemy.dots.push({ type: 'poison', dps, timeLeft: duration, color: '#44ff00' });
+}
+
+// ── 元素暴击（海克斯19）四元素体系 ────────────────────────
+
+/** 水/火/土/风四元素定义（名字与配色供飞弹/爆炸表现用）。 */
+export const ELEMENT_TYPES = {
+    water: { name: '水', color: '#4db8ff' },
+    fire:  { name: '火', color: '#ff6a3d' },
+    earth: { name: '土', color: '#d2a24c' },
+    wind:  { name: '风', color: '#9fe8c8' },
+};
+export type ElementType = keyof typeof ELEMENT_TYPES;
+const ELEMENT_KEYS: ElementType[] = ['water', 'fire', 'earth', 'wind'];
+
+/**
+ * 元素飞弹命中：给目标打元素印记；目标集齐 ≥2 种不同元素时立即产生元素爆炸，
+ * 爆炸伤害 = 单枚飞弹伤害 × 2^(元素种数-1)（两种×2 / 三种×4 / 四种×8），
+ * 对半径 90 码内全部敌人生效，爆炸后印记清空、可重新累积。
+ */
+export function applyElementMark(enemy: any, element: ElementType, missileDmg: number, player: any, game: any): void {
+    if (!enemy || !enemy.alive) return;
+    if (!enemy._elemMarks) enemy._elemMarks = new Set<string>();
+    enemy._elemMarks.add(element);
+    if (enemy._elemMarks.size < 2) {
+        game?.floatingText?.spawn?.(enemy.x, enemy.y - 26, ELEMENT_TYPES[element].name, ELEMENT_TYPES[element].color, 12, false);
+        return;
+    }
+    const kinds = enemy._elemMarks.size;
+    enemy._elemMarks.clear();
+    const boom = Math.round(missileDmg * Math.pow(2, kinds - 1));
+    game?.particles?.explode?.(enemy.x, enemy.y, ELEMENT_TYPES[element].color, 90);
+    game?.screenShake?.shake?.(5, 0.2);
+    game?.audio?.playSfx?.('explode', 0.6);
+    game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, `元素爆炸 ×${kinds - 1}！`, ELEMENT_TYPES[element].color, 17, true);
+    for (const e of (game?.enemies || []) as any[]) {
+        if (e.alive && Vec.dist(e.x, e.y, enemy.x, enemy.y) < 90) {
+            e.takeDamage(boom, player, game);
+        }
+    }
+}
+
+/** 元素暴击齐射区间（单档彩色海克斯：10-20 枚 / 单枚 15-20 伤害）。 */
+const ELEMENT_VOLLEY: { count: [number, number]; dmg: [number, number] } = {
+    count: [10, 20], dmg: [15, 20],
+};
+
+/** 四元素海克斯 id（集齐后才解锁元素暴击的购买条件）。 */
+export const ELEMENT_HEX_IDS = ['hex20', 'hex21', 'hex22', 'hex23'];
+
+/**
+ * 元素暴击齐射：先锁定目标、再发射。
+ * 锁定规则（用户设计）：
+ *  · 飞弹数 ≥ 目标数：鸽笼分配——每个目标必被锁定一枚（20 枚 19 目标时必
+ *    有目标吃 2 枚），剩余飞弹随机散锁；
+ *  · 飞弹数 < 目标数：整轮以 p 概率"多枚飞弹锁定同一目标"（随机 2~N 枚
+ *    集中给一个随机目标，其余分散到不同目标）；p = 目标>20 ? 15% : 20%。
+ * 每枚飞弹随机携带 水/火/土/风 之一，单枚伤害区间随机。
+ */
+export function fireElementalVolley(hex: any, p: any, game: any): void {
+    void hex;
+    const band = ELEMENT_VOLLEY;
+    // 隐身/飞空的隐藏单位无敌，不参与锁定（避免整轮飞弹浪费在免疫目标上）
+    const targets = ((game?.enemies || []) as any[]).filter(e =>
+        e.alive && !e.dead && !e.invisible && !((e.mechSkyT ?? 0) > 0));
+    if (!targets.length || !game?.bullets?.spawn) return;
+    const N = Rng.int(band.count[0], band.count[1]);
+
+    // —— 先锁定：无放回抽取，保证分散时目标不重复 ——
+    const pickFrom = (pool: any[]) => pool.splice(Rng.int(0, pool.length - 1), 1)[0];
+    const locks: any[] = [];
+    if (N >= targets.length) {
+        const pool = [...targets];
+        for (let i = 0; i < Math.min(N, targets.length); i++) locks.push(pickFrom(pool));
+        while (locks.length < N) locks.push(Rng.pick(targets));
+    } else if (Rng.chance(targets.length > 20 ? 0.15 : 0.20)) {
+        const focus = Rng.pick(targets);
+        const k = Rng.int(2, N);
+        for (let i = 0; i < k; i++) locks.push(focus);
+        const rest = targets.filter(t => t !== focus);
+        while (locks.length < N && rest.length) locks.push(pickFrom(rest));
+    } else {
+        const pool = [...targets];
+        while (locks.length < N) locks.push(pickFrom(pool));
+    }
+
+    // —— 再发射：飞弹各自锁定目标飞行（命中时打元素印记） ——
+    for (const target of locks) {
+        const element = ELEMENT_KEYS[Rng.int(0, ELEMENT_KEYS.length - 1)];
+        const a = Rng.float(0, Math.PI * 2);
+        game.bullets.spawn({
+            x: p.x, y: p.y,
+            vx: Math.cos(a) * 400, vy: Math.sin(a) * 400,
+            damage: Rng.int(band.dmg[0], band.dmg[1]),
+            radius: 6, color: ELEMENT_TYPES[element].color,
+            owner: 'player', charKey: p.charId ?? '',
+            lifeTime: 2.5, homing: true,
+            _homingTarget: target, element,
+        });
+    }
+    game.audio?.playSfx?.('skill_q', 0.5);
+    game.floatingText?.spawn?.(p.x, p.y - 46, `元素暴击 ×${N}`, '#9fe8c8', 14, true);
 }
 
 /** 乘区换档辅助：把 stats[key] 从 (1+旧档) 精确换到 (1+新档)。 */
@@ -293,6 +398,67 @@ export const AUGMENT_DB: AugmentDef[] = [
               this._regenT -= dt;
               p.heal(10 * dt, false);
           }
+      } },
+
+    // ─── 元素暴击 + 四元素海克斯（2026-09-19 用户设计稿） ───
+    // 元素暴击为单档彩色海克斯：只有集齐 风/火/土/水 四种元素海克斯后
+    // 才会解锁购买条件（AugmentManager.rollOptions / equip 校验）。
+    { id: 'hex19', index: 19, rarity: 'prismatic', icon: 'chaos', name: '元素暴击', category: '技能',
+      prices: [900], values: [1],
+      descAt: () => `攻击暴击时发射 ${ELEMENT_VOLLEY.count[0]}-${ELEMENT_VOLLEY.count[1]} 枚元素飞弹` +
+          `（水/火/土/风随机，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射）；` +
+          `同一目标集齐 2 种元素即产生元素爆炸，每多一种元素伤害翻倍。需先集齐四种元素海克斯`,
+      onCrit(p, _enemy, _dmg, game) { fireElementalVolley(this, p, game); } },
+
+    // ─── 四元素海克斯（集齐解锁元素暴击） ──────────────────
+    { id: 'hex20', index: 20, rarity: 'silver', icon: 'speed', name: '风元素', category: '技能',
+      prices: [50, 230, 880], values: [0.10, 0.15, 0.20],
+      descAt: (l) => `远程：子弹飞行速度 +${[10, 15, 20][l - 1]}%；近战：攻击伤害 +${[5, 8, 10][l - 1]}%`,
+      onLevel(p, _g, from, to) {
+          if (p._charDef?.attackType === 'melee') {
+              swapFactor(p.stats, 'damage', from ? this.values[from - 1] * 0.5 : 0, to ? this.values[to - 1] * 0.5 : 0);
+          } else {
+              swapFlat(p.stats, 'bulletSpeedMult', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+          }
+      } },
+
+    { id: 'hex21', index: 21, rarity: 'silver', icon: 'fire', name: '火元素', category: '技能',
+      prices: [50, 230, 880], values: [0.05, 0.06, 0.07],
+      descAt: (l) => `攻击附加灼烧：每秒造成怪物当前生命值 ${[5, 6, 7][l - 1]}% 的伤害（持续 1.5 秒，命中刷新）`,
+      onHit(_p, enemy, _dmg, _game) {
+          if (!enemy?.alive) return;
+          const pct = this.values[(this.level ?? 1) - 1];
+          const dps = enemy.hp * pct;
+          const dots = enemy.dots || (enemy.dots = []);
+          // 命中刷新而非叠层：高频攻击下按当前血量重算灼烧，不无限叠 DoT
+          const existing = dots.find(d => d.type === 'hex_fire');
+          if (existing) { existing.dps = dps; existing.timeLeft = 1.5; }
+          else dots.push({ type: 'hex_fire', dps, timeLeft: 1.5, color: '#ff6a3d' });
+      } },
+
+    { id: 'hex22', index: 22, rarity: 'silver', icon: 'pierce', name: '土元素', category: '技能',
+      prices: [50, 230, 880], values: [1, 2, 3],
+      descAt: (l) => `远程：攻击可以穿刺（+${[1, 2, 3][l - 1]} 个目标）；近战：攻击范围 +${[20, 25, 30][l - 1]}%`,
+      onLevel(p, _g, from, to) {
+          if (p._charDef?.attackType === 'melee') {
+              const meleeRange = p._charDef.attackRange ?? 90;
+              const pct = [0.20, 0.25, 0.30];
+              swapFlat(p.stats, 'rangeBonus',
+                  from ? meleeRange * pct[from - 1] : 0, to ? meleeRange * pct[to - 1] : 0);
+          } else {
+              swapFlat(p.stats, 'pierce', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+          }
+      } },
+
+    { id: 'hex23', index: 23, rarity: 'silver', icon: 'ice', name: '水元素', category: '技能',
+      prices: [50, 230, 880], values: [0.20, 0.25, 0.30],
+      descAt: (l) => `攻击附加减速：命中使敌人移速 -${[20, 25, 30][l - 1]}%，持续 2 秒（重复命中刷新）`,
+      onHit(_p, enemy, _dmg, _game) {
+          if (!enemy?.alive) return;
+          const pct = this.values[(this.level ?? 1) - 1];
+          // 与冰冻/其他减速共存：只在没有更强减速时覆盖，_slowTimer 到期自动恢复
+          enemy.slowMult = Math.min(enemy.slowMult ?? 1, 1 - pct);
+          enemy._slowTimer = Math.max(enemy._slowTimer ?? 0, 2);
       } },
 ];
 

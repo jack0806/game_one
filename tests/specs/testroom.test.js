@@ -208,13 +208,23 @@ test('机械高达横劈扇形与判定区域一致,飞空期间完全消失', (
     assert.match(gameSource, /e\.invisible \? 60 : 0\)/, '机械高达飞空时贴图完全消失,水母隐身仍半透明');
 });
 
-test('隐形/飞空实体感修复:阴影与血条隐藏,受击显示免疫', () => {
+test('隐形/飞空实体感修复:阴影与血条隐藏,受击显示免疫,索敌不丢有效目标', () => {
     assert.match(gameSource, /const hidden = e\.invisible \|\| \(e instanceof BossController && e\.mechSkyT > 0\);/, '隐藏态判定');
     assert.match(gameSource, /if \(!hidden\) \{[\s\S]*?g\.ellipse\(/, '隐藏时不画接触阴影');
     assert.match(gameSource, /if \(\(\(!e\.isBoss && e\.hp < e\.maxHp\) \|\| showGuides\) && !hidden\)/, '定位模式也不能给隐藏实体画头顶血条');
     const bulletSource2 = fs.readFileSync(path.join(root, 'assets/scripts/entities/BulletController.ts'), 'utf8');
     assert.match(bulletSource2, /'免疫'/, '子弹命中无敌目标显示免疫');
     assert.match(playerSource, /'免疫'/, '近战命中无敌目标显示免疫');
+    // 隐身单位不吃自动索敌优先级（隐身=无敌,锁着只会把火力灌进"免疫"）；
+    // 场上无可见敌人时回退锁定隐藏目标，英雄不会完全丢失目标
+    assert.match(gameSource, /getNearestEnemy[\s\S]*?const isHidden = \(e: any\) => !!e\.invisible \|\| \(\(e as any\)\.mechSkyT \?\? 0\) > 0;/,
+        '索敌区分隐藏单位');
+    assert.match(gameSource, /return best \?\? bestHidden;/, '无可见目标时回退锁定隐藏目标');
+    // 玩家子弹穿透隐藏单位：不被无敌的隐身怪隐形"吃弹"、不挡后方目标
+    assert.match(bulletSource2, /玩家子弹穿透隐身\/飞空的隐藏单位/, '子弹穿透隐藏单位注释');
+    assert.match(bulletSource2, /if \(!b\.isEnemyBullet && b\.owner !== 'enemy'[\s\S]*?!!e\.invisible \|\| \(\(e as any\)\.mechSkyT \?\? 0\) > 0\)\) continue;/,
+        '玩家子弹跳过隐藏单位碰撞');
+    assert.match(bulletSource2, /nearest = pickNearest\(e => !!e\.isBoss, false\)/, '追踪弹优先可见Boss');
 });
 
 test('机械高达升空直接消失:带走自身弹幕,不留残余攻击', () => {

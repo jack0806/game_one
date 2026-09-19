@@ -5,6 +5,7 @@ import { Node, Sprite, Color, UITransform } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
+import { applyElementMark } from '../data/AugmentDB';
 
 export interface BulletData {
     active:       boolean;
@@ -51,6 +52,8 @@ export interface BulletData {
     _spedUp?: boolean;
     /** 追踪弹锁定目标（玩家弹）；加速瞬间清空重锁，目标死亡自动重锁最近存活敌人。 */
     _homingTarget?: any;
+    /** 元素飞弹（海克斯19 元素暴击）：命中时给目标打对应元素印记，集齐引爆。 */
+    element?: 'water' | 'fire' | 'earth' | 'wind';
     trailCd?:     number;
     /** Sprite node carrying bullet_<charKey> art; enemy bullets use programmatic threat shapes. */
     node?:        Node;
@@ -93,7 +96,7 @@ function resetBullet(b: BulletData): void {
     b.pierceShield = false; b.dot = undefined; b.slow = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
     b.explodeRadius = undefined; b.explodeColor = undefined;
     b.speedUpAfter = undefined; b.speedUpMult = undefined; b._spedUp = false;
-    b._homingTarget = undefined;
+    b._homingTarget = undefined; b.element = undefined;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -185,24 +188,28 @@ export class BulletPool {
 
             // 追踪逻辑（凯尔大招等）：锁定最近存活敌人，目标死亡后重新锁定。
             // 场上存在存活 Boss 时优先锁定最近的 Boss（凯尔大招"有boss优先锁boss"）。
+            // 隐身/飞空的隐藏单位不吃索敌优先级（无敌期间追踪弹全浪费），
+            // 只有场上再无可见目标时才回退锁定隐藏目标。
             if (b.homing) {
                 let nearest = b._homingTarget;
                 if (nearest && !nearest.alive) { nearest = undefined; b._homingTarget = undefined; }
                 if (!nearest) {
-                    let bestD = Infinity;
-                    for (const e of enemies) {
-                        if (!e.alive || !e.isBoss) continue;
-                        const d = (e.x - b.x) ** 2 + (e.y - b.y) ** 2;
-                        if (d < bestD) { bestD = d; nearest = e; }
-                    }
-                    if (!nearest) {
-                        bestD = Infinity;
+                    const isHidden = (e: any) => !!e.invisible || ((e as any).mechSkyT ?? 0) > 0;
+                    const pickNearest = (pred: (e: any) => boolean, allowHidden: boolean) => {
+                        let found: any = undefined;
+                        let bestD = Infinity;
                         for (const e of enemies) {
-                            if (!e.alive) continue;
+                            if (!e.alive || !pred(e)) continue;
+                            if (!allowHidden && isHidden(e)) continue;
                             const d = (e.x - b.x) ** 2 + (e.y - b.y) ** 2;
-                            if (d < bestD) { bestD = d; nearest = e; }
+                            if (d < bestD) { bestD = d; found = e; }
                         }
-                    }
+                        return found;
+                    };
+                    nearest = pickNearest(e => !!e.isBoss, false)      // 可见 Boss 优先
+                        ?? pickNearest(e => true, false)               // 最近的可见敌人
+                        ?? pickNearest(e => !!e.isBoss, true)          // 回退：隐藏 Boss
+                        ?? pickNearest(e => true, true);               // 回退：隐藏敌人
                     b._homingTarget = nearest;
                 }
                 if (nearest) {
@@ -236,6 +243,10 @@ export class BulletPool {
                 : enemies;
             for (const e of collisionTargets) {
                 if (!e.alive || b.hitEnemies.has(e)) continue;
+                // 玩家子弹穿透隐身/飞空的隐藏单位：它们无敌，撞上只会被隐形"吃弹"，
+                // 还挡住射向其后方真实目标的火力（隐身结束恢复可命中）
+                if (!b.isEnemyBullet && b.owner !== 'enemy'
+                    && (!!e.invisible || ((e as any).mechSkyT ?? 0) > 0)) continue;
                 if (Vec.dist2(b.x, b.y, e.x, e.y) < (b.radius + e.radius) ** 2) {
                     b.hitEnemies.add(e);
                     let dmg = b.damage;
@@ -248,6 +259,10 @@ export class BulletPool {
                     if (e.frozen > 0 && player.stats.freezeBonus) dmg *= player.stats.freezeBonus;
                     const actualDamage = e.takeDamage(dmg, player, game);
                     player.applyAttackLifesteal?.(actualDamage === undefined ? dmg : actualDamage, game);
+                    // 元素飞弹（海克斯19）：命中即打元素印记，集齐 2 种不同元素引爆
+                    if (b.element) applyElementMark(e, b.element, b.damage, player, game);
+                    // 海克斯19 元素暴击：子弹暴击时触发（伤害结算后分发）
+                    if (b.isCrit) game.augmentManager?.dispatchCrit?.(player, e, dmg, game);
                     if (b.onHitCb) b.onHitCb(b, e);
                     // 时空行者被动：子弹命中额外结算15%真实伤害（无视护盾/护甲/隐身/无敌）
                     if (player.stats?.trueDamageRate && e.takeTrueDamage) {

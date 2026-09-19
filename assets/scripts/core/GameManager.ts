@@ -1917,15 +1917,14 @@ export class GameManager extends Component {
                 const price = card._price ?? 0;
                 if (!this._economy.spend(price)) return false;
                 if (!this._augMgr.equip(card, this._player, this)) {
-                    // 满格/已满级等装备失败：原路退款
-                    this._economy.addGold(price);
+                    // 满格/已满级等装备失败：原路退款（refund 不吃点金手乘区，
+                    // 否则 gainMult>1 时购买失败反而净赚，可无限点击刷钱）
+                    this._economy.refund(price);
                     return false;
                 }
                 this._augMgr.recordPurchase(card.rarity, price);
-                // 实付价累计到持有实例（升档叠加，卖出按总额 75% 回收）；
-                // 一次性海克斯（15/17）生效即消耗，无持有实例
-                const inst = this._augMgr.ownedOf(card.id);
-                if (inst) inst.paid = (inst.paid ?? 0) + price;
+                // 实付价由 AugmentManager.equip 累计到对应实例（升级/叠加新实例均生效），
+                // 卖出按各实例总额 75% 回收
                 return true;
             },
             refreshCost: () => this._nextAugRefreshCost(),
@@ -1940,7 +1939,9 @@ export class GameManager extends Component {
                 const inst = this._augMgr.unequip(cardLike.id, this._player, this);
                 if (!inst) return false;
                 const refund = this._augMgr.sellValue(inst);
-                if (refund > 0) this._economy.addGold(refund);
+                // 卖出回收同样走 refund：吃乘区时 75%回收×1.5 = 112.5% 实付，
+                // 买卖循环即可无限刷钱
+                if (refund > 0) this._economy.refund(refund);
                 return true;
             },
             odds: () => this._augRarityOdds(),
@@ -3877,17 +3878,29 @@ export class GameManager extends Component {
         }
     }
 
-    /** Return the living enemy closest to (x, y), or undefined. */
+    /**
+     * Return the living enemy closest to (x, y), or undefined.
+     * 隐身/飞空等视觉隐藏且无敌的敌人不吃自动索敌优先级——锁着它只会把火力
+     * 全灌进"免疫"里，看起来就像英雄失去了攻击目标；场上没有可见敌人时仍
+     * 回退锁定隐藏目标，保证英雄不会完全丢失目标（隐身结束立刻恢复输出）。
+     */
     getNearestEnemy(x: number, y: number): EnemyBase | undefined {
+        const isHidden = (e: any) => !!e.invisible || ((e as any).mechSkyT ?? 0) > 0;
         let best: EnemyBase | undefined;
+        let bestHidden: EnemyBase | undefined;
         let bestD = Infinity;
+        let bestHiddenD = Infinity;
         for (const e of this._enemies) {
             if (e.dead) continue;
             const dx = e.x - x, dy = e.y - y;
             const d  = dx * dx + dy * dy;
-            if (d < bestD) { bestD = d; best = e; }
+            if (isHidden(e)) {
+                if (d < bestHiddenD) { bestHiddenD = d; bestHidden = e; }
+            } else if (d < bestD) {
+                bestD = d; best = e;
+            }
         }
-        return best;
+        return best ?? bestHidden;
     }
 
     /**
@@ -4463,8 +4476,14 @@ export class GameManager extends Component {
 
     // ── 测试房：海克斯授予面板支持 ─────────────────────────
 
-    /** 测试房：点击卡片循环 未持有→Lv1→Lv2→Lv3→卸下（force 绕过一次性每局一次限制）。 */
+    /** 测试房：点击卡片循环 未持有→Lv1→Lv2→Lv3→卸下（force 绕过一次性/解锁限制）。
+     *  功能性海克斯无卸下循环：升档优先，满档后叠加新实例（无上限，可反复叠加）。 */
     grantTestAugment(hexId: string): void {
+        const def = AUGMENT_DB.find(a => a.id === hexId);
+        if (def?.category === '功能') {
+            this._augMgr.equip({ id: hexId } as AugDef, this._player, this, { force: true });
+            return;
+        }
         const existing = this._augMgr.ownedOf(hexId);
         if (existing) {
             if ((existing.level ?? 1) >= 3) this._augMgr.unequip(hexId, this._player, this);

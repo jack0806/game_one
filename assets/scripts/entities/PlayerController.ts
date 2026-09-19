@@ -569,6 +569,8 @@ export class PlayerController extends Component {
         const actualDamage = actual === undefined ? dmg : actual;
         this.applyAttackLifesteal(actualDamage, game);
         game.augmentManager?.dispatchHit(this, enemy, dmg, game);
+        // 海克斯19 元素暴击：攻击发生暴击时触发（伤害结算后分发）
+        if (isCrit) game.augmentManager?.dispatchCrit?.(this, enemy, dmg, game);
         // 时空行者被动：额外造成15%真实伤害（无视护盾/护甲/隐身/无敌）
         if (this.stats.trueDamageRate && enemy.takeTrueDamage) {
             enemy.takeTrueDamage(dmg * this.stats.trueDamageRate, this, game);
@@ -627,8 +629,10 @@ export class PlayerController extends Component {
 
         const spawnBullet = (dx: number, dy: number, dmgMult = 1, opts: { homing?: boolean; forceCrit?: boolean } = {}) => {
             const [muzzleX, muzzleY] = this.getMuzzlePosition();
+            // 海克斯20 风元素：子弹飞行速度加成（bulletSpeedMult 为加算基数）
+            const spd = 550 * (1 + (this.stats.bulletSpeedMult || 0));
             game.bulletPool?.spawn({
-                x: muzzleX, y: muzzleY, vx: dx * 550, vy: dy * 550,
+                x: muzzleX, y: muzzleY, vx: dx * spd, vy: dy * spd,
                 damage: dmg * dmgMult, radius: this._charDef.attackType === 'melee' ? 20 : 5,
                 color: this.color, owner: 'player', isCrit: isCrit || !!opts.forceCrit,
                 homing: !!opts.homing,

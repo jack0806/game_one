@@ -49,8 +49,43 @@ test('同一海克斯重复装备升档：Lv1→Lv2→Lv3，攻速按档位精�
     am.equip({ id: 'hex01' }, p, game);   // Lv3 +30%
     assert.equal(am.functional[0].level, 3);
     assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9);
+});
 
-    assert.equal(am.equip({ id: 'hex01' }, p, game), false, '满级后再装备失败');
+test('功能性海克斯可无限叠加购买：满档后再买=叠加新实例，效果独立叠乘', () => {
+    const am = new AugmentManager();
+    const game = wireAm(makeMockGame(), am);
+    const p = makeStatsPlayer();
+    const base = p.stats.attackSpeed;
+
+    // 前3次购买把第一份升到 Lv3（×1.30）
+    for (let i = 0; i < 3; i++) am.equip({ id: 'hex01' }, p, game);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9);
+
+    // 第4次购买：满档后叠加 Lv1 新实例（×1.30 ×1.10）
+    assert.equal(am.equip({ id: 'hex01' }, p, game), true, '满档后仍可购买');
+    assert.equal(am.functional.length, 2, '叠加新实例');
+    assert.equal(am.functional[1].level, 1);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.43) < 1e-9, '效果独立叠乘');
+
+    // 第5-6次购买把第二份升到 Lv3（×1.30 ×1.30）
+    am.equip({ id: 'hex01' }, p, game);
+    am.equip({ id: 'hex01' }, p, game);
+    assert.equal(am.functional.length, 2, '升级不新增实例');
+    assert.equal(am.functional[1].level, 3);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.69) < 1e-9);
+
+    // 技能格始终不受影响；卖出叠加实例只回退该实例的贡献
+    assert.equal(am.active.length, 0);
+    am.unequip('hex01', p, game);
+    assert.equal(am.functional.length, 1);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9, '卖出一份后另一份仍生效');
+
+    // 满档持有后商店卡池仍持续刷出该功能海克斯（可继续无限购买）
+    let offered = false;
+    for (let i = 0; i < 60 && !offered; i++) {
+        offered = am.rollOptions(3, 8).some(c => c.id === 'hex01');
+    }
+    assert.ok(offered, '满档功能海克斯应持续出现在卡池');
 });
 
 test('功能性海克斯不占 5 个技能格：数量无上限，技能格独立计算', () => {
@@ -143,6 +178,25 @@ test('卖出回退加成并回收75%实付价', () => {
     assert.equal(am.active.length, 0);
     assert.equal(am.sellValue(inst), 75, '回收价 = 实付 × 75%');
     assert.ok(Math.abs(p.stats.damage - base) < 1e-9, '卖出后攻击加成回退');
+});
+
+test('实付价由 equip 累计到被升级/叠加的实例（卖出按各实例总额回收）', () => {
+    const am = new AugmentManager();
+    const game = makeMockGame();
+    const p = makeStatsPlayer();
+
+    am.equip({ id: 'hex01', _price: 15 }, p, game);   // 第一份 Lv1
+    am.equip({ id: 'hex01', _price: 17 }, p, game);   // 升 Lv2
+    am.equip({ id: 'hex01', _price: 20 }, p, game);   // 升 Lv3
+    assert.equal(am.functional[0].paid, 52, '升级价累计到同一实例');
+    am.equip({ id: 'hex01', _price: 21 }, p, game);   // 满档 → 叠加第二份 Lv1
+    am.equip({ id: 'hex01', _price: 23 }, p, game);   // 第二份升 Lv2
+    am.equip({ id: 'hex01', _price: 26 }, p, game);   // 第二份升 Lv3
+    am.equip({ id: 'hex01', _price: 28 }, p, game);   // 又满档 → 第三份 Lv1
+    assert.equal(am.functional.length, 3, '可继续叠加第三份');
+    assert.equal(am.functional[1].paid, 70, '第二份累计自己的实付');
+    assert.equal(am.functional[2].paid, 28, '叠加实例记自己的实付');
+    assert.equal(am.sellValue(am.functional[2]), 21, '卖出按各实例实付 75% 回收');
 });
 
 test('海克斯15 进阶蓝图：下一个新海克斯 +1 档（封顶3，功能海克斯同样受益）', () => {

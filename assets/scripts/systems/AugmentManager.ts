@@ -3,13 +3,14 @@
 // ============================================================
 // 2026-09-14 按用户《海克斯.docx》重做：
 //  · 格子：初始 5 个（文档：任务可解锁到 8，暂未实现任务钩子）；
-//    功能性海克斯不占这 5 格（独立 functional 列表，数量不设上限）；
+//    功能性海克斯不占这 5 格（独立 functional 列表），且可无限叠加购买
+//    ——优先升级未满档实例，全部满档后重复购买 = 叠加新实例，效果独立叠乘；
 //  · 等级：同一海克斯再次获得即升 1 档（Lv.1→2→3），升档不占新格子；
 //  · 一次性海克斯（15/17）每局只能选择一次：生效即消耗、不占格子，
 //    本局商店不再刷出（16/18 为持久型，正常升档占格）；
 //  · 定价：基准价 × 同稀有度购买次数溢价（银/金 +10%/次，彩 +100%/次）；
 //  · 卖出：卸下词条回收购买价 75%（退款经 GameManager 走 Economy）。
-import { AUGMENT_DB, AugmentDef, HexRarity, rarityForLevel } from '../data/AugmentDB';
+import { AUGMENT_DB, AugmentDef, HexRarity, rarityForLevel, ELEMENT_HEX_IDS } from '../data/AugmentDB';
 import { Rng } from '../core/MathUtils';
 
 /** 稀有度出售溢价：银/金每买 1 张该稀有度涨价 10%，彩涨 100%。 */
@@ -39,6 +40,14 @@ export class AugmentManager {
     /** 按 id 查两份持有列表中的实例。 */
     ownedOf(id: string): AugmentDef | undefined {
         return this.active.find(a => a.id === id) ?? this.functional.find(a => a.id === id);
+    }
+
+    /**
+     * 元素暴击（hex19）解锁条件：集齐 风/火/土/水 四种元素海克斯
+     * （hex20~23，任意档位、技能格或功能格均可）后才可购买/装备。
+     */
+    elementSetComplete(): boolean {
+        return ELEMENT_HEX_IDS.every(id => !!this.ownedOf(id));
     }
 
     // ── 定价 ──────────────────────────────────────────────
@@ -74,8 +83,9 @@ export class AugmentManager {
 
     /**
      * 三选一卡池（等级即稀有度）：银档 → 各家族的 Lv.1 卡，金档 → Lv.2，
-     * 彩档 → Lv.3。已持有家族（技能或功能）只会刷出比当前更高的档位（升级卡）；
-     * 一次性海克斯本局未选用时任意档位可出现，选用后整局不再刷出。
+     * 彩档 → Lv.3。已持有的技能海克斯只会刷出比当前更高的档位（升级卡）；
+     * 功能性海克斯可无限叠加购买——持有后任何档位都持续可刷（满档后再买
+     * = 叠加新实例）；一次性海克斯本局选用后整局不再刷出。
      */
     rollOptions(n = 3, wave = 1): AugmentDef[] {
         const weights = this.rarityWeights(wave);
@@ -89,14 +99,24 @@ export class AugmentManager {
                 if (a.prices.length < level) return false;      // 该海克斯没有这一档
                 if (results.find(r => r.id === a.id)) return false;
                 if (a.oneShot && this._oneShotUsed.has(a.id)) return false;
+                // 元素暴击：未集齐四种元素海克斯时不进卡池（购买条件未解锁）
+                if (a.id === 'hex19' && !this.elementSetComplete()) return false;
                 const owned = this.ownedOf(a.id);
-                if (owned && !a.oneShot) return (owned.level ?? 1) < level;
+                if (owned && !a.oneShot) {
+                    if (a.category === '功能') return true;     // 功能性无限叠加，持续可刷
+                    return (owned.level ?? 1) < level;
+                }
                 return true;
             });
             if (!pool.length) continue;
             const def = Rng.pick(pool);
             const owned = this.ownedOf(def.id);
-            results.push(this._makeCard(def, level, !!owned));
+            // "升级至 Lv.X"标记只对确实会升级现有实例的卡生效；
+            // 功能性全部满档后，购买是叠加新实例而非升级
+            const isUpgrade = !!owned && (def.category === '功能'
+                ? this.functional.some(a => a.id === def.id && (a.level ?? 1) < 3)
+                : true);
+            results.push(this._makeCard(def, level, isUpgrade));
         }
         return results;
     }
@@ -130,12 +150,18 @@ export class AugmentManager {
 
     /**
      * 购买/授予一张卡。card.level 缺省 1；传入已持有的 id 时按 +1 档处理。
-     * 功能性海克斯走 functional 列表不占 5 格；一次性海克斯（15/17）每局
-     * 只能选择一次，生效即消耗不入列。opts.force 供测试房沙盒无限授予
-     * （绕过每局一次限制）。返回是否成功（满格/已满级/已用过返回 false）。
+     * 功能性海克斯走 functional 列表不占 5 格，且可无限叠加购买：优先升级
+     * 未满档实例，全部满档后再次购买 = 叠加一个新实例（效果独立叠乘）。
+     * 实付价（card._price/paid）由本方法累计到对应实例，卖出回收以它为准。
+     * 一次性海克斯（15/17）每局只能选择一次，生效即消耗不入列。opts.force
+     * 供测试房沙盒无限授予（绕过每局一次限制）。
+     * 返回是否成功（技能格满/技能已满级/一次性已用过返回 false）。
      */
     equip(card: AugmentDef, player: any, game: any, opts?: { force?: boolean }): boolean {
         const def = AUGMENT_DB.find(a => a.id === card.id) ?? card;
+
+        // 元素暴击解锁门槛：未集齐四元素时不可装备（测试房 force 绕过）
+        if (def.id === 'hex19' && !this.elementSetComplete() && !opts?.force) return false;
 
         // 一次性（15/17）：每局只能选择一次，立即生效并消耗（不占格子）
         if (def.oneShot) {
@@ -148,22 +174,40 @@ export class AugmentManager {
 
         const isFunctional = def.category === '功能';
         const list = isFunctional ? this.functional : this.active;
-        const existing = list.find(a => a.id === def.id);
+        const paid = card.paid ?? card._price ?? 0;
 
-        if (existing) {
-            const from = existing.level ?? 1;
-            if (from >= 3) return false;
-            const to = Math.min(3, Math.max(from + 1, card.level ?? from + 1));
-            existing.level = to;
-            existing.tier = to;
-            existing.rarity = rarityForLevel(def, to);
-            existing.desc = def.descAt(to);
-            existing.onLevel?.(player, game, from, to);
-            return true;
+        if (isFunctional) {
+            // 优先升级一个未满档实例（+1 档，或直取卡面更高档位）
+            const upgradable = list.find(a => a.id === def.id && (a.level ?? 1) < 3);
+            if (upgradable) {
+                const from = upgradable.level ?? 1;
+                const to = Math.min(3, Math.max(from + 1, card.level ?? from + 1));
+                upgradable.level = to;
+                upgradable.tier = to;
+                upgradable.rarity = rarityForLevel(def, to);
+                upgradable.desc = def.descAt(to);
+                upgradable.paid = (upgradable.paid ?? 0) + paid;
+                upgradable.onLevel?.(player, game, from, to);
+                return true;
+            }
+            // 全部满档：叠加新实例（无限购买，效果独立叠乘），不占技能格
+        } else {
+            const existing = list.find(a => a.id === def.id);
+            if (existing) {
+                const from = existing.level ?? 1;
+                if (from >= 3) return false;
+                const to = Math.min(3, Math.max(from + 1, card.level ?? from + 1));
+                existing.level = to;
+                existing.tier = to;
+                existing.rarity = rarityForLevel(def, to);
+                existing.desc = def.descAt(to);
+                existing.paid = (existing.paid ?? 0) + paid;
+                existing.onLevel?.(player, game, from, to);
+                return true;
+            }
+            // 技能/持久型一次性占格，满 5 格拒绝
+            if (this.active.length >= this.maxSlots) return false;
         }
-
-        // 功能性不占格；技能/持久型一次性占格，满 5 格拒绝
-        if (!isFunctional && this.active.length >= this.maxSlots) return false;
 
         // 海克斯15：新获得的第一个海克斯提升一档
         let level = card.level ?? 1;
@@ -176,7 +220,7 @@ export class AugmentManager {
             level, tier: level,
             rarity: rarityForLevel(def, level),
             desc: def.descAt(level),
-            paid: card.paid ?? card._price ?? 0,
+            paid,
         };
         list.push(inst);
         inst.onLevel?.(player, game, 0, level);
@@ -219,6 +263,10 @@ export class AugmentManager {
     // ── 事件分发 ──────────────────────────────────────────
     dispatchHit(player: any, enemy: any, dmg: number, game: any): void {
         for (const a of this.all()) if (a.onHit) a.onHit(player, enemy, dmg, game);
+    }
+    /** 攻击发生暴击时分发（普攻/子弹暴击结算后由 PlayerController/BulletController 调用）。 */
+    dispatchCrit(player: any, enemy: any, dmg: number, game: any): void {
+        for (const a of this.all()) if (a.onCrit) a.onCrit(player, enemy, dmg, game);
     }
     dispatchKill(player: any, enemy: any, dmg: number, game: any): void {
         for (const a of this.all()) if (a.onKill) a.onKill(player, enemy, dmg, game);

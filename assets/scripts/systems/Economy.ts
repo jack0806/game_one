@@ -46,6 +46,17 @@ export class Economy {
         this.gold += gain;
         if (gain > 0) this.earnedThisRun += gain;
     }
+
+    /**
+     * 原路退款/回收（购买失败退回、卖出回收）：不走点金手乘区，也不计入
+     * 本局获得统计。此前退款走 addGold，gainMult>1 时"花45退68"能凭空
+     * 刷钱（购买失败可反复点击），且退款虚增 earnedThisRun 成就统计。
+     */
+    refund(amount: number): void {
+        const back = Math.round(amount);
+        if (back <= 0) return;
+        this.gold += back;
+    }
     spendGold(amount: number): boolean {
         if (this.gold < amount) return false;
         this.gold -= amount;

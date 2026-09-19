@@ -1,5 +1,5 @@
 'use strict';
-// 海克斯数据库完整性：18 个海克斯、三档数值、稀有度定价区间与图标资产
+// 海克斯数据库完整性：19 个海克斯、三档数值、稀有度定价区间与图标资产
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
@@ -10,12 +10,12 @@ const KNOWN_ICONS = new Set([
     'lifesteal', 'bounce', 'heart', 'shield', 'combo', 'gold', 'summon', 'ice', 'chaos',
 ]);
 
-test('海克斯总数为18个，编号1~18且id唯一', () => {
-    assert.equal(AUGMENT_DB.length, 18);
+test('海克斯总数为23个，编号1~23且id唯一', () => {
+    assert.equal(AUGMENT_DB.length, 23);
     const ids = AUGMENT_DB.map(a => a.id);
-    assert.equal(new Set(ids).size, 18, 'id 必须唯一');
+    assert.equal(new Set(ids).size, 23, 'id 必须唯一');
     const indexes = AUGMENT_DB.map(a => a.index).sort((a, b) => a - b);
-    assert.deepEqual(indexes, Array.from({ length: 18 }, (_, i) => i + 1));
+    assert.deepEqual(indexes, Array.from({ length: 23 }, (_, i) => i + 1));
 });
 
 test('分档定价：Lv.1银15-50 / Lv.2金100-250 / Lv.3彩500-1000，单档海克斯用自身稀有度区间', () => {
@@ -45,13 +45,30 @@ test('等级即稀有度：多档海克斯 Lv.1/2/3 对应 银/金/彩', () => {
     assert.equal(rarityForLevel(AUGMENT_DB.find(a => a.id === 'hex18'), 1), 'silver');
 });
 
-test('三档数值同步：除海克斯15/18外每个海克斯都有3档数值与三档文案', () => {
+test('三档数值同步：除单档海克斯(15/18/19)外每个海克斯都有3档数值与三档文案', () => {
     for (const a of AUGMENT_DB) {
-        if (a.id === 'hex15' || a.id === 'hex18') continue;
+        if (a.id === 'hex15' || a.id === 'hex18' || a.id === 'hex19') continue;
         assert.equal(a.values.length, 3, `${a.id} 应有 Lv1/2/3 三档数值`);
         for (let lvl = 1; lvl <= 3; lvl++) {
             assert.equal(typeof a.descAt(lvl), 'string', `${a.id} Lv${lvl} 缺少文案`);
         }
+    }
+});
+
+test('元素暴击为单档彩色海克斯，四元素海克斯齐备才解锁（hex19~23）', () => {
+    const crit = AUGMENT_DB.find(a => a.id === 'hex19');
+    assert.equal(crit.prices.length, 1, '元素暴击只有一档（彩色）');
+    assert.equal(crit.rarity, 'prismatic');
+    assert.equal(crit.prices[0], 900);
+    // 四元素：风20/火21/土22/水23，三档可升，图标用现有素材
+    const names = { hex20: '风元素', hex21: '火元素', hex22: '土元素', hex23: '水元素' };
+    for (const [id, name] of Object.entries(names)) {
+        const def = AUGMENT_DB.find(a => a.id === id);
+        assert.ok(def, `${id} 应存在`);
+        assert.equal(def.name, name);
+        assert.equal(def.category, '技能');
+        assert.equal(def.prices.length, 3);
+        assert.ok(KNOWN_ICONS.has(def.icon), `${id} 图标 ${def.icon} 必须在现有素材集合`);
     }
 });
 

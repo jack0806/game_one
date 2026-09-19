@@ -260,7 +260,7 @@ export class AugSelectUI extends Component {
         hint.setPosition(new Vec3(280, 58, 0));
         hint.addComponent(UITransform).setContentSize(700, 26);
         const hl = hint.addComponent(Label);
-        hl.string = '点击持有标签可卖出（回收 75% 购买价）· 功能性海克斯不占技能格';
+        hl.string = '点击持有标签可卖出（回收 75% 购买价）· 功能性海克斯不占技能格，可无限叠加';
         hl.fontSize = 13;
         hl.color = new Color(140, 158, 174, 220);
         styleLabel(hl);

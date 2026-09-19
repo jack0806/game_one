@@ -507,7 +507,7 @@ export class TestRoomUI extends Component {
 
     // ── 海克斯授予浮层 ─────────────────────────────────────
 
-    /** 打开海克斯授予面板：18 个海克斯全部可见，点击循环 授予→升档→满级卸下。 */
+    /** 打开海克斯授予面板：23 个海克斯全部可见；技能海克斯点击循环 授予→升档→满级卸下，功能海克斯无限叠加。 */
     private _showAugPanel() {
         this._hideHeroPanel();
         this._refreshAugCards();
@@ -525,8 +525,8 @@ export class TestRoomUI extends Component {
         for (const c of this._augCards) {
             const def = AUGMENT_DB.find(a => a.id === c.id);
             if (!def) continue;
-            const inst = owned.find((a: any) => a.id === c.id);
-            const lvl = inst?.level ?? 0;
+            const insts = owned.filter((a: any) => a.id === c.id);
+            const lvl = insts.length ? Math.max(...insts.map((a: any) => a.level ?? 1)) : 0;
             // 边框色随档位稀有度走（Lv.1银 / Lv.2金 / Lv.3彩），未持有时用银档色淡化
             const rarity = rarityForLevel(def, lvl > 0 ? lvl : 1);
             const col = Color.fromHEX(new Color(), RARITY_COLOR[rarity] ?? '#888888');
@@ -541,7 +541,10 @@ export class TestRoomUI extends Component {
             c.g.stroke();
             c.lvLbl.string = def.oneShot
                 ? '一次性·点击生效'
-                : lvl > 0 ? `Lv${lvl}${lvl >= 3 ? '·点击卸下' : ''}` : '未持有';
+                : def.category === '功能'
+                    // 功能海克斯无卸下循环：满档后点击=叠加新实例，显示叠加份数
+                    ? (lvl > 0 ? `Lv${lvl}${insts.length > 1 ? ` ×${insts.length}` : ''}·可叠加` : '未持有')
+                    : (lvl > 0 ? `Lv${lvl}${lvl >= 3 ? '·点击卸下' : ''}` : '未持有');
             c.lvLbl.color = lvl > 0
                 ? new Color(140, 255, 170, 255)
                 : new Color(160, 168, 180, 220);
@@ -554,15 +557,16 @@ export class TestRoomUI extends Component {
         this._augDimG.fillColor = new Color(0, 0, 0, 160);
         this._augDimG.fillRect(-640, -48, 1280, 720);
 
+        // 6×4 = 24 格：hex19 元素暴击加入后 19 张卡需要第 4 行
         const bg = this._augBoxG;
         bg.clear();
         bg.fillColor = new Color(8, 13, 23, 250);
-        bg.fillRect(-575, -280, 1150, 560);
+        bg.fillRect(-575, -340, 1150, 680);
         bg.strokeColor = new Color(150, 110, 200, 235);
-        bg.lineWidth = 2; bg.rect(-575, -280, 1150, 560); bg.stroke();
+        bg.lineWidth = 2; bg.rect(-575, -340, 1150, 680); bg.stroke();
     }
 
-    /** 海克斯授予浮层：遮罩 + 6×3 卡片矩阵（名称/等级/一档说明）。 */
+    /** 海克斯授予浮层：遮罩 + 6×4 卡片矩阵（23 个海克斯，名称/等级/一档说明）。 */
     private _buildAugPanel() {
         const panel = this._augPanel = new Node('AugPanel'); panel.setParent(this.node);
         panel.active = false;
@@ -574,7 +578,7 @@ export class TestRoomUI extends Component {
 
         const box = new Node('Box'); box.setParent(panel);
         box.setPosition(new Vec3(0, 312, 0));
-        box.addComponent(UITransform).setContentSize(1150, 560);
+        box.addComponent(UITransform).setContentSize(1150, 680);
         box.addComponent(BlockInputEvents);
         this._augBoxG = box.addComponent(Graphics);
         this._drawAugChrome();
@@ -583,7 +587,7 @@ export class TestRoomUI extends Component {
         attachEnableRedraw(box, () => this._drawAugChrome());
 
         const tn = new Node('T'); tn.setParent(box);
-        tn.setPosition(new Vec3(0, 248, 0));
+        tn.setPosition(new Vec3(0, 300, 0));
         tn.addComponent(UITransform).setContentSize(500, 32);
         const tl = tn.addComponent(Label);
         tl.string = '— 海克斯授予 —';
@@ -591,17 +595,17 @@ export class TestRoomUI extends Component {
         styleLabel(tl);
 
         const sub = new Node('Sub'); sub.setParent(box);
-        sub.setPosition(new Vec3(0, 222, 0));
+        sub.setPosition(new Vec3(0, 274, 0));
         sub.addComponent(UITransform).setContentSize(700, 20);
         const sl = sub.addComponent(Label);
-        sl.string = '点击卡片授予 / 升档（Lv.3 后点击卸下）· 一次性海克斯点击即生效';
+        sl.string = '点击卡片授予 / 升档 · 技能海克斯 Lv.3 后点击卸下 · 功能海克斯满档后无限叠加';
         sl.fontSize = 12; sl.color = new Color(150, 168, 184, 225);
         styleLabel(sl);
 
         AUGMENT_DB.forEach((def, i) => {
             const col = i % 6, row = Math.floor(i / 6);
             const card = new Node(`Hex_${def.id}`); card.setParent(box);
-            card.setPosition(new Vec3(-480 + col * 192, 142 - row * 160, 0));
+            card.setPosition(new Vec3(-480 + col * 192, 170 - row * 145, 0));
             card.addComponent(UITransform).setContentSize(176, 144);
             const g = card.addComponent(Graphics);
 
