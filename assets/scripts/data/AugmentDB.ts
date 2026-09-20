@@ -106,22 +106,35 @@ const ELEMENT_KEYS: ElementType[] = ['water', 'fire', 'earth', 'wind'];
  * 元素飞弹命中：给目标打元素印记；目标集齐 ≥2 种不同元素时立即产生元素爆炸，
  * 爆炸伤害 = 单枚飞弹伤害 × 2^(元素种数-1)（两种×2 / 三种×4 / 四种×8），
  * 对半径 90 码内全部敌人生效，爆炸后印记清空、可重新累积。
+ *
+ * 表现层为卡顿做的收敛（10-20 枚齐射落地会连续引爆）：
+ *  · 印记反馈用 3 粒微型火花，不再逐次弹"水/火/土/风"浮字（一轮齐射就是
+ *    10-20 条 Label，浮字池和渲染都吃不消）；
+ *  · 爆炸用轻量 emit 粒子（无 fx 贴图、无冲击波环对象），并按 0.12 秒窗口
+ *    节流震屏/音效/浮字——连爆时只有首次出全套反馈，伤害照常全额结算。
  */
 export function applyElementMark(enemy: any, element: ElementType, missileDmg: number, player: any, game: any): void {
     if (!enemy || !enemy.alive) return;
+    const color = ELEMENT_TYPES[element].color;
     if (!enemy._elemMarks) enemy._elemMarks = new Set<string>();
     enemy._elemMarks.add(element);
     if (enemy._elemMarks.size < 2) {
-        game?.floatingText?.spawn?.(enemy.x, enemy.y - 26, ELEMENT_TYPES[element].name, ELEMENT_TYPES[element].color, 12, false);
+        game?.particles?.emit?.({ x: enemy.x, y: enemy.y, count: 3, color,
+            speedMin: 40, speedMax: 140, lifeMin: 0.15, lifeMax: 0.3, glow: true });
         return;
     }
     const kinds = enemy._elemMarks.size;
     enemy._elemMarks.clear();
     const boom = Math.round(missileDmg * Math.pow(2, kinds - 1));
-    game?.particles?.explode?.(enemy.x, enemy.y, ELEMENT_TYPES[element].color, 90);
-    game?.screenShake?.shake?.(5, 0.2);
-    game?.audio?.playSfx?.('explode', 0.6);
-    game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, `元素爆炸 ×${kinds - 1}！`, ELEMENT_TYPES[element].color, 17, true);
+    // 轻量元素爆花：粒子迸发（伤害半径不变，视觉主体控制在半径 90 内）
+    game?.particles?.emit?.({ x: enemy.x, y: enemy.y, count: 14, color,
+        speedMin: 80, speedMax: 300, lifeMin: 0.25, lifeMax: 0.5, glow: true });
+    if (((game as any)?._elemFxT ?? 0) <= 0) {
+        (game as any)._elemFxT = 0.12;   // 连爆节流窗口：震屏/音效/浮字只出一次
+        game?.screenShake?.shake?.(3, 0.15);
+        game?.audio?.playSfx?.('explode', 0.5);
+        game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, `元素爆炸 ×${kinds - 1}！`, color, 17, true);
+    }
     for (const e of (game?.enemies || []) as any[]) {
         if (e.alive && Vec.dist(e.x, e.y, enemy.x, enemy.y) < 90) {
             e.takeDamage(boom, player, game);
@@ -173,7 +186,8 @@ export function fireElementalVolley(hex: any, p: any, game: any): void {
         while (locks.length < N) locks.push(pickFrom(pool));
     }
 
-    // —— 再发射：飞弹各自锁定目标飞行（命中时打元素印记） ——
+    // —— 再发射：飞弹不带角色弹素材（charKey 留空），渲染走"元素色能量梭"
+    // 兜底路径（带拖尾/辉光的粒子风弹体），比逐弹挂 Sprite 更省 ——
     for (const target of locks) {
         const element = ELEMENT_KEYS[Rng.int(0, ELEMENT_KEYS.length - 1)];
         const a = Rng.float(0, Math.PI * 2);
@@ -181,12 +195,15 @@ export function fireElementalVolley(hex: any, p: any, game: any): void {
             x: p.x, y: p.y,
             vx: Math.cos(a) * 400, vy: Math.sin(a) * 400,
             damage: Rng.int(band.dmg[0], band.dmg[1]),
-            radius: 6, color: ELEMENT_TYPES[element].color,
-            owner: 'player', charKey: p.charId ?? '',
+            radius: 7, color: ELEMENT_TYPES[element].color,
+            owner: 'player',
             lifeTime: 2.5, homing: true,
             _homingTarget: target, element,
         });
     }
+    // 齐射起手粒子迸发（轻量 emit，不用重型 hexActivate）
+    game.particles?.emit?.({ x: p.x, y: p.y, count: 10, color: '#9fe8c8',
+        speedMin: 120, speedMax: 320, lifeMin: 0.2, lifeMax: 0.4, glow: true });
     game.audio?.playSfx?.('skill_q', 0.5);
     game.floatingText?.spawn?.(p.x, p.y - 46, `元素暴击 ×${N}`, '#9fe8c8', 14, true);
 }
@@ -406,9 +423,17 @@ export const AUGMENT_DB: AugmentDef[] = [
     { id: 'hex19', index: 19, rarity: 'prismatic', icon: 'chaos', name: '元素暴击', category: '技能',
       prices: [900], values: [1],
       descAt: () => `攻击暴击时发射 ${ELEMENT_VOLLEY.count[0]}-${ELEMENT_VOLLEY.count[1]} 枚元素飞弹` +
-          `（水/火/土/风随机，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射）；` +
+          `（水/火/土/风随机，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射，内置 0.5 秒冷却）；` +
           `同一目标集齐 2 种元素即产生元素爆炸，每多一种元素伤害翻倍。需先集齐四种元素海克斯`,
-      onCrit(p, _enemy, _dmg, game) { fireElementalVolley(this, p, game); } },
+      // 齐射内置冷却：高攻速/多段技能（如 30 发炮弹的大招）逐发暴击时，
+      // 不至于一帧内叠出几十轮齐射把弹池和粒子打爆
+      _volleyCd: 0,
+      onCrit(p, _enemy, _dmg, game) {
+          if (this._volleyCd > 0) return;
+          this._volleyCd = 0.5;
+          fireElementalVolley(this, p, game);
+      },
+      onUpdate(_p, dt) { if (this._volleyCd > 0) this._volleyCd = Math.max(0, this._volleyCd - dt); } },
 
     // ─── 四元素海克斯（集齐解锁元素暴击） ──────────────────
     { id: 'hex20', index: 20, rarity: 'silver', icon: 'speed', name: '风元素', category: '技能',

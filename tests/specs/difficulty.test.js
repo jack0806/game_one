@@ -120,8 +120,8 @@ test('简单难度：灭世机神仅保留天罚网格激光，导弹/追踪弹�
         startInvaderMissiles() { calls.push('missiles'); },
         startInvaderLaserGrid() { gridFired++; },
     });
-    const boss = makeBoss(game, 4); // 第5章 → invader 技能集
-    assert.equal(boss.chapter, 5);
+    const boss = makeBoss(game, 5); // 第6章 → invader 技能集
+    assert.equal(boss.chapter, 6);
     const player = makePlayer({ x: 400, y: 0 });
     boss._invMissileCd = 0;
     boss._invHomingCd = 0;

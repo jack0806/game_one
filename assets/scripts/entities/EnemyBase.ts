@@ -66,6 +66,8 @@ export class EnemyBase {
     frozen      = 0;
     slowMult    = 1;
     _slowTimer  = 0;
+    /** 困难模式兽潮：向屏幕中心收拢，进入中心区后自动恢复常规AI。 */
+    tideConverge = false;
     stunned     = 0;
     goldValue   = 10;
     xpValue     = 5;
@@ -186,7 +188,7 @@ export class EnemyBase {
         this.type    = type;
         this.chapter = Math.ceil(wave / 10);
         const scale  = 1 + (wave - 1) * 0.08;
-        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0;
+        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0; this.actionRecoil = 0;
         this.rangedAimWindup = 0; this.rangedAimTargetX = 0; this.rangedAimTargetY = 0;
@@ -925,8 +927,18 @@ export class EnemyBase {
             for (const linked of this.arcLinks) linked.arcBoostTimer = Math.max(linked.arcBoostTimer, 0.22);
         }
 
-        // 向玩家移动；远程单位改为与玩家拉扯保持距离，并在射程内发射毒弹
-        const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
+        // 向玩家移动；远程单位改为与玩家拉扯保持距离，并在射程内发射毒弹。
+        // 兽潮收拢（困难模式）：本帧AI目标临时替换为屏幕中心——近战自然向中心
+        // 聚拢、远程在中心外围拉扯形成包围圈；进入中心 80 码后恢复真实目标。
+        let aiTarget = player;
+        if (this.tideConverge) {
+            if (Vec.dist(this.x, this.y, CANVAS_W / 2, PLAYFIELD_BOTTOM / 2) <= 80) {
+                this.tideConverge = false;
+            } else {
+                aiTarget = { x: CANVAS_W / 2, y: PLAYFIELD_BOTTOM / 2, alive: true };
+            }
+        }
+        const [dx, dy] = Vec.normalize(aiTarget.x - this.x, aiTarget.y - this.y);
         this.combatFacingX = dx; this.combatFacingY = dy;
         const spd = this.speed * (this.frozen > 0 ? 0 : this.slowMult) * this.buffSpeedMult *
             (this.arcBoostTimer > 0 ? 1.15 : 1);

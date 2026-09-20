@@ -261,3 +261,40 @@ test('海克斯12 不灭协议：装备写入标记与护盾倍率，卸下清�
     am.unequip('hex12', p, game);
     assert.equal(p.stats.hasHexGuard, false);
 });
+
+test('卡池权重:功能海克斯出现率提升;技能格满后新技能卡明显降频', () => {
+    const game = makeMockGame();
+    const p = makeStatsPlayer();
+
+    // 功能海克斯权重×3:300张卡中功能类占比应显著高于均抽(5/21≈24% → 约48%)
+    const am = new AugmentManager();
+    let func = 0, total = 0;
+    for (let i = 0; i < 200; i++) {
+        for (const card of am.rollOptions(3, 1)) {
+            total++;
+            if (card.category === '功能') func++;
+        }
+    }
+    assert.ok(total >= 500, '卡池正常出卡');
+    assert.ok(func / total >= 0.38, `功能类占比应≥38%(加权后),实际 ${(func / total * 100).toFixed(1)}%`);
+
+    // 技能格买满后:未持有的技能海克斯降频(×0.3),升级卡/功能/一次性照常
+    const am2 = new AugmentManager();
+    for (const id of ['hex04', 'hex05', 'hex06', 'hex08', 'hex10']) am2.equip({ id }, p, game);
+    let newSkill = 0, total2 = 0;
+    for (let i = 0; i < 200; i++) {
+        for (const card of am2.rollOptions(3, 1)) {
+            total2++;
+            if (card.category === '技能') newSkill++;
+        }
+    }
+    // 满格时银档池里未持有技能只剩 ×0.3 权重;金/彩档的升级卡(应保留正常频率)
+    // 也计入技能类,故总体占比以 25% 为界(未加权时约 39%)
+    assert.ok(newSkill / total2 <= 0.25, `满格后技能卡占比应≤25%,实际 ${(newSkill / total2 * 100).toFixed(1)}%`);
+});
+
+test('前期金币倍率上调:第一/二章 0.9/1.3(买得起强化)', () => {
+    const { GOLD_STAGE_MULT } = require('../dist/systems/Economy');
+    assert.equal(GOLD_STAGE_MULT[0], 0.9, '第一章爆率 0.9(原 0.25)');
+    assert.equal(GOLD_STAGE_MULT[1], 1.3, '第二章爆率 1.3(原 0.6)');
+});

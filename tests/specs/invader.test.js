@@ -30,11 +30,11 @@ test('开场释放节奏放缓:初始冷却拉长,不进场就连环放技能', 
     assert.equal(boss._invMissileCd, 14, '导弹初始冷却14秒');
 });
 
-test('第五章正式Boss(initBoss(4))与invader共用技能集', () => {
+test('第六章正式Boss(initBoss(5))与invader共用技能集;第五章Boss=机械高达X-剑', () => {
     const game = makeMockGame();
     const boss = new BossController();
-    boss.initBoss(4, game);
-    assert.equal(boss.chapter, 5);
+    boss.initBoss(5, game);
+    assert.equal(boss.chapter, 6);
     assert.equal(boss.label, '灭世机神·天罚');
     // chapter===5 时走 invader 技能状态机（_usesInvaderSkills 为真）——用网格激光调度验证
     const fired = [];
@@ -42,7 +42,18 @@ test('第五章正式Boss(initBoss(4))与invader共用技能集', () => {
     boss._invLaserCd = 0;
     const player = makePlayer({ x: 400, y: 0 });
     boss.update(0.016, player, game);
-    assert.equal(fired.length, 1, '第5章正式Boss也应调度天罚网格激光');
+    assert.equal(fired.length, 1, '第6章正式Boss也应调度天罚网格激光');
+
+    // 第五章正式Boss已换成机械高达X-剑：走 mech 技能状态机
+    // （横劈冷却到点 → 进入 2 秒蓄力）
+    const mech = new BossController();
+    mech.initBoss(4, game);
+    assert.equal(mech.chapter, 5);
+    assert.equal(mech.label, '机械高达X-剑');
+    mech._mechSlashCd = 0;
+    mech.update(0.016, player, game);
+    assert.equal(mech.mechSlashT, 2, '第五章Boss进入横劈蓄力(mech技能机)');
+    assert.equal(mech._mechSlashCd > 7, true, '横劈冷却重置');
 });
 
 test('技能5:血量首次掉到20%进入无敌引导5秒,结束后进入最终形态', () => {

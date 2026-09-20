@@ -12,7 +12,10 @@ const { ccclass } = _decorator;
 export class InputManager extends Component {
     private _keys: Set<number> = new Set();
     private _justPressed: Set<number> = new Set();
-    mouse = { x: 640, y: 360, down: false };
+    /** active：收到过真实鼠标事件（移动/按下）。触屏设备不会置位，
+     *  用于区分"鼠标模式"——比 sys.hasFeature(INPUT_TOUCH) 可靠，
+     *  原生模拟器/带触屏的桌面机会误报触控导致鼠标瞄准失效。 */
+    mouse = { x: 640, y: 360, down: false, active: false };
 
     // ── 虚拟输入（由 TouchControls 写入） ────────────────────
     /** 虚拟摇杆方向（画布坐标系，y向下；长度已钳制到≤1）。 */
@@ -42,8 +45,17 @@ export class InputManager extends Component {
         this._keys.add(e.keyCode);
     }
     private _onKeyUp(e: EventKeyboard): void    { this._keys.delete(e.keyCode); }
-    private _onMouseMove(e: EventMouse): void   { this.mouse.x = e.getLocationX(); this.mouse.y = CANVAS_H - e.getLocationY(); }
-    private _onMouseDown(_e: EventMouse): void  { this.mouse.down = true; }
+    private _onMouseMove(e: EventMouse): void   {
+        // 必须用 UI 坐标（设计分辨率、左下原点 y 向上）——与 TouchControls 的
+        // 触点换算同源。getLocation 是物理像素：全屏/高 DPI 缩放（Windows 125%/150%）
+        // 下与 1280×720 世界坐标错位，瞄准方向会整体歪斜、看起来"不跟鼠标"。
+        const x = e.getUILocationX?.() ?? e.getLocationX();
+        const y = e.getUILocationY?.() ?? e.getLocationY();
+        this.mouse.x = x;
+        this.mouse.y = CANVAS_H - y;
+        this.mouse.active = true;
+    }
+    private _onMouseDown(_e: EventMouse): void  { this.mouse.down = true; this.mouse.active = true; }
     private _onMouseUp(_e: EventMouse): void    { this.mouse.down = false; }
 
     lateUpdate(_dt: number): void {

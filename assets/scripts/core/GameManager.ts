@@ -86,7 +86,7 @@ const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
 
 export type GameState =
     | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'playing'
-    | 'augSelect' | 'shop' | 'gameover'
+    | 'mapSelect' | 'augSelect' | 'shop' | 'gameover'
     | 'chapterClear' | 'paused' | 'stats'
     | 'testRoom';
 
@@ -221,6 +221,32 @@ export class GameManager extends Component {
 
     /** 本波海克斯商店已刷新次数（定价：前3次5金币，之后每次溢价75%）。 */
     private _augRefreshCount = 0;
+
+    /** 元素爆炸连爆反馈节流窗口剩余（只节流视觉/音效，不影响伤害结算）。 */
+    private _elemFxT = 0;
+
+    /** 暂停安全的延时回调队列（仅战斗态推进；换局/清场后按 runId 作废）。 */
+    private _timers: { t: number; fn: () => void; runId: number }[] = [];
+
+    /**
+     * seconds 秒后执行 fn（引导/延迟发射用）：随战斗推进计时——暂停时冻结，
+     * 换局/重开作废，不使用 setTimeout（不受系统休眠与页面后台影响）。
+     */
+    after(seconds: number, fn: () => void): void {
+        this._timers.push({ t: seconds, fn, runId: this._runId });
+    }
+
+    private _updateTimers(dt: number): void {
+        for (let i = this._timers.length - 1; i >= 0; i--) {
+            const tm = this._timers[i];
+            if (tm.runId !== this._runId) { this._timers.splice(i, 1); continue; }
+            tm.t -= dt;
+            if (tm.t <= 0) {
+                this._timers.splice(i, 1);
+                tm.fn();
+            }
+        }
+    }
 
     /**
      * 本局作战难度（easy/normal/hard/hell）：大厅 → 难度选择页注入，
@@ -410,7 +436,11 @@ export class GameManager extends Component {
             SaveSystem.selectSlot(slot);
             this._setState('lobby');
         };
-        this._screenMgr.onLobbyPortal     = () => this._setState('difficultySelect');
+        this._screenMgr.onLobbyPortal     = () => this._setState('mapSelect');
+        // 出击地图选择（2026-09-21）：废土=全部现有章节；深海为占位锁定。
+        // 选定废土后进入难度选择，返回则回存档大厅。
+        this._screenMgr.onMapPicked        = () => this._setState('difficultySelect');
+        this._screenMgr.onMapBack          = () => this._setState('lobby');
         this._screenMgr.onDifficultyPicked = (d) => {
             this._difficulty = d;
             this._screenMgr.setRunDifficulty(d);
@@ -428,6 +458,13 @@ export class GameManager extends Component {
         };
         this._screenMgr.onContinuePressed = () => this._continueAfterChapter();
         this._screenMgr.onResumePressed   = () => this._setState(this._pauseReturn);
+        // 设置页音量：读取实时值；拖动滑杆即时应用并持久化（独立于存档槽）
+        this._screenMgr.getAudioVolumes = () => ({ bgm: this._audio.bgmVolume, sfx: this._audio.sfxVolume });
+        this._screenMgr.onAudioVolumesChanged = (bgm, sfx) => {
+            this._audio.bgmVolume = bgm;
+            this._audio.sfxVolume = sfx;
+            AudioManager.saveAudioSettings(bgm, sfx);
+        };
         this._screenMgr.onButtonSfx       = () => {
             this._audio.resume();
             this._audio.playSfx('button');
@@ -485,7 +522,7 @@ export class GameManager extends Component {
         // 章节结束/结算页必须清空上一帧战斗残影。此前浮字、金币池和粒子只在
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
         if (s === 'chapterClear' || s === 'gameover' || s === 'menu' || s === 'charSelect'
-            || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect') {
+            || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect' || s === 'mapSelect') {
             this._floatText?.clear();
             for (const label of this._floatLabels) label.active = false;
             for (const enemy of this._enemies) {
@@ -508,6 +545,10 @@ export class GameManager extends Component {
                 break;
             case 'lobby':
                 this._screenMgr.show('lobby');
+                this._audio.playBgm('title');
+                break;
+            case 'mapSelect':
+                this._screenMgr.show('mapSelect');
                 this._audio.playBgm('title');
                 break;
             case 'difficultySelect':
@@ -788,6 +829,34 @@ export class GameManager extends Component {
     setPlayerInvincible(on: boolean): void {
         this._testInvincible = on;
         if (this._player) this._player.godMode = on;
+    }
+
+    /**
+     * 困难模式兽潮（WaveManager 每 3 波触发一次）：屏幕边缘一圈怪物同时
+     * 登场并向屏幕中心收拢（EnemyBase.tideConverge）。兽潮怪物全部强化：
+     * 血量 +50%、护甲 +40、护盾 = 20% 最大生命。
+     */
+    spawnBeastTide(chapter: number): void {
+        const n = 8 + Math.min(5, Math.max(1, chapter)) * 2;   // 10~18 只
+        const cx = CANVAS_W / 2, cy = PLAYFIELD_BOTTOM / 2;
+        const radius = Math.max(CANVAS_W, PLAYFIELD_BOTTOM) * 0.62;
+        const pool = chapter >= 4 ? ['golem', 'elite_grunt', 'grunt'] : ['grunt', 'shield', 'exploder'];
+        for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + Rng.float(-0.08, 0.08);
+            const x = clamp(cx + Math.cos(a) * radius, 24, CANVAS_W - 24);
+            const y = clamp(cy + Math.sin(a) * radius, 24, PLAYFIELD_BOTTOM - 24);
+            const e = this.spawnEnemy(Rng.pick(pool), x, y);
+            if (!e) continue;
+            e.maxHp = Math.round(e.maxHp * 1.5);               // 血量 +50%
+            e.hp = e.maxHp;
+            e.armor += 40;                                     // 护甲 +40
+            e.shieldHp = Math.max(e.shieldHp, Math.round(e.maxHp * 0.2));   // 护盾 = 20% 血量
+            e.maxShieldHp = Math.max(e.maxShieldHp, e.shieldHp);
+            e.shieldActive = true;
+            e.tideConverge = true;                             // 向屏幕中心收拢
+        }
+        this._floatText.spawn(CANVAS_W / 2, 150, '⚠ 兽潮来袭 ⚠', '#ff8844', 24, true);
+        this._audio.playSfx('boss_roar', 0.6);
     }
 
     /** 受击钩子（PlayerController.takeDamage 调用）：海之霸主期间深海恐惧每次受击生成 20% 血量护盾。 */
@@ -1823,6 +1892,7 @@ export class GameManager extends Component {
     private _clearRunEntities() {
         this._corpses.clear();
         this._playerDeathPending = false;
+        this._timers = [];   // 换局/清场：作废全部引导与延迟回调
         if (this._player?.node?.isValid) {
             this._player.node.active = false;
             this._player.node.destroy();
@@ -2096,6 +2166,12 @@ export class GameManager extends Component {
 
         // Augment per-frame hooks
         this._augMgr.dispatchUpdate(this._player, dt, this);
+
+        // 元素爆炸连爆节流窗口（AugmentDB.applyElementMark 写入，只挡震屏/音效/浮字）
+        if (this._elemFxT > 0) this._elemFxT -= dt;
+
+        // 引导/延迟发射计时（暂停冻结，换局作废）
+        this._updateTimers(dt);
 
         // Combo timer decay
         if (this.comboTimer > 0) {

@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const { WaveManager } = require('../dist/systems/WaveManager');
 const { ENEMY_COUNT_BY_WAVE, chapterForWave } = require('../dist/data/WaveData');
 const { makeMockGame } = require('./mockGame');
+const { MINI_BOSSES } = require('../dist/data/BossDB');
+const MINI_IDS = new Set(MINI_BOSSES.map(m => m.id));
 
 function drainSpawning(wm, game, spawned) {
     // 逐帧推进直到spawning阶段完全出队(spawnInterval=0.5s)
@@ -34,48 +36,65 @@ test('从第三章开始怪物数量×2:第10波(第二章)不翻倍,第11波(�
     assert.equal(ENEMY_COUNT_BY_WAVE(15, 'normal'), 96, '第15波(第三章Boss波) min(51,48)=48 ×2');
 });
 
-test('startWave在Boss波(第5波)先刷boss再正常刷小怪', () => {
+test('Boss波:小兵先上,场上小兵全部死亡后大Boss才登场', () => {
     const originalRandom = Math.random;
     Math.random = () => 0.5;
     try {
         const game = makeMockGame();
         const wm = new WaveManager();
         wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
-        for (let w = 1; w <= 5; w++) wm.startWave(game);
+        for (let w = 1; w <= 5; w++) { game.enemies = []; wm.startWave(game); }
         assert.ok(wm.isBossWave(), '第5波应判定为Boss波');
         drainSpawning(wm, game);
-        const spawnedTypes = game.enemies.map(e => e.type);
-        assert.equal(spawnedTypes[0], 'boss', 'Boss波应先刷出boss');
-        assert.equal(spawnedTypes.filter(t => t === 'boss').length, 1, '只刷1个boss');
-        // boss 波会跟小怪关一样正常刷小怪（数量与普通波一致）
-        assert.equal(game.enemies.length, 1 + ENEMY_COUNT_BY_WAVE(5, 'normal'), 'boss波应附带完整小怪波');
+        // 只刷小兵,没有boss
+        assert.equal(game.enemies.filter(e => e.type === 'boss').length, 0, '开局不刷boss');
+        assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(5, 'normal'), '小兵数量与普通波一致');
+        // 小兵全部死亡 → 大Boss登场
+        for (const e of game.enemies) e.dead = true;
+        wm.update(0.1, game);
+        assert.equal(game.enemies.filter(e => e.type === 'boss').length, 1, '小兵清空后刷出boss');
+        assert.equal(wm.state, 'fighting', 'boss在场继续战斗');
+        // boss死亡 → 进入间歇 → 通关
+        for (const e of game.enemies) e.dead = true;
+        wm.update(0.1, game);
+        assert.equal(wm.state, 'intermission');
     } finally {
         Math.random = originalRandom;
     }
 });
 
-test('完整主线1~25波(每章5波)与无尽26波的队列均可生成,章节和Boss节点连续', () => {
+test('完整主线1~30波(六章每章5波)与无尽31波的队列均可生成,章节和Boss节点连续', () => {
     const originalRandom = Math.random;
     Math.random = () => 0.5; // 固定敌池，且不追加随机精英
     try {
         const game = makeMockGame();
         const wm = new WaveManager();
-        const bossWaves = new Set([5, 10, 15, 20, 25]);
+        const bossWaves = new Set([5, 10, 15, 20, 25, 30]);
         wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
 
-        for (let wave = 1; wave <= 25; wave++) {
+        for (let wave = 1; wave <= 30; wave++) {
             game.enemies = [];
             wm.startWave(game);
             drainSpawning(wm, game);
             assert.equal(wm.wave, wave);
             assert.equal(wm.chapter, chapterForWave(wave));
+            // 第三章之后的章节每波固定小BOSS:第四章1只,第五章2只
+            const ch = chapterForWave(wave);
+            const mini = ch >= 5 ? 3 : ch >= 4 ? 2 : 0;
             if (bossWaves.has(wave)) {
-                const types = game.enemies.map(e => e.type);
-                assert.equal(types[0], 'boss', `第${wave}波应先刷章节Boss`);
-                assert.equal(types.filter(t => t === 'boss').length, 1, `第${wave}波只有1个章节Boss`);
-                assert.equal(game.enemies.length, 1 + ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波boss波应带完整小怪波`);
+                // Boss延迟登场:先只有小兵(含小BOSS)
+                assert.equal(game.enemies.filter(e => e.type === 'boss').length, 0, `第${wave}波开局不刷Boss`);
+                assert.equal(game.enemies.length, mini + ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波小兵数`);
+                for (const e of game.enemies) e.dead = true;
+                wm.update(0.1, game);
+                assert.equal(game.enemies.filter(e => e.type === 'boss').length, 1, `第${wave}波小兵清空后刷Boss`);
             } else {
-                assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波敌人数异常`);
+                assert.equal(game.enemies.length, mini + ENEMY_COUNT_BY_WAVE(wave, 'normal'), `第${wave}波敌人数异常`);
+            }
+            if (mini > 0) {
+                const special = game.enemies.filter(e => MINI_IDS.has(e.type));
+                assert.equal(special.length, mini, `第${wave}波(第${ch}章)应固定${mini}只特型小BOSS`);
+                assert.equal(new Set(special.map(e => e.type)).size, mini, '同一波内特型小BOSS不重复');
             }
         }
 
@@ -87,8 +106,8 @@ test('完整主线1~25波(每章5波)与无尽26波的队列均可生成,章节�
         wm.startWave(game);
         drainSpawning(wm, game);
         assert.equal(wm.wave, 26);
-        assert.equal(wm.chapter, 5);
-        assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(26, 'normal'));
+        assert.equal(wm.chapter, 6);
+        assert.equal(game.enemies.length, 3 + ENEMY_COUNT_BY_WAVE(26, 'normal'), '第五章(无尽)每波固定3只小BOSS');
     } finally {
         Math.random = originalRandom;
     }
@@ -106,19 +125,22 @@ test('nightmare与chaos内部模式在无尽波均使用各自难度倍率', () 
             wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
             wm.startWave(game);
             drainSpawning(wm, game);
-            assert.equal(game.enemies.length, ENEMY_COUNT_BY_WAVE(41, difficulty), `${difficulty}第41波倍率异常`);
+            assert.equal(game.enemies.length, 3 + ENEMY_COUNT_BY_WAVE(41, difficulty), `${difficulty}第41波倍率异常(含第五章3只小BOSS)`);
         }
     } finally {
         Math.random = originalRandom;
     }
 });
 
-test('变异mirrorArmy在Boss波时使boss数量×2', () => {
+test('变异mirrorArmy在Boss波时使boss数量×2(小兵清空后登场)', () => {
     const game = makeMockGame({ _mutationMods: { mirrorArmy: true } });
     const wm = new WaveManager();
     wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
-    for (let w = 1; w <= 10; w++) wm.startWave(game);
+    for (let w = 1; w <= 10; w++) { game.enemies = []; wm.startWave(game); }
     drainSpawning(wm, game);
+    assert.equal(game.enemies.filter(e => e.type === 'boss').length, 0, '开局不刷boss');
+    for (const e of game.enemies) e.dead = true;
+    wm.update(0.1, game);
     const bossCount = game.enemies.filter(e => e.type === 'boss').length;
     assert.equal(bossCount, 2, 'mirrorArmy应使Boss波生成2个boss');
 });
@@ -218,4 +240,87 @@ test('普通波队列成批编组:每批5-7个且包含近战与远程(archer)',
     const xs = first.map(e => e.x), ys = first.map(e => e.y);
     const sameEdge = Math.max(...xs) - Math.min(...xs) <= 130 || Math.max(...ys) - Math.min(...ys) <= 130;
     assert.ok(sameEdge, '同批成员应从同一边缘锚点附近进场');
+});
+
+test('小BOSS按章节投放:1~3章没有,第四章起每波固定1只,第五章/无尽2只', () => {
+    const orig = Math.random;
+    Math.random = () => 0.5;
+    try {
+        for (const [wave, expectMini] of [[5, 0], [10, 0], [15, 0], [16, 2], [20, 2], [21, 3], [25, 3]]) {
+            const game = makeMockGame();
+            const wm = new WaveManager();
+            wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
+            for (let w = 1; w < wave; w++) { game.enemies = []; wm.startWave(game); }
+            game.enemies = [];
+            wm.startWave(game);
+            drainSpawning(wm, game);
+            const special = game.enemies.filter(e => MINI_IDS.has(e.type));
+            assert.equal(special.length, expectMini, `第${wave}波(第${wm.chapter}章)特型小BOSS数量`);
+            assert.equal(new Set(special.map(e => e.type)).size, expectMini, '同波不重复且来自名册');
+        }
+    } finally {
+        Math.random = orig;
+    }
+});
+
+test('困难模式兽潮:每3波触发一次,非困难难度不触发', () => {
+    const calls = [];
+    const mkGame = (diff) => makeMockGame({
+        _difficulty: diff ? { id: diff } : undefined,
+        spawnBeastTide: (chapter) => calls.push(chapter),
+    });
+    const orig = Math.random;
+    Math.random = () => 0.5;
+    try {
+        // 困难:第3/6/9波触发
+        const game = mkGame('hard');
+        const wm = new WaveManager();
+        wm.onSpawnEnemy = () => {};
+        for (let w = 1; w <= 10; w++) wm.startWave(game);
+        assert.deepEqual(calls, [1, 2, 2], '第3/6/9波触发,携带当前章节');
+        // 普通/地狱/无难度:不触发
+        for (const diff of [undefined, 'normal', 'easy']) {
+            calls.length = 0;
+            const g2 = mkGame(diff);
+            const wm2 = new WaveManager();
+            wm2.onSpawnEnemy = () => {};
+            for (let w = 1; w <= 9; w++) wm2.startWave(g2);
+            assert.equal(calls.length, 0, `${diff ?? '无'}难度不触发兽潮`);
+        }
+    } finally {
+        Math.random = orig;
+    }
+});
+
+test('兽潮怪物向屏幕中心收拢,进入中心区后恢复常规AI', () => {
+    const { EnemyBase } = require('../dist/entities/EnemyBase');
+    const game = makeMockGame();
+    const player = makePlayer({ x: 10, y: 324 });   // 玩家在最左侧
+
+    const e = new EnemyBase();
+    e.init('grunt', 1, game);
+    e.x = 300; e.y = 324;                            // 中心(640,324)左侧
+    e.tideConverge = true;
+    e.update(0.5, player, game);
+    assert.ok(e.x > 300, '收拢期朝屏幕中心移动(向右),而非追左侧玩家');
+    assert.equal(e.tideConverge, true, '未到中心保持收拢');
+
+    // 进入中心 80 码 → 恢复常规AI,转而追击玩家
+    e.x = 640; e.y = 324;
+    e.update(0.5, player, game);
+    assert.equal(e.tideConverge, false, '进入中心区后恢复常规AI');
+    assert.ok(e.x < 640, '恢复后朝左侧玩家移动');
+});
+
+test('兽潮强化数值与触发条件(源码门禁)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const gm = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/core/GameManager.ts'), 'utf8');
+    const wm = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/systems/WaveManager.ts'), 'utf8');
+    assert.match(gm, /spawnBeastTide\(chapter: number\): void/, '兽潮入口');
+    assert.match(gm, /e\.maxHp = Math\.round\(e\.maxHp \* 1\.5\)/, '血量+50%');
+    assert.match(gm, /e\.armor \+= 40/, '护甲+40');
+    assert.match(gm, /Math\.round\(e\.maxHp \* 0\.2\)/, '护盾=20%血量');
+    assert.match(gm, /e\.tideConverge = true/, '标记向中心收拢');
+    assert.match(wm, /game\._difficulty\?\.id === 'hard' && this\.wave > 0 && this\.wave % 3 === 0/, '困难模式每3波触发');
 });

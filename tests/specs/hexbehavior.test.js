@@ -136,6 +136,7 @@ test('元素暴击(19):先锁定后发射,数量10-20/伤害15-20区间,每枚�
             assert.ok(b.damage >= 15 && b.damage <= 20, '单枚伤害 15-20 区间');
             assert.ok(['water', 'fire', 'earth', 'wind'].includes(b.element), '四元素随机');
             assert.equal(b.homing, true, '飞弹追踪');
+            assert.ok(!b.charKey, '飞弹为元素色能量梭(粒子风弹体),不挂角色弹素材');
             assert.ok(enemies.includes(b._homingTarget), '先锁定目标再发射');
         }
     }
@@ -349,4 +350,299 @@ test('元素齐射不锁定隐身/飞空的隐藏单位;场上全是隐藏单位
     spawned.length = 0;
     fireElementalVolley({}, { x: 0, y: 0 }, game);
     assert.equal(spawned.length, 0, '全是隐藏单位时不发射');
+});
+
+test('元素暴击内置0.5秒冷却:连发暴击只触发一轮齐射,冷却结束后恢复', () => {
+    const am = new AugmentManager();
+    const game = makeMockGame();
+    const spawned = [];
+    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
+    game.enemies = makeElemEnemies(6);
+    game.augmentManager = am;
+    const p = makePlayer();
+    p._charDef = { attackType: 'ranged', attackRange: 420 };
+    for (const id of ['hex20', 'hex21', 'hex22', 'hex23', 'hex19']) am.equip({ id }, p, game);
+
+    am.dispatchCrit(p, game.enemies[0], 10, game);
+    const first = spawned.length;
+    assert.ok(first >= 10, '首轮齐射');
+    for (let i = 0; i < 5; i++) am.dispatchCrit(p, game.enemies[0], 10, game);
+    assert.equal(spawned.length, first, '冷却期内连发暴击不再触发');
+
+    am.dispatchUpdate(p, 0.6, game);   // 冷却走完
+    am.dispatchCrit(p, game.enemies[0], 10, game);
+    assert.ok(spawned.length > first, '冷却结束后恢复触发');
+});
+
+test('技能子弹参与暴击:凯尔Q/大招与利亚娜Q按暴击率掷骰(联动元素暴击)', () => {
+    const { CHARS } = require('../dist/data/CharacterDB');
+    const mkGame = () => {
+        const bullets = [];
+        return {
+            bullets,
+            bulletPool: { spawn: (cfg) => { bullets.push(cfg); return cfg; } },
+            particles: { hexActivate() {}, explode() {}, weaponFlash() {}, coldImpact() {} },
+            screenShake: { shake() {} },
+            floatingText: { spawn() {} },
+            audio: { playSfx() {} },
+        };
+    };
+    const mkHero = (id) => {
+        const def = CHARS.find(c => c.id === id);
+        const p = makePlayer();
+        p.charId = id;
+        p.x = 100; p.y = 100;
+        p.facingX = 1; p.facingY = 0;
+        p._charDef = def;
+        p.stats.critRate = 0.5;
+        p.applyBuff = () => {};
+        p.getCastDirection = () => [1, 0];
+        p.getMuzzlePosition = () => [110, 100];
+        return p;
+    };
+
+    const orig = Math.random;
+    try {
+        // 必暴击
+        Math.random = () => 0.01;
+        let game = mkGame();
+        CHARS.find(c => c.id === 'kai').skills_stub = null;
+        const kai = mkHero('kai');
+        const kaiDef = CHARS.find(c => c.id === 'kai');
+        kaiDef.qSkill(kai, game);
+        assert.equal(game.bullets[0].isCrit, true, '凯尔Q 技能弹可暴击');
+        game = mkGame();
+        kaiDef.ultimate(kai, game);
+        assert.ok(game.bullets.length === 30 && game.bullets.every(b => b.isCrit === true), '凯尔大招30发均可暴击');
+        assert.ok(game.bullets.every(b => !b.homing && b.speedUpAfter === 2), '大招沿自身弹道直飞,2秒后加速(不追踪)');
+        game = mkGame();
+        const liana = mkHero('liana');
+        CHARS.find(c => c.id === 'liana').qSkill(liana, game);
+        assert.equal(game.bullets[0].isCrit, true, '利亚娜Q 技能弹可暴击');
+
+        // 必不暴击
+        Math.random = () => 0.99;
+        game = mkGame();
+        kaiDef.qSkill(mkHero('kai'), game);
+        assert.equal(game.bullets[0].isCrit, false, '暴击率未命中时不暴击');
+    } finally {
+        Math.random = orig;
+    }
+});
+
+test('元素爆炸轻量化+连爆节流:粒子火花替代重特效,伤害照常全额结算', () => {
+    const fx = [];
+    const game = makeMockGame();
+    game.particles = { emit: (cfg) => fx.push(cfg) };
+    game.screenShake = { shake: (m, d) => fx.push(['shake', m]) };
+    game.audio = { playSfx: (s) => fx.push(['sfx', s]) };
+    game.floatingText = { spawn: (x, y, txt) => fx.push(['txt', txt]) };
+    const near = makeElemEnemies(1)[0];
+    const far = { x: 500, y: 500, alive: true, dead: false, taken: [], takeDamage(d) { this.taken.push(d); return d; } };
+    game.enemies = [near, far];
+
+    applyElementMark(near, 'water', 20, {}, game);
+    assert.ok(fx.some(f => !Array.isArray(f) && f.count === 3), '印记=3粒微型火花,不再逐次弹浮字');
+    applyElementMark(near, 'fire', 20, {}, game);
+    assert.deepEqual(near.taken, [40], '首次爆炸伤害 ×2');
+    assert.deepEqual(far.taken, [], '半径外不受影响');
+    const heavy = () => fx.filter(Array.isArray).length;
+    const h1 = heavy();
+    assert.ok(h1 >= 3, '首次爆炸有全套反馈(粒子+震屏+音效+浮字)');
+
+    // 0.12 秒节流窗口内连爆:伤害照常,震屏/音效/浮字不再叠加
+    applyElementMark(near, 'earth', 20, {}, game);
+    applyElementMark(near, 'wind', 20, {}, game);
+    assert.deepEqual(near.taken, [40, 40], '第二次爆炸伤害照常');
+    assert.equal(heavy(), h1, '连爆反馈被节流(无新增震屏/音效/浮字)');
+});
+
+// ── 凯尔重做：Q 高爆射击（鼠标瞄准）/ E 弱点狙击 / 被动暴伤 ──
+test('凯尔Q:鼠标模式朝鼠标方向发射高爆弹(命中/落点半径90爆炸,不穿透)', () => {
+    const { CHARS } = require('../dist/data/CharacterDB');
+    const mkGame = (mouse) => {
+        const bullets = [];
+        return {
+            bullets, input: mouse ? { mouse } : undefined,
+            bulletPool: { spawn: (cfg) => { bullets.push(cfg); return cfg; } },
+            particles: { hexActivate() {}, explode() {}, weaponFlash() {} },
+            screenShake: { shake() {} }, floatingText: { spawn() {} }, audio: { playSfx() {} },
+        };
+    };
+    const mkKai = () => {
+        const p = makePlayer();
+        p.charId = 'kai'; p.x = 100; p.y = 100; p.facingX = 0; p.facingY = -1; // 朝上(用于触屏回退对照)
+        p._charDef = CHARS.find(c => c.id === 'kai');
+        p.stats.critRate = 0.5;
+        p.applyBuff = () => {};
+        p.getCastDirection = () => [0, -1];
+        p.getMuzzlePosition = () => [110, 100];
+        return p;
+    };
+    const kaiDef = CHARS.find(c => c.id === 'kai');
+
+    // 鼠标在右上方且已活动过(active) → 弹道朝鼠标(而非角色朝向)
+    const game = mkGame({ x: 510, y: 80, active: true });
+    const orig = Math.random;
+    Math.random = () => 0.5;   // 不暴击,便于看基础倍率
+    try { kaiDef.qSkill(mkKai(), game); } finally { Math.random = orig; }
+    const b = game.bullets[0];
+    assert.equal(game.bullets.length, 1, '只发射一枚高爆弹');
+    assert.ok(b.vx > 0 && b.vy < 0, '朝鼠标方向飞行');
+    assert.equal(b.explodeOnExpire, true, '高爆:命中或落点爆炸');
+    assert.equal(b.explodeRadius, 90);
+    assert.equal(b.pierceLeft, 0, '高爆弹不穿透');
+    assert.equal(b.isCrit, false, '暴击率掷骰保留');
+    assert.ok(Math.abs(Math.hypot(b.vx, b.vy) - 700) < 1e-6, '弹速 700');
+
+    // 无鼠标/鼠标从未活动(触屏) → 回退角色朝向
+    const game2 = mkGame({ x: 510, y: 80, active: false });
+    kaiDef.qSkill(mkKai(), game2);
+    assert.ok(game2.bullets[0].vy < 0 && Math.abs(game2.bullets[0].vx) < 1e-6, '触屏回退朝向');
+    const game3 = mkGame(null);
+    kaiDef.qSkill(mkKai(), game3);
+    assert.ok(game3.bullets[0].vy < 0, '无输入设备同样回退朝向');
+});
+
+test('凯尔E弱点狙击:≥5目标各锁一个必暴;不足5全弹+25%;单目标逐发+25%封顶100%', () => {
+    const { CHARS } = require('../dist/data/CharacterDB');
+    const kaiDef = CHARS.find(c => c.id === 'kai');
+    const mkGame = (n) => {
+        const bullets = [];
+        const timers = [];
+        return {
+            bullets, timers, enemies: makeElemEnemies(n),
+            after: (sec, fn) => timers.push([sec, fn]),
+            bulletPool: { spawn: (cfg) => { bullets.push(cfg); return cfg; } },
+            particles: { hexActivate() {} }, screenShake: { shake() {} },
+            floatingText: { spawn() {} }, audio: { playSfx() {} },
+        };
+    };
+    const fire = (game) => { assert.equal(game.timers.length, 1, '登记1.25秒引导'); assert.equal(game.timers[0][0], 1.25); game.timers[0][1](); };
+    const mkKai = (dmg) => {
+        const p = makePlayer();
+        p.charId = 'kai'; p.x = 0; p.y = 0;
+        p._charDef = kaiDef;
+        p.stats.damage = dmg;
+        p.applyBuff = () => {};
+        p.getMuzzlePosition = () => [0, 0];
+        return p;
+    };
+
+    // ≥5 目标：5 发必暴,锁定 5 个不同目标,基础倍率
+    let game = mkGame(7);
+    kaiDef.eSkill(mkKai(100), game);
+    assert.equal(game.bullets.length, 0, '引导期间不发射');
+    fire(game);
+    assert.equal(game.bullets.length, 5);
+    assert.ok(game.bullets.every(b => b.isCrit === true), '五发必定暴击');
+    const locked = new Set(game.bullets.map(b => b._homingTarget));
+    assert.equal(locked.size, 5, '随机锁定5个不同怪物');
+    assert.ok(game.bullets.every(b => Math.abs(b.damage - 100) < 1e-9), '基础伤害无加成');
+    assert.ok(game.bullets.every(b => b.homing === true), '锁定目标飞行');
+
+    // 3 目标：全弹 ×1.25
+    game = mkGame(3);
+    kaiDef.eSkill(mkKai(100), game);
+    fire(game);
+    assert.equal(game.bullets.length, 5, '仍发射5发');
+    assert.ok(game.bullets.every(b => Math.abs(b.damage - 125) < 1e-9), '目标不足5个全弹+25%');
+
+    // 1 目标：逐发 ×1/×1.25/×1.5/×1.75/×2(上限+100%)
+    game = mkGame(1);
+    kaiDef.eSkill(mkKai(100), game);
+    fire(game);
+    assert.equal(game.bullets.length, 5);
+    const expected = [100, 125, 150, 175, 200];
+    game.bullets.forEach((b, i) => {
+        assert.ok(Math.abs(b.damage - expected[i]) < 1e-9, `第${i + 1}发 ×${expected[i] / 100}`);
+        assert.equal(b._homingTarget, game.enemies[0], '全部作用于同一怪物');
+    });
+
+    // 0 目标：不发射
+    game = mkGame(0);
+    game.enemies = [];
+    kaiDef.eSkill(mkKai(100), game);
+    assert.equal(game.bullets.length, 0, '无目标不浪费技能');
+});
+
+test('凯尔被动:额外穿透+1 与 暴击伤害+5%', () => {
+    const { CHARS } = require('../dist/data/CharacterDB');
+    const p = makePlayer();
+    p.stats.pierce = 0;
+    p.stats.critDmg = 0.5;
+    CHARS.find(c => c.id === 'kai').passive(p, {});
+    assert.equal(p.stats.pierce, 1);
+    assert.ok(Math.abs(p.stats.critDmg - 0.55) < 1e-9, '暴击伤害 0.5 → 0.55');
+});
+
+test('凯尔E引导:1.25秒后按引导结束时的战场状态发射;引导期间定身,死亡/无目标不发射', () => {
+    const { CHARS } = require('../dist/data/CharacterDB');
+    const kaiDef = CHARS.find(c => c.id === 'kai');
+    const buffs = [];
+    const mkGame = (n) => {
+        const bullets = [];
+        const timers = [];
+        return {
+            bullets, timers, enemies: makeElemEnemies(n),
+            after: (sec, fn) => timers.push([sec, fn]),
+            bulletPool: { spawn: (cfg) => { bullets.push(cfg); return cfg; } },
+            particles: { hexActivate() {} }, screenShake: { shake() {} },
+            floatingText: { spawn() {} }, audio: { playSfx() {} },
+        };
+    };
+    const mkKai = () => {
+        const p = makePlayer();
+        p.charId = 'kai'; p.x = 0; p.y = 0; p._charDef = kaiDef;
+        p.stats.damage = 100;
+        p.applyBuff = (id, dur, mods) => buffs.push({ id, dur, mods });
+        p.getMuzzlePosition = () => [0, 0];
+        return p;
+    };
+
+    // 引导期间新增了目标 → 发射时按新战场锁定
+    const game = mkGame(0);
+    const kai = mkKai();
+    game.enemies = [];
+    kaiDef.eSkill(kai, game);
+    assert.equal(game.bullets.length, 0, '无目标直接提示,不进入引导');
+    game.enemies = makeElemEnemies(6);
+    kaiDef.eSkill(kai, game);
+    assert.equal(game.bullets.length, 0, '引导中未发射');
+    assert.deepEqual(buffs[0], { id: 'weakpoint_aim', dur: 1.25, mods: { noMove: true } }, '引导定身buff');
+    game.enemies = makeElemEnemies(2);          // 引导结束时战场变化
+    game.timers[0][1]();
+    assert.equal(game.bullets.length, 5);
+    assert.ok(game.bullets.every(b => Math.abs(b.damage - 125) < 1e-9), '按引导结束时的2目标规则+25%');
+
+    // 引导期间玩家死亡 → 不发射
+    const game2 = mkGame(5);
+    const kai2 = mkKai();
+    kaiDef.eSkill(kai2, game2);
+    kai2.alive = false;
+    game2.timers[0][1]();
+    assert.equal(game2.bullets.length, 0, '引导期间阵亡不发射');
+});
+
+test('InputManager鼠标模式:首次鼠标移动/按下置位active(触屏不置位)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const src = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/systems/InputManager.ts'), 'utf8');
+    assert.match(src, /mouse = \{ x: 640, y: 360, down: false, active: false \};/, 'mouse.active 初始为 false');
+    assert.match(src, /this\.mouse\.active = true; \}/, '鼠标事件置位 active');
+    // 坐标必须用 UI 坐标（设计分辨率）换算——getLocation 是物理像素，
+    // 全屏/DPI 缩放下会错位导致瞄准不跟鼠标（与 TouchControls 触点换算同源）
+    assert.match(src, /e\.getUILocationX\?\.\(\) \?\? e\.getLocationX\(\)/, '鼠标用 UI 坐标');
+    assert.match(src, /this\.mouse\.y = CANVAS_H - y;/, 'y 翻转为世界向下坐标系');
+    assert.match(src, /active：收到过真实鼠标事件/, '注释说明用途');
+});
+
+test('GameManager延时器:暂停安全,换局作废(源码门禁)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const src = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/core/GameManager.ts'), 'utf8');
+    assert.match(src, /after\(seconds: number, fn: \(\) => void\): void/, 'after 接口');
+    assert.match(src, /tm\.runId !== this\._runId\) \{ this\._timers\.splice\(i, 1\); continue; \}/, '换局作废');
+    assert.match(src, /this\._updateTimers\(dt\);/, '随战斗推进计时');
+    assert.match(src, /this\._timers = \[\];   \/\/ 换局\/清场：作废全部引导与延迟回调/, '清场作废');
 });

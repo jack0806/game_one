@@ -278,10 +278,29 @@ test('触控摇杆与QER在测试房充分上移,不得覆盖单位分页箭头'
 
 // ── ScreenManager / PlayerController 源码门禁 ──
 
-test('主页有测试房间入口且占位钮保持禁用', () => {
+test('主页有测试房间入口,设置面板提供音乐/音效音量滑杆并持久化', () => {
     assert.match(screenSource, /onTestRoomPressed\?:/);
     assert.match(screenSource, /_mkBtn\(menuActions, '测试房间', 0, 24, 330, 46, new Color\(190, 120, 255, 255\)\)/);
     assert.match(screenSource, /_mkBtn\(menuActions, '升级  ·  即将开放', 0, -36, 330, 46, new Color\(80, 118, 135, 255\), true\)/);
+    // 设置已实装：音量滑杆面板 + 主页/暂停入口 + 持久化
+    assert.match(screenSource, /_mkBtn\(menuActions, '设置', 0, -96, 330, 46, new Color\(70, 105, 130, 255\)\)/, '主页设置按钮启用');
+    assert.match(screenSource, /_buildSettingsPanel\(\);/, '设置面板构建');
+    assert.match(screenSource, /_mkVolumeSlider\(p, 92, '音乐音量'/, '音乐音量滑杆');
+    assert.match(screenSource, /_mkVolumeSlider\(p, 22, '音效音量'/, '音效音量滑杆');
+    assert.match(screenSource, /getAudioVolumes\?:/, '音量读取回调');
+    assert.match(screenSource, /onAudioVolumesChanged\?:/, '音量回写回调');
+    assert.match(gameSource, /this\._screenMgr\.onAudioVolumesChanged = \(bgm, sfx\) => \{/, 'GameManager音量接线');
+    assert.match(gameSource, /AudioManager\.saveAudioSettings\(bgm, sfx\)/, '音量持久化');
+    const audioSource = fs.readFileSync(path.join(root, 'assets/scripts/systems/AudioManager.ts'), 'utf8');
+    assert.match(audioSource, /static loadAudioSettings\(\)/, '设置读取');
+    assert.match(audioSource, /static saveAudioSettings\(/, '设置保存');
+    assert.match(audioSource, /const saved = AudioManager\.loadAudioSettings\(\);/, '启动应用持久化音量');
+    // 退出按钮已实装：两步确认 + game.end + web 拦截兜底遮罩
+    assert.match(screenSource, /_mkBtn\(menuActions, '退出', 0, -156, 330, 46, new Color\(120, 62, 55, 255\)\)/, '退出按钮启用');
+    assert.doesNotMatch(screenSource, /'退出  ·  即将开放'/, '退出不再是占位');
+    assert.match(screenSource, /exitLbl\.string = '再次点击确认退出';/, '两步确认');
+    assert.match(screenSource, /game\.end\(\);/, '确认后结束游戏');
+    assert.match(screenSource, /_showExitVeil\(\)/, '关闭被拦截时兜底遮罩');
 });
 
 test('玩家具备godMode无敌与DoT持续伤害字段', () => {

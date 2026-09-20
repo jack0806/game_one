@@ -1,7 +1,7 @@
 // ============================================================
 //  AudioManager.ts — BGM / SFX 播放、缓存与高频限流
 // ============================================================
-import { AudioClip, AudioSource, Node, resources } from 'cc';
+import { AudioClip, AudioSource, Node, resources, sys } from 'cc';
 
 export type BgmCue = 'title' | 'ch1' | 'ch2' | 'ch3' | 'ch4' | 'boss' | 'shop';
 export type SfxCue =
@@ -79,8 +79,39 @@ export class AudioManager {
     sfxVolume = 1;
     muted = false;
 
+    /** 全局音频设置（独立于存档槽，localStorage 持久化）。 */
+    private static readonly SETTINGS_KEY = 'hexblast_settings_v1';
+
+    /** 读取持久化的音量设置（损坏/缺失时回退默认 0.48 / 1）。 */
+    static loadAudioSettings(): { bgm: number; sfx: number } {
+        try {
+            const raw = sys.localStorage.getItem(AudioManager.SETTINGS_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                return {
+                    bgm: Math.min(1, Math.max(0, Number(data.bgm))),
+                    sfx: Math.min(1, Math.max(0, Number(data.sfx))),
+                };
+            }
+        } catch (_e) { /* 配置损坏回退默认 */ }
+        return { bgm: 0.48, sfx: 1 };
+    }
+
+    /** 保存音量设置（隐私模式/存储满时静默失败）。 */
+    static saveAudioSettings(bgm: number, sfx: number): void {
+        try {
+            sys.localStorage.setItem(AudioManager.SETTINGS_KEY, JSON.stringify({
+                bgm: Math.min(1, Math.max(0, bgm)), sfx: Math.min(1, Math.max(0, sfx)),
+            }));
+        } catch (_e) { /* 忽略 */ }
+    }
+
     /** 不传 parent 时为 headless：保留状态/限流逻辑，但不接触引擎音频对象。 */
     constructor(parent?: Node) {
+        // 启动即应用持久化音量（headless 同样生效，保持可测）
+        const saved = AudioManager.loadAudioSettings();
+        this.bgmVolume = saved.bgm;
+        this.sfxVolume = saved.sfx;
         if (!parent) return;
 
         const bgmNode = new Node('BgmAudio');

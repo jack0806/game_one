@@ -59,7 +59,13 @@ test('进入游戏先选存档再进大厅:传送门进选人,对局退出回大
     // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
     assert.match(gameSource, /onSlotPicked      = \(slot\) => \{[\s\S]*?SaveSystem\.selectSlot\(slot\);[\s\S]*?this\._setState\('lobby'\);/);
     // 大厅传送门 → 难度选择 → 选人页；难度页/选人页都可返回大厅
-    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('difficultySelect'\)/);
+    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('mapSelect'\)/, '传送门先进地图选择');
+    assert.match(gameSource, /onMapPicked        = \(\) => this\._setState\('difficultySelect'\)/, '选废土后进难度选择');
+    assert.match(gameSource, /onMapBack          = \(\) => this\._setState\('lobby'\)/, '地图页返回大厅');
+    assert.match(screenSource, /_buildMapSelectPanel\(\);/, '地图选择页构建');
+    assert.match(screenSource, /'地图 1 · 废土'/, '废土地图卡');
+    assert.match(screenSource, /'地图 2 · 深海'/, '深海地图卡(占位)');
+    assert.match(screenSource, /即将开放/, '深海锁定提示');
     assert.match(gameSource, /onDifficultyPicked = \(d\) => \{[\s\S]*?this\._difficulty = d;[\s\S]*?this\._setState\('charSelect'\);/);
     assert.match(gameSource, /onDifficultyBack  = \(\) => this\._setState\('lobby'\)/);
     assert.match(gameSource, /onCharSelectBack  = \(\) => this\._setState\('lobby'\)/);

@@ -52,6 +52,9 @@ export interface BulletData {
     _spedUp?: boolean;
     /** 追踪弹锁定目标（玩家弹）；加速瞬间清空重锁，目标死亡自动重锁最近存活敌人。 */
     _homingTarget?: any;
+    /** 保留锁定（凯尔E弱点弹）：锁定目标死亡后不重锁、直飞耗尽——
+     *  保证"一个目标一枚子弹"，不会多弹汇聚到同一个新目标身上。 */
+    keepLock?: boolean;
     /** 元素飞弹（海克斯19 元素暴击）：命中时给目标打对应元素印记，集齐引爆。 */
     element?: 'water' | 'fire' | 'earth' | 'wind';
     trailCd?:     number;
@@ -96,7 +99,7 @@ function resetBullet(b: BulletData): void {
     b.pierceShield = false; b.dot = undefined; b.slow = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
     b.explodeRadius = undefined; b.explodeColor = undefined;
     b.speedUpAfter = undefined; b.speedUpMult = undefined; b._spedUp = false;
-    b._homingTarget = undefined; b.element = undefined;
+    b._homingTarget = undefined; b.element = undefined; b.keepLock = false;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -186,14 +189,18 @@ export class BulletPool {
                 b._homingTarget = undefined;
             }
 
-            // 追踪逻辑（凯尔大招等）：锁定最近存活敌人，目标死亡后重新锁定。
+            // 追踪逻辑（制导蜂群/元素飞弹等）：锁定最近存活敌人，目标死亡后重新锁定。
             // 场上存在存活 Boss 时优先锁定最近的 Boss（凯尔大招"有boss优先锁boss"）。
             // 隐身/飞空的隐藏单位不吃索敌优先级（无敌期间追踪弹全浪费），
             // 只有场上再无可见目标时才回退锁定隐藏目标。
             if (b.homing) {
                 let nearest = b._homingTarget;
-                if (nearest && !nearest.alive) { nearest = undefined; b._homingTarget = undefined; }
-                if (!nearest) {
+                if (nearest && !nearest.alive) {
+                    nearest = undefined; b._homingTarget = undefined;
+                    // 弱点弹(keepLock)：锁定目标死亡即直飞耗尽,不重锁
+                    if (b.keepLock) b.homing = false;
+                }
+                if (!nearest && b.homing) {   // keepLock 关闭追踪后本帧起不再重锁
                     const isHidden = (e: any) => !!e.invisible || ((e as any).mechSkyT ?? 0) > 0;
                     const pickNearest = (pred: (e: any) => boolean, allowHidden: boolean) => {
                         let found: any = undefined;

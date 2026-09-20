@@ -49,36 +49,104 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'kai',
         name: '炮击手·凯尔', icon: '⚙️', color: '#00ffcc', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 20,
-        desc: '穿甲义肢炮，子弹额外穿透1个敌人',
-        skills: { q: '强化射击 — 发射超大穿透弹，伤害×4', e: '弹幕模式 — 4秒内三连发，无法移动', r: '核心过载 — 30发追踪爆裂弹(2秒后加速,命中或脱靶均半径50爆炸)+8秒伤害×2' },
+        desc: '穿甲义肢炮，子弹额外穿透1个敌人，暴击伤害+5%',
+        skills: {
+            q: '高爆射击 — 朝鼠标方向发射高爆弹，伤害×4，命中或落点半径90爆炸',
+            e: '弱点狙击 — 引导1.25秒后随机锁定5个敌人必暴击；目标不足5个全弹+25%伤害，单目标逐发+25%（上限100%）',
+            r: '核心过载 — 30发爆裂弹沿自身弹道飞行(2秒后加速,命中或脱靶均半径50爆炸)+8秒伤害×2',
+        },
         skillIcons: { q: 'pierce', e: 'bounce', r: 'explosion' },
         stats: { maxHp: 120, speed: 330, damage: 25, attackSpeed: 2, armor: 10, critRate: 0.05, critDmg: 0.5, pierce: 1 },
-        passive(p: any) { p.stats.pierce += 1; },
+        passive(p: any) {
+            p.stats.pierce += 1;
+            p.stats.critDmg = (p.stats.critDmg ?? 0.5) + 0.05;   // 被动:额外+5%暴击伤害
+        },
         qSkill(p: any, game: any) {
-            // 方向性技能沿角色朝向释放（facing 随移动输入更新），不再追鼠标
-            const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
-            // 弹头放大50%（radius 12 → 18）
-            game.bulletPool.spawn({ x: mx, y: my, vx: nx * 700, vy: ny * 700, damage: p.stats.damage * 4, radius: 18, color: '#ff8800', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: false });
+            // 鼠标模式判定：收到过真实鼠标事件（InputManager.mouse.active）。
+            // 不用 sys 的 INPUT_TOUCH 能力探测——原生模拟器/带触屏的桌面机会
+            // 误报触控，导致 Q 永远走朝向回退、不朝鼠标射击。
+            const mouse = game.input?.mouse;
+            let nx: number, ny: number;
+            if (mouse?.active) {
+                [nx, ny] = Vec.normalize(mouse.x - mx, mouse.y - my);
+                if (!nx && !ny) nx = 1;   // 鼠标恰在枪口：保底朝右，避免零速弹
+            } else {
+                [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            }
+            // 高爆弹：不再穿透，命中第一个目标或到达射程终点都会半径 90 爆炸
+            game.bulletPool.spawn({
+                x: mx, y: my, vx: nx * 700, vy: ny * 700,
+                damage: p.stats.damage * 4, radius: 18, color: '#ff8800',
+                pierceLeft: 0, lifeTime: 2, owner: 'player', charKey: p.charId,
+                isCrit: Rng.chance(p.stats.critRate || 0),   // 技能伤害参与暴击（联动元素暴击）
+                explodeOnExpire: true, explodeRadius: 90,
+            });
             game.particles.hexActivate(p.x, p.y, '#00ffcc');
             if (game.particles.weaponFlash) game.particles.weaponFlash(mx, my, nx, ny, 'charged');
             else game.particles.explode(mx, my, '#ff8800', 20);
         },
         eSkill(p: any, game: any) {
-            p.applyBuff('barrage_mode', 4, { atkSpd: 3, noMove: true });
-            game.particles.hexActivate(p.x, p.y, '#00ffcc');
+            // 弱点狙击：引导 1.25 秒（期间定身）后发射 5 发必暴击弱点弹。
+            // 引导结束时重新校验目标与自身存活——战场在引导期间可能已变化。
+            // 伤害规则：≥5 目标各锁一个基础伤害；不足 5 个全弹 ×1.25；
+            // 场上只剩 1 个敌人逐发递增 +25%（×1~×2，上限 +100%）。
+            const fire = () => {
+                if (!p.alive) return;
+                const targets = ((game.enemies || []) as any[]).filter(e =>
+                    e.alive && !e.dead && !e.invisible && !((e.mechSkyT ?? 0) > 0));
+                if (!targets.length) return;
+                const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
+                const picks: any[] = [];
+                if (targets.length >= 5) {
+                    const pool = [...targets];
+                    while (picks.length < 5) picks.push(pool.splice(Rng.int(0, pool.length - 1), 1)[0]);
+                } else {
+                    for (let i = 0; i < 5; i++) picks.push(Rng.pick(targets));
+                }
+                const solo = targets.length === 1;
+                picks.forEach((target, i) => {
+                    const mult = solo
+                        ? 1 + Math.min(1, 0.25 * i)
+                        : (targets.length < 5 ? 1.25 : 1);
+                    const a = Math.atan2(target.y - my, target.x - mx);
+                    game.bulletPool.spawn({
+                        x: mx, y: my, vx: Math.cos(a) * 650, vy: Math.sin(a) * 650,
+                        damage: p.stats.damage * mult, radius: 6, color: '#ffe066',
+                        pierceLeft: 0, lifeTime: 2, owner: 'player', charKey: p.charId,
+                        isCrit: true,                        // 弱点射击必定暴击
+                        homing: true, _homingTarget: target, // 预锁定目标，确保命中
+                        keepLock: true,   // 目标中途死亡不重锁：一个目标只吃一枚弱点弹
+                    });
+                });
+                game.audio?.playSfx?.('skill_e', 0.8);
+                game.floatingText?.spawn?.(p.x, p.y - 60, '弱点狙击！', '#ffe066', 18, true);
+            };
+            const targets = ((game.enemies || []) as any[]).filter(e =>
+                e.alive && !e.dead && !e.invisible && !((e.mechSkyT ?? 0) > 0));
+            if (!targets.length) {
+                game.floatingText?.spawn?.(p.x, p.y - 60, '弱点狙击：无目标', '#9fb4c8', 14, true);
+                return;
+            }
+            p.applyBuff('weakpoint_aim', 1.25, { noMove: true });   // 引导期间定身
+            game.particles.hexActivate(p.x, p.y, '#ffe066');
+            game.floatingText?.spawn?.(p.x, p.y - 60, '弱点狙击引导…', '#ffe066', 16, true);
+            if (game.after) game.after(1.25, fire);
+            else fire();   // 桩环境无延时器时立即发射（保持可测）
         },
         ultimate(p: any, game: any) {
-            // 弹头自动追踪敌人（homing 由 BulletPool.update 朝最近敌人转向）。
-            // 2026-08-26 修正：炮弹不再"打不着怪就消失"——2 秒后弹速翻倍加速，
-            // 命中(穿透耗尽)或脱靶(到期/出界)时每个炮弹都会造成半径 50 的爆炸伤害。
+            // 炮弹沿自身发射弹道直飞、不追踪（2026-09-21 玩家反馈：360° 散射+追踪
+            // 转向速率跟不上弹速，背向目标的炮弹到过期都拐不回来，观感"锁不上Boss"）。
+            // 2 秒后弹速翻倍加速；命中(穿透耗尽)或脱靶(到期/出界)时每个炮弹
+            // 都会造成半径 50 的爆炸伤害。
             const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
             for (let i = 0; i < 30; i++) {
                 const a = Rng.float(0, Math.PI * 2);
                 game.bulletPool.spawn({
                     x: mx, y: my, vx: Math.cos(a) * 500, vy: Math.sin(a) * 500,
                     damage: p.stats.damage * 2, radius: 7, color: '#ff4400',
-                    pierceLeft: 2, lifeTime: 4, owner: 'player', charKey: p.charId, homing: true,
+                    pierceLeft: 2, lifeTime: 4, owner: 'player', charKey: p.charId,
+                    isCrit: Rng.chance(p.stats.critRate || 0),   // 技能暴击联动元素暴击
                     speedUpAfter: 2, speedUpMult: 2, // 2秒后加速到 1000 码/秒
                     explodeOnExpire: true, explodeRadius: 50, // 最终每个炮弹半径50爆炸
                 });
@@ -393,7 +461,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             // 方向性技能沿角色朝向释放（不再追鼠标）
             const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
-            const b = game.bulletPool.spawn({ x: mx, y: my, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId });
+            const b = game.bulletPool.spawn({ x: mx, y: my, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: Rng.chance(p.stats.critRate || 0) });
             b.onHitCb = (_bullet: any, enemy: any) => {
                 enemy.slowMult = 0.3; enemy.frozen = Math.max(enemy.frozen || 0, 0.8);
                 game.particles?.coldImpact(enemy.x, enemy.y);

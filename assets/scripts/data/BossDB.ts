@@ -31,8 +31,11 @@ export const BOSSES: BossDef[] = [
     { chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#cc7a33', glow: '#ffaa44', label: '钢铁之王·熔炉',       spriteKey: 'enemy_boss_ch2', visualScale: 2.0, attackWindupMax: 0.42 },
     { chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#00cc88', glow: '#00ffcc', label: '海克斯异变体·无限核', spriteKey: 'enemy_boss_ch3', visualScale: 2.0, attackWindupMax: 0.42 },
     { chapter: 4, maxHp: 14000, damage: 132, speed: 80, armor: 40, goldValue: 800, radius: 45, color: '#8800cc', glow: '#cc44ff', label: '混沌深渊·终焉之门',   spriteKey: 'enemy_boss_ch4', visualScale: 2.0, attackWindupMax: 0.42 },
-    // 第5章灭世机神·天罚：暂无独立贴图，复用 enemy_boss 素体+橙红染色（同测试房 mech/abyss 套路）。
-    { chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚',       spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
+    // 第5章机械高达X-剑（2026-09-21 玩家调整：由测试房转正，数值取第五章档位，
+    // 复用测试房专属俯视立绘 enemy_boss_mech）
+    { chapter: 5, maxHp: 20000, damage: 160, speed: 68, armor: 50, goldValue: 1000, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
+    // 第6章灭世机神·天罚：暂无独立贴图，复用 enemy_boss 素体+橙红染色。
+    { chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 1200, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
 /** 按 0-based 章节号取 Boss 定义，越界回落到最后一章。 */

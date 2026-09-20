@@ -146,7 +146,7 @@ export class BossController extends EnemyBase {
 
     /** 机械高达被动：50% 概率格挡玩家伤害（用剑劈掉攻击，简化实现）。 */
     override takeDamage(rawDmg: number, attacker: any, game: any): number {
-        if (this.bossKind === 'mech' && attacker && this.alive && !this.invulnerable && Rng.chance(0.5)) {
+        if (this._usesMechSkills() && attacker && this.alive && !this.invulnerable && Rng.chance(0.5)) {
             game?.floatingText?.spawn?.(this.x, this.y - 80, '格挡！', '#aaddff', 18, true);
             game?.particles?.shieldBlock?.(this.x, this.y, false);
             game?.audio?.playSfx?.('hex_activate', 0.6);
@@ -222,7 +222,7 @@ export class BossController extends EnemyBase {
         }
 
         // 测试房间专属 Boss 技能状态机（机械高达/深海恐惧/灭世机神，文档 boss.docx 与用户设计稿）
-        if (this.bossKind === 'mech') this._updateMechSkills(dt, player, game);
+        if (this._usesMechSkills()) this._updateMechSkills(dt, player, game);
         else if (this.bossKind === 'abyss') this._updateAbyssSkills(dt, player, game);
         else if (this._isDocBoss()) this._updateDocBossSkills(dt, player, game);
         else if (this._usesInvaderSkills()) this._updateInvaderSkills(dt, player, game);
@@ -235,7 +235,7 @@ export class BossController extends EnemyBase {
 
         // 飞空（机械高达天空坠击）/最终形态引导（灭世机神）/天罚网格激光发射（灭世机神）：
         // 均不移动、不接触攻击（网格激光发射是站桩技能）
-        const airborne = (this.bossKind === 'mech' && this.mechSkyT > 0)
+        const airborne = (this._usesMechSkills() && this.mechSkyT > 0)
             || (this._usesInvaderSkills() && (this._invFormT > 0 || this.invLaserT > 0));
 
         // 冲刺先锁定路线并蓄力，再进入冲刺移动。
@@ -282,7 +282,7 @@ export class BossController extends EnemyBase {
         }
 
         // 技能计时（正式章节 Boss 除第5章外；测试房 Boss/灭世机神由各自状态机调度）
-        if (!this.bossKind && !this._usesInvaderSkills()) {
+        if (!this.bossKind && !this._usesInvaderSkills() && !this._usesMechSkills()) {
             this._skillTimer  -= dt;
             this._summonTimer -= dt;
             this._chargeCd    -= dt;
@@ -618,9 +618,14 @@ export class BossController extends EnemyBase {
 
     // ── 灭世机神·天罚（第五章正式Boss / 测试房 'invader'，用户设计稿） ──────
 
-    /** 第五章正式 Boss 与测试房 'invader' 共用同一套技能状态机。 */
+    /** 第六章正式 Boss（灭世机神）与测试房 'invader' 共用同一套技能状态机。 */
     private _usesInvaderSkills(): boolean {
-        return this.bossKind === 'invader' || this.chapter === 5;
+        return this.bossKind === 'invader' || this.chapter === 6;
+    }
+
+    /** 第五章正式 Boss（机械高达X-剑）与测试房 'mech' 共用同一套技能状态机。 */
+    private _usesMechSkills(): boolean {
+        return this.bossKind === 'mech' || this.chapter === 5;
     }
 
     /**

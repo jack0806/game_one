@@ -303,7 +303,7 @@ test('玩家追踪弹场上有Boss时优先锁定Boss(即使更远),Boss死亡�
     assert.equal(b._homingTarget, grunt, 'Boss死亡后回落最近敌人');
 });
 
-test('凯尔大招单目标时所有炮弹锁定同一个敌人(集火)', () => {
+test('追踪弹单目标时所有炮弹锁定同一个敌人(集火,制导蜂群/元素飞弹)', () => {
     const game = makeMockGame();
     const enemies = [];
     const player = makePlayer();
@@ -401,4 +401,27 @@ test('角色和炮台弹丸使用横向原色Sprite并按飞行方向旋转', ()
         '不应再用纯色染色压平弹丸自身层次',
     );
     assert.equal(Math.round(b.node.eulerAngles.z), -90, '朝上的弹丸应随速度方向旋转');
+});
+
+test('keepLock(凯尔E弱点弹):锁定目标死亡后不重锁,直飞耗尽——一个目标一枚子弹', () => {
+    const game = makeMockGame();
+    const enemies = [];
+    const player = makePlayer();
+    const pool = new BulletPool(8);
+    const locked = mkEnemy(300, 100);
+    const other = mkEnemy(320, 100);
+    enemies.push(locked, other);
+    const b = pool.spawn({ x: 100, y: 100, vx: 200, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, homing: true, keepLock: true, _homingTarget: locked });
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b._homingTarget, locked, '初始锁定预置目标');
+    locked.alive = false;                    // 锁定目标死亡
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b.homing, false, '关闭追踪,不再重锁');
+    assert.equal(b._homingTarget, undefined);
+    assert.notEqual(b._homingTarget, other, '不会被最近的存活敌人吸走');
+
+    // 对照:普通追踪弹(元素飞弹等)目标死亡后仍会重锁最近敌人
+    const b2 = pool.spawn({ x: 100, y: 100, vx: 200, vy: 0, damage: 5, radius: 5, owner: 'player', lifeTime: 5, homing: true, _homingTarget: locked });
+    pool.update(0.016, enemies, player, game);
+    assert.equal(b2._homingTarget, other, '普通追踪弹重锁最近存活敌人');
 });

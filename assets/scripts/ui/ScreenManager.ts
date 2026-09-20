@@ -1,13 +1,14 @@
 import {
     _decorator, Component, Node, Label, Graphics, Sprite,
-    Color, Vec3, UITransform, HorizontalTextAlignment, VerticalTextAlignment
+    Color, Vec3, UITransform, HorizontalTextAlignment, VerticalTextAlignment, game,
 } from 'cc';
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
 import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
+import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
 import { SaveSelectUI } from './SaveSelectUI';
@@ -18,7 +19,7 @@ const { ccclass } = _decorator;
 export type ScreenName =
     | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
     | 'playing'
-    | 'gameover' | 'chapterClear' | 'pause'
+    | 'gameover' | 'chapterClear' | 'pause' | 'settings' | 'exitVeil' | 'mapSelect'
     | MetaPageName;
 
 type BtnCallback = () => void;
@@ -52,7 +53,9 @@ export class ScreenManager extends Component {
     // callbacks set by GameManager
     onPlayPressed?:        BtnCallback;   // 进入游戏 → 存档选择
     onSlotPicked?:         (slot: number) => void;   // 存档选择 → 进入存档大厅
-    onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 难度选择
+    onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 作战地图选择
+    onMapPicked?:          BtnCallback;   // 地图页选定（废土）→ 难度选择
+    onMapBack?:            BtnCallback;   // 地图页返回 → 存档大厅
     onDifficultyPicked?:   (d: DifficultyDef) => void;   // 难度选择 → 角色选择
     onDifficultyBack?:     BtnCallback;   // 难度选择返回 → 回存档大厅
     onCharSelectBack?:     BtnCallback;   // 选人页返回 → 回存档大厅
@@ -62,6 +65,10 @@ export class ScreenManager extends Component {
     onMainMenuPressed?:    BtnCallback;
     onContinuePressed?:    BtnCallback;   // after chapter clear
     onResumePressed?:      BtnCallback;   // resume from pause
+    /** 设置页读取当前音量（GameManager 注入，返回 0~1）。 */
+    getAudioVolumes?:      () => { bgm: number; sfx: number };
+    /** 设置页拖动音量滑杆时回写（GameManager 负责应用与持久化）。 */
+    onAudioVolumesChanged?: (bgm: number, sfx: number) => void;
     onButtonSfx?:          BtnCallback;
 
     onLoad() {
@@ -84,6 +91,7 @@ export class ScreenManager extends Component {
             onButtonSfx: () => this.onButtonSfx?.(),
         });
         for (const [name, panel] of this._metaPages.entries()) this._panels.set(name, panel);
+        this._buildMapSelectPanel();
         this._buildDifficultySelectPanel();
         this._buildCharSelectPanel();
         // 英雄介绍弹窗在选人页之后构建，保证层级在选人卡之上（点击遮罩不穿透）
@@ -91,6 +99,7 @@ export class ScreenManager extends Component {
         this._buildGameoverPanel();
         this._buildChapterClearPanel();
         this._buildPausePanel();
+        this._buildSettingsPanel();
         // start with everything hidden
         this._panels.forEach(p => p.active = false);
     }
@@ -107,6 +116,8 @@ export class ScreenManager extends Component {
         if (p) p.active = true;
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
             this._metaPages.refresh(name);
+        } else if (name === 'settings') {
+            this._refreshSettings();
         } else if (name === 'saveSelect') {
             this._saveSelect.refresh();
         } else if (name === 'lobby') {
@@ -171,8 +182,27 @@ export class ScreenManager extends Component {
         testBtn.on(Node.EventType.TOUCH_END, () => this.onTestRoomPressed?.(), this);
 
         this._mkBtn(menuActions, '升级  ·  即将开放', 0, -36, 330, 46, new Color(80, 118, 135, 255), true);
-        this._mkBtn(menuActions, '设置  ·  即将开放', 0, -96, 330, 46, new Color(80, 118, 135, 255), true);
-        this._mkBtn(menuActions, '退出  ·  即将开放', 0, -156, 330, 46, new Color(80, 118, 135, 255), true);
+        const settingsBtn = this._mkBtn(menuActions, '设置', 0, -96, 330, 46, new Color(70, 105, 130, 255));
+        settingsBtn.on(Node.EventType.TOUCH_END, () => this.show('settings'), this);
+        // 退出：两步确认避免主页误触；确认后 game.end()（native 关窗、web 尝试
+        // 关页）。浏览器拦截 window.close 时落下告别遮罩，提示直接关闭窗口。
+        const exitBtn = this._mkBtn(menuActions, '退出', 0, -156, 330, 46, new Color(120, 62, 55, 255));
+        const exitLbl = exitBtn.getChildByName('L')!.getComponent(Label)!;
+        let exitArmed = false;
+        let exitResetTimer: any = 0;
+        exitBtn.on(Node.EventType.TOUCH_END, () => {
+            if (!exitArmed) {
+                exitArmed = true;
+                exitLbl.string = '再次点击确认退出';
+                clearTimeout(exitResetTimer);
+                exitResetTimer = setTimeout(() => { exitArmed = false; exitLbl.string = '退出'; }, 3000);
+                return;
+            }
+            clearTimeout(exitResetTimer);
+            game.end();
+            // 200ms 后仍在本页（关闭被拦截）→ 告别遮罩兜底
+            setTimeout(() => this._showExitVeil(), 200);
+        }, this);
         // 任务树/图鉴/成就档案入口已迁入存档大厅（LobbyUI 情报终端），首页不再展示。
     }
 
@@ -182,6 +212,105 @@ export class ScreenManager extends Component {
             if (this._panels.get(name)?.active) return name;
         }
         return 'tasks';
+    }
+
+    // ── 作战地图选择页 ─────────────────────────────────────────
+
+    /**
+     * 大厅传送门之后的第一站：选择出击地图。当前全部章节（第一章~第六章）
+     * 位于废土地图；深海地图为占位（2026-09-21 新增，选废土后进入难度选择）。
+     */
+    private _buildMapSelectPanel() {
+        const p = this._mkPanel('mapSelect', 1280, 720);
+
+        const bg = p.addComponent(Graphics);
+        bg.fillColor = new Color(10, 10, 20, 240);
+        bg.fillRect(-1600, -360, 3200, 720);
+
+        const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
+        backBtn.on(Node.EventType.TOUCH_END, () => this.onMapBack?.(), this);
+
+        const tn = new Node('T'); tn.setParent(p);
+        tn.setPosition(new Vec3(0, 280, 0));
+        tn.addComponent(UITransform).setContentSize(500, 44);
+        const tl = tn.addComponent(Label);
+        tl.string = '— 选择作战地图 —';
+        tl.fontSize = 28; tl.color = new Color(255, 215, 90, 255);
+        styleLabel(tl);
+
+        const sub = new Node('Sub'); sub.setParent(p);
+        sub.setPosition(new Vec3(0, 244, 0));
+        sub.addComponent(UITransform).setContentSize(760, 22);
+        const sl = sub.addComponent(Label);
+        sl.string = '当前全部章节位于废土地图 · 选定后进入难度选择';
+        sl.fontSize = 14; sl.color = new Color(150, 172, 190, 235);
+        styleLabel(sl);
+
+        // 地图1 废土（可选）：全部章节所在地图
+        const maps: { x: number; name: string; desc: string; art: string; accent: Color; locked: boolean }[] = [
+            { x: -240, name: '地图 1 · 废土', desc: '第一章 ~ 第六章 · 全部现有章节', art: 'bg_chapter1', accent: new Color(40, 224, 218, 255), locked: false },
+            { x: 240,  name: '地图 2 · 深海', desc: '全新深海战场 · 敬请期待', art: 'bg_chapter3', accent: new Color(90, 90, 110, 255), locked: true },
+        ];
+        for (const m of maps) {
+            const card = new Node(`Map_${m.name}`); card.setParent(p);
+            card.setPosition(new Vec3(m.x, -20, 0));
+            card.addComponent(UITransform).setContentSize(420, 360);
+
+            const g = card.addComponent(Graphics);
+            const drawCard = () => {
+                g.clear();
+                g.fillColor = m.locked ? new Color(10, 12, 18, 235) : new Color(8, 16, 26, 240);
+                g.fillRect(-210, -180, 420, 360);
+                g.strokeColor = new Color(m.accent.r, m.accent.g, m.accent.b, m.locked ? 120 : 210);
+                g.lineWidth = 2;
+                g.rect(-210, -180, 420, 360); g.stroke();
+                // 四角高亮，与难度/选人卡同一视觉语言
+                g.strokeColor = new Color(m.accent.r, m.accent.g, m.accent.b, m.locked ? 150 : 255);
+                g.lineWidth = 3;
+                const corner = 18;
+                for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                    const x = sx * 207, y = sy * 177;
+                    g.moveTo(x, y - sy * corner); g.lineTo(x, y); g.lineTo(x - sx * corner, y);
+                    g.stroke();
+                }
+            };
+            drawCard();
+            attachEnableRedraw(card, drawCard);
+
+            // 地图缩略图（复用章节背景美术，锁定地图压暗）
+            const artN = new Node('Art'); artN.setParent(card);
+            artN.setPosition(new Vec3(0, 46, 0));
+            artN.addComponent(UITransform).setContentSize(376, 176);
+            const art = artN.addComponent(Sprite);
+            art.sizeMode = Sprite.SizeMode.CUSTOM;
+            art.color = m.locked ? new Color(120, 130, 145, 110) : new Color(255, 255, 255, 235);
+            loadArtSprite(m.art, frame => { if (art.isValid) art.spriteFrame = frame; });
+
+            const nameN = new Node('Name'); nameN.setParent(card);
+            nameN.setPosition(new Vec3(0, -70, 0));
+            nameN.addComponent(UITransform).setContentSize(380, 40);
+            const nl = nameN.addComponent(Label);
+            nl.string = m.locked ? `${m.name} · 即将开放` : m.name;
+            nl.fontSize = 24;
+            nl.color = m.locked ? new Color(120, 128, 140, 255) : new Color(235, 246, 250, 255);
+            styleLabel(nl);
+
+            const descN = new Node('Desc'); descN.setParent(card);
+            descN.setPosition(new Vec3(0, -126, 0));
+            descN.addComponent(UITransform).setContentSize(380, 60);
+            const dl = descN.addComponent(Label);
+            dl.string = m.desc;
+            dl.fontSize = 15; dl.lineHeight = 22;
+            dl.color = m.locked ? new Color(104, 112, 124, 235) : new Color(168, 190, 206, 245);
+            dl.horizontalAlign = HorizontalTextAlignment.CENTER;
+            dl.overflow = Label.Overflow.SHRINK;
+            dl.enableWrapText = true;
+            styleLabel(dl);
+
+            if (!m.locked) {
+                card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(), this);
+            }
+        }
     }
 
     // ── 难度选择页 ─────────────────────────────────────────────
@@ -722,8 +851,179 @@ export class ScreenManager extends Component {
         // 文案用中性的「退出战斗」：正式局退回存档大厅，测试房退回首页（由 GameManager 按来源分流）
         const r = this._mkBtn(p, '继续游戏', 0,  30, 200, 44, new Color(40, 140, 80, 230));
         const m = this._mkBtn(p, '退出战斗', 0, -40, 200, 44, new Color(60, 60, 90, 230));
+        const st = this._mkBtn(p, '设置', 0, -110, 200, 44, new Color(70, 105, 130, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onResumePressed?.(), this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
+        // 暂停中调音量：设置面板盖在暂停面板之上，关闭后回到暂停
+        st.on(Node.EventType.TOUCH_END, () => this.show('settings'), this);
+    }
+
+    /** 退出兜底遮罩：web 下 window.close 被拦截时，盖住全屏提示可直接关窗。 */
+    private _showExitVeil(): void {
+        if (this._panels.get('exitVeil')?.active) return;
+        const veil = new Node('exitVeil'); veil.setParent(this.node);
+        this._panels.set('exitVeil', veil);
+        veil.addComponent(UITransform).setContentSize(1280, 720);
+        const vg = veil.addComponent(Graphics);
+        const drawVeil = () => {
+            vg.clear();
+            vg.fillColor = new Color(4, 6, 12, 250);
+            vg.fillRect(-640, -360, 1280, 720);
+        };
+        drawVeil();
+        attachEnableRedraw(veil, drawVeil);
+        const t = new Node('T'); t.setParent(veil);
+        t.addComponent(UITransform).setContentSize(700, 60);
+        const tl = t.addComponent(Label);
+        tl.string = '感谢游玩 · 游戏已退出';
+        tl.fontSize = 40; tl.color = new Color(220, 228, 238, 255);
+        styleLabel(tl);
+        const sub = new Node('S'); sub.setParent(veil);
+        sub.setPosition(new Vec3(0, -56, 0));
+        sub.addComponent(UITransform).setContentSize(700, 30);
+        const sl = sub.addComponent(Label);
+        sl.string = '浏览器拦截了自动关闭，可直接关闭窗口/标签页退出';
+        sl.fontSize = 16; sl.color = new Color(140, 158, 174, 230);
+        styleLabel(sl);
+    }
+
+    // ── 设置页：音乐/音量滑杆 ──────────────────────────────
+
+    private _sliderMusic?: { setRatio(r: number): void };
+    private _sliderSfx?: { setRatio(r: number): void };
+
+    /** 打开设置页时从 GameManager 读取当前音量刷新滑杆。 */
+    private _refreshSettings(): void {
+        const v = this.getAudioVolumes?.() ?? { bgm: 0.48, sfx: 1 };
+        this._sliderMusic?.setRatio(v.bgm);
+        this._sliderSfx?.setRatio(v.sfx);
+    }
+
+    /** 音量变化统一出口：立即回写并持久化。 */
+    private _applyVolumes(bgm: number, sfx: number): void {
+        this.onAudioVolumesChanged?.(bgm, sfx);
+    }
+
+    private _buildSettingsPanel(): void {
+        const p = this._mkPanel('settings', 520, 440);
+
+        const bg = p.addComponent(Graphics);
+        bg.fillColor = new Color(15, 15, 30, 235);
+        bg.fillRect(-260, -220, 520, 440);
+        bg.strokeColor = new Color(100, 100, 160, 180);
+        bg.lineWidth = 2; bg.rect(-260, -220, 520, 440); bg.stroke();
+        attachEnableRedraw(p, () => {
+            bg.clear();
+            bg.fillColor = new Color(15, 15, 30, 235);
+            bg.fillRect(-260, -220, 520, 440);
+            bg.strokeColor = new Color(100, 100, 160, 180);
+            bg.lineWidth = 2; bg.rect(-260, -220, 520, 440); bg.stroke();
+        });
+
+        const tn = new Node('T'); tn.setParent(p);
+        tn.setPosition(new Vec3(0, 168, 0));
+        tn.addComponent(UITransform).setContentSize(300, 44);
+        const tl = tn.addComponent(Label);
+        tl.string = '设置'; tl.fontSize = 34; tl.color = new Color(200, 200, 240, 255);
+        styleLabel(tl);
+
+        const v = this.getAudioVolumes?.() ?? { bgm: 0.48, sfx: 1 };
+        this._sliderMusic = this._mkVolumeSlider(p, 92, '音乐音量', v.bgm,
+            r => this._applyVolumes(r, this._sliderSfx ? this._currentRatio(this._sliderSfx) : v.sfx));
+        this._sliderSfx = this._mkVolumeSlider(p, 22, '音效音量', v.sfx,
+            r => this._applyVolumes(this._currentRatio(this._sliderMusic), r));
+
+        const hint = new Node('Hint'); hint.setParent(p);
+        hint.setPosition(new Vec3(0, -58, 0));
+        hint.addComponent(UITransform).setContentSize(440, 22);
+        const hl = hint.addComponent(Label);
+        hl.string = '拖动滑杆实时调节，设置自动保存';
+        hl.fontSize = 13; hl.color = new Color(140, 158, 174, 220);
+        styleLabel(hl);
+
+        const close = this._mkBtn(p, '关闭', 0, -150, 200, 44, new Color(60, 100, 80, 235));
+        close.on(Node.EventType.TOUCH_END, () => this.hide('settings'), this);
+    }
+
+    /** 滑杆当前值（0~1）读取：从内部记录取，避免闭包时序问题。 */
+    private _currentRatio(slider: { setRatio(r: number): void } | undefined): number {
+        return this._ratios.get(slider) ?? 1;
+    }
+    private _ratios = new Map<{ setRatio(r: number): void }, number>();
+
+    /**
+     * 音量滑杆：标签 + 300px 轨道 + 拖动手柄 + 百分比。
+     * 触点用 getUILocation 换算到轨道本地坐标（与 TouchControls 同源）。
+     */
+    private _mkVolumeSlider(parent: Node, y: number, label: string, initRatio: number,
+                            onChange: (ratio: number) => void): { setRatio(r: number): void } {
+        const WIDTH = 300;
+        const row = new Node(`Slider_${label}`); row.setParent(parent);
+        row.setPosition(new Vec3(40, y, 0));
+        row.addComponent(UITransform).setContentSize(520, 40);
+
+        const nameN = new Node('Name'); nameN.setParent(row);
+        nameN.setPosition(new Vec3(-175, 0, 0));
+        nameN.addComponent(UITransform).setContentSize(110, 26);
+        const nl = nameN.addComponent(Label);
+        nl.string = label; nl.fontSize = 17;
+        nl.color = new Color(205, 218, 228, 255);
+        nl.horizontalAlign = HorizontalTextAlignment.RIGHT;
+        styleLabel(nl);
+
+        // 轨道：触摸热区(宽×34) + 绘制条(宽×10)
+        const track = new Node('Track'); track.setParent(row);
+        track.addComponent(UITransform).setContentSize(WIDTH, 34);
+        const tg = track.addComponent(Graphics);
+        const knob = new Node('Knob'); knob.setParent(track);
+        const kg = knob.addComponent(Graphics);
+        const pctN = new Node('Pct'); pctN.setParent(row);
+        pctN.setPosition(new Vec3(WIDTH / 2 + 36, 0, 0));
+        pctN.addComponent(UITransform).setContentSize(56, 26);
+        const pct = pctN.addComponent(Label);
+        pct.fontSize = 16; pct.color = new Color(255, 214, 90, 255);
+        styleLabel(pct);
+
+        const draw = (r: number) => {
+            tg.clear();
+            tg.fillColor = new Color(22, 30, 42, 245);
+            tg.fillRect(-WIDTH / 2, -5, WIDTH, 10);
+            tg.fillColor = new Color(40, 200, 170, 235);
+            tg.fillRect(-WIDTH / 2, -5, WIDTH * r, 10);
+            tg.strokeColor = new Color(90, 130, 160, 200);
+            tg.lineWidth = 1.5; tg.rect(-WIDTH / 2, -5, WIDTH, 10); tg.stroke();
+            kg.clear();
+            kg.fillColor = new Color(8, 14, 24, 250);
+            kg.circle(0, 0, 13); kg.fill();
+            kg.fillColor = new Color(120, 235, 205, 255);
+            kg.circle(0, 0, 9); kg.fill();
+            kg.strokeColor = new Color(180, 255, 235, 255);
+            kg.lineWidth = 1.5; kg.circle(0, 0, 13); kg.stroke();
+        };
+
+        const slider = { setRatio(r: number): void {} };
+        const setRatio = (r: number) => {
+            const clamped = Math.min(1, Math.max(0, r));
+            this._ratios.set(slider, clamped);
+            knob.setPosition(new Vec3(-WIDTH / 2 + clamped * WIDTH, 0, 0));
+            pct.string = `${Math.round(clamped * 100)}`;
+            draw(clamped);
+        };
+        slider.setRatio = setRatio;
+
+        const applyFromEvent = (ev: any) => {
+            const ui = ev.getUILocation ? ev.getUILocation() : ev.getLocation();
+            const local = track.getComponent(UITransform)!.convertToNodeSpaceAR(new Vec3(ui.x, ui.y, 0));
+            const r = clamp((local.x + WIDTH / 2) / WIDTH, 0, 1);
+            setRatio(r);
+            onChange(r);
+        };
+        track.on(Node.EventType.TOUCH_START, applyFromEvent, this);
+        track.on(Node.EventType.TOUCH_MOVE, applyFromEvent, this);
+        // 面板隐藏→再激活后 Graphics 会丢，激活时按当前值重画
+        attachEnableRedraw(track, () => draw(this._ratios.get(slider) ?? initRatio));
+        setRatio(initRatio);
+        return slider;
     }
 
     // ── helpers ───────────────────────────────────────────────

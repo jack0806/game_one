@@ -86,30 +86,46 @@ export class AugmentManager {
      * 彩档 → Lv.3。已持有的技能海克斯只会刷出比当前更高的档位（升级卡）；
      * 功能性海克斯可无限叠加购买——持有后任何档位都持续可刷（满档后再买
      * = 叠加新实例）；一次性海克斯本局选用后整局不再刷出。
+     * 卡池权重（2026-09-21 玩家调整）：
+     *  · 功能性海克斯出现概率提升（权重 ×3，前期也买得起、后期可叠加）；
+     *  · 技能格买满后，未持有的技能海克斯明显降频（×0.3）——装不上的卡
+     *    少刷，把位置让给功能/升级卡；已持有技能的升级卡不受影响。
      */
     rollOptions(n = 3, wave = 1): AugmentDef[] {
         const weights = this.rarityWeights(wave);
         const results: AugmentDef[] = [];
+        const slotsFull = this.active.length >= this.maxSlots;
 
         for (let i = 0; i < n; i++) {
             const rarity = this._rollRarity(weights);
             if (!rarity) continue;
             const level = rarity === 'silver' ? 1 : rarity === 'gold' ? 2 : 3;
-            const pool = AUGMENT_DB.filter(a => {
-                if (a.prices.length < level) return false;      // 该海克斯没有这一档
-                if (results.find(r => r.id === a.id)) return false;
-                if (a.oneShot && this._oneShotUsed.has(a.id)) return false;
+            const pool: AugmentDef[] = [];
+            const poolWeights: number[] = [];
+            for (const a of AUGMENT_DB) {
+                if (a.prices.length < level) continue;      // 该海克斯没有这一档
+                if (results.find(r => r.id === a.id)) continue;
+                if (a.oneShot && this._oneShotUsed.has(a.id)) continue;
                 // 元素暴击：未集齐四种元素海克斯时不进卡池（购买条件未解锁）
-                if (a.id === 'hex19' && !this.elementSetComplete()) return false;
+                if (a.id === 'hex19' && !this.elementSetComplete()) continue;
                 const owned = this.ownedOf(a.id);
                 if (owned && !a.oneShot) {
-                    if (a.category === '功能') return true;     // 功能性无限叠加，持续可刷
-                    return (owned.level ?? 1) < level;
+                    if (a.category === '功能') {
+                        // 功能性无限叠加，持续可刷且权重提升
+                        pool.push(a); poolWeights.push(3);
+                        continue;
+                    }
+                    if ((owned.level ?? 1) >= level) continue;   // 只刷更高档升级卡
+                    pool.push(a); poolWeights.push(1);
+                    continue;
                 }
-                return true;
-            });
+                let w = 1;
+                if (a.category === '功能') w = 3;                   // 功能化强化出现率提升
+                else if (slotsFull && a.category === '技能') w = 0.3;   // 满格后新技能卡降频
+                pool.push(a); poolWeights.push(w);
+            }
             if (!pool.length) continue;
-            const def = Rng.pick(pool);
+            const def = pool[Rng.weighted(poolWeights)];
             const owned = this.ownedOf(def.id);
             // "升级至 Lv.X"标记只对确实会升级现有实例的卡生效；
             // 功能性全部满档后，购买是叠加新实例而非升级
