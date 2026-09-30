@@ -10,6 +10,7 @@ import {
     UITransform, Vec3, VerticalTextAlignment,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
+import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSlotSummary, SaveSystem } from '../systems/SaveSystem';
@@ -54,11 +55,27 @@ export class SaveSelectUI {
 
     constructor(private readonly _root: Node, private readonly _callbacks: SaveSelectCallbacks) {
         this._panel = this._buildPage();
+        this.fitToVisible();
         this._panel.active = false;
     }
 
     entries(): [string, Node][] {
         return [['saveSelect', this._panel]];
+    }
+
+    fitToVisible(): void {
+        const width = visibleDesignWidth();
+        this._panel.getComponent(UITransform)!.setContentSize(width, 720);
+        const bg = this._panel.getComponent(Graphics)!;
+        bg.clear(); bg.fillColor = UI_PALETTE.deep;
+        bg.fillRect(-width / 2, -360, width, 720);
+        this._panel.getChildByName('AmbientArt')!.getComponent(UITransform)!.setContentSize(width, 720);
+        const veil = this._panel.getChildByName('Veil')!.getComponent(Graphics)!;
+        veil.clear();
+        veil.fillColor = new Color(15, 27, 43, 150); veil.fillRect(-width / 2, -360, width, 720);
+        veil.fillColor = new Color(CYAN.r, CYAN.g, CYAN.b, 12); veil.fillRect(-width / 2, 250, width, 110);
+        veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
+        veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
     }
 
     /** 每次 show() 时由 ScreenManager 调用：重读槽位存储并重绘卡片。 */

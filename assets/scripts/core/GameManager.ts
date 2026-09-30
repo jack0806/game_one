@@ -1078,11 +1078,14 @@ export class GameManager extends Component {
         }
     }
 
-    /** 测试房轮换四章场景，便于逐英雄检查技能在不同明暗与色相背景上的可读性。 */
+    /** 测试房轮换六章场景，便于检查不同明暗与色相背景上的可读性。 */
     cycleTestChapter(): number {
         if (this.state !== 'testRoom') return this._chapter + 1;
         this._chapter = (this._chapter + 1) % CHAPTERS.length;
         this._updateBgForChapter();
+        const safe = safeArenaPoint(this._arena, this._player.x, this._player.y, this._player.radius);
+        this._player.x = safe.x;
+        this._player.y = safe.y;
         if (!this._boss) this._audio.playBgm(this._chapterBgm());
         const chapter = CHAPTERS[this._chapter];
         this._floatText.spawn(CANVAS_W / 2, 200, `第${chapter.id}章 · ${chapter.name}`, '#9adcff', 17, true);
@@ -1988,6 +1991,9 @@ export class GameManager extends Component {
         if (this._chapter + 1 >= CHAPTERS.length) this._recordRun(true);
         this._chapter++;
         this._updateBgForChapter();
+        const safe = safeArenaPoint(this._arena, this._player.x, this._player.y, this._player.radius);
+        this._player.x = safe.x;
+        this._player.y = safe.y;
         // _setState hides chapterClear panel (and everything else) before the
         // shop UI takes over — avoids the old bug where chapterClear stayed
         // active underneath the shop and its CONTINUE button kept firing.

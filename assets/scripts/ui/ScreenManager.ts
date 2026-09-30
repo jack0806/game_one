@@ -35,6 +35,8 @@ export class ScreenManager extends Component {
     private _metaPages!: MetaPageUI;
     private _saveSelect!: SaveSelectUI;
     private _lobby!: LobbyUI;
+    private _menuArtNode?: Node;
+    private _drawSettingsBg?: () => void;
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
     // 面板结构只构建一次，内容（标题/立绘/属性/技能描述）随 showCharDetail 填充
@@ -110,6 +112,13 @@ export class ScreenManager extends Component {
     }
 
     fitToVisible(): void {
+        const width = visibleDesignWidth();
+        this._panels.get('menu')?.getComponent(UITransform)?.setContentSize(width, 720);
+        this._menuArtNode?.getComponent(UITransform)?.setContentSize(width, 720);
+        this._panels.get('settings')?.getComponent(UITransform)?.setContentSize(width, 720);
+        this._drawSettingsBg?.();
+        this._saveSelect?.fitToVisible();
+        this._lobby?.fitToVisible();
         this._metaPages?.fitToVisible();
     }
 
@@ -118,6 +127,9 @@ export class ScreenManager extends Component {
     show(name: ScreenName) {
         const p = this._panels.get(name);
         if (p) p.active = true;
+        if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings') {
+            this.fitToVisible();
+        }
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
             this._metaPages.fitToVisible();
             this._metaPages.refresh(name);
@@ -167,6 +179,7 @@ export class ScreenManager extends Component {
         bg.fillRect(-1600, -360, 3200, 720);
 
         const bgArtNode = new Node('BgArt'); bgArtNode.setParent(p);
+        this._menuArtNode = bgArtNode;
         const menuW = Math.max(1280, visibleDesignWidth());
         bgArtNode.addComponent(UITransform).setContentSize(menuW, 720);
         const bgArtSprite = bgArtNode.addComponent(Sprite);
@@ -912,6 +925,7 @@ export class ScreenManager extends Component {
             bg.fillRect(-veilWidth / 2, -360, veilWidth, 720);
             drawHexPanel(bg, -260, -220, 520, 440, UI_PALETTE.cyan, 246);
         };
+        this._drawSettingsBg = drawSettingsBg;
         drawSettingsBg();
         attachEnableRedraw(p, drawSettingsBg);
 
@@ -958,7 +972,7 @@ export class ScreenManager extends Component {
         row.addComponent(UITransform).setContentSize(520, 40);
 
         const nameN = new Node('Name'); nameN.setParent(row);
-        nameN.setPosition(new Vec3(-175, 0, 0));
+        nameN.setPosition(new Vec3(-210, 0, 0));
         nameN.addComponent(UITransform).setContentSize(110, 26);
         const nl = nameN.addComponent(Label);
         nl.string = label; nl.fontSize = 17;

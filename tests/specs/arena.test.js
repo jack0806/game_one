@@ -63,6 +63,24 @@ test('六章底图边缘的实体建筑挡住角色且保留中心通路', () =>
     }
 });
 
+test('第二章管线与第六章反应堆的前侧底座挡住向上行走的角色', () => {
+    for (const [chapter, bottom] of [[2, 285], [6, 325]]) {
+        for (const layout of arenasForChapter(chapter)) {
+            const point = moveInArena(layout, 1200, 360, 0, -220, 18);
+            assert.ok(point.y >= bottom + 18, `${layout.id} 角色没有踩进右上建筑底座`);
+            assert.equal(isArenaFree(layout, 1050, 350, 18), true,
+                `${layout.id} 建筑左侧仍有通路`);
+        }
+    }
+});
+
+test('背景岗哨和遗迹的上沿不被角色脚底踩入', () => {
+    const guardrail = moveInArena(arena, 145, 220, 0, 180, 18);
+    assert.ok(guardrail.y + 37 <= 270, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);
+    const ruin = moveInArena(arenaForChapter(4), 150, 360, 0, 200, 18);
+    assert.ok(ruin.y + 37 <= 470, `第四章遗迹脚底停在上沿：${ruin.y + 37}`);
+});
+
 test('第一章三个残骸的上沿不再被玩家脚底踩入', () => {
     // 上沿来自当前透明素材在游戏尺寸下的不透明像素，而非逻辑矩形自身。
     const artTop = { 'west-wall': 255, 'east-wreck': 235, 'south-barrier': 519 };

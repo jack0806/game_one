@@ -23,7 +23,8 @@ function topOf(solid: ArenaSolid, actor: boolean): number {
     const physicalTop = solid.y - solid.h / 2;
     if (!actor) return physicalTop;
     const prop = solid as ArenaObstacle;
-    if (!prop.artKey) return physicalTop;
+    // 背景建筑没有独立透明贴图，但角色脚底同样低于圆形碰撞中心。
+    if (!prop.artKey) return physicalTop - PLAYER_FOOT_OVERHANG;
     const fraction = ARENA_ART_SOLID_TOP[prop.artKey];
     if (fraction === undefined) return physicalTop - 22;
     const visualTop = solid.y - prop.visualH / 2 + fraction * prop.visualH;
