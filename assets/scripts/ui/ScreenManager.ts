@@ -1,13 +1,13 @@
 import {
     _decorator, Component, Node, Label, Graphics, Sprite,
-    Color, Vec3, UITransform, HorizontalTextAlignment, VerticalTextAlignment, game,
+    Color, Vec3, UITransform, BlockInputEvents, HorizontalTextAlignment, VerticalTextAlignment, game,
 } from 'cc';
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
 import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
@@ -168,11 +168,37 @@ export class ScreenManager extends Component {
         bgArtSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         applyArtSprite(bgArtSprite, 'title_screen');
 
+        const titleNode = new Node('Title'); titleNode.setParent(p);
+        titleNode.setPosition(new Vec3(0, 236, 0));
+        titleNode.addComponent(UITransform).setContentSize(710, 92);
+        const title = titleNode.addComponent(Label);
+        title.string = 'HEXBLAST'; title.fontSize = 76;
+        title.color = UI_PALETTE.text;
+        title.horizontalAlign = HorizontalTextAlignment.CENTER;
+        title.verticalAlign = VerticalTextAlignment.CENTER;
+        styleLabel(title, { outlineWidth: 3 });
+
+        const subtitleNode = new Node('Subtitle'); subtitleNode.setParent(p);
+        subtitleNode.setPosition(new Vec3(0, 178, 0));
+        subtitleNode.addComponent(UITransform).setContentSize(560, 32);
+        const subtitle = subtitleNode.addComponent(Label);
+        subtitle.string = '海克斯行动  ·  废土前线'; subtitle.fontSize = 21;
+        subtitle.color = UI_PALETTE.text;
+        subtitle.horizontalAlign = HorizontalTextAlignment.CENTER;
+        styleLabel(subtitle, { outline: false, bold: false });
+
         // title_screen 已移除全部烧录按钮，中下部是自然延续的城市天际线。
         // 操作区只负责定位真实代码按钮，不再绘制遮挡背景的大矩形底板。
         const menuActions = new Node('MenuActions'); menuActions.setParent(p);
         menuActions.setPosition(new Vec3(0, -70, 0));
         menuActions.addComponent(UITransform).setContentSize(568, 410);
+        const menuPanelG = menuActions.addComponent(Graphics);
+        const drawMenuPanel = () => {
+            menuPanelG.clear();
+            drawHexPanel(menuPanelG, -250, -197, 500, 390, UI_PALETTE.cyan, 219);
+        };
+        drawMenuPanel();
+        attachEnableRedraw(menuActions, drawMenuPanel);
 
         const btn = this._mkBtn(menuActions, '开始游戏', 0, 105, 450, 64, new Color(20, 220, 210, 255));
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
@@ -224,7 +250,7 @@ export class ScreenManager extends Component {
         const p = this._mkPanel('mapSelect', 1280, 720);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(10, 10, 20, 240);
+        bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
 
         const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
@@ -259,20 +285,7 @@ export class ScreenManager extends Component {
             const g = card.addComponent(Graphics);
             const drawCard = () => {
                 g.clear();
-                g.fillColor = m.locked ? new Color(10, 12, 18, 235) : new Color(8, 16, 26, 240);
-                g.fillRect(-210, -180, 420, 360);
-                g.strokeColor = new Color(m.accent.r, m.accent.g, m.accent.b, m.locked ? 120 : 210);
-                g.lineWidth = 2;
-                g.rect(-210, -180, 420, 360); g.stroke();
-                // 四角高亮，与难度/选人卡同一视觉语言
-                g.strokeColor = new Color(m.accent.r, m.accent.g, m.accent.b, m.locked ? 150 : 255);
-                g.lineWidth = 3;
-                const corner = 18;
-                for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-                    const x = sx * 207, y = sy * 177;
-                    g.moveTo(x, y - sy * corner); g.lineTo(x, y); g.lineTo(x - sx * corner, y);
-                    g.stroke();
-                }
+                drawHexPanel(g, -210, -180, 420, 360, m.accent, m.locked ? 205 : 246);
             };
             drawCard();
             attachEnableRedraw(card, drawCard);
@@ -323,7 +336,7 @@ export class ScreenManager extends Component {
         const p = this._mkPanel('difficultySelect', 1280, 720);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(10, 10, 20, 240);
+        bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
 
         const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
@@ -352,20 +365,7 @@ export class ScreenManager extends Component {
             diffCard.addComponent(UITransform).setContentSize(270, 280);
 
             const g = diffCard.addComponent(Graphics);
-            g.fillColor = new Color(8, 14, 24, 226);
-            g.fillRect(-135, -140, 270, 280);
-            g.strokeColor = new Color(col.r, col.g, col.b, 190);
-            g.lineWidth = 2;
-            g.rect(-135, -140, 270, 280); g.stroke();
-            // 四角高亮，与选人卡同一视觉语言
-            g.strokeColor = new Color(col.r, col.g, col.b, 255);
-            g.lineWidth = 3;
-            const corner = 16;
-            for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-                const x = sx * 133, y = sy * 138;
-                g.moveTo(x, y - sy * corner); g.lineTo(x, y); g.lineTo(x - sx * corner, y);
-                g.stroke();
-            }
+            drawHexPanel(g, -135, -140, 270, 280, col, 244);
 
             const nameN = new Node('Name'); nameN.setParent(diffCard);
             nameN.setPosition(new Vec3(0, 96, 0));
@@ -412,7 +412,7 @@ export class ScreenManager extends Component {
         const p = this._mkPanel('charSelect', 1280, 720);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(10, 10, 20, 240);
+        bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
 
         // 选人页位于存档大厅之后：左上角提供返回大厅出口（卡片在 y≤240，
@@ -463,13 +463,12 @@ export class ScreenManager extends Component {
             // 旧版只有头像框与名牌，四行左对齐文字像漂在页面背景上。
             const cardG = card.addComponent(Graphics);
             const cardCol = colors[i] ?? new Color(80, 140, 180, 255);
-            cardG.fillColor = new Color(8, 14, 24, 226);
-            cardG.fillRect(-180, -140, 360, 280);
+            drawHexPanel(cardG, -180, -140, 360, 280, cardCol, locked ? 218 : 242);
             // 整张角色卡才是实际点击单位，因此身份色选框必须包住完整的
             // “立绘—名牌—定位”信息组。只框头像会误导为头像裁切框或选中态。
             cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, locked ? 72 : 188);
             cardG.lineWidth = locked ? 1 : 2;
-            cardG.rect(-180, -140, 360, 280); cardG.stroke();
+            cardG.roundRect(-180, -140, 360, 280, 18); cardG.stroke();
             if (!locked) {
                 cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 255);
                 cardG.lineWidth = 3;
@@ -765,10 +764,7 @@ export class ScreenManager extends Component {
         const p = this._mkPanel('gameover', 620, 360);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(20, 8, 8, 240);
-        bg.fillRect(-310, -180, 620, 360);
-        bg.strokeColor = new Color(180, 30, 30, 200);
-        bg.lineWidth = 3; bg.rect(-310, -180, 620, 360); bg.stroke();
+        drawHexPanel(bg, -310, -180, 620, 360, UI_PALETTE.danger, 248);
         bg.strokeColor = new Color(220, 60, 60, 100);
         bg.lineWidth = 1;
         bg.moveTo(-250, 52); bg.lineTo(-150, 52);
@@ -800,10 +796,7 @@ export class ScreenManager extends Component {
         const p = this._mkPanel('chapterClear', 620, 360);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(8, 20, 12, 240);
-        bg.fillRect(-310, -180, 620, 360);
-        bg.strokeColor = new Color(40, 200, 80, 180);
-        bg.lineWidth = 3; bg.rect(-310, -180, 620, 360); bg.stroke();
+        drawHexPanel(bg, -310, -180, 620, 360, new Color(80, 230, 120, 255), 248);
         bg.strokeColor = new Color(80, 230, 120, 100);
         bg.lineWidth = 1;
         bg.moveTo(-250, 52); bg.lineTo(-150, 52);
@@ -835,10 +828,7 @@ export class ScreenManager extends Component {
         const p = this._mkPanel('pause', 500, 360);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(15, 15, 30, 230);
-        bg.fillRect(-250, -180, 500, 360);
-        bg.strokeColor = new Color(100, 100, 160, 180);
-        bg.lineWidth = 2; bg.rect(-250, -180, 500, 360); bg.stroke();
+        drawHexPanel(bg, -250, -180, 500, 360, UI_PALETTE.cyan, 244);
 
         const tn = new Node('T'); tn.setParent(p);
         tn.setPosition(new Vec3(0, 130, 0));
@@ -906,19 +896,19 @@ export class ScreenManager extends Component {
 
     private _buildSettingsPanel(): void {
         const p = this._mkPanel('settings', 520, 440);
+        p.getComponent(UITransform)!.setContentSize(visibleDesignWidth(), 720);
+        p.addComponent(BlockInputEvents);
 
         const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(15, 15, 30, 235);
-        bg.fillRect(-260, -220, 520, 440);
-        bg.strokeColor = new Color(100, 100, 160, 180);
-        bg.lineWidth = 2; bg.rect(-260, -220, 520, 440); bg.stroke();
-        attachEnableRedraw(p, () => {
+        const drawSettingsBg = () => {
             bg.clear();
-            bg.fillColor = new Color(15, 15, 30, 235);
-            bg.fillRect(-260, -220, 520, 440);
-            bg.strokeColor = new Color(100, 100, 160, 180);
-            bg.lineWidth = 2; bg.rect(-260, -220, 520, 440); bg.stroke();
-        });
+            bg.fillColor = new Color(5, 10, 20, 180);
+            const veilWidth = visibleDesignWidth();
+            bg.fillRect(-veilWidth / 2, -360, veilWidth, 720);
+            drawHexPanel(bg, -260, -220, 520, 440, UI_PALETTE.cyan, 246);
+        };
+        drawSettingsBg();
+        attachEnableRedraw(p, drawSettingsBg);
 
         const tn = new Node('T'); tn.setParent(p);
         tn.setPosition(new Vec3(0, 168, 0));

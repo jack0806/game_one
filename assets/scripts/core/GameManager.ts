@@ -17,6 +17,8 @@ import { CharDef, CHARS } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS } from '../data/WaveData';
+import { ArenaLayout, arenasForChapter, EMPTY_ARENA } from '../data/ChapterArenaDB';
+import { arenaLineClear, arenaSteerTarget, firstArenaBulletHit, moveInArena, safeArenaPoint } from './ArenaGeometry';
 import { UNIT_CATALOG } from '../data/BossDB';
 import { PlayerController } from '../entities/PlayerController';
 import { EnemyBase }         from '../entities/EnemyBase';
@@ -105,6 +107,9 @@ export class GameManager extends Component {
     private _bgLayer!:       Node;
     private _bgSprite!:      Sprite;      // chapter background (bg_chapter<N>), behind _gameLayer
     private _bgToneGfx!:     Graphics;    // per-chapter desaturation/dimming overlay
+    private _arenaLayer!:    Node;        // 世界坐标残骸，与角色同步震屏
+    private _arenaGfx!:      Graphics;
+    private _arena: ArenaLayout = EMPTY_ARENA;
     private _gameLayer!:     Node;
     private _particleLayer!: Node;
     private _uiLayer!:       Node;
@@ -329,6 +334,11 @@ export class GameManager extends Component {
         bgTone.addComponent(UITransform).setContentSize(visW, CANVAS_H);
         this._bgToneGfx = bgTone.addComponent(Graphics);
 
+        this._arenaLayer = new Node('ArenaLayer');
+        this._arenaLayer.setParent(this.node);
+        this._arenaLayer.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._arenaGfx = this._arenaLayer.addComponent(Graphics);
+
         // GameLayer — entity graphics
         this._gameLayer = new Node('GameLayer');
         this._gameLayer.setParent(this.node);
@@ -368,6 +378,7 @@ export class GameManager extends Component {
         this._particles = new ParticleManager();
         this._audio     = new AudioManager(this.node);
         this._economy   = new Economy();
+        this._economy.dropPlacement = (x, y) => safeArenaPoint(this._arena, x, y, 14);
         // _gameLayer already exists here — _initLayers() runs before _initSystems() in onLoad() —
         // so pooled bullets can get their permanent Sprite nodes parented immediately.
         this._bullets   = new BulletPool(256, this._gameLayer);
@@ -620,6 +631,7 @@ export class GameManager extends Component {
         this._waveMgr.reset();
         this._bullets.reset();
         this._particles.clear();
+        this._arena = EMPTY_ARENA;
         this._updateBgForChapter();
 
         // Create player
@@ -639,7 +651,35 @@ export class GameManager extends Component {
         const bgKey = CHAPTERS[this._chapter]?.bgKey;
         if (!bgKey) return;
         applyArtSprite(this._bgSprite, bgKey);
+        // 只在进入新章节时抽布局；同章波次/窗口变化重画时维持原布局。
+        const chapter = this._chapter + 1;
+        if (this._arena.chapter !== chapter) {
+            const layouts = arenasForChapter(chapter);
+            this._arena = layouts.length ? layouts[Rng.int(0, layouts.length - 1)] : EMPTY_ARENA;
+        }
+        this._drawArenaProps();
         this._fitBackgroundToVisible();
+    }
+
+    /** 透明道具 Sprite 和碰撞体共用同一世界坐标，随实体层同步震屏。 */
+    private _drawArenaProps(): void {
+        const g = this._arenaGfx;
+        if (!g) return;
+        g.clear();
+        for (const child of [...this._arenaLayer.children]) child.destroy();
+        for (const prop of this._arena.obstacles) {
+            const [x, y] = this._toLocal(prop.x, prop.y);
+            g.fillColor = new Color(5, 12, 22, 70);
+            g.ellipse(x, y - prop.h * 0.3, prop.w * 0.57, prop.h * 0.42); g.fill();
+            const node = new Node(`Arena_${prop.id}`);
+            node.setParent(this._arenaLayer);
+            node.setPosition(x, y, 0);
+            node.addComponent(UITransform).setContentSize(prop.visualW, prop.visualH);
+            const sprite = node.addComponent(Sprite);
+            sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+            sprite.trim = true;
+            applyArtSprite(sprite, prop.artKey);
+        }
     }
 
     /** 背景/调色层按当前可见宽度铺满（全面屏横屏>1280时横向拉伸，无左右黑边）。 */
@@ -666,16 +706,16 @@ export class GameManager extends Component {
         }
     }
 
-    /** 四章独立背景调色：越靠后原图荧光越强，覆盖强度相应提高。 */
+    /** 亮度按 B 校准；小幅色温只用于章间统一，不压低可战斗中间调。 */
     private _applyBackgroundTone(chapterIndex: number) {
         const visW = visibleDesignWidth();
         const tones = [
-            { tint: new Color(205, 198, 190, 255), overlay: new Color(22, 24, 28, 62), center: 18 },
-            { tint: new Color(193, 198, 202, 255), overlay: new Color(20, 24, 30, 82), center: 26 },
-            { tint: new Color(184, 194, 198, 255), overlay: new Color(18, 24, 32, 94), center: 32 },
-            { tint: new Color(198, 184, 202, 255), overlay: new Color(22, 16, 30, 102), center: 36 },
-            // 第5章天罚领域：复用第4章背景，压成偏红的暗色战争氛围
-            { tint: new Color(212, 182, 172, 255), overlay: new Color(30, 12, 16, 112), center: 40 },
+            { tint: new Color(255, 255, 255, 255), overlay: new Color(22, 30, 42, 0), center: 0 },
+            { tint: new Color(247, 250, 255, 255), overlay: new Color(20, 26, 32, 15), center: 5 },
+            { tint: new Color(246, 255, 253, 255), overlay: new Color(18, 30, 34, 18), center: 6 },
+            { tint: new Color(252, 246, 255, 255), overlay: new Color(22, 16, 30, 21), center: 7 },
+            { tint: new Color(250, 250, 255, 255), overlay: new Color(22, 27, 36, 18), center: 6 },
+            { tint: new Color(255, 250, 245, 255), overlay: new Color(32, 23, 22, 20), center: 7 },
         ];
         const tone = tones[Math.min(Math.max(0, chapterIndex), tones.length - 1)];
         this._bgSprite.color = tone.tint;
@@ -736,6 +776,7 @@ export class GameManager extends Component {
         this._waveMgr.reset();
         this._bullets.reset();
         this._particles.clear();
+        this._arena = EMPTY_ARENA;
         this._updateBgForChapter();
 
         const pNode = new Node('Player');
@@ -2077,7 +2118,15 @@ export class GameManager extends Component {
         for (let i = this._enemies.length - 1; i >= 0; i--) {
             const e = this._enemies[i];
             if (!(this.state === 'testRoom' && this._testTargetPaused)) {
+                const oldX = e.x, oldY = e.y;
                 e.update(dt, this._player, this);
+                if (e.alive) {
+                    const deltaX = e.x - oldX, deltaY = e.y - oldY;
+                    const next = Math.hypot(deltaX, deltaY) > 120
+                        ? safeArenaPoint(this._arena, e.x, e.y, e.radius)
+                        : moveInArena(this._arena, oldX, oldY, deltaX, deltaY, e.radius);
+                    e.x = next.x; e.y = next.y;
+                }
                 e.updateVisualAnimation(dt, this._player);
             }
             // 先退出碰撞/寻敌列表，尸体单独播放；没有动作稿的单位保留即时回收。
@@ -2150,10 +2199,12 @@ export class GameManager extends Component {
             // 实体与粒子必须同步移动，否则命中特效会从目标身上“滑开”；背景只做
             // 轻微视差，HUD保持固定，既有冲击感又不会让整屏信息一起乱晃。
             this._gameLayer.setPosition(new Vec3(sx, sy, 0));
+            this._arenaLayer.setPosition(new Vec3(sx, sy, 0));
             this._particleLayer.setPosition(new Vec3(sx, sy, 0));
             this._bgLayer.setPosition(new Vec3(Math.round(sx * 0.18), Math.round(sy * 0.18), 0));
         } else {
             this._gameLayer.setPosition(Vec3.ZERO);
+            this._arenaLayer.setPosition(Vec3.ZERO);
             this._particleLayer.setPosition(Vec3.ZERO);
             this._bgLayer.setPosition(Vec3.ZERO);
         }
@@ -3862,6 +3913,22 @@ export class GameManager extends Component {
 
     // ── public game API (called by systems / augments) ────────
 
+    moveInArena(x: number, y: number, dx: number, dy: number, radius: number) {
+        return moveInArena(this._arena, x, y, dx, dy, radius);
+    }
+
+    arenaSteerTarget(x: number, y: number, targetX: number, targetY: number, radius: number) {
+        return arenaSteerTarget(this._arena, { x, y }, { x: targetX, y: targetY }, radius);
+    }
+
+    arenaLineClear(ax: number, ay: number, bx: number, by: number): boolean {
+        return arenaLineClear(this._arena, ax, ay, bx, by);
+    }
+
+    firstArenaBulletHit(ax: number, ay: number, bx: number, by: number, radius: number) {
+        return firstArenaBulletHit(this._arena, ax, ay, bx, by, radius);
+    }
+
 
 
     /**
@@ -3912,7 +3979,9 @@ export class GameManager extends Component {
         } else {
             [ex, ey] = EnemyBase.randomEdgePos(enemy.radius);
         }
-        enemy.x = ex; enemy.y = ey;
+        const safeSpawn = safeArenaPoint(this._arena, ex, ey, enemy.radius);
+        enemy.x = safeSpawn.x; enemy.y = safeSpawn.y;
+        ex = safeSpawn.x; ey = safeSpawn.y;
         enemy.updateVisualAnimation(0, this._player);
         const animationSheets = new Set<string>();
         const set = ACTOR_ANIMATIONS[enemy.spriteKey] ?? {};
@@ -3968,6 +4037,7 @@ export class GameManager extends Component {
         let bestHiddenD = Infinity;
         for (const e of this._enemies) {
             if (e.dead) continue;
+            if (!arenaLineClear(this._arena, x, y, e.x, e.y)) continue;
             const dx = e.x - x, dy = e.y - y;
             const d  = dx * dx + dy * dy;
             if (isHidden(e)) {

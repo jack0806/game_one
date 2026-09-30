@@ -8,6 +8,33 @@ export interface HexButtonSkin {
 }
 type ButtonVisualState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
+/** A 的圆整控件造型、B 的文字/主体明度。页面与 HUD 共用。 */
+export const UI_PALETTE = {
+    deep: new Color(20, 34, 53, 255),
+    panel: new Color(27, 48, 70, 245),
+    text: new Color(238, 244, 250, 255),
+    muted: new Color(187, 201, 215, 255),
+    cyan: new Color(35, 215, 232, 255),
+    danger: new Color(245, 103, 84, 255),
+    reward: new Color(255, 200, 92, 255),
+};
+
+/** 统一圆角面板：每次重绘都保留独立文本/数值节点。 */
+export function drawHexPanel(g: Graphics, x: number, y: number, w: number, h: number,
+                             accent: Color = UI_PALETTE.cyan, alpha = 242): void {
+    const r = Math.max(8, Math.min(18, h * 0.16));
+    g.fillColor = new Color(5, 12, 22, Math.round(alpha * 0.48));
+    g.roundRect(x + 2, y - 4, w, h, r); g.fill();
+    g.fillColor = new Color(UI_PALETTE.panel.r, UI_PALETTE.panel.g, UI_PALETTE.panel.b, alpha);
+    g.roundRect(x, y, w, h, r); g.fill();
+    g.strokeColor = new Color(accent.r, accent.g, accent.b, 170);
+    g.lineWidth = 2;
+    g.roundRect(x, y, w, h, r); g.stroke();
+    g.strokeColor = new Color(220, 244, 250, 92);
+    g.lineWidth = 1;
+    g.moveTo(x + r + 6, y + h - 5); g.lineTo(x + w - r - 6, y + h - 5); g.stroke();
+}
+
 /**
  * 重绘代理：Graphics 的绘制内容在节点 停用→再激活 后会丢失（渲染数据随
  * onDisable 销毁，重新激活时不会自动重传）——表现就是"底板/遮罩/按钮皮肤
@@ -50,7 +77,7 @@ export function applyHexButtonSkin(
     const g = node.getComponent(Graphics) ?? node.addComponent(Graphics);
     let disabled = initiallyDisabled;
     let state: ButtonVisualState = disabled ? 'disabled' : 'normal';
-    const cut = Math.max(6, Math.min(13, height * 0.24));
+    const cut = Math.max(6, Math.min(10, height * 0.18));
 
     const draw = () => {
         g.clear();
@@ -61,7 +88,7 @@ export function applyHexButtonSkin(
         g.fillColor = new Color(0, 0, 0, disabled ? 80 : 155);
         clippedRect(g, width, height, cut, -4); g.fill();
 
-        g.fillColor = new Color(8, 14, 24, disabled ? 220 : 246);
+        g.fillColor = new Color(20, 37, 55, disabled ? 220 : 246);
         clippedRect(g, width, height, cut); g.fill();
 
         g.fillColor = new Color(

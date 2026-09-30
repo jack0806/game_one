@@ -25,10 +25,10 @@ const webShellStyle = fs.readFileSync(path.join(root, 'build-templates/web-deskt
 const webBuild = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-desktop.json'), 'utf8'));
 const webBuildMobile = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-mobile.json'), 'utf8'));
 
-test('首页背景已移除烧录按钮，操作区不再绘制不透明遮挡方框', () => {
+test('首页标题与按钮为真实节点，操作区使用半透明圆整面板', () => {
     assert.match(screenSource, /setContentSize\(568, 410\)/);
     assert.match(screenSource, /new Node\('MenuActions'\)/);
-    assert.doesNotMatch(screenSource, /menuActions\.addComponent\(Graphics\)/);
+    assert.match(screenSource, /drawHexPanel\(menuPanelG, -250, -197, 500, 390, UI_PALETTE\.cyan, 219\)/);
     assert.doesNotMatch(screenSource, /fillRect\(-284, -205, 568, 410\)/);
     assert.doesNotMatch(screenSource, /dockG\.fillRect/);
 });
@@ -148,10 +148,10 @@ test('成就墙一屏展示数量、稀有度特殊性、图片、进度与奖�
     assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{ACHIEVEMENTS\.length\}/);
 });
 
-test('角色介绍卡有统一底板，底部为「选择出战/英雄介绍」双按钮', () => {
+test('角色介绍卡有圆整统一底板，底部为「选择出战/英雄介绍」双按钮', () => {
     assert.match(screenSource, /setContentSize\(360, 280\)/);
-    assert.match(screenSource, /cardG\.fillRect\(-180, -140, 360, 280\)/);
-    assert.match(screenSource, /cardG\.rect\(-180, -140, 360, 280\)/);
+    assert.match(screenSource, /drawHexPanel\(cardG, -180, -140, 360, 280, cardCol, locked \? 218 : 242\)/);
+    assert.match(screenSource, /cardG\.roundRect\(-180, -140, 360, 280, 18\)/);
     assert.match(screenSource, /cardG\.lineWidth = locked \? 1 : 2/);
     assert.match(screenSource, /const corner = 18/);
     assert.match(screenSource, /frameN\.setPosition\(new Vec3\(0, 84, 0\)\)/);
@@ -162,7 +162,9 @@ test('角色介绍卡有统一底板，底部为「选择出战/英雄介绍」�
     // 选择出战按钮直接开战；整张卡不再绑定开局回调，看介绍时不会误触
     assert.match(screenSource, /'选择出战'/);
     assert.match(screenSource, /selBtn\.on\(Node\.EventType\.TOUCH_END,\s*\(\) => this\.onCharSelected\?\.\(CHARS\[idx\]!\), this\);/);
-    assert.doesNotMatch(screenSource, /card\.on\(Node\.EventType\.TOUCH_END/);
+    const charCards = screenSource.slice(screenSource.indexOf('private _buildCharSelectPanel()'),
+        screenSource.indexOf('private _buildCharDetailPanel()'));
+    assert.doesNotMatch(charCards, /card\.on\(Node\.EventType\.TOUCH_END/);
 });
 
 test('选人页与英雄介绍文字保持可读字号：速览14px、锁定提示14px', () => {
@@ -209,8 +211,10 @@ test('英雄介绍弹窗文字放大后保持可读：属性16px、技能标题1
     // 底部按钮52px高（≈19px字），返回/出战不再是小字按钮
     assert.match(screenSource, /'选择出战', -130, -234, 260, 52/);
     assert.match(screenSource, /'返回', 130, -234, 260, 52/);
-    // 说明文字不再使用13px小字
-    assert.doesNotMatch(screenSource, /dl\.fontSize = 1[345]/);
+    // 只检查详情弹窗的说明 Label；地图页另有独立的 15px 描述。
+    const detailSource = screenSource.slice(screenSource.indexOf('private _buildCharDetailPanel()'),
+        screenSource.indexOf('private _buildGameoverPanel()'));
+    assert.doesNotMatch(detailSource, /dl\.fontSize = 1[345]/);
 });
 
 test('未解锁角色遮罩位于立绘上方,不会再把Portrait推回前景', () => {
@@ -246,7 +250,7 @@ test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
 });
 
 test('商店使用不透明独立面板，神秘强化作为二级模态弹窗', () => {
-    assert.match(shopSource, /new Color\(8, 13, 23, 252\)/);
+    assert.match(shopSource, /drawHexPanel\(pg, -320, -280, 640, 560, UI_PALETTE\.cyan, 252\)/);
     assert.match(shopSource, /resume\(\) \{ this\.node\.active = true; \}/);
     assert.match(gameSource, /case 'augment':[\s\S]*this\._shopUI\.hide\(\)[\s\S]*this\._shopUI\.resume\(\)/);
 });

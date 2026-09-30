@@ -176,9 +176,17 @@ export class BulletPool {
             const b = this._active[i];
             if (b.isEnemyBullet || b.owner === 'enemy') continue;
 
+            const startX = b.x, startY = b.y;
             b.x += b.vx * dt;
             b.y += b.vy * dt;
             b.life += dt;
+            // 高大残骸对普通、穿透、反弹与追踪弹使用相同的线段扫掠。
+            // 范围伤害保留机制例外，碰墙引爆但弹体不能穿墙。
+            if (game.firstArenaBulletHit?.(startX, startY, b.x, b.y, b.radius)) {
+                game.particles?.hit?.(b.x, b.y, b.color);
+                if (b.explodeOnExpire) game.spawnExplosion?.(player, b.x, b.y, b.damage, b.explodeRadius ?? 50, game);
+                this._release(b); continue;
+            }
 
             // 延时加速（凯尔大招）：存活超过 speedUpAfter 秒后弹速×speedUpMult，只加速一次。
             // 加速瞬间清空旧锁定，下一帧重新锁定最近敌人——"加速后锁定怪物位置"。
@@ -317,7 +325,12 @@ export class BulletPool {
                 b.vx = b.vx / nextSpeed * speed;
                 b.vy = b.vy / nextSpeed * speed;
             }
+            const startX = b.x, startY = b.y;
             b.x += b.vx * dt; b.y += b.vy * dt; b.life += dt;
+            if (game.firstArenaBulletHit?.(startX, startY, b.x, b.y, b.radius)) {
+                game.particles?.explode?.(b.x, b.y, b.explodeColor ?? b.color, 24);
+                this._release(b); continue;
+            }
             // 分弹种尾迹（0.08s 节流）：毒球绿雾 / 齿轮光环 / 追踪尾焰 / 混沌紫烟
             if (b.enemyFx) {
                 b.trailCd = (b.trailCd ?? 0) - dt;

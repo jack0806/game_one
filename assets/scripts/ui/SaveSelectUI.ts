@@ -11,7 +11,7 @@ import {
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSlotSummary, SaveSystem } from '../systems/SaveSystem';
 
 export interface SaveSelectCallbacks {
@@ -81,17 +81,17 @@ export class SaveSelectUI {
         page.addComponent(UITransform).setContentSize(1280, 720);
 
         const bg = page.addComponent(Graphics);
-        bg.fillColor = new Color(3, 7, 14, 255); bg.fillRect(-640, -360, 1280, 720);
+        bg.fillColor = UI_PALETTE.deep; bg.fillRect(-640, -360, 1280, 720);
 
         const artN = new Node('AmbientArt'); artN.setParent(page);
         artN.addComponent(UITransform).setContentSize(1280, 720);
         const art = artN.addComponent(Sprite); art.sizeMode = Sprite.SizeMode.CUSTOM;
-        art.color = new Color(95, 125, 150, 60);
+        art.color = new Color(225, 237, 249, 145);
         applyArtSprite(art, 'title_screen');
 
         const veilN = new Node('Veil'); veilN.setParent(page);
         const veil = veilN.addComponent(Graphics);
-        veil.fillColor = new Color(2, 7, 14, 205); veil.fillRect(-640, -360, 1280, 720);
+        veil.fillColor = new Color(15, 27, 43, 150); veil.fillRect(-640, -360, 1280, 720);
         veil.fillColor = new Color(CYAN.r, CYAN.g, CYAN.b, 12); veil.fillRect(-640, 250, 1280, 110);
         veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
@@ -134,7 +134,8 @@ export class SaveSelectUI {
             n.setPosition(new Vec3(0, lt.y, 0));
             n.addComponent(UITransform).setContentSize(272, lt.size + 8);
             const l = n.addComponent(Label);
-            l.string = ''; l.fontSize = lt.size; l.color = lt.color;
+            l.string = ''; l.fontSize = lt.size; l.lineHeight = Math.round(lt.size * 1.18);
+            l.color = lt.color;
             l.horizontalAlign = HorizontalTextAlignment.CENTER;
             l.verticalAlign = VerticalTextAlignment.CENTER;
             l.overflow = Label.Overflow.SHRINK;
@@ -151,7 +152,8 @@ export class SaveSelectUI {
         const dl = new Node('L'); dl.setParent(deleteBtn);
         dl.addComponent(UITransform).setContentSize(50, 22);
         const deleteLabel = dl.addComponent(Label);
-        deleteLabel.string = '删除'; deleteLabel.fontSize = 12; deleteLabel.color = MUTED;
+        deleteLabel.string = '删除'; deleteLabel.fontSize = 12;
+        deleteLabel.lineHeight = 15; deleteLabel.color = MUTED;
         deleteLabel.horizontalAlign = HorizontalTextAlignment.CENTER;
         deleteLabel.verticalAlign = VerticalTextAlignment.CENTER;
         deleteLabel.overflow = Label.Overflow.SHRINK;
@@ -177,11 +179,7 @@ export class SaveSelectUI {
         const g = view.graphics;
         const accent = summary.exists ? CYAN : new Color(96, 118, 134, 255);
         g.clear();
-        g.fillColor = new Color(5, 12, 22, 244); clippedPath(g, 300, 400, 14); g.fill();
-        g.fillColor = new Color(accent.r, accent.g, accent.b, summary.exists ? 20 : 10);
-        clippedPath(g, 293, 393, 11); g.fill();
-        g.strokeColor = new Color(accent.r, accent.g, accent.b, summary.exists ? 170 : 110);
-        g.lineWidth = 1.5; clippedPath(g, 300, 400, 14); g.stroke();
+        drawHexPanel(g, -150, -200, 300, 400, accent, 247);
         g.strokeColor = new Color(accent.r, accent.g, accent.b, 220); g.lineWidth = 3;
         g.moveTo(-118, 186); g.lineTo(118, 186); g.stroke();
 
@@ -196,7 +194,7 @@ export class SaveSelectUI {
                 : '尚未记录对局';
         } else {
             view.lines[0].string = SLOT_TITLES[view.slot];
-            view.lines[1].string = '';
+            view.lines[1].string = '创建新行动档案';
             view.lines[2].string = '';
             view.lines[3].string = '';
             // 空槽中央的「+ 新征程」引导
@@ -211,7 +209,8 @@ export class SaveSelectUI {
         hintN.setPosition(new Vec3(0, -173, 0));
         hintN.addComponent(UITransform).setContentSize(256, 24);
         const hl = hintN.addComponent(Label);
-        hl.string = hint; hl.fontSize = 13; hl.color = summary.exists ? CYAN : MUTED;
+        hl.string = hint; hl.fontSize = 16; hl.lineHeight = 20;
+        hl.color = summary.exists ? CYAN : UI_PALETTE.muted;
         hl.horizontalAlign = HorizontalTextAlignment.CENTER;
         hl.verticalAlign = VerticalTextAlignment.CENTER;
         hl.overflow = Label.Overflow.SHRINK;

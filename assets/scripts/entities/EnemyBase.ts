@@ -938,7 +938,8 @@ export class EnemyBase {
                 aiTarget = { x: CANVAS_W / 2, y: PLAYFIELD_BOTTOM / 2, alive: true };
             }
         }
-        const [dx, dy] = Vec.normalize(aiTarget.x - this.x, aiTarget.y - this.y);
+        const routeTarget = game.arenaSteerTarget?.(this.x, this.y, aiTarget.x, aiTarget.y, this.radius) ?? aiTarget;
+        const [dx, dy] = Vec.normalize(routeTarget.x - this.x, routeTarget.y - this.y);
         this.combatFacingX = dx; this.combatFacingY = dy;
         const spd = this.speed * (this.frozen > 0 ? 0 : this.slowMult) * this.buffSpeedMult *
             (this.arcBoostTimer > 0 ? 1.15 : 1);
@@ -949,7 +950,8 @@ export class EnemyBase {
         let arcShot = false;
         let acidShot: [number, number] | undefined;
         if (this.rangedRange > 0) {
-            const dist = Math.hypot(player.x - this.x, player.y - this.y);
+            const dist = game.arenaLineClear?.(this.x, this.y, player.x, player.y) === false
+                ? Infinity : Math.hypot(player.x - this.x, player.y - this.y);
             if (dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }      // 太近 → 后撤
             else if (dist <= this.rangedKeepDist + 40) { mvx = 0; mvy = 0; }    // 舒适区 → 停步开火
             else if (this.type === 'needle_gunner') {

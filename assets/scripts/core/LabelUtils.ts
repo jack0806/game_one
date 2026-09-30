@@ -30,8 +30,8 @@ export function styleLabel(lbl: Label, opts: LabelStyleOpts = {}): void {
     lbl.isBold = opts.bold ?? true;
     if (opts.outline ?? true) {
         lbl.enableOutline = true;
-        lbl.outlineColor  = opts.outlineColor ?? new Color(0, 0, 0, 200);
-        lbl.outlineWidth  = opts.outlineWidth ?? (lbl.fontSize >= 22 ? 3 : 2);
+        lbl.outlineColor  = opts.outlineColor ?? new Color(0, 0, 0, 145);
+        lbl.outlineWidth  = opts.outlineWidth ?? (lbl.fontSize >= 22 ? 2 : 1);
     }
 }
 

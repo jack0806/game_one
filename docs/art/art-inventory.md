@@ -1,8 +1,8 @@
 # 现有美术资源清单（assets/resources/art/）
 
-> 2026-09-03新增逐帧图集的清单、来源和状态单独维护于[动画重做记录](animation-rebuild-2026-09-03.md)及[覆盖矩阵](animation-qa/coverage.json)。下面的张数为此前静态素材基线，不包含本轮制作稿。
+> 2026-09-03新增逐帧图集的清单、来源和状态单独维护于[动画重做记录](animation-rebuild-2026-09-03.md)及[覆盖矩阵](animation-qa/coverage.json)。下面的分类张数为历史静态素材基线；2026-09-30 当前目录实数为 481 张 PNG。
 
-共 174 张 PNG，全部被代码引用且有对应文件（`tests/specs/artmanifest.test.js` 与 `visualmanifest.test.js` 自检通过）。
+历史静态素材清单共 174 张 PNG。2026-09-30 新增 2 张章节底图、13 张独立残骸；全部运行时 art key 由 `tests/specs/artmanifest.test.js` 检查。
 
 所有图片加载都走 `core/ArtRemap.ts` 的 `artPath(key)`（拼 `/spriteFrame` 后缀），替换图片只需**覆盖同名文件内容**。
 
@@ -14,15 +14,19 @@
 
 ---
 
-## 1. 标题与章节背景（5 张）
+## 1. 标题与章节背景（7 张）
 
 | 文件名（key） | 实际内容 | 引用位置 | 规格参考 |
 |---|---|---|---|
 | `title_screen` | 标题屏环境与标题图（背景无烧录按钮；城市与海克斯纹理自然延续，真实按钮由 `UIStyle` 绘制） | `ScreenManager.ts` | 1672×941 |
-| `bg_chapter1` | 第1章 废土街道（低频沥青中心；汽车、瓦砾、红色污染集中在边缘） | `WaveData.ts`（bgKey）+ `GameManager.ts` | 1664×936 |
-| `bg_chapter2` | 第2章 钢铁工厂（大块钢板中心；齿轮、管线、熔炉橙光集中在边缘） | 同上 | 1664×936 |
-| `bg_chapter3` | 第3章 海克斯实验室（青绿蜂巢电路+容器节点） | 同上 | 2560×1440 |
-| `bg_chapter4` | 第4章 混沌位面（紫黑虚空+魔法符文） | 同上 | 2560×1440 |
+| `bg_chapter1` | 第1章 废土街道（低频沥青中心；汽车、瓦砾集中在边缘） | `WaveData.ts`（bgKey）+ `GameManager.ts` | 1672×941 |
+| `bg_chapter2` | 第2章 钢铁工厂（钢板中心；管线、熔炉橙光集中在边缘） | 同上 | 1672×941 |
+| `bg_chapter3` | 第3章 海克斯实验室（浅蓝地板中心，青绿实验容器在边缘） | 同上 | 1672×941 |
+| `bg_chapter4` | 第4章 混沌位面（紫灰平台中心、虚空门环在边缘） | 同上 | 1672×941 |
+| `bg_chapter5` | 第5章 天罚领域（冷蓝机甲设施与磁轨） | 同上 | 1672×941 |
+| `bg_chapter6` | 第6章 终焉天罚（崩坏机械平台与橙红反应堆边缘） | 同上 | 1672×941 |
+
+2026-09-30 独立残骸：第一章 `arena_wreck_ch1`、`arena_wall_ch1`、`arena_barrier_ch1`；第二章 `arena_machine_ch2`、`arena_conveyor_ch2`；第三章 `arena_vat_ch3`、`arena_console_ch3`；第四章 `arena_portal_ch4`、`arena_pillar_ch4`；第五章 `arena_mech_ch5`、`arena_rail_ch5`；第六章 `arena_reactor_ch6`、`arena_support_ch6`。这 13 张均为真透明 PNG，六章各两套布局的逻辑位置、碰撞范围与显示尺寸由 `ChapterArenaDB.ts` 记录；第 1–4 章旧背景与标题图只覆盖原文件内容，原 UUID 保留。
 
 > ✅ 2026-08-18：四张背景已按语义重新生成并经视觉逐一核实，**文件名与内容一致**。
 > 旧版 `bg_chapter1↔bg_chapter4` 互换映射已从 `ArtRemap.ts` 删除（此前它会把第1章

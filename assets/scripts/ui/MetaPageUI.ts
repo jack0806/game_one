@@ -10,7 +10,7 @@ import {
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { loadArtSprite, applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import {
     CodexCategory, CodexEntry, CODEX_ENTRIES, codexByCategory,
     QuestBranch, QuestDef, questsByBranch,
@@ -75,14 +75,7 @@ function clippedPath(g: Graphics, w: number, h: number, cut: number): void {
 
 function drawPanel(g: Graphics, w: number, h: number, accent: Color, alpha = 242): void {
     g.clear();
-    g.fillColor = new Color(5, 12, 22, alpha);
-    clippedPath(g, w, h, 14); g.fill();
-    g.strokeColor = new Color(accent.r, accent.g, accent.b, 150);
-    g.lineWidth = 1.5;
-    clippedPath(g, w, h, 14); g.stroke();
-    g.strokeColor = new Color(220, 248, 255, 42);
-    g.lineWidth = 1;
-    g.moveTo(-w / 2 + 26, h / 2 - 6); g.lineTo(w / 2 - 26, h / 2 - 6); g.stroke();
+    drawHexPanel(g, -w / 2, -h / 2, w, h, accent, alpha);
 }
 
 export class MetaPageUI {
@@ -137,17 +130,17 @@ export class MetaPageUI {
         this._panels.set(name, page);
 
         const bg = page.addComponent(Graphics);
-        bg.fillColor = new Color(3, 7, 14, 255); bg.fillRect(-640, -360, 1280, 720);
+        bg.fillColor = UI_PALETTE.deep; bg.fillRect(-640, -360, 1280, 720);
 
         const artN = new Node('AmbientArt'); artN.setParent(page);
         artN.addComponent(UITransform).setContentSize(1280, 720);
         const art = artN.addComponent(Sprite); art.sizeMode = Sprite.SizeMode.CUSTOM;
-        art.color = new Color(95, 125, 150, 66);
+        art.color = new Color(174, 198, 218, 114);
         applyArtSprite(art, bgKey);
 
         const veilN = new Node('Veil'); veilN.setParent(page);
         const veil = veilN.addComponent(Graphics);
-        veil.fillColor = new Color(2, 7, 14, 198); veil.fillRect(-640, -360, 1280, 720);
+        veil.fillColor = new Color(20, 34, 53, 130); veil.fillRect(-640, -360, 1280, 720);
         veil.fillColor = new Color(accent.r, accent.g, accent.b, 12); veil.fillRect(-640, 250, 1280, 110);
         veil.strokeColor = new Color(accent.r, accent.g, accent.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();

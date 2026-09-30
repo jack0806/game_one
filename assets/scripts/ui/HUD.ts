@@ -5,6 +5,7 @@ import {
 import { AugDef } from '../data/AugmentDB';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
+import { drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -64,17 +65,13 @@ export class HUD extends Component {
     private _buildHpBar() {
         const panel = this._mkNode('VitalsPanel', -510, 310);
         const panelG = panel.addComponent(Graphics);
-        panelG.fillColor = new Color(5, 10, 16, 218);
-        panelG.fillRect(-8, -8, this.BAR_W + 28, 48);
-        panelG.strokeColor = new Color(80, 125, 155, 180);
-        panelG.lineWidth = 1;
-        panelG.rect(-8, -8, this.BAR_W + 28, 48); panelG.stroke();
+        drawHexPanel(panelG, -8, -8, this.BAR_W + 28, 48);
 
         const bg = this._mkNode('HpBg', -500, 330);
         const bgG = bg.addComponent(Graphics);
-        bgG.fillColor = new Color(25, 25, 25, 210);
+        bgG.fillColor = UI_PALETTE.deep;
         bgG.fillRect(0, 0, this.BAR_W, this.BAR_H);
-        bgG.strokeColor = new Color(70, 70, 70, 255);
+        bgG.strokeColor = UI_PALETTE.danger;
         bgG.lineWidth = 1; bgG.rect(0, 0, this.BAR_W, this.BAR_H); bgG.stroke();
 
         this._hpBarFg = this._mkNode('HpFg', -500, 330).addComponent(Graphics);

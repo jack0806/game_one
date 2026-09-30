@@ -5,7 +5,7 @@ import {
 import { Economy, ShopItem } from '../systems/Economy';
 import { RARITY_COLOR } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -66,7 +66,7 @@ export class ShopUI extends Component {
         const g = n.addComponent(Graphics);
         const drawDim = () => {
             g.clear();
-            g.fillColor = new Color(0, 0, 0, 218);
+            g.fillColor = new Color(UI_PALETTE.deep.r, UI_PALETTE.deep.g, UI_PALETTE.deep.b, 224);
             g.fillRect(-640, -360, 1280, 720);
         };
 
@@ -77,10 +77,7 @@ export class ShopUI extends Component {
         const pg = panel.addComponent(Graphics);
         const drawPanel = () => {
             pg.clear();
-            pg.fillColor = new Color(8, 13, 23, 252);
-            pg.fillRect(-320, -280, 640, 560);
-            pg.strokeColor = new Color(105, 145, 175, 235);
-            pg.lineWidth = 2; pg.rect(-320, -280, 640, 560); pg.stroke();
+            drawHexPanel(pg, -320, -280, 640, 560, UI_PALETTE.cyan, 252);
         };
         drawDim();
         drawPanel();

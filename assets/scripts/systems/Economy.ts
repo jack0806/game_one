@@ -32,6 +32,8 @@ export function nextAugRefreshCost(refreshCount: number): number {
 }
 
 export class Economy {
+    /** 由 GameManager 注入当前布局的掉落点修正。 */
+    dropPlacement?: (x: number, y: number) => { x: number; y: number };
     gold  = 0;
     parts = 0;
     /** 本局累计获得金币（含已花费），供局末存档统计成就，reset 时清零。 */
@@ -66,9 +68,10 @@ export class Economy {
     spawnDrop(x: number, y: number, amount: number): void {
         // 二维平面：金币直接固定在敌人死亡坐标（仅做一次合法范围校正），
         // 不再生成随机速度，也不在 update 中做重力/横向漂移。
+        const safe = this.dropPlacement?.(x, y) ?? { x, y };
         this._drops.push({
-            x: clamp(x, DROP_SIDE_MARGIN, CANVAS_W - DROP_SIDE_MARGIN),
-            y: clamp(y, DROP_SIDE_MARGIN, DROP_FLOOR),
+            x: clamp(safe.x, DROP_SIDE_MARGIN, CANVAS_W - DROP_SIDE_MARGIN),
+            y: clamp(safe.y, DROP_SIDE_MARGIN, DROP_FLOOR),
             vx: 0,
             vy: 0,
             amount,

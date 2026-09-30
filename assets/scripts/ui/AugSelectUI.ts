@@ -6,7 +6,7 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -100,7 +100,7 @@ export class AugSelectUI extends Component {
         // 压花的商品图标干扰(见用户反馈"移到上面 为不透明模式")。
         const draw = () => {
             g.clear();
-            g.fillColor = new Color(0, 0, 0, 255);
+            g.fillColor = UI_PALETTE.deep;
             g.fillRect(-640, -360, 1280, 720);
         };
         draw();

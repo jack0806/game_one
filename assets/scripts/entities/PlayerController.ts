@@ -351,7 +351,7 @@ export class PlayerController extends Component {
     }
 
     // ── 每帧更新 ─────────────────────────────────────────
-    tickMovement(dt: number, input: any): void {
+    tickMovement(dt: number, input: any, game?: any): void {
         if (!this.alive || this._buffs.some(b => b.mods.noMove)) return;
         let mx = input.moveX, my = input.moveY;
         if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
@@ -362,8 +362,13 @@ export class PlayerController extends Component {
             this.facingY = my / len;
         }
         const spd = this.getSpeed();
-        this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
-        this.y = clamp(this.y + my * spd * dt, this.radius, PLAYFIELD_BOTTOM - this.radius);
+        if (game?.moveInArena) {
+            const next = game.moveInArena(this.x, this.y, mx * spd * dt, my * spd * dt, this.radius);
+            this.x = next.x; this.y = next.y;
+        } else {
+            this.x = clamp(this.x + mx * spd * dt, this.radius, CANVAS_W - this.radius);
+            this.y = clamp(this.y + my * spd * dt, this.radius, PLAYFIELD_BOTTOM - this.radius);
+        }
     }
 
     tick(dt: number, input: any, game: any): void {
@@ -431,7 +436,7 @@ export class PlayerController extends Component {
         }
 
         // 移动
-        this.tickMovement(dt, input);
+        this.tickMovement(dt, input, game);
         // 跳跃使用独立的起跳/腾空/落地姿势，长按不会不断重置起跳帧。
         if (input.isJumpPressed?.() && !this.actorAnimation.locked) this.playVisualAction('jump');
         this.updateVisualAnimation(dt);

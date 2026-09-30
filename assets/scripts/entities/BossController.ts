@@ -262,7 +262,8 @@ export class BossController extends EnemyBase {
             const toPlayerX = player.x - this.x;
             const toPlayerY = player.y - this.y;
             const distance = Math.hypot(toPlayerX, toPlayerY);
-            const [dx, dy] = Vec.normalize(toPlayerX, toPlayerY);
+            const route = game.arenaSteerTarget?.(this.x, this.y, player.x, player.y, this.radius) ?? player;
+            const [dx, dy] = Vec.normalize(route.x - this.x, route.y - this.y);
             // 旧逻辑无条件穿过英雄中心，Boss 会在目标点两侧来回越界并每帧
             // 翻转前/背或左右帧，视觉上就是“一闪一闪”。现在在接触判定内沿
             // 稳定停步；冲锋结束若重叠，则以较慢速度后撤恢复合理间距。

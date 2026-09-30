@@ -11,7 +11,7 @@ import {
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSystem } from '../systems/SaveSystem';
 import { MetaPageName } from './MetaPageUI';
 
@@ -42,14 +42,7 @@ function clippedPath(g: Graphics, w: number, h: number, cut: number): void {
 
 function drawPanel(g: Graphics, w: number, h: number, accent: Color, alpha = 242): void {
     g.clear();
-    g.fillColor = new Color(5, 12, 22, alpha);
-    clippedPath(g, w, h, 14); g.fill();
-    g.strokeColor = new Color(accent.r, accent.g, accent.b, 150);
-    g.lineWidth = 1.5;
-    clippedPath(g, w, h, 14); g.stroke();
-    g.strokeColor = new Color(220, 248, 255, 42);
-    g.lineWidth = 1;
-    g.moveTo(-w / 2 + 26, h / 2 - 6); g.lineTo(w / 2 - 26, h / 2 - 6); g.stroke();
+    drawHexPanel(g, -w / 2, -h / 2, w, h, accent, alpha);
 }
 
 export class LobbyUI {
@@ -96,18 +89,18 @@ export class LobbyUI {
         page.addComponent(UITransform).setContentSize(1280, 720);
 
         const bg = page.addComponent(Graphics);
-        bg.fillColor = new Color(3, 7, 14, 255); bg.fillRect(-640, -360, 1280, 720);
+        bg.fillColor = UI_PALETTE.deep; bg.fillRect(-640, -360, 1280, 720);
 
         // 大厅用第 1 章废土街道做远景，压暗后与首页标题图区分开。
         const artN = new Node('AmbientArt'); artN.setParent(page);
         artN.addComponent(UITransform).setContentSize(1280, 720);
         const art = artN.addComponent(Sprite); art.sizeMode = Sprite.SizeMode.CUSTOM;
-        art.color = new Color(90, 115, 135, 58);
+        art.color = new Color(220, 232, 244, 135);
         applyArtSprite(art, 'bg_chapter1');
 
         const veilN = new Node('Veil'); veilN.setParent(page);
         const veil = veilN.addComponent(Graphics);
-        veil.fillColor = new Color(2, 7, 14, 200); veil.fillRect(-640, -360, 1280, 720);
+        veil.fillColor = new Color(15, 27, 43, 155); veil.fillRect(-640, -360, 1280, 720);
         veil.fillColor = new Color(CYAN.r, CYAN.g, CYAN.b, 12); veil.fillRect(-640, 250, 1280, 110);
         veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
