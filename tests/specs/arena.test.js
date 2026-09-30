@@ -51,7 +51,16 @@ test('六章底图边缘的实体建筑挡住角色且保留中心通路', () =>
         assert.ok(moveInArena(layout, 640, 360, 0, 500, 18).y <= 602);
     }
     assert.ok(moveInArena(arena, 640, 150, -700, 0, 18).x >= 143);
+    // 左侧岗哨的箱体延伸到画面约 x=155、y=390，角色脚底不能压在箱体上。
+    assert.ok(moveInArena(arena, 640, 350, -700, 0, 18).x >= 183);
     assert.ok(moveInArena(arena, 300, 520, -400, 0, 18).x >= 243);
+    // 各章侧边的熔炉、培养罐、装甲和破损框架都画在背景里，也要挡住角色。
+    for (const [chapter, minX] of [[2, 148], [3, 163], [5, 158], [6, 183]]) {
+        for (const layout of arenasForChapter(chapter)) {
+            assert.ok(moveInArena(layout, 640, 360, -700, 0, 18).x >= minX,
+                `${layout.id} 左侧设备挡住角色`);
+        }
+    }
 });
 
 test('第一章三个残骸的上沿不再被玩家脚底踩入', () => {
@@ -78,12 +87,12 @@ test('刷怪和掉落能从残骸内部移到合法位置', () => {
 });
 
 test('高大残骸扫掠挡住快弹，低矮路障允许弹体穿过', () => {
-    assert.equal(firstArenaBulletHit(arena, 145, 280, 500, 280, 5)?.id, 'west-wall');
+    assert.equal(firstArenaBulletHit(arena, 190, 280, 500, 280, 5)?.id, 'west-wall');
     assert.equal(firstArenaBulletHit(arena, 390, 544, 520, 544, 5), undefined);
 });
 
 test('敌人追击被断墙隔开时取得合法绕行角点', () => {
-    const target = arenaSteerTarget(arena, { x: 145, y: 280 }, { x: 550, y: 280 }, 18);
+    const target = arenaSteerTarget(arena, { x: 190, y: 280 }, { x: 550, y: 280 }, 18);
     assert.notDeepEqual(target, { x: 550, y: 280 });
     assert.equal(isArenaFree(arena, target.x, target.y, 18), true);
 });
