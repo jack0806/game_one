@@ -454,6 +454,7 @@ export class GameManager extends Component {
         this._touchUI.onViewResized = () => {
             this._fitBackgroundToVisible();
             this._screenMgr.fitToVisible();
+            this._statsUI.fitToVisible();
             this._refreshLabelsAfterResize();
         };
 
@@ -588,10 +589,30 @@ export class GameManager extends Component {
                 this._audio.playBgm('title');
                 break;
             case 'gameover':
+                this._screenMgr.setRunReport('gameover', {
+                    chapter: Math.min(CHAPTERS.length, this._chapter + 1),
+                    wave: this._waveMgr.wave,
+                    kills: this.kills,
+                    maxCombo: this.maxCombo,
+                    goldEarned: this._economy.earnedThisRun,
+                    score: this.score,
+                    finalChapter: this._chapter + 1 >= CHAPTERS.length,
+                });
                 this._screenMgr.show('gameover');
                 this._audio.playBgm('title');
                 break;
-            case 'chapterClear': this._screenMgr.show('chapterClear'); break;
+            case 'chapterClear':
+                this._screenMgr.setRunReport('chapterClear', {
+                    chapter: Math.min(CHAPTERS.length, this._chapter + 1),
+                    wave: this._waveMgr.wave,
+                    kills: this.kills,
+                    maxCombo: this.maxCombo,
+                    goldEarned: this._economy.earnedThisRun,
+                    score: this.score,
+                    finalChapter: this._chapter + 1 >= CHAPTERS.length,
+                });
+                this._screenMgr.show('chapterClear');
+                break;
             case 'paused':       this._screenMgr.show('pause');        break;
             case 'playing':
                 this._audio.playBgm(this._boss ? 'boss' : this._chapterBgm());
@@ -2023,6 +2044,8 @@ export class GameManager extends Component {
         // Every 5 waves = boss wave -> chapter clear check
         const wavesPerChapter = CHAPTERS[this._chapter]?.waves ?? 5;
         if (this._wave % wavesPerChapter === 0) {
+            // 最终章完成即记入胜利档案，返回大厅也不会丢失通关结果。
+            if (this._chapter + 1 >= CHAPTERS.length) this._recordRun(true);
             this._setState('chapterClear');
             return;
         }

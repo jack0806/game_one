@@ -11,6 +11,8 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
+import { visibleDesignWidth } from '../core/ScreenFit';
+import { attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -30,6 +32,7 @@ const PANEL_W = 1080, PANEL_H = 620;
 @ccclass('StatsPanel')
 export class StatsPanel extends Component {
     private _built = false;
+    private _dimNode!:     Node;
     private _dimG!:        Graphics;
     private _panelG!:      Graphics;
     private _titleLabel!:  Label;
@@ -38,6 +41,7 @@ export class StatsPanel extends Component {
     private _skillRows:    { key: Label; name: Label; desc: Label }[] = [];
     private _progressLabel!: Label;
     private _augRows:      { root: Node; icon: Sprite; name: Label; desc: Label }[] = [];
+    private _emptyAugLabel!: Label;
 
     // 与 AugmentManager 的词条上限对齐（六角特权可到10）。
     private readonly MAX_AUG_ROWS = 10;
@@ -48,7 +52,13 @@ export class StatsPanel extends Component {
         // 节点从未激活时 onLoad 不会触发，_build() 由 refresh() 兜底执行；
         // 而未激活状态下下发的 Graphics 绘制命令在激活后可能丢失
         // （表现为只有文字、没有底板，面板"全透明"），所以每次激活都重画一遍。
-        if (this._built) this._drawChrome();
+        if (this._built) this.fitToVisible();
+    }
+
+    fitToVisible(): void {
+        if (!this._built) return;
+        this._dimNode.getComponent(UITransform)!.setContentSize(visibleDesignWidth(), 720);
+        this._drawChrome();
     }
 
     // ── build ─────────────────────────────────────────────────
@@ -59,7 +69,8 @@ export class StatsPanel extends Component {
 
         // 全屏暗化遮罩：面板弹出时压暗背后的战斗画面
         const dim = new Node('Dim'); dim.setParent(this.node);
-        dim.addComponent(UITransform).setContentSize(1280, 720);
+        dim.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        this._dimNode = dim;
         this._dimG = dim.addComponent(Graphics);
 
         // 主面板（完全不透明底板）
@@ -112,10 +123,10 @@ export class StatsPanel extends Component {
         // 单行并排会把奥莉娅等长说明 SHRINK 到接近注脚大小。
         const keys = ['Q', 'E', 'R'];
         for (let i = 0; i < 3; i++) {
-            const y = -56 - i * 54;
+            const y = -64 - i * 66;
 
             const kn = new Node(`SkKey_${i}`); kn.setParent(panel);
-            kn.setPosition(new Vec3(-498, y + 9, 0));
+            kn.setPosition(new Vec3(-498, y + 14, 0));
             kn.addComponent(UITransform).setContentSize(28, 28);
             const kl = kn.addComponent(Label);
             kl.string = keys[i];
@@ -124,24 +135,26 @@ export class StatsPanel extends Component {
             styleLabel(kl);
 
             const nn = new Node(`SkName_${i}`); nn.setParent(panel);
-            nn.setPosition(new Vec3(-402, y + 9, 0));
-            nn.addComponent(UITransform).setContentSize(164, 24);
+            nn.setPosition(new Vec3(-350, y + 14, 0));
+            nn.addComponent(UITransform).setContentSize(220, 24);
             const nl = nn.addComponent(Label);
             nl.fontSize = 16;
+            nl.lineHeight = 22;
             nl.horizontalAlign = HorizontalTextAlignment.LEFT;
             nl.color = new Color(245, 248, 255, 255);
             nl.overflow = Label.Overflow.SHRINK;
+            nl.enableWrapText = false;
             styleLabel(nl);
 
             const dn = new Node(`SkDesc_${i}`); dn.setParent(panel);
-            dn.setPosition(new Vec3(-270, y - 12, 0));
-            dn.addComponent(UITransform).setContentSize(440, 30);
+            dn.setPosition(new Vec3(-265, y - 18, 0));
+            dn.addComponent(UITransform).setContentSize(450, 36);
             const dl = dn.addComponent(Label);
-            dl.fontSize = 13;
-            dl.lineHeight = 15;
+            dl.fontSize = 14;
+            dl.lineHeight = 18;
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
             dl.verticalAlign = VerticalTextAlignment.CENTER;
-            dl.color = new Color(165, 175, 195, 235);
+            dl.color = new Color(190, 205, 220, 245);
             dl.overflow = Label.Overflow.SHRINK;
             dl.enableWrapText = true;
             styleLabel(dl);
@@ -151,7 +164,7 @@ export class StatsPanel extends Component {
 
         // 左栏底部 — 进度行
         const gn = new Node('Progress'); gn.setParent(panel);
-        gn.setPosition(new Vec3(-265, -216, 0));
+        gn.setPosition(new Vec3(-265, -252, 0));
         gn.addComponent(UITransform).setContentSize(510, 20);
         this._progressLabel = gn.addComponent(Label);
         this._progressLabel.fontSize = 15;
@@ -168,10 +181,12 @@ export class StatsPanel extends Component {
             row.setPosition(new Vec3(augColX[i % 2], y0 - Math.floor(i / 2) * rowH, 0));
             row.addComponent(UITransform).setContentSize(252, 64);
             const rowG = row.addComponent(Graphics);
-            rowG.fillColor = new Color(17, 24, 37, 248);
-            rowG.fillRect(-126, -32, 252, 64);
-            rowG.strokeColor = new Color(68, 88, 118, 210);
-            rowG.lineWidth = 1; rowG.rect(-126, -32, 252, 64); rowG.stroke();
+            const drawRow = () => {
+                rowG.clear();
+                drawHexPanel(rowG, -126, -32, 252, 64, UI_PALETTE.cyan, 238);
+            };
+            drawRow();
+            attachEnableRedraw(row, drawRow);
 
             const iconN = new Node('Icon'); iconN.setParent(row);
             iconN.setPosition(new Vec3(-104, 11, 0));
@@ -206,6 +221,15 @@ export class StatsPanel extends Component {
             this._augRows.push({ root: row, icon: iconSp, name: nl, desc: dl });
         }
 
+        const empty = new Node('NoAugments'); empty.setParent(panel);
+        empty.setPosition(new Vec3(265, 5, 0));
+        empty.addComponent(UITransform).setContentSize(480, 42);
+        this._emptyAugLabel = empty.addComponent(Label);
+        this._emptyAugLabel.string = '本局尚未装备海克斯强化';
+        this._emptyAugLabel.fontSize = 18;
+        this._emptyAugLabel.color = UI_PALETTE.muted;
+        styleLabel(this._emptyAugLabel);
+
         const fn = new Node('Footer'); fn.setParent(panel);
         fn.setPosition(new Vec3(0, -284, 0));
         fn.addComponent(UITransform).setContentSize(500, 22);
@@ -222,16 +246,12 @@ export class StatsPanel extends Component {
 
         this._dimG.clear();
         this._dimG.fillColor = new Color(0, 0, 0, 175);
-        this._dimG.fillRect(-640, -360, 1280, 720);
+        const width = visibleDesignWidth();
+        this._dimG.fillRect(-width / 2, -360, width, 720);
 
         const g = this._panelG;
         g.clear();
-        g.fillColor = new Color(10, 14, 24, 255);
-        g.fillRect(-hw, -hh, PANEL_W, PANEL_H);
-        g.strokeColor = new Color(90, 130, 180, 255);
-        g.lineWidth = 2;
-        g.rect(-hw, -hh, PANEL_W, PANEL_H);
-        g.stroke();
+        drawHexPanel(g, -hw, -hh, PANEL_W, PANEL_H, UI_PALETTE.cyan, 250);
         // 中缝竖线 + 表头下横线，把两栏在视觉上彻底分开
         g.strokeColor = new Color(70, 100, 140, 130);
         g.lineWidth = 1;
@@ -256,7 +276,7 @@ export class StatsPanel extends Component {
     refresh(d: StatsPanelData) {
         // 若 onLoad 尚未触发（节点从未被激活过），这里兜底构建
         this._build();
-        this._drawChrome();
+        this.fitToVisible();
 
         this._titleLabel.string = `角色详情 — ${d.charName}`;
         this._titleLabel.color  = Color.fromHEX(new Color(), d.charColor || '#ffd700');
@@ -277,6 +297,7 @@ export class StatsPanel extends Component {
         }
 
         this._progressLabel.string = d.progress;
+        this._emptyAugLabel.node.active = d.augments.length === 0;
 
         for (let i = 0; i < this._augRows.length; i++) {
             const row = this._augRows[i];

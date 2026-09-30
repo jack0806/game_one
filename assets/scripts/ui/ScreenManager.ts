@@ -23,6 +23,25 @@ export type ScreenName =
     | MetaPageName;
 
 type BtnCallback = () => void;
+type ReportName = 'gameover' | 'chapterClear';
+
+export interface RunReportData {
+    chapter: number;
+    wave: number;
+    kills: number;
+    maxCombo: number;
+    goldEarned: number;
+    score: number;
+    finalChapter: boolean;
+}
+
+interface RunReportView {
+    title: Label;
+    subtitle: Label;
+    values: Label[];
+    primary: Label;
+    redraw: () => void;
+}
 
 /**
  * ScreenManager — owns all full-screen panels.
@@ -37,6 +56,7 @@ export class ScreenManager extends Component {
     private _lobby!: LobbyUI;
     private _menuArtNode?: Node;
     private _drawSettingsBg?: () => void;
+    private _runReports = new Map<ReportName, RunReportView>();
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
     // 面板结构只构建一次，内容（标题/立绘/属性/技能描述）随 showCharDetail 填充
@@ -117,6 +137,10 @@ export class ScreenManager extends Component {
         this._menuArtNode?.getComponent(UITransform)?.setContentSize(width, 720);
         this._panels.get('settings')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawSettingsBg?.();
+        for (const name of ['gameover', 'chapterClear'] as ReportName[]) {
+            this._panels.get(name)?.getComponent(UITransform)?.setContentSize(width, 720);
+            this._runReports.get(name)?.redraw();
+        }
         this._saveSelect?.fitToVisible();
         this._lobby?.fitToVisible();
         this._metaPages?.fitToVisible();
@@ -127,7 +151,8 @@ export class ScreenManager extends Component {
     show(name: ScreenName) {
         const p = this._panels.get(name);
         if (p) p.active = true;
-        if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings') {
+        if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings'
+            || name === 'gameover' || name === 'chapterClear') {
             this.fitToVisible();
         }
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
@@ -149,6 +174,24 @@ export class ScreenManager extends Component {
 
     hideAll() {
         this._panels.forEach(p => p.active = false);
+    }
+
+    /** 失败与章节通关共用行动报告，仅数据和局部状态色不同。 */
+    setRunReport(name: ReportName, data: RunReportData): void {
+        const view = this._runReports.get(name);
+        if (!view) return;
+        const won = name === 'chapterClear';
+        view.title.string = won
+            ? (data.finalChapter ? '六章通关！' : `第 ${data.chapter} 章通关！`)
+            : '行动终止';
+        view.subtitle.string = won
+            ? `完成第 ${data.chapter} 章 · 抵达第 ${data.wave} 波`
+            : `止步第 ${data.chapter} 章 · 第 ${data.wave} 波`;
+        const values = [data.kills, data.maxCombo, data.goldEarned, data.score];
+        view.values.forEach((label, i) => { label.string = String(Math.max(0, Math.floor(values[i]))); });
+        view.primary.string = won
+            ? (data.finalChapter ? '进入无尽模式' : '进入下一章')
+            : '重新开始';
     }
 
     transition(from: ScreenName, to: ScreenName) {
@@ -323,7 +366,7 @@ export class ScreenManager extends Component {
             const nl = nameN.addComponent(Label);
             nl.string = m.locked ? `${m.name} · 即将开放` : m.name;
             nl.fontSize = 24;
-            nl.color = m.locked ? new Color(120, 128, 140, 255) : new Color(235, 246, 250, 255);
+            nl.color = m.locked ? new Color(166, 180, 194, 255) : new Color(235, 246, 250, 255);
             styleLabel(nl);
 
             const descN = new Node('Desc'); descN.setParent(card);
@@ -332,7 +375,7 @@ export class ScreenManager extends Component {
             const dl = descN.addComponent(Label);
             dl.string = m.desc;
             dl.fontSize = 15; dl.lineHeight = 22;
-            dl.color = m.locked ? new Color(104, 112, 124, 235) : new Color(168, 190, 206, 245);
+            dl.color = m.locked ? new Color(152, 170, 186, 245) : new Color(168, 190, 206, 245);
             dl.horizontalAlign = HorizontalTextAlignment.CENTER;
             dl.overflow = Label.Overflow.SHRINK;
             dl.enableWrapText = true;
@@ -373,7 +416,7 @@ export class ScreenManager extends Component {
         sub.addComponent(UITransform).setContentSize(760, 22);
         const sl = sub.addComponent(Label);
         sl.string = '难度只影响怪物数值（移速不变）· 选定后再挑选英雄';
-        sl.fontSize = 14; sl.color = new Color(150, 172, 190, 235);
+        sl.fontSize = 15; sl.color = new Color(190, 208, 222, 245);
         styleLabel(sl);
 
         DIFFICULTIES.forEach((def, i) => {
@@ -418,8 +461,8 @@ export class ScreenManager extends Component {
             hintN.addComponent(UITransform).setContentSize(240, 22);
             const hintLbl = hintN.addComponent(Label);
             hintLbl.string = '点击进入英雄选择';
-            hintLbl.fontSize = 13;
-            hintLbl.color = new Color(150, 172, 190, 210);
+            hintLbl.fontSize = 15;
+            hintLbl.color = new Color(196, 214, 228, 245);
             styleLabel(hintLbl);
 
             diffCard.on(Node.EventType.TOUCH_END, () => this.onDifficultyPicked?.(def), this);
@@ -451,6 +494,7 @@ export class ScreenManager extends Component {
         diffN.setPosition(new Vec3(0, 250, 0));
         diffN.addComponent(UITransform).setContentSize(700, 22);
         this._charDiffLabel = diffN.addComponent(Label);
+        this._charDiffLabel.string = '';
         this._charDiffLabel.fontSize = 15;
         this._charDiffLabel.color = new Color(150, 172, 190, 235);
         styleLabel(this._charDiffLabel);
@@ -537,8 +581,19 @@ export class ScreenManager extends Component {
                 dim.setPosition(Vec3.ZERO);
                 dim.addComponent(UITransform).setContentSize(360, 280);
                 const dimG = dim.addComponent(Graphics);
-                dimG.fillColor = new Color(0, 0, 0, 205);
+                dimG.fillColor = new Color(0, 0, 0, 115);
                 dimG.fillRect(-180, -140, 360, 280);
+
+                const lockNameN = new Node('LockName'); lockNameN.setParent(card);
+                lockNameN.setPosition(new Vec3(0, 12, 0));
+                lockNameN.addComponent(UITransform).setContentSize(320, 26);
+                const lockName = lockNameN.addComponent(Label);
+                lockName.string = names[i] ?? `Char${i}`;
+                lockName.fontSize = 20;
+                lockName.color = new Color(174, 190, 204, 255);
+                lockName.overflow = Label.Overflow.SHRINK;
+                lockName.enableWrapText = false;
+                styleLabel(lockName);
 
                 const lockN = new Node('LockIcon'); lockN.setParent(card);
                 lockN.setPosition(new Vec3(0, 56, 0));
@@ -553,8 +608,8 @@ export class ScreenManager extends Component {
                 hintN.addComponent(UITransform).setContentSize(344, 30);
                 const hintLbl = hintN.addComponent(Label);
                 hintLbl.string = def?.unlockHint ?? '未解锁';
-                hintLbl.fontSize = 14;
-                hintLbl.color = new Color(200, 160, 90, 230);
+                hintLbl.fontSize = 16;
+                hintLbl.color = new Color(255, 202, 112, 255);
                 hintLbl.overflow = Label.Overflow.SHRINK;
                 hintLbl.enableWrapText = true;
                 styleLabel(hintLbl);
@@ -779,67 +834,84 @@ export class ScreenManager extends Component {
     }
 
     private _buildGameoverPanel() {
-        const p = this._mkPanel('gameover', 620, 360);
-
-        const bg = p.addComponent(Graphics);
-        drawHexPanel(bg, -310, -180, 620, 360, UI_PALETTE.danger, 248);
-        bg.strokeColor = new Color(220, 60, 60, 100);
-        bg.lineWidth = 1;
-        bg.moveTo(-250, 52); bg.lineTo(-150, 52);
-        bg.moveTo(150, 52); bg.lineTo(250, 52); bg.stroke();
-
-        const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 112, 0));
-        tn.addComponent(UITransform).setContentSize(400, 56);
-        const tl = tn.addComponent(Label);
-        tl.string = '行动终止';
-        tl.fontSize = 42; tl.color = new Color(235, 65, 65, 255);
-        styleLabel(tl);
-
-        const sub = new Node('Sub'); sub.setParent(p);
-        sub.setPosition(new Vec3(0, 52, 0));
-        sub.addComponent(UITransform).setContentSize(280, 24);
-        const sl = sub.addComponent(Label);
-        sl.string = '战术单元失效 · 本轮记录已归档';
-        sl.fontSize = 15; sl.color = new Color(190, 145, 145, 230);
-        styleLabel(sl);
-
-        const r = this._mkBtn(p, '重新开始', 0,  -8, 200, 46, new Color(50, 130, 50, 230));
-        const m = this._mkBtn(p, '返回大厅', 0, -78, 200, 46, new Color(60, 60, 90, 230));
-        r.on(Node.EventType.TOUCH_END, () => this.onRestartPressed?.(),  this);
-        m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
+        this._buildRunReportPanel('gameover', UI_PALETTE.danger);
     }
 
     private _buildChapterClearPanel() {
-        const p = this._mkPanel('chapterClear', 620, 360);
+        this._buildRunReportPanel('chapterClear', new Color(80, 230, 120, 255));
+    }
 
+    private _buildRunReportPanel(name: ReportName, accent: Color): void {
+        const p = this._mkPanel(name, visibleDesignWidth(), 720);
+        p.addComponent(BlockInputEvents);
         const bg = p.addComponent(Graphics);
-        drawHexPanel(bg, -310, -180, 620, 360, new Color(80, 230, 120, 255), 248);
-        bg.strokeColor = new Color(80, 230, 120, 100);
-        bg.lineWidth = 1;
-        bg.moveTo(-250, 52); bg.lineTo(-150, 52);
-        bg.moveTo(150, 52); bg.lineTo(250, 52); bg.stroke();
+        const redraw = () => {
+            bg.clear();
+            const width = visibleDesignWidth();
+            bg.fillColor = new Color(5, 10, 20, 174);
+            bg.fillRect(-width / 2, -360, width, 720);
+            drawHexPanel(bg, -360, -250, 720, 500, accent, 250);
+        };
+        redraw();
+        attachEnableRedraw(p, redraw);
 
-        const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 112, 0));
-        tn.addComponent(UITransform).setContentSize(500, 52);
-        const tl = tn.addComponent(Label);
-        tl.string = '章节通关！';
-        tl.fontSize = 40; tl.color = new Color(80, 230, 120, 255);
-        styleLabel(tl);
+        const makeLabel = (nodeName: string, x: number, y: number, w: number, h: number,
+                           value: string, size: number, color: Color): Label => {
+            const node = new Node(nodeName); node.setParent(p);
+            node.setPosition(new Vec3(x, y, 0));
+            node.addComponent(UITransform).setContentSize(w, h);
+            const label = node.addComponent(Label);
+            label.string = value;
+            label.fontSize = size;
+            label.color = color;
+            styleLabel(label);
+            return label;
+        };
+        makeLabel('Eyebrow', 0, 215, 500, 24, 'ACTION REPORT / 行动报告', 14, accent);
+        const title = makeLabel('Title', 0, 169, 600, 52,
+            name === 'gameover' ? '行动终止' : '章节通关！', 38, accent);
+        const subtitle = makeLabel('Subtitle', 0, 121, 600, 30, '', 17, UI_PALETTE.muted);
 
-        const sub = new Node('Sub'); sub.setParent(p);
-        sub.setPosition(new Vec3(0, 52, 0));
-        sub.addComponent(UITransform).setContentSize(400, 30);
-        const sl = sub.addComponent(Label);
-        sl.string = '准备进入下一章节…';
-        sl.fontSize = 15; sl.color = new Color(160, 200, 160, 200);
-        styleLabel(sl);
+        const values: Label[] = [];
+        const metrics = ['累计击败', '最高连击', '本局金币', '作战积分'];
+        for (let i = 0; i < metrics.length; i++) {
+            const x = i % 2 === 0 ? -164 : 164;
+            const y = i < 2 ? 42 : -45;
+            const cell = new Node(`Metric_${i}`); cell.setParent(p);
+            cell.setPosition(new Vec3(x, y, 0));
+            const cg = cell.addComponent(Graphics);
+            const drawCell = () => {
+                cg.clear();
+                drawHexPanel(cg, -150, -37, 300, 74, accent, 215);
+            };
+            drawCell();
+            attachEnableRedraw(cell, drawCell);
+            const key = new Node('Name'); key.setParent(cell);
+            key.setPosition(new Vec3(0, 18, 0));
+            key.addComponent(UITransform).setContentSize(260, 20);
+            const keyLabel = key.addComponent(Label);
+            keyLabel.string = metrics[i]; keyLabel.fontSize = 14; keyLabel.color = UI_PALETTE.muted;
+            styleLabel(keyLabel);
+            const val = new Node('Value'); val.setParent(cell);
+            val.setPosition(new Vec3(0, -10, 0));
+            val.addComponent(UITransform).setContentSize(260, 34);
+            const value = val.addComponent(Label);
+            value.string = '0'; value.fontSize = 26; value.color = UI_PALETTE.text;
+            styleLabel(value);
+            values.push(value);
+        }
 
-        const c = this._mkBtn(p, '进入下一章', 0, -8, 200, 46, new Color(40, 150, 220, 230));
-        const m = this._mkBtn(p, '返回大厅', 0, -78, 200, 46, new Color(60, 60, 90, 230));
-        c.on(Node.EventType.TOUCH_END, () => this.onContinuePressed?.(),  this);
-        m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(),  this);
+        const primaryText = name === 'gameover' ? '重新开始' : '进入下一章';
+        const primaryBtn = this._mkBtn(p, primaryText, 0, -149, 230, 46,
+            name === 'gameover' ? new Color(55, 145, 102, 255) : new Color(42, 158, 207, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', 0, -208, 230, 46, new Color(78, 111, 135, 255));
+        primaryBtn.on(Node.EventType.TOUCH_END, () => {
+            if (name === 'gameover') this.onRestartPressed?.();
+            else this.onContinuePressed?.();
+        }, this);
+        backBtn.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
+        const primary = primaryBtn.getChildByName('L')!.getComponent(Label)!;
+        this._runReports.set(name, { title, subtitle, values, primary, redraw });
     }
 
     private _buildPausePanel() {

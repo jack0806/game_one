@@ -65,6 +65,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-right-building', 1135, 0, 1280, 225),
         edge('left-guardrail', 0, 270, 165, 440),
         edge('lower-left-wreckage', 0, 475, 225, 648),
+        edge('lower-left-van-front', 225, 545, 285, 625),
         edge('lower-right-crates', 1110, 492, 1280, 648),
     ],
     2: [
@@ -72,6 +73,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('top-foundry', 0, 0, 1280, 72),
         edge('upper-left-furnace', 0, 0, 165, 190),
         edge('upper-right-furnace', 1090, 0, 1280, 215),
+        edge('upper-right-furnace-front', 970, 72, 1090, 205),
         edge('upper-right-pipe-base', 1160, 215, 1280, 285),
         edge('left-pipes', 0, 235, 130, 435),
         edge('lower-left-furnace', 0, 450, 175, 648),
@@ -109,6 +111,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('top-core-wall', 0, 0, 1280, 70),
         edge('upper-left-frame', 0, 0, 175, 225),
         edge('upper-right-reactor', 1080, 0, 1280, 255),
+        edge('upper-reactor-rubble', 790, 70, 1080, 175),
         edge('upper-right-reactor-base', 1170, 255, 1280, 325),
         edge('left-broken-frame', 0, 230, 165, 430),
         edge('lower-left-core', 0, 470, 220, 648),
@@ -160,7 +163,7 @@ export const CHAPTER_ARENAS: readonly ArenaLayout[] = [
     {
         id: 'ch3-split-lab', chapter: 3, boundaries: CHAPTER_EDGES[3],
         obstacles: [
-            { id: 'north-vat', kind: 'vat', x: 985, y: 250, w: 92, h: 70, artKey: 'arena_vat_ch3', visualW: 136, visualH: 112, blocksBullets: true },
+            { id: 'north-vat', kind: 'vat', x: 900, y: 250, w: 92, h: 70, artKey: 'arena_vat_ch3', visualW: 136, visualH: 112, blocksBullets: true },
             { id: 'west-console', kind: 'console', x: 285, y: 465, w: 100, h: 42, artKey: 'arena_console_ch3', visualW: 140, visualH: 78, blocksBullets: true },
         ],
     },
@@ -190,7 +193,7 @@ export const CHAPTER_ARENAS: readonly ArenaLayout[] = [
     {
         id: 'ch5-armored-islands', chapter: 5, boundaries: CHAPTER_EDGES[5],
         obstacles: [
-            { id: 'north-mech', kind: 'mech', x: 990, y: 250, w: 138, h: 56, artKey: 'arena_mech_ch5', visualW: 182, visualH: 96, blocksBullets: true },
+            { id: 'north-mech', kind: 'mech', x: 840, y: 250, w: 138, h: 56, artKey: 'arena_mech_ch5', visualW: 182, visualH: 96, blocksBullets: true },
             { id: 'west-rail', kind: 'rail', x: 295, y: 475, w: 102, h: 32, artKey: 'arena_rail_ch5', visualW: 140, visualH: 68, blocksBullets: false },
         ],
     },
@@ -205,7 +208,7 @@ export const CHAPTER_ARENAS: readonly ArenaLayout[] = [
     {
         id: 'ch6-broken-frame', chapter: 6, boundaries: CHAPTER_EDGES[6],
         obstacles: [
-            { id: 'north-reactor', kind: 'reactor', x: 990, y: 245, w: 126, h: 64, artKey: 'arena_reactor_ch6', visualW: 174, visualH: 108, blocksBullets: true },
+            { id: 'north-reactor', kind: 'reactor', x: 870, y: 245, w: 126, h: 64, artKey: 'arena_reactor_ch6', visualW: 174, visualH: 108, blocksBullets: true },
             { id: 'west-support', kind: 'support', x: 285, y: 470, w: 104, h: 36, artKey: 'arena_support_ch6', visualW: 142, visualH: 72, blocksBullets: true },
         ],
     },

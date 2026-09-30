@@ -33,6 +33,55 @@ test('六章各有两套场地并保留中央 Boss 区', () => {
     }
 });
 
+test('六章布局的可站立区域都连通中央出生区', () => {
+    for (const layout of CHAPTER_ARENAS) {
+        for (const radius of [18, 70]) {
+            const step = 16;
+            const cols = Math.floor((1280 - radius * 2) / step) + 1;
+            const rows = Math.floor((648 - radius * 2) / step) + 1;
+            const free = new Uint8Array(cols * rows);
+            let total = 0;
+            let start = -1;
+            let nearest = Infinity;
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const x = radius + col * step;
+                    const y = radius + row * step;
+                    if (!isArenaFree(layout, x, y, radius)) continue;
+                    const id = row * cols + col;
+                    free[id] = 1;
+                    total++;
+                    const distance = Math.hypot(x - 640, y - 360);
+                    if (distance < nearest) { nearest = distance; start = id; }
+                }
+            }
+            assert.ok(start >= 0, `${layout.id} 半径${radius} 有中央出生区`);
+            const queue = [start];
+            free[start] = 0;
+            for (let head = 0; head < queue.length; head++) {
+                const id = queue[head];
+                const col = id % cols;
+                const row = Math.floor(id / cols);
+                for (const [dc, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                    const nc = col + dc, nr = row + dr;
+                    if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+                    const next = nr * cols + nc;
+                    if (!free[next]) continue;
+                    free[next] = 0;
+                    queue.push(next);
+                }
+            }
+            const stranded = [];
+            for (let id = 0; id < free.length; id++) {
+                if (free[id]) stranded.push([radius + id % cols * step,
+                    radius + Math.floor(id / cols) * step]);
+            }
+            assert.equal(queue.length, total,
+                `${layout.id} 半径${radius} 没有孤立可站立区：${JSON.stringify(stranded)}`);
+        }
+    }
+});
+
 test('第一章残骸保留中心出生区并阻挡角色', () => {
     assert.equal(arena.obstacles.length, 3);
     assert.equal(isArenaFree(arena, 640, 360, 20), true);
@@ -71,6 +120,24 @@ test('第二章管线与第六章反应堆的前侧底座挡住向上行走的�
             assert.equal(isArenaFree(layout, 1050, 350, 18), true,
                 `${layout.id} 建筑左侧仍有通路`);
         }
+    }
+});
+
+test('底图上突出的废车、熔炉和反应堆碎石不能被角色踩过', () => {
+    for (const layout of arenasForChapter(1)) {
+        const point = moveInArena(layout, 350, 580, -180, 0, 18);
+        assert.ok(point.x >= 303, `${layout.id} 左下废车车头挡住横向行走`);
+        assert.equal(isArenaFree(layout, 340, 510, 18), true, `${layout.id} 车头上方仍能绕行`);
+    }
+    for (const layout of arenasForChapter(2)) {
+        const point = moveInArena(layout, 1030, 300, 0, -200, 18);
+        assert.ok(point.y >= 223, `${layout.id} 熔炉前沿挡住向上行走`);
+        assert.equal(isArenaFree(layout, 900, 160, 18), true, `${layout.id} 熔炉左侧仍有通路`);
+    }
+    for (const layout of arenasForChapter(6)) {
+        const point = moveInArena(layout, 900, 280, 0, -220, 18);
+        assert.ok(point.y >= 193, `${layout.id} 反应堆碎石挡住向上行走`);
+        assert.equal(isArenaFree(layout, 700, 150, 18), true, `${layout.id} 碎石左侧仍有通路`);
     }
 });
 

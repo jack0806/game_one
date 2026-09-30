@@ -167,11 +167,11 @@ test('角色介绍卡有圆整统一底板，底部为「选择出战/英雄介�
     assert.doesNotMatch(charCards, /card\.on\(Node\.EventType\.TOUCH_END/);
 });
 
-test('选人页与英雄介绍文字保持可读字号：速览14px、锁定提示14px', () => {
+test('选人页与英雄介绍文字保持可读字号：速览14px、锁定提示16px', () => {
     // 卡片速览正文不再使用11/12px小字
     assert.match(screenSource, /skLbl\.fontSize = 14/);
     assert.match(screenSource, /skLbl\.lineHeight = 21/);
-    assert.match(screenSource, /hintLbl\.fontSize = 14/);
+    assert.match(screenSource, /hintLbl\.fontSize = 16/);
     assert.match(screenSource, /lockLbl\.fontSize = 22/);
     // 双按钮40px高（_mkBtn按0.36比例≈14px字），避免13px以下的按钮小字
     assert.match(screenSource, /'选择出战', -85, -110, 150, 40/);
@@ -401,10 +401,10 @@ test('水分身、影分身与炮台都使用真实逐帧动作', () => {
 test('角色详情将十个词条排成2列×5行，长技能说明使用双行阅读单元', () => {
     assert.match(statsSource, /const augColX = \[132, 398\]/);
     assert.match(statsSource, /Math\.floor\(i \/ 2\) \* rowH/);
-    assert.match(statsSource, /nn\.setPosition\(new Vec3\(-402, y \+ 9, 0\)\)/);
-    assert.match(statsSource, /dn\.setPosition\(new Vec3\(-270, y - 12, 0\)\)/);
-    assert.match(statsSource, /dn\.addComponent\(UITransform\)\.setContentSize\(440, 30\)/);
-    assert.match(statsSource, /dl\.fontSize = 13/);
+    assert.match(statsSource, /nn\.setPosition\(new Vec3\(-350, y \+ 14, 0\)\)/);
+    assert.match(statsSource, /dn\.setPosition\(new Vec3\(-265, y - 18, 0\)\)/);
+    assert.match(statsSource, /dn\.addComponent\(UITransform\)\.setContentSize\(450, 36\)/);
+    assert.match(statsSource, /dl\.fontSize = 14/);
     assert.match(statsSource, /dl\.enableWrapText = true/);
     assert.match(statsSource, /row\.desc\.string = detail \? `— \$\{detail\}` : ''/);
     assert.match(statsSource, /sk\?\.desc\?\.split\('—'\)/);
