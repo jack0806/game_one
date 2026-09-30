@@ -166,6 +166,26 @@ test('炉台管线、传送门与后段机械的外凸底座挡住脚底', () =>
     }
 });
 
+test('第三章左下培养罐的外凸底座挡住横向行走', () => {
+    for (const layout of arenasForChapter(3)) {
+        const point = moveInArena(layout, 380, 480, -205, 0, 18);
+        assert.ok(point.x >= 200, `${layout.id} 培养罐底座不被脚底踩入`);
+        assert.equal(isArenaFree(layout, 380, 480, 18), true,
+            `${layout.id} 底座右侧保留通路`);
+    }
+});
+
+test('左上外凸炉台、培养罐与支架碎石不被脚底踩入', () => {
+    for (const [chapter, minX] of [[2, 208], [3, 213], [6, 228]]) {
+        for (const layout of arenasForChapter(chapter)) {
+            const point = moveInArena(layout, 450, 130, -400, 0, 18);
+            assert.ok(point.x >= minX, `${layout.id} 左上建筑外角挡住横向行走`);
+            assert.equal(isArenaFree(layout, 450, 130, 18), true,
+                `${layout.id} 中央侧保留通路`);
+        }
+    }
+});
+
 test('背景岗哨和遗迹的上沿不被角色脚底踩入', () => {
     const guardrail = moveInArena(arena, 145, 220, 0, 180, 18);
     assert.ok(guardrail.y + 37 <= 270, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);

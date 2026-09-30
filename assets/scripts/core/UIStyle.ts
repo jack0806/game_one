@@ -1,7 +1,7 @@
 // ============================================================
 //  UIStyle.ts — Hexblast 代码原生 UI 视觉组件
 // ============================================================
-import { Color, Component, Graphics, Node, Vec3 } from 'cc';
+import { Color, Component, Graphics, Node, UITransform, Vec3 } from 'cc';
 
 export interface HexButtonSkin {
     setDisabled(disabled: boolean): void;
@@ -134,6 +134,56 @@ export function applyHexButtonSkin(
     draw();
     // 页面激活时皮肤可能因"隐藏状态下绘制丢失"而不可见，onEnable 强制重绘兜底
     attachEnableRedraw(node, draw);
+    return {
+        setDisabled(value: boolean) {
+            disabled = value;
+            setState(value ? 'disabled' : 'normal', 1);
+        },
+    };
+}
+
+/** 大尺寸选项卡沿用面板造型，鼠标与触摸状态由同一节点绘制。 */
+export function applyHexCardSkin(
+    node: Node, width: number, height: number, accent: Color, initiallyDisabled = false,
+): HexButtonSkin {
+    const g = node.getComponent(Graphics) ?? node.addComponent(Graphics);
+    // 放在内容节点之后：缩略图和文字不再截走 MOUSE_ENTER，触摸仍冒泡到卡片。
+    const hitArea = new Node('CardHitArea'); hitArea.setParent(node);
+    hitArea.addComponent(UITransform).setContentSize(width, height);
+    let disabled = initiallyDisabled;
+    let state: ButtonVisualState = disabled ? 'disabled' : 'normal';
+    const radius = Math.max(8, Math.min(18, height * 0.16));
+    const draw = () => {
+        g.clear();
+        drawHexPanel(g, -width / 2, -height / 2, width, height, accent, disabled ? 205 : 246);
+        if (disabled || state === 'normal') return;
+        g.fillColor = new Color(accent.r, accent.g, accent.b, state === 'pressed' ? 30 : 16);
+        g.roundRect(-width / 2 + 4, -height / 2 + 4, width - 8, height - 8, radius - 2);
+        g.fill();
+        g.strokeColor = new Color(accent.r, accent.g, accent.b, 245);
+        g.lineWidth = state === 'pressed' ? 2 : 3;
+        g.roundRect(-width / 2, -height / 2, width, height, radius);
+        g.stroke();
+    };
+    const setState = (next: ButtonVisualState, scale: number) => {
+        if (disabled && next !== 'disabled') return;
+        state = next;
+        node.setScale(new Vec3(scale, scale, 1));
+        draw();
+    };
+    node.on(Node.EventType.MOUSE_ENTER, () => setState('hover', 1.012));
+    node.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal', 1));
+    hitArea.on(Node.EventType.MOUSE_ENTER, () => setState('hover', 1.012));
+    hitArea.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal', 1));
+    node.on(Node.EventType.TOUCH_START, () => setState('pressed', 0.99));
+    node.on(Node.EventType.TOUCH_END, () => setState(disabled ? 'disabled' : 'hover', disabled ? 1 : 1.012));
+    node.on(Node.EventType.TOUCH_CANCEL, () => setState(disabled ? 'disabled' : 'normal', 1));
+    draw();
+    attachEnableRedraw(node, () => {
+        state = disabled ? 'disabled' : 'normal';
+        node.setScale(new Vec3(1, 1, 1));
+        draw();
+    });
     return {
         setDisabled(value: boolean) {
             disabled = value;

@@ -265,10 +265,19 @@ export class MetaPageUI {
         for (const view of this._taskViews) this._drawTaskNode(view, view.def.id === def.id);
         this._taskDetailChapter.string = `${BRANCH_SHORT[def.branch]} · ${def.chapter}`;
         this._taskDetailName.string = def.name;
+        if (def.state === 'locked') {
+            this._taskDetailDesc.string = '任务简报尚未解锁。';
+            this._taskDetailObjective.string = '目标  尚未公开';
+            this._taskDetailProgress.string = '未解锁';
+            this._taskDetailProgress.color = MUTED;
+            this._taskDetailReward.string = '解锁后公布';
+            return;
+        }
         this._taskDetailDesc.string = def.desc;
         this._taskDetailObjective.string = `目标  ${def.objective}`;
         const pct = def.goal > 0 ? Math.floor(Math.min(1, def.progress / def.goal) * 100) : 0;
         this._taskDetailProgress.string = `${def.progress} / ${def.goal}   ${pct}%`;
+        this._taskDetailProgress.color = CYAN;
         this._taskDetailReward.string = def.reward;
     }
 

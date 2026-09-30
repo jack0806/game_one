@@ -7,7 +7,7 @@ import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/Character
 import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
@@ -58,6 +58,7 @@ export class ScreenManager extends Component {
     private _drawSettingsBg?: () => void;
     private _drawExitVeil?: () => void;
     private _drawCharDetailDim?: () => void;
+    private _selectionBackdrops = new Map<ScreenName, { art: Node; redraw: () => void }>();
     private _runReports = new Map<ReportName, RunReportView>();
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
@@ -141,6 +142,12 @@ export class ScreenManager extends Component {
         this._drawSettingsBg?.();
         this._panels.get('charDetail')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawCharDetailDim?.();
+        for (const name of ['mapSelect', 'difficultySelect', 'charSelect'] as ScreenName[]) {
+            this._panels.get(name)?.getComponent(UITransform)?.setContentSize(width, 720);
+            const backdrop = this._selectionBackdrops.get(name);
+            backdrop?.art.getComponent(UITransform)?.setContentSize(width, 720);
+            backdrop?.redraw();
+        }
         this._panels.get('exitVeil')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawExitVeil?.();
         for (const name of ['gameover', 'chapterClear'] as ReportName[]) {
@@ -158,7 +165,8 @@ export class ScreenManager extends Component {
         const p = this._panels.get(name);
         if (p) p.active = true;
         if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings'
-            || name === 'gameover' || name === 'chapterClear' || name === 'charDetail') {
+            || name === 'gameover' || name === 'chapterClear' || name === 'charDetail'
+            || name === 'mapSelect' || name === 'difficultySelect' || name === 'charSelect') {
             this.fitToVisible();
         }
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
@@ -309,6 +317,32 @@ export class ScreenManager extends Component {
 
     // ── 作战地图选择页 ─────────────────────────────────────────
 
+    /** 作战准备三页沿用大厅的废土远景，宽屏时与页头光带一起重排。 */
+    private _buildSelectionBackdrop(panel: Node): void {
+        const artNode = new Node('AmbientArt'); artNode.setParent(panel);
+        artNode.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        const art = artNode.addComponent(Sprite);
+        art.sizeMode = Sprite.SizeMode.CUSTOM;
+        art.color = new Color(220, 232, 244, 135);
+        applyArtSprite(art, 'bg_chapter1');
+
+        const veilNode = new Node('Veil'); veilNode.setParent(panel);
+        const veil = veilNode.addComponent(Graphics);
+        const redraw = () => {
+            const width = visibleDesignWidth();
+            veil.clear();
+            veil.fillColor = new Color(15, 27, 43, 155);
+            veil.fillRect(-width / 2, -360, width, 720);
+            veil.fillColor = new Color(UI_PALETTE.cyan.r, UI_PALETTE.cyan.g, UI_PALETTE.cyan.b, 12);
+            veil.fillRect(-width / 2, 210, width, 150);
+            veil.strokeColor = new Color(UI_PALETTE.cyan.r, UI_PALETTE.cyan.g, UI_PALETTE.cyan.b, 90);
+            veil.lineWidth = 1;
+            veil.moveTo(-600, 210); veil.lineTo(600, 210); veil.stroke();
+        };
+        redraw();
+        this._selectionBackdrops.set(panel.name as ScreenName, { art: artNode, redraw });
+    }
+
     /**
      * 大厅传送门之后的第一站：选择出击地图。当前全部章节（第一章~第六章）
      * 位于废土地图；深海地图为占位（2026-09-21 新增，选废土后进入难度选择）。
@@ -319,6 +353,7 @@ export class ScreenManager extends Component {
         const bg = p.addComponent(Graphics);
         bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
+        this._buildSelectionBackdrop(p);
 
         const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onMapBack?.(), this);
@@ -348,14 +383,6 @@ export class ScreenManager extends Component {
             const card = new Node(`Map_${m.name}`); card.setParent(p);
             card.setPosition(new Vec3(m.x, -20, 0));
             card.addComponent(UITransform).setContentSize(420, 360);
-
-            const g = card.addComponent(Graphics);
-            const drawCard = () => {
-                g.clear();
-                drawHexPanel(g, -210, -180, 420, 360, m.accent, m.locked ? 205 : 246);
-            };
-            drawCard();
-            attachEnableRedraw(card, drawCard);
 
             // 地图缩略图（复用章节背景美术，锁定地图压暗）
             const artN = new Node('Art'); artN.setParent(card);
@@ -387,6 +414,8 @@ export class ScreenManager extends Component {
             dl.enableWrapText = true;
             styleLabel(dl);
 
+            applyHexCardSkin(card, 420, 360, m.accent, m.locked);
+
             if (!m.locked) {
                 card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(), this);
             }
@@ -405,6 +434,7 @@ export class ScreenManager extends Component {
         const bg = p.addComponent(Graphics);
         bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
+        this._buildSelectionBackdrop(p);
 
         const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onDifficultyBack?.(), this);
@@ -430,9 +460,6 @@ export class ScreenManager extends Component {
             const diffCard = new Node(`Diff_${def.id}`); diffCard.setParent(p);
             diffCard.setPosition(new Vec3(-435 + i * 300, -20, 0));
             diffCard.addComponent(UITransform).setContentSize(270, 280);
-
-            const g = diffCard.addComponent(Graphics);
-            drawHexPanel(g, -135, -140, 270, 280, col, 244);
 
             const nameN = new Node('Name'); nameN.setParent(diffCard);
             nameN.setPosition(new Vec3(0, 96, 0));
@@ -471,6 +498,8 @@ export class ScreenManager extends Component {
             hintLbl.color = new Color(196, 214, 228, 245);
             styleLabel(hintLbl);
 
+            applyHexCardSkin(diffCard, 270, 280, col);
+
             diffCard.on(Node.EventType.TOUCH_END, () => this.onDifficultyPicked?.(def), this);
         });
     }
@@ -481,6 +510,7 @@ export class ScreenManager extends Component {
         const bg = p.addComponent(Graphics);
         bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
+        this._buildSelectionBackdrop(p);
 
         // 选人页位于存档大厅之后：左上角提供返回大厅出口（卡片在 y≤240，
         // 按钮放 320 高度不与标题/卡片重叠）。

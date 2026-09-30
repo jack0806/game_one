@@ -67,7 +67,7 @@ export const QUESTS: QuestDef[] = [
         reward: '刷新许可 × 1', rewardIcon: 'speed', state: 'available',
     },
     {
-        id: 'side_04', branch: 'side', chapter: '隐藏记录', name: '未命名委托',
+        id: 'side_04', branch: 'side', chapter: '隐藏记录', name: '机密委托',
         desc: '任务内容尚未配置，将在后续版本中替换。',
         objective: '占位目标', progress: 0, goal: 1,
         reward: '未知奖励', rewardIcon: 'chaos', state: 'locked',
