@@ -9,6 +9,7 @@ import {
     UITransform, Vec3, VerticalTextAlignment,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
+import { visibleDesignWidth } from '../core/ScreenFit';
 import { loadArtSprite, applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
 import {
@@ -80,6 +81,7 @@ function drawPanel(g: Graphics, w: number, h: number, accent: Color, alpha = 242
 
 export class MetaPageUI {
     private readonly _panels = new Map<MetaPageName, Node>();
+    private readonly _pageAccents = new Map<MetaPageName, Color>();
     private _taskBranch: QuestBranch = 'main';
     private _taskRoots = new Map<QuestBranch, Node>();
     private _taskViews: TaskNodeView[] = [];
@@ -111,6 +113,7 @@ export class MetaPageUI {
         this._buildTaskPage();
         this._buildCodexPage();
         this._buildAchievementPage();
+        this.fitToVisible();
         this._panels.forEach(p => p.active = false);
     }
 
@@ -124,13 +127,35 @@ export class MetaPageUI {
         else this._refreshAchievements();
     }
 
+    /** 页面背景独立覆盖可见宽度；不依赖战斗底图是否已经加载。 */
+    fitToVisible(): void {
+        const width = visibleDesignWidth();
+        for (const [name, page] of this._panels) {
+            page.getComponent(UITransform)!.setContentSize(width, 720);
+            const bg = page.getComponent(Graphics)!;
+            bg.clear(); bg.fillColor = UI_PALETTE.deep;
+            bg.fillRect(-width / 2, -360, width, 720);
+            page.getChildByName('AmbientArt')!.getComponent(UITransform)!.setContentSize(width, 720);
+            const accent = this._pageAccents.get(name)!;
+            const veil = page.getChildByName('Veil')!.getComponent(Graphics)!;
+            veil.clear();
+            veil.fillColor = new Color(20, 34, 53, 130);
+            veil.fillRect(-width / 2, -360, width, 720);
+            veil.fillColor = new Color(accent.r, accent.g, accent.b, 12);
+            veil.fillRect(-width / 2, 250, width, 110);
+            veil.strokeColor = new Color(accent.r, accent.g, accent.b, 90);
+            veil.lineWidth = 1;
+            veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
+        }
+    }
+
     private _mkPage(name: MetaPageName, title: string, eyebrow: string, bgKey: string, accent: Color): Node {
         const page = new Node(name); page.setParent(this._root);
         page.addComponent(UITransform).setContentSize(1280, 720);
         this._panels.set(name, page);
+        this._pageAccents.set(name, accent);
 
-        const bg = page.addComponent(Graphics);
-        bg.fillColor = UI_PALETTE.deep; bg.fillRect(-640, -360, 1280, 720);
+        page.addComponent(Graphics);
 
         const artN = new Node('AmbientArt'); artN.setParent(page);
         artN.addComponent(UITransform).setContentSize(1280, 720);
@@ -139,11 +164,7 @@ export class MetaPageUI {
         applyArtSprite(art, bgKey);
 
         const veilN = new Node('Veil'); veilN.setParent(page);
-        const veil = veilN.addComponent(Graphics);
-        veil.fillColor = new Color(20, 34, 53, 130); veil.fillRect(-640, -360, 1280, 720);
-        veil.fillColor = new Color(accent.r, accent.g, accent.b, 12); veil.fillRect(-640, 250, 1280, 110);
-        veil.strokeColor = new Color(accent.r, accent.g, accent.b, 90); veil.lineWidth = 1;
-        veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
+        veilN.addComponent(Graphics);
 
         this._mkLabel(page, -467, 326, 170, 20, eyebrow, 12,
             new Color(accent.r, accent.g, accent.b, 220), HorizontalTextAlignment.LEFT);
@@ -163,7 +184,7 @@ export class MetaPageUI {
     }
 
     private _buildTaskPage(): void {
-        const page = this._mkPage('tasks', '行动任务树', 'MISSION NETWORK / 占位数据', 'bg_chapter2', CYAN);
+        const page = this._mkPage('tasks', '行动任务树', 'MISSION NETWORK / 行动链路', 'bg_chapter2', CYAN);
         const mainTab = this._mkButton(page, '主线任务', -507, 221, 154, 42, CYAN);
         const sideTab = this._mkButton(page, '支线任务', -337, 221, 154, 42, BRANCH_COLOR.side);
         const challengeTab = this._mkButton(page, '挑战任务', -167, 221, 154, 42, BRANCH_COLOR.challenge);
@@ -412,11 +433,11 @@ export class MetaPageUI {
             const g = card.addComponent(Graphics);
 
             this._mkArt(card, `ui_icon_${def.artKey}`, 50, 50, -92, 27);
-            const name = this._mkLabel(card, 13, 43, 130, 25, def.name, 15, WHITE, HorizontalTextAlignment.LEFT);
-            const rarity = this._mkLabel(card, 103, 44, 55, 20, def.rarity, 11, GOLD, HorizontalTextAlignment.RIGHT);
-            this._mkLabel(card, 25, 14, 154, 34, def.desc, 11, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT, true);
-            this._mkLabel(card, 0, -27, 220, 20, `奖励  ${def.reward}`, 11, GOLD, HorizontalTextAlignment.LEFT);
-            const progress = this._mkLabel(card, 82, -52, 64, 18, '', 10, MUTED, HorizontalTextAlignment.RIGHT);
+            const name = this._mkLabel(card, 13, 43, 130, 25, def.name, 16, WHITE, HorizontalTextAlignment.LEFT);
+            const rarity = this._mkLabel(card, 103, 44, 55, 20, def.rarity, 12, GOLD, HorizontalTextAlignment.RIGHT);
+            this._mkLabel(card, 25, 14, 154, 38, def.desc, 12, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT, true);
+            this._mkLabel(card, 0, -27, 220, 20, `奖励  ${def.reward}`, 12, GOLD, HorizontalTextAlignment.LEFT);
+            const progress = this._mkLabel(card, 82, -52, 64, 18, '', 11, MUTED, HorizontalTextAlignment.RIGHT);
             const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-17, -53, 0));
             const pg = bar.addComponent(Graphics);
             this._achievementCards.push({ def, graphics: g, name, rarity, progress, progressGraphics: pg });

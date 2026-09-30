@@ -375,13 +375,15 @@ test('PC端WASD与虚拟摇杆在moveX/moveY合并,键盘优先', () => {
     assert.doesNotMatch(playerSource, /isDash|_dashCd|phaseDash/);
 });
 
-test('Web Desktop发布外壳与设计画布都锁定1280×720', () => {
+test('Web Desktop设计画布保持1280×720，发布外壳铺满宽屏', () => {
     assert.deepEqual(webBuild.designResolution, { width: 1280, height: 720, policy: 4 });
     assert.deepEqual(webBuild.packages['web-desktop'].resolution, { designWidth: 1280, designHeight: 720 });
     assert.match(webShellSource, /<title>Hexblast<\/title>/);
     assert.doesNotMatch(webShellSource, /class="header"|Created with Cocos Creator/);
-    assert.match(webShellStyle, /width: min\(100vw, calc\(100vh \* 16 \/ 9\)\) !important/);
-    assert.match(webShellStyle, /height: min\(100vh, calc\(100vw \* 9 \/ 16\)\) !important/);
+    assert.match(webShellStyle, /width: 100vw !important/);
+    assert.match(webShellStyle, /height: 100vh !important/);
+    assert.match(gameSource, /fillLeft\.setPosition\(new Vec3\(-CANVAS_W, 0, 0\)\)/);
+    assert.match(gameSource, /world\.addComponent\(UITransform\)\.setContentSize\(CANVAS_W, CANVAS_H\)/);
     assert.match(webShellStyle, /overflow: hidden/);
     assert.match(webShellStyle, /border: 0/);
 });

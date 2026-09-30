@@ -109,12 +109,17 @@ export class ScreenManager extends Component {
         this._lobby?.update(dt);
     }
 
+    fitToVisible(): void {
+        this._metaPages?.fitToVisible();
+    }
+
     // ── public API ────────────────────────────────────────────
 
     show(name: ScreenName) {
         const p = this._panels.get(name);
         if (p) p.active = true;
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
+            this._metaPages.fitToVisible();
             this._metaPages.refresh(name);
         } else if (name === 'settings') {
             this._refreshSettings();

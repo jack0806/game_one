@@ -105,7 +105,9 @@ export class GameManager extends Component {
     static inst: GameManager;
     // ── layer nodes ───────────────────────────────────────────
     private _bgLayer!:       Node;
-    private _bgSprite!:      Sprite;      // chapter background (bg_chapter<N>), behind _gameLayer
+    private _bgSprite!:      Sprite;      // 1280 世界底图，与碰撞坐标对齐
+    private _bgFillLeft!:    Sprite;      // 宽屏两侧镜像延伸，接缝与世界底图一致
+    private _bgFillRight!:   Sprite;
     private _bgToneGfx!:     Graphics;    // per-chapter desaturation/dimming overlay
     private _arenaLayer!:    Node;        // 世界坐标残骸，与角色同步震屏
     private _arenaGfx!:      Graphics;
@@ -316,14 +318,28 @@ export class GameManager extends Component {
     private _initLayers() {
         // 全面屏可见宽度可能>1280：容器层按可见宽铺满，游戏世界仍以1280居中
         const visW = visibleDesignWidth();
-        // BgLayer — chapter background image (bg_chapter<N>), sits behind everything.
-        // Created first so its sibling index is lowest (drawn first / at the back).
+        // BgLayer 最先创建：宽屏延伸仅作装饰，中央 1280px 底图与碰撞坐标一一对应。
         this._bgLayer = new Node('BgLayer');
         this._bgLayer.setParent(this.node);
         this._bgLayer.addComponent(UITransform).setContentSize(visW, CANVAS_H);
-        this._bgSprite = this._bgLayer.addComponent(Sprite);
-        // 四章背景资源均为 16:9。固定 CUSTOM 尺寸可确保异步挂载 SpriteFrame 后
-        // 仍严格填满 1280×720，不被 TRIMMED 模式恢复成 2560×1440 后过度裁切。
+        const fillLeft = new Node('BgFillLeft'); fillLeft.setParent(this._bgLayer);
+        fillLeft.setPosition(new Vec3(-CANVAS_W, 0, 0));
+        fillLeft.setScale(new Vec3(-1, 1, 1));
+        fillLeft.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._bgFillLeft = fillLeft.addComponent(Sprite);
+        this._bgFillLeft.sizeMode = Sprite.SizeMode.CUSTOM;
+        this._bgFillLeft.trim = false;
+        const fillRight = new Node('BgFillRight'); fillRight.setParent(this._bgLayer);
+        fillRight.setPosition(new Vec3(CANVAS_W, 0, 0));
+        fillRight.setScale(new Vec3(-1, 1, 1));
+        fillRight.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._bgFillRight = fillRight.addComponent(Sprite);
+        this._bgFillRight.sizeMode = Sprite.SizeMode.CUSTOM;
+        this._bgFillRight.trim = false;
+        const world = new Node('BgWorld'); world.setParent(this._bgLayer);
+        world.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._bgSprite = world.addComponent(Sprite);
+        // 固定 CUSTOM 尺寸，异步加载后仍与世界 1280×720 坐标对齐。
         this._bgSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         this._bgSprite.trim = false;
 
@@ -437,6 +453,7 @@ export class GameManager extends Component {
         // resize 是多步视口变化，分三档延迟重刷。
         this._touchUI.onViewResized = () => {
             this._fitBackgroundToVisible();
+            this._screenMgr.fitToVisible();
             this._refreshLabelsAfterResize();
         };
 
@@ -651,6 +668,8 @@ export class GameManager extends Component {
         const bgKey = CHAPTERS[this._chapter]?.bgKey;
         if (!bgKey) return;
         applyArtSprite(this._bgSprite, bgKey);
+        applyArtSprite(this._bgFillLeft, bgKey);
+        applyArtSprite(this._bgFillRight, bgKey);
         // 只在进入新章节时抽布局；同章波次/窗口变化重画时维持原布局。
         const chapter = this._chapter + 1;
         if (this._arena.chapter !== chapter) {
@@ -682,7 +701,7 @@ export class GameManager extends Component {
         }
     }
 
-    /** 背景/调色层按当前可见宽度铺满（全面屏横屏>1280时横向拉伸，无左右黑边）。 */
+    /** 宽屏只扩展不可通行的调色层，中央世界底图保持 1280px。 */
     private _fitBackgroundToVisible() {
         const visW = visibleDesignWidth();
         this._bgLayer.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
@@ -2196,12 +2215,12 @@ export class GameManager extends Component {
         if (this._shake.x !== 0 || this._shake.y !== 0) {
             const sx = Math.round(this._shake.x);
             const sy = Math.round(this._shake.y);
-            // 实体与粒子必须同步移动，否则命中特效会从目标身上“滑开”；背景只做
-            // 轻微视差，HUD保持固定，既有冲击感又不会让整屏信息一起乱晃。
+            // 底图边缘的建筑也有世界碰撞体，必须与实体、独立残骸同步震屏；
+            // 否则背景建筑会从不可通行区域下方滑开。HUD 保持固定。
             this._gameLayer.setPosition(new Vec3(sx, sy, 0));
             this._arenaLayer.setPosition(new Vec3(sx, sy, 0));
             this._particleLayer.setPosition(new Vec3(sx, sy, 0));
-            this._bgLayer.setPosition(new Vec3(Math.round(sx * 0.18), Math.round(sy * 0.18), 0));
+            this._bgLayer.setPosition(new Vec3(sx, sy, 0));
         } else {
             this._gameLayer.setPosition(Vec3.ZERO);
             this._arenaLayer.setPosition(Vec3.ZERO);

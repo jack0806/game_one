@@ -2,12 +2,12 @@
 //  ArenaGeometry.ts — 无引擎依赖的角色、弹体、出生几何规则
 // ============================================================
 import { CANVAS_W, PLAYFIELD_BOTTOM } from './Constants';
-import { ArenaLayout, ArenaObstacle, ArenaSolid } from '../data/ChapterArenaDB';
+import { ARENA_ART_SOLID_TOP, ArenaLayout, ArenaObstacle, ArenaSolid } from '../data/ChapterArenaDB';
 
 export interface ArenaPoint { x: number; y: number }
 
-/** 玩家精灵的脚底低于移动圆心；残骸上沿预留这段视觉接触距离。 */
-const PROP_UPPER_FOOT_MARGIN = 22;
+/** 玩家脚底比圆形碰撞半径低约 19px，另留 1px 防止渲染采样压线。 */
+const PLAYER_FOOT_OVERHANG = 20;
 const solidCache = new WeakMap<ArenaLayout, readonly ArenaSolid[]>();
 
 function arenaSolids(arena: ArenaLayout): readonly ArenaSolid[] {
@@ -20,7 +20,14 @@ function arenaSolids(arena: ArenaLayout): readonly ArenaSolid[] {
 }
 
 function topOf(solid: ArenaSolid, actor: boolean): number {
-    return solid.y - solid.h / 2 - (actor && (solid as ArenaObstacle).artKey ? PROP_UPPER_FOOT_MARGIN : 0);
+    const physicalTop = solid.y - solid.h / 2;
+    if (!actor) return physicalTop;
+    const prop = solid as ArenaObstacle;
+    if (!prop.artKey) return physicalTop;
+    const fraction = ARENA_ART_SOLID_TOP[prop.artKey];
+    if (fraction === undefined) return physicalTop - 22;
+    const visualTop = solid.y - prop.visualH / 2 + fraction * prop.visualH;
+    return Math.min(physicalTop, visualTop - PLAYER_FOOT_OVERHANG);
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -125,36 +132,41 @@ export function arenaLineClear(arena: ArenaLayout, ax: number, ay: number, bx: n
 export function arenaSteerTarget(arena: ArenaLayout, from: ArenaPoint, to: ArenaPoint, radius: number): ArenaPoint {
     const blocker = firstSegmentHit(arena, from.x, from.y, to.x, to.y, radius, false);
     if (!blocker) return to;
-    const gap = radius + 18;
-    const left = blocker.x - blocker.w / 2 - gap;
-    const right = blocker.x + blocker.w / 2 + gap;
-    const top = topOf(blocker, true) - gap;
-    const bottom = blocker.y + blocker.h / 2 + gap;
-    const corners: ArenaPoint[] = [
-        { x: left, y: top }, { x: right, y: top },
-        { x: left, y: bottom }, { x: right, y: bottom },
-        // 宽体单位挤在边缘建筑与残骸之间时，标准角点可能落进边缘建筑；
-        // 先沿当前 X/Y 退到残骸侧边，再绕到另一侧。
-        { x: from.x, y: top }, { x: from.x, y: bottom },
-        { x: left, y: from.y }, { x: right, y: from.y },
-    ];
-    let best = to, cost = Infinity;
     const alongX = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
     const forward = Math.sign(alongX ? to.x - from.x : to.y - from.y);
     const alreadyAbove = from.y <= topOf(blocker, true) - radius + 2;
     const alreadyBelow = from.y >= blocker.y + blocker.h / 2 + radius - 2;
-    for (const corner of corners) {
-        if (alreadyAbove && corner.y > blocker.y) continue;
-        if (alreadyBelow && corner.y < blocker.y) continue;
-        if (!isArenaFree(arena, corner.x, corner.y, radius)) continue;
-        if (Math.hypot(corner.x - from.x, corner.y - from.y) < 10) continue;
-        // 只选当前可直达且比当前位置更接近目标的角点，避免宽体单位在
-        // 墙角来回选择前/后两个角点，贴着墙原地振荡。
-        if (firstSegmentHit(arena, from.x, from.y, corner.x, corner.y, radius, false)) continue;
-        const advance = (alongX ? corner.x - from.x : corner.y - from.y) * forward;
-        if (advance < -2) continue;
-        const length = Math.hypot(corner.x - from.x, corner.y - from.y) + Math.hypot(to.x - corner.x, to.y - corner.y);
-        if (length < cost) { best = corner; cost = length; }
+    // 常规留 18px 稳定绕行；被相邻建筑夹住时缩到 6px 再找合法角点。
+    for (const extra of [18, 6]) {
+        const gap = radius + extra;
+        const left = blocker.x - blocker.w / 2 - gap;
+        const right = blocker.x + blocker.w / 2 + gap;
+        const top = topOf(blocker, true) - gap;
+        const bottom = blocker.y + blocker.h / 2 + gap;
+        const corners: ArenaPoint[] = [
+            { x: left, y: top }, { x: right, y: top },
+            { x: left, y: bottom }, { x: right, y: bottom },
+            // 宽体单位挤在边缘建筑与残骸之间时，标准角点可能落进边缘建筑；
+            // 先沿当前 X/Y 退到残骸侧边，再绕到另一侧。
+            { x: from.x, y: top }, { x: from.x, y: bottom },
+            { x: left, y: from.y }, { x: right, y: from.y },
+        ];
+        let best: ArenaPoint | undefined;
+        let cost = Infinity;
+        for (const corner of corners) {
+            if (alreadyAbove && corner.y > blocker.y) continue;
+            if (alreadyBelow && corner.y < blocker.y) continue;
+            if (!isArenaFree(arena, corner.x, corner.y, radius)) continue;
+            if (Math.hypot(corner.x - from.x, corner.y - from.y) < 10) continue;
+            // 只选当前可直达且比当前位置更接近目标的角点，避免宽体单位在
+            // 墙角来回选择前/后两个角点，贴着墙原地振荡。
+            if (firstSegmentHit(arena, from.x, from.y, corner.x, corner.y, radius, false)) continue;
+            const advance = (alongX ? corner.x - from.x : corner.y - from.y) * forward;
+            if (advance < -2) continue;
+            const length = Math.hypot(corner.x - from.x, corner.y - from.y) + Math.hypot(to.x - corner.x, to.y - corner.y);
+            if (length < cost) { best = corner; cost = length; }
+        }
+        if (best) return best;
     }
-    return best;
+    return to;
 }

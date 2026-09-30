@@ -5,7 +5,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { CHAPTER_ARENAS, arenaForChapter, arenasForChapter } = require('../dist/data/ChapterArenaDB');
+const { ARENA_ART_SOLID_TOP, CHAPTER_ARENAS, arenaForChapter, arenasForChapter } = require('../dist/data/ChapterArenaDB');
 const {
     isArenaFree, moveInArena, safeArenaPoint, firstArenaBulletHit, arenaSteerTarget,
 } = require('../dist/core/ArenaGeometry');
@@ -69,6 +69,19 @@ test('第一章三个残骸的上沿不再被玩家脚底踩入', () => {
     for (const prop of arena.obstacles) {
         const point = moveInArena(arena, prop.x, prop.y - 160, 0, 250, 18);
         assert.ok(point.y + 37 <= artTop[prop.id] + 1, `${prop.id} 的脚底停在素材上沿之前`);
+    }
+});
+
+test('六章全部独立残骸的实体像素上沿挡住玩家脚底', () => {
+    for (const layout of CHAPTER_ARENAS) {
+        for (const prop of layout.obstacles) {
+            const opaqueTopFraction = ARENA_ART_SOLID_TOP[prop.artKey];
+            assert.ok(Number.isFinite(opaqueTopFraction), `${prop.artKey} 有实体像素边界数据`);
+            const artTop = prop.y - prop.visualH / 2 + opaqueTopFraction * prop.visualH;
+            const point = moveInArena(layout, prop.x, prop.y - 160, 0, 250, 18);
+            assert.ok(point.y + 37 <= artTop + 1,
+                `${layout.id}/${prop.id} 脚底 ${point.y + 37} 不压入上沿 ${artTop}`);
+        }
     }
 });
 

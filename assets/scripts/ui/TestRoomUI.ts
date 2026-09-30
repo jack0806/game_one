@@ -14,6 +14,7 @@ import { RARITY_COLOR } from '../core/Constants';
 
 const { ccclass } = _decorator;
 const UNIT_PAGE_SIZE = 6;
+const AUG_PAGE_SIZE = 6;
 
 /**
  * TestRoomUI — 测试房间底部工具条（常驻、非模态，仅 testRoom 状态激活）。
@@ -66,7 +67,9 @@ export class TestRoomUI extends Component {
     private _augPanel!: Node;
     private _augDimG!: Graphics;
     private _augBoxG!: Graphics;
-    private _augCards: { g: Graphics; id: string; lvLbl: Label }[] = [];
+    private _augPage = 0;
+    private _augPageLbl!: Label;
+    private _augCards: { node: Node; g: Graphics; id: string; lvLbl: Label }[] = [];
 
     onLoad() {
         // 工具条固定在画布底部（local y=-312 覆盖底部 96px，避开顶部 HUD 区）
@@ -96,6 +99,7 @@ export class TestRoomUI extends Component {
         this._count = 5;
         this._category = 'boss';
         this._unitPage = 0;
+        this._augPage = 0;
         this._refreshCount();
         this._refreshInv();
         this._refreshCeasefire();
@@ -489,7 +493,7 @@ export class TestRoomUI extends Component {
             nameN.setPosition(new Vec3(0, -36, 0));
             nameN.addComponent(UITransform).setContentSize(140, 22);
             const nl = nameN.addComponent(Label);
-            nl.string = def.name; nl.fontSize = 13;
+            nl.string = def.name; nl.fontSize = 16;
             nl.color = new Color(220, 228, 240, 255);
             styleLabel(nl);
 
@@ -507,9 +511,11 @@ export class TestRoomUI extends Component {
 
     // ── 海克斯授予浮层 ─────────────────────────────────────
 
-    /** 打开海克斯授予面板：23 个海克斯全部可见；技能海克斯点击循环 授予→升档→满级卸下，功能海克斯无限叠加。 */
+    /** 打开海克斯授予面板；分页保留正文大小，技能海克斯可授予、升档、卸下。 */
     private _showAugPanel() {
         this._hideHeroPanel();
+        this._augPage = 0;
+        this._refreshAugPage();
         this._refreshAugCards();
         this._augPanel.active = true;
         this._augPanel.setSiblingIndex(this.node.children.length - 1);
@@ -517,6 +523,14 @@ export class TestRoomUI extends Component {
 
     private _hideAugPanel() {
         if (this._augPanel) this._augPanel.active = false;
+    }
+
+    private _refreshAugPage() {
+        const pageCount = Math.max(1, Math.ceil(AUGMENT_DB.length / AUG_PAGE_SIZE));
+        this._augPage = (this._augPage + pageCount) % pageCount;
+        this._augCards.forEach((card, index) => card.node.active =
+            Math.floor(index / AUG_PAGE_SIZE) === this._augPage);
+        this._augPageLbl.string = `${this._augPage + 1} / ${pageCount}`;
     }
 
     /** 按 GameManager 当前持有列表刷新卡片等级高亮。 */
@@ -534,10 +548,10 @@ export class TestRoomUI extends Component {
             c.g.fillColor = lvl > 0
                 ? new Color(Math.floor(col.r * 0.18), Math.floor(col.g * 0.18), Math.floor(col.b * 0.18), 245)
                 : new Color(14, 20, 30, 245);
-            c.g.fillRect(-88, -72, 176, 144);
+            c.g.fillRect(-88, -235, 176, 470);
             c.g.strokeColor = lvl > 0 ? col : new Color(col.r, col.g, col.b, 110);
             c.g.lineWidth = lvl > 0 ? 2 : 1;
-            c.g.rect(-88, -72, 176, 144);
+            c.g.rect(-88, -235, 176, 470);
             c.g.stroke();
             c.lvLbl.string = def.oneShot
                 ? '一次性·点击生效'
@@ -557,7 +571,7 @@ export class TestRoomUI extends Component {
         this._augDimG.fillColor = new Color(0, 0, 0, 160);
         this._augDimG.fillRect(-640, -48, 1280, 720);
 
-        // 6×4 = 24 格：hex19 元素暴击加入后 19 张卡需要第 4 行
+        // 每页 6 张高卡，长说明留足空间，不把 23 张卡挤成四行。
         const bg = this._augBoxG;
         bg.clear();
         bg.fillColor = new Color(8, 13, 23, 250);
@@ -566,7 +580,7 @@ export class TestRoomUI extends Component {
         bg.lineWidth = 2; bg.rect(-575, -340, 1150, 680); bg.stroke();
     }
 
-    /** 海克斯授予浮层：遮罩 + 6×4 卡片矩阵（23 个海克斯，名称/等级/一档说明）。 */
+    /** 海克斯授予浮层：遮罩 + 每页 6 张高卡（名称/等级/一档说明）。 */
     private _buildAugPanel() {
         const panel = this._augPanel = new Node('AugPanel'); panel.setParent(this.node);
         panel.active = false;
@@ -603,14 +617,14 @@ export class TestRoomUI extends Component {
         styleLabel(sl);
 
         AUGMENT_DB.forEach((def, i) => {
-            const col = i % 6, row = Math.floor(i / 6);
+            const col = i % AUG_PAGE_SIZE;
             const card = new Node(`Hex_${def.id}`); card.setParent(box);
-            card.setPosition(new Vec3(-480 + col * 192, 170 - row * 145, 0));
-            card.addComponent(UITransform).setContentSize(176, 144);
+            card.setPosition(new Vec3(-480 + col * 192, -10, 0));
+            card.addComponent(UITransform).setContentSize(176, 470);
             const g = card.addComponent(Graphics);
 
             const iN = new Node('Icon'); iN.setParent(card);
-            iN.setPosition(new Vec3(0, 46, 0));
+            iN.setPosition(new Vec3(0, 180, 0));
             iN.addComponent(UITransform).setContentSize(40, 40);
             const sp = iN.addComponent(Sprite);
             sp.sizeMode = Sprite.SizeMode.CUSTOM;
@@ -618,7 +632,7 @@ export class TestRoomUI extends Component {
             applyArtSprite(sp, `ui_icon_${def.icon}`);
 
             const nN = new Node('Nm'); nN.setParent(card);
-            nN.setPosition(new Vec3(0, 12, 0));
+            nN.setPosition(new Vec3(0, 140, 0));
             nN.addComponent(UITransform).setContentSize(168, 20);
             const nl = nN.addComponent(Label);
             nl.string = def.name; nl.fontSize = 13;
@@ -627,21 +641,21 @@ export class TestRoomUI extends Component {
             styleLabel(nl);
 
             const lN = new Node('Lv'); lN.setParent(card);
-            lN.setPosition(new Vec3(0, -10, 0));
+            lN.setPosition(new Vec3(0, 110, 0));
             lN.addComponent(UITransform).setContentSize(168, 18);
             const lvLbl = lN.addComponent(Label);
-            lvLbl.string = '未持有'; lvLbl.fontSize = 12;
+            lvLbl.string = '未持有'; lvLbl.fontSize = 14;
             styleLabel(lvLbl);
 
             const dN = new Node('Desc'); dN.setParent(card);
-            dN.setPosition(new Vec3(0, -48, 0));
-            dN.addComponent(UITransform).setContentSize(166, 42);
+            dN.setPosition(new Vec3(0, -55, 0));
+            dN.addComponent(UITransform).setContentSize(166, 270);
             const dl = dN.addComponent(Label);
             dl.string = def.descAt(1);
-            dl.fontSize = 10; dl.lineHeight = 14;
+            dl.fontSize = 13; dl.lineHeight = 19;
             dl.color = new Color(178, 190, 204, 235);
             dl.horizontalAlign = HorizontalTextAlignment.CENTER;
-            dl.verticalAlign = VerticalTextAlignment.CENTER;
+            dl.verticalAlign = VerticalTextAlignment.TOP;
             dl.overflow = Label.Overflow.SHRINK;
             dl.enableWrapText = true;
             styleLabel(dl, { outlineWidth: 1 });
@@ -652,8 +666,28 @@ export class TestRoomUI extends Component {
                 this._refreshAugCards();
             }, this);
             attachEnableRedraw(card, () => this._refreshAugCards());
-            this._augCards.push({ g, id: def.id, lvLbl });
+            this._augCards.push({ node: card, g, id: def.id, lvLbl });
         });
+        const prev = this._mkSmallBtn(box, '上一页', -478, -302, 132, 34, new Color(116, 135, 164, 255));
+        prev.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._augPage--;
+            this._refreshAugPage();
+        }, this);
+        const next = this._mkSmallBtn(box, '下一页', 478, -302, 132, 34, new Color(116, 135, 164, 255));
+        next.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._augPage++;
+            this._refreshAugPage();
+        }, this);
+        const pageN = new Node('AugPage'); pageN.setParent(box);
+        pageN.setPosition(new Vec3(0, -302, 0));
+        pageN.addComponent(UITransform).setContentSize(120, 28);
+        this._augPageLbl = pageN.addComponent(Label);
+        this._augPageLbl.fontSize = 15;
+        this._augPageLbl.color = new Color(220, 232, 246, 255);
+        styleLabel(this._augPageLbl);
+        this._refreshAugPage();
         this._refreshAugCards();
     }
 

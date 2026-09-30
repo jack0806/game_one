@@ -28,6 +28,23 @@ export interface ArenaLayout {
     boundaries?: readonly ArenaSolid[];
 }
 
+/** 残骸 PNG 的实体像素上沿（alpha >= 128），按原图高度归一化。 */
+export const ARENA_ART_SOLID_TOP: Readonly<Record<string, number>> = {
+    arena_barrier_ch1: 100 / 809,
+    arena_console_ch3: 90 / 887,
+    arena_conveyor_ch2: 130 / 809,
+    arena_machine_ch2: 75 / 1024,
+    arena_mech_ch5: 82 / 887,
+    arena_pillar_ch4: 181 / 923,
+    arena_portal_ch4: 85 / 972,
+    arena_rail_ch5: 109 / 887,
+    arena_reactor_ch6: 83 / 971,
+    arena_support_ch6: 18 / 856,
+    arena_vat_ch3: 98 / 1060,
+    arena_wall_ch1: 139 / 768,
+    arena_wreck_ch1: 112 / 961,
+};
+
 function edge(id: string, left: number, top: number, right: number, bottom: number): ArenaSolid {
     return { id, x: (left + right) / 2, y: (top + bottom) / 2,
         w: right - left, h: bottom - top, blocksBullets: true };
