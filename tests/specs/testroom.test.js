@@ -13,9 +13,10 @@ const { PlayerController } = require('../dist/entities/PlayerController');
 
 // ── TestRoomUI 底部工具条源码门禁（UI 不编译进测试,沿用 visualui 的正则模式） ──
 
-test('工具条为底部常驻条(非弹窗),固定在画布底部', () => {
+test('工具条固定在画布底部并随宽屏铺满', () => {
     assert.match(testroomSource, /this\.node\.setPosition\(new Vec3\(0, -312, 0\)\)/);
-    assert.match(testroomSource, /fillRect\(-640, -48, 1280, 96\)/);
+    assert.match(testroomSource, /const width = visibleDesignWidth\(\);[\s\S]*fillRect\(-width \/ 2, -48, width, 96\)/);
+    assert.match(testroomSource, /dim\.setPosition\(new Vec3\(0, 312, 0\)\)/);
     assert.doesNotMatch(testroomSource, /showResult\(won: boolean\)/, '不再有结算弹窗');
     assert.doesNotMatch(testroomSource, /Boss 已击败/, '不再有胜负结算');
 });

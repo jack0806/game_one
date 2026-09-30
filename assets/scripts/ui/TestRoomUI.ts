@@ -4,7 +4,8 @@ import {
     HorizontalTextAlignment, VerticalTextAlignment
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, attachEnableRedraw } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { clamp } from '../core/MathUtils';
 import { UNIT_CATALOG, UnitCategory } from '../data/BossDB';
@@ -61,10 +62,12 @@ export class TestRoomUI extends Component {
     private _unitCards: Node[] = [];
     private _tabs: { g: Graphics; key: UnitCategory }[] = [];
     private _heroPanel!: Node;
+    private _heroDimNode!: Node;
     private _heroDimG!: Graphics;
     private _heroBoxG!: Graphics;
     private _heroCards: { g: Graphics; id: string }[] = [];
     private _augPanel!: Node;
+    private _augDimNode!: Node;
     private _augDimG!: Graphics;
     private _augBoxG!: Graphics;
     private _augPage = 0;
@@ -87,6 +90,16 @@ export class TestRoomUI extends Component {
     onDisable() {
         this._hideAugPanel();
         this._hideHeroPanel();
+    }
+
+    fitToVisible(): void {
+        if (!this._heroDimNode || !this._augDimNode) return;
+        const width = visibleDesignWidth();
+        this._heroDimNode.getComponent(UITransform)!.setContentSize(width, 720);
+        this._augDimNode.getComponent(UITransform)!.setContentSize(width, 720);
+        this._drawToolbarBg();
+        this._drawHeroChrome();
+        this._drawAugChrome();
     }
 
     /** 每次进入测试房间时复位工具条状态（无敌/数量/分类不跨房保留）。 */
@@ -129,11 +142,12 @@ export class TestRoomUI extends Component {
         const g = this.node.getComponent(Graphics)!;
         g.clear();
         g.fillColor = new Color(6, 12, 20, 235);
-        g.fillRect(-640, -48, 1280, 96);
+        const width = visibleDesignWidth();
+        g.fillRect(-width / 2, -48, width, 96);
         g.strokeColor = new Color(90, 160, 210, 160);
-        g.lineWidth = 2; g.moveTo(-640, 48); g.lineTo(640, 48); g.stroke();
+        g.lineWidth = 2; g.moveTo(-width / 2, 48); g.lineTo(width / 2, 48); g.stroke();
         g.strokeColor = new Color(30, 60, 90, 120);
-        g.lineWidth = 1; g.rect(-640, -48, 1280, 96); g.stroke();
+        g.lineWidth = 1; g.rect(-width / 2, -48, width, 96); g.stroke();
     }
 
     /** 行1：数量 −/+ | 无敌 | 英雄 | 停火 | 清场 | 返回主页 */
@@ -418,11 +432,7 @@ export class TestRoomUI extends Component {
             const sel = c.id === this._heroId;
             const g = c.g;
             g.clear();
-            g.fillColor = new Color(16, 22, 34, 250);
-            g.fillRect(-75, -54, 150, 108);
-            g.strokeColor = sel ? new Color(110, 220, 255, 235) : new Color(70, 80, 100, 140);
-            g.lineWidth = sel ? 2.5 : 1.5;
-            g.rect(-75, -54, 150, 108); g.stroke();
+            drawHexPanel(g, -75, -54, 150, 108, sel ? UI_PALETTE.cyan : UI_PALETTE.muted, 245);
         }
     }
 
@@ -430,14 +440,12 @@ export class TestRoomUI extends Component {
     private _drawHeroChrome() {
         this._heroDimG.clear();
         this._heroDimG.fillColor = new Color(0, 0, 0, 150);
-        this._heroDimG.fillRect(-640, -48, 1280, 720);
+        const width = visibleDesignWidth();
+        this._heroDimG.fillRect(-width / 2, -360, width, 720);
 
         const bg = this._heroBoxG;
         bg.clear();
-        bg.fillColor = new Color(8, 13, 23, 250);
-        bg.fillRect(-450, -160, 900, 320);
-        bg.strokeColor = new Color(105, 145, 175, 235);
-        bg.lineWidth = 2; bg.rect(-450, -160, 900, 320); bg.stroke();
+        drawHexPanel(bg, -450, -160, 900, 320, UI_PALETTE.cyan, 250);
     }
 
     /** 英雄选择浮层：全屏半透明遮罩 + 3×2 角色卡，点卡即切换并关闭。 */
@@ -447,7 +455,9 @@ export class TestRoomUI extends Component {
 
         // 遮罩从工具条局部坐标铺满整屏，点遮罩关闭（不挡正式 HUD 之外的战斗区交互）
         const dim = new Node('Dim'); dim.setParent(panel);
-        dim.addComponent(UITransform).setContentSize(1280, 720);
+        dim.setPosition(new Vec3(0, 312, 0));
+        dim.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        this._heroDimNode = dim;
         this._heroDimG = dim.addComponent(Graphics);
         dim.on(Node.EventType.TOUCH_END, () => this._hideHeroPanel(), this);
 
@@ -494,6 +504,8 @@ export class TestRoomUI extends Component {
             nameN.addComponent(UITransform).setContentSize(140, 22);
             const nl = nameN.addComponent(Label);
             nl.string = def.name; nl.fontSize = 16;
+            nl.lineHeight = 20;
+            nl.overflow = Label.Overflow.SHRINK;
             nl.color = new Color(220, 228, 240, 255);
             styleLabel(nl);
 
@@ -545,14 +557,8 @@ export class TestRoomUI extends Component {
             const rarity = rarityForLevel(def, lvl > 0 ? lvl : 1);
             const col = Color.fromHEX(new Color(), RARITY_COLOR[rarity] ?? '#888888');
             c.g.clear();
-            c.g.fillColor = lvl > 0
-                ? new Color(Math.floor(col.r * 0.18), Math.floor(col.g * 0.18), Math.floor(col.b * 0.18), 245)
-                : new Color(14, 20, 30, 245);
-            c.g.fillRect(-88, -235, 176, 470);
-            c.g.strokeColor = lvl > 0 ? col : new Color(col.r, col.g, col.b, 110);
-            c.g.lineWidth = lvl > 0 ? 2 : 1;
-            c.g.rect(-88, -235, 176, 470);
-            c.g.stroke();
+            drawHexPanel(c.g, -88, -235, 176, 470,
+                lvl > 0 ? col : new Color(col.r, col.g, col.b, 155), 245);
             c.lvLbl.string = def.oneShot
                 ? '一次性·点击生效'
                 : def.category === '功能'
@@ -569,15 +575,13 @@ export class TestRoomUI extends Component {
     private _drawAugChrome() {
         this._augDimG.clear();
         this._augDimG.fillColor = new Color(0, 0, 0, 160);
-        this._augDimG.fillRect(-640, -48, 1280, 720);
+        const width = visibleDesignWidth();
+        this._augDimG.fillRect(-width / 2, -360, width, 720);
 
         // 每页 6 张高卡，长说明留足空间，不把 23 张卡挤成四行。
         const bg = this._augBoxG;
         bg.clear();
-        bg.fillColor = new Color(8, 13, 23, 250);
-        bg.fillRect(-575, -340, 1150, 680);
-        bg.strokeColor = new Color(150, 110, 200, 235);
-        bg.lineWidth = 2; bg.rect(-575, -340, 1150, 680); bg.stroke();
+        drawHexPanel(bg, -575, -340, 1150, 680, new Color(170, 120, 225, 255), 250);
     }
 
     /** 海克斯授予浮层：遮罩 + 每页 6 张高卡（名称/等级/一档说明）。 */
@@ -586,7 +590,9 @@ export class TestRoomUI extends Component {
         panel.active = false;
 
         const dim = new Node('Dim'); dim.setParent(panel);
-        dim.addComponent(UITransform).setContentSize(1280, 720);
+        dim.setPosition(new Vec3(0, 312, 0));
+        dim.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        this._augDimNode = dim;
         this._augDimG = dim.addComponent(Graphics);
         dim.on(Node.EventType.TOUCH_END, () => this._hideAugPanel(), this);
 
@@ -613,7 +619,8 @@ export class TestRoomUI extends Component {
         sub.addComponent(UITransform).setContentSize(700, 20);
         const sl = sub.addComponent(Label);
         sl.string = '点击卡片授予 / 升档 · 技能海克斯 Lv.3 后点击卸下 · 功能海克斯满档后无限叠加';
-        sl.fontSize = 12; sl.color = new Color(150, 168, 184, 225);
+        sl.fontSize = 14; sl.lineHeight = 18;
+        sl.color = UI_PALETTE.muted;
         styleLabel(sl);
 
         AUGMENT_DB.forEach((def, i) => {
@@ -633,9 +640,10 @@ export class TestRoomUI extends Component {
 
             const nN = new Node('Nm'); nN.setParent(card);
             nN.setPosition(new Vec3(0, 140, 0));
-            nN.addComponent(UITransform).setContentSize(168, 20);
+            nN.addComponent(UITransform).setContentSize(168, 26);
             const nl = nN.addComponent(Label);
-            nl.string = def.name; nl.fontSize = 13;
+            nl.string = def.name; nl.fontSize = 16;
+            nl.lineHeight = 20;
             nl.color = new Color(228, 236, 244, 255);
             nl.overflow = Label.Overflow.SHRINK;
             styleLabel(nl);
@@ -652,8 +660,8 @@ export class TestRoomUI extends Component {
             dN.addComponent(UITransform).setContentSize(166, 270);
             const dl = dN.addComponent(Label);
             dl.string = def.descAt(1);
-            dl.fontSize = 13; dl.lineHeight = 19;
-            dl.color = new Color(178, 190, 204, 235);
+            dl.fontSize = 14; dl.lineHeight = 20;
+            dl.color = UI_PALETTE.muted;
             dl.horizontalAlign = HorizontalTextAlignment.CENTER;
             dl.verticalAlign = VerticalTextAlignment.TOP;
             dl.overflow = Label.Overflow.SHRINK;

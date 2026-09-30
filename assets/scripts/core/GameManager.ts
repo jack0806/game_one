@@ -455,6 +455,9 @@ export class GameManager extends Component {
             this._fitBackgroundToVisible();
             this._screenMgr.fitToVisible();
             this._statsUI.fitToVisible();
+            this._augUI.fitToVisible();
+            this._shopUI.fitToVisible();
+            this._testUI.fitToVisible();
             this._refreshLabelsAfterResize();
         };
 

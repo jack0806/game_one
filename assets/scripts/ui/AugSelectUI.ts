@@ -6,7 +6,8 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, attachEnableRedraw, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
+import { visibleDesignWidth } from '../core/ScreenFit';
 
 const { ccclass } = _decorator;
 
@@ -55,9 +56,12 @@ export class AugSelectUI extends Component {
     private _goldLbl!: Label;
     private _oddsLbl!: Label;
     private _refreshLbl!: Label;
+    private _refreshSkin!: HexButtonSkin;
     private _options:  AugDef[]  = [];
     private _bought:   Set<string> = new Set();
     private _ctx?:     AugShopCtx;
+    private _dimNode!: Node;
+    private _drawDim!: () => void;
     onButtonSfx?: () => void;
     onPickSfx?: () => void;
 
@@ -85,24 +89,34 @@ export class AugSelectUI extends Component {
         if (this.node.parent) this.node.setSiblingIndex(this.node.parent.children.length - 1);
         // 先激活再填充：Graphics 在未激活节点上下发的绘制命令，激活后会丢失。
         this.node.active = true;
+        this.fitToVisible();
         this._populate();
     }
 
     hide() { this.node.active = false; }
 
+    fitToVisible(): void {
+        if (!this._dimNode) return;
+        this._dimNode.getComponent(UITransform)!.setContentSize(visibleDesignWidth(), 720);
+        this._drawDim();
+    }
+
     // ── builders ──────────────────────────────────────────────
 
     private _buildDimmer() {
         const n = new Node('Dimmer'); n.setParent(this.node);
-        n.addComponent(UITransform).setContentSize(1280, 720);
+        n.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        this._dimNode = n;
         const g = n.addComponent(Graphics);
         // 完全不透明遮罩：弹窗期间压住底下的商店商品/战场画面，避免文字被
         // 压花的商品图标干扰(见用户反馈"移到上面 为不透明模式")。
         const draw = () => {
             g.clear();
             g.fillColor = UI_PALETTE.deep;
-            g.fillRect(-640, -360, 1280, 720);
+            const width = visibleDesignWidth();
+            g.fillRect(-width / 2, -360, width, 720);
         };
+        this._drawDim = draw;
         draw();
         // 遮罩是构建期一次性绘制：节点 停用→再激活（如神秘强化二级弹窗往返回来）
         // 后内容会丢、战场会透出来，激活时重画兜底。
@@ -220,7 +234,7 @@ export class AugSelectUI extends Component {
         const refresh = new Node('RefreshBtn'); refresh.setParent(this.node);
         refresh.setPosition(new Vec3(-170, -178, 0));
         refresh.addComponent(UITransform).setContentSize(230, 44);
-        applyHexButtonSkin(refresh, 230, 44, new Color(42, 108, 128, 255));
+        this._refreshSkin = applyHexButtonSkin(refresh, 230, 44, new Color(42, 108, 128, 255));
         const rl = new Node('L'); rl.setParent(refresh);
         rl.addComponent(UITransform).setContentSize(226, 44);
         this._refreshLbl = rl.addComponent(Label);
@@ -302,7 +316,11 @@ export class AugSelectUI extends Component {
             this._paintCard(c, aug, gold, false);
         }
 
-        this._refreshLbl.string = `刷新 ${this._ctx?.refreshCost() ?? 5} 金币`;
+        const refreshCost = this._ctx?.refreshCost() ?? 5;
+        const canRefresh = gold >= refreshCost;
+        this._refreshLbl.string = canRefresh ? `刷新 ${refreshCost} 金币` : `刷新需 ${refreshCost} 金币`;
+        this._refreshSkin.setDisabled(!canRefresh);
+        this._refreshLbl.color = canRefresh ? UI_PALETTE.text : UI_PALETTE.muted;
         const odds = this._ctx?.odds();
         if (odds) {
             this._oddsLbl.string =
@@ -337,7 +355,7 @@ export class AugSelectUI extends Component {
         if ((aug as any)._isUpgrade) c.tierLabel.string = `升级至 Lv.${lvl}`;
         c.nameLabel.string = sold ? '已售出' : aug.name;
         c.descLabel.string = aug.desc ?? '';
-        c.priceLabel.string = sold ? '已购入' : `购买 ${price} 金币`;
+        c.priceLabel.string = sold ? '已购入' : afford ? `购买 ${price} 金币` : `金币不足 · ${price}`;
         c.priceLabel.color  = afford ? new Color(255, 210, 50, 255) : new Color(255, 96, 96, 255);
         c.iconSprite.color  = sold ? new Color(120, 120, 120, 160) : Color.WHITE;
         applyArtSprite(c.iconSprite, `ui_icon_${aug.icon}`);
@@ -381,6 +399,10 @@ export class AugSelectUI extends Component {
     }
 
     private _refresh() {
+        if ((this._ctx?.gold() ?? 0) < (this._ctx?.refreshCost() ?? 5)) {
+            this.onButtonSfx?.();
+            return;
+        }
         const next = this._ctx?.refresh();
         this.onButtonSfx?.();
         if (next) {

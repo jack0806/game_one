@@ -56,6 +56,7 @@ export class ScreenManager extends Component {
     private _lobby!: LobbyUI;
     private _menuArtNode?: Node;
     private _drawSettingsBg?: () => void;
+    private _drawExitVeil?: () => void;
     private _runReports = new Map<ReportName, RunReportView>();
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
@@ -137,6 +138,8 @@ export class ScreenManager extends Component {
         this._menuArtNode?.getComponent(UITransform)?.setContentSize(width, 720);
         this._panels.get('settings')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawSettingsBg?.();
+        this._panels.get('exitVeil')?.getComponent(UITransform)?.setContentSize(width, 720);
+        this._drawExitVeil?.();
         for (const name of ['gameover', 'chapterClear'] as ReportName[]) {
             this._panels.get(name)?.getComponent(UITransform)?.setContentSize(width, 720);
             this._runReports.get(name)?.redraw();
@@ -940,16 +943,23 @@ export class ScreenManager extends Component {
 
     /** 退出兜底遮罩：web 下 window.close 被拦截时，盖住全屏提示可直接关窗。 */
     private _showExitVeil(): void {
-        if (this._panels.get('exitVeil')?.active) return;
+        const existing = this._panels.get('exitVeil');
+        if (existing) {
+            existing.active = true;
+            this.fitToVisible();
+            return;
+        }
         const veil = new Node('exitVeil'); veil.setParent(this.node);
         this._panels.set('exitVeil', veil);
-        veil.addComponent(UITransform).setContentSize(1280, 720);
+        veil.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
         const vg = veil.addComponent(Graphics);
         const drawVeil = () => {
             vg.clear();
             vg.fillColor = new Color(4, 6, 12, 250);
-            vg.fillRect(-640, -360, 1280, 720);
+            const width = visibleDesignWidth();
+            vg.fillRect(-width / 2, -360, width, 720);
         };
+        this._drawExitVeil = drawVeil;
         drawVeil();
         attachEnableRedraw(veil, drawVeil);
         const t = new Node('T'); t.setParent(veil);

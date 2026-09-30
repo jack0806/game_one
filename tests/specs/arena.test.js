@@ -141,6 +141,31 @@ test('底图上突出的废车、熔炉和反应堆碎石不能被角色踩过',
     }
 });
 
+test('炉台管线、传送门与后段机械的外凸底座挡住脚底', () => {
+    for (const layout of arenasForChapter(2)) {
+        assert.ok(moveInArena(layout, 400, 540, -260, 0, 18).x >= 262,
+            `${layout.id} 左下炉台管线前沿`);
+        assert.ok(moveInArena(layout, 900, 570, 260, 0, 18).x <= 1023,
+            `${layout.id} 右下炉台管线前沿`);
+    }
+    for (const layout of arenasForChapter(4)) {
+        assert.ok(moveInArena(layout, 900, 175, 260, 0, 18).x <= 998,
+            `${layout.id} 右上传送门基座`);
+        assert.ok(moveInArena(layout, 400, 540, -260, 0, 18).x >= 272,
+            `${layout.id} 左下遗迹石台`);
+    }
+    for (const layout of arenasForChapter(5)) {
+        assert.ok(moveInArena(layout, 400, 540, -260, 0, 18).x >= 257,
+            `${layout.id} 左下机械残骸`);
+    }
+    for (const layout of arenasForChapter(6)) {
+        assert.ok(moveInArena(layout, 400, 540, -260, 0, 18).x >= 287,
+            `${layout.id} 左下核心碎块`);
+        assert.ok(moveInArena(layout, 900, 560, 260, 0, 18).x <= 993,
+            `${layout.id} 右下核心碎块`);
+    }
+});
+
 test('背景岗哨和遗迹的上沿不被角色脚底踩入', () => {
     const guardrail = moveInArena(arena, 145, 220, 0, 180, 18);
     assert.ok(guardrail.y + 37 <= 270, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);

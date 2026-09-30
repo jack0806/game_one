@@ -1,11 +1,12 @@
 import {
     _decorator, Component, Node, Label, Graphics,
-    Color, Vec3, UITransform
+    Color, Vec3, UITransform, HorizontalTextAlignment
 } from 'cc';
 import { Economy, ShopItem } from '../systems/Economy';
 import { RARITY_COLOR } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
+import { visibleDesignWidth } from '../core/ScreenFit';
 
 const { ccclass } = _decorator;
 
@@ -16,6 +17,9 @@ const { ccclass } = _decorator;
 @ccclass('ShopUI')
 export class ShopUI extends Component {
     private _itemNodes: Node[]    = [];
+    private _rowStates: { item: ShopItem; skin: HexButtonSkin; label: Label; sold: boolean }[] = [];
+    private _dimNode!: Node;
+    private _drawDim!: () => void;
     private _goldLabel!: Label;
     private _leaveBtn!:  Node;
     private _spendFn?: (cost: number, item: ShopItem) => boolean;
@@ -47,28 +51,44 @@ export class ShopUI extends Component {
         this._populate(items);
         this._goldLabel.string = `⬡ ${gold}`;
         this.node.active = true;
+        this.fitToVisible();
+        this._refreshAffordability();
     }
 
     refreshGold(gold: number) {
         this._currentGold = gold;
         this._goldLabel.string = `⬡ ${gold}`;
+        this._refreshAffordability();
     }
 
     hide() { this.node.active = false; }
     /** 从神秘强化二级弹窗返回，保留已售出按钮与当前金币。 */
-    resume() { this.node.active = true; }
+    resume() {
+        this.node.active = true;
+        this.fitToVisible();
+        this._refreshAffordability();
+    }
+
+    fitToVisible(): void {
+        if (!this._dimNode) return;
+        this._dimNode.getComponent(UITransform)!.setContentSize(visibleDesignWidth(), 720);
+        this._drawDim();
+    }
 
     // ── builders ──────────────────────────────────────────────
 
     private _buildDimmer() {
         const n = new Node('Dimmer'); n.setParent(this.node);
-        n.addComponent(UITransform).setContentSize(1280, 720);
+        n.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        this._dimNode = n;
         const g = n.addComponent(Graphics);
         const drawDim = () => {
             g.clear();
             g.fillColor = new Color(UI_PALETTE.deep.r, UI_PALETTE.deep.g, UI_PALETTE.deep.b, 224);
-            g.fillRect(-640, -360, 1280, 720);
+            const width = visibleDesignWidth();
+            g.fillRect(-width / 2, -360, width, 720);
         };
+        this._drawDim = drawDim;
 
         // 商品列表拥有自己的近乎不透明金属面板。即使未来再叠确认框，底层
         // 战斗/强化卡也不会穿过六行商品文字造成“整个商店变透明”的错觉。
@@ -134,6 +154,7 @@ export class ShopUI extends Component {
         // destroy old item nodes
         for (const n of this._itemNodes) n.destroy();
         this._itemNodes = [];
+        this._rowStates = [];
 
         const startY = 160;
         const rowH   = 72;
@@ -149,29 +170,38 @@ export class ShopUI extends Component {
         row.setPosition(new Vec3(x, y, 0));
         row.addComponent(UITransform).setContentSize(560, 60);
 
-        // background
+        // 行底板在重新激活商店时重画，避免从二级强化页返回后丢失。
         const bg = row.addComponent(Graphics);
-        bg.fillColor = new Color(24, 29, 43, 248);
-        bg.fillRect(-280, -30, 560, 60);
-        bg.strokeColor = new Color(80, 80, 110, 180);
-        bg.lineWidth = 1; bg.rect(-280, -30, 560, 60); bg.stroke();
+        const drawRow = () => {
+            bg.clear();
+            drawHexPanel(bg, -280, -30, 560, 60, UI_PALETTE.cyan, 248);
+        };
+        drawRow();
+        attachEnableRedraw(row, drawRow);
 
         // item name
         const nameN = new Node('N'); nameN.setParent(row);
-        nameN.setPosition(new Vec3(-130, 0, 0));
-        nameN.addComponent(UITransform).setContentSize(260, 50);
+        nameN.setPosition(new Vec3(-110, 14, 0));
+        nameN.addComponent(UITransform).setContentSize(300, 22);
         const nameLbl = nameN.addComponent(Label);
-        nameLbl.string = item.name; nameLbl.fontSize = 15;
-        nameLbl.color = new Color(220, 220, 220, 255);
+        nameLbl.string = item.name; nameLbl.fontSize = 17;
+        nameLbl.lineHeight = 21;
+        nameLbl.horizontalAlign = HorizontalTextAlignment.LEFT;
+        nameLbl.overflow = Label.Overflow.SHRINK;
+        nameLbl.color = UI_PALETTE.text;
         styleLabel(nameLbl);
 
         // desc
         const descN = new Node('D'); descN.setParent(row);
-        descN.setPosition(new Vec3(-130, -16, 0));
-        descN.addComponent(UITransform).setContentSize(260, 22);
+        descN.setPosition(new Vec3(-110, -14, 0));
+        descN.addComponent(UITransform).setContentSize(300, 26);
         const descLbl = descN.addComponent(Label);
-        descLbl.string = item.desc ?? ''; descLbl.fontSize = 11;
-        descLbl.color = new Color(150, 150, 170, 200);
+        descLbl.string = item.desc ?? ''; descLbl.fontSize = 13;
+        descLbl.lineHeight = 16;
+        descLbl.horizontalAlign = HorizontalTextAlignment.LEFT;
+        descLbl.overflow = Label.Overflow.SHRINK;
+        descLbl.enableWrapText = true;
+        descLbl.color = UI_PALETTE.muted;
         styleLabel(descLbl, { outlineWidth: 1 });
 
         // price
@@ -194,20 +224,32 @@ export class ShopUI extends Component {
         btnLbl.string = '购买'; btnLbl.fontSize = 14;
         btnLbl.color = new Color(200, 255, 200, 255);
         styleLabel(btnLbl);
+        const state = { item, skin: btnSkin, label: btnLbl, sold: false };
+        this._rowStates.push(state);
 
         btn.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
-            if (!this._spendFn) return;
+            if (state.sold || this._currentGold < item.cost || !this._spendFn) return;
             const ok = this._spendFn(item.cost, item);
             if (ok) {
                 this.onBuySfx?.();
-                btnSkin.setDisabled(true);
-                btnLbl.string = '已售出'; btnLbl.color = new Color(120, 120, 120, 180);
-                btn.off(Node.EventType.TOUCH_END);
-                this._goldLabel.string = `⬡ ${this._currentGold}`;
+                state.sold = true;
+                this._refreshAffordability();
             }
         }, this);
 
         return row;
+    }
+
+    private _refreshAffordability(): void {
+        for (const row of this._rowStates) {
+            const affordable = !row.sold && this._currentGold >= row.item.cost;
+            row.skin.setDisabled(!affordable);
+            row.label.string = row.sold ? '已售出' : affordable ? '购买' : '金币不足';
+            row.label.color = row.sold
+                ? new Color(155, 168, 180, 255)
+                : affordable ? new Color(215, 255, 226, 255) : UI_PALETTE.muted;
+            row.label.fontSize = affordable ? 14 : 12;
+        }
     }
 }

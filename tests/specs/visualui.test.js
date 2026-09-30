@@ -251,7 +251,7 @@ test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
 
 test('商店使用不透明独立面板，神秘强化作为二级模态弹窗', () => {
     assert.match(shopSource, /drawHexPanel\(pg, -320, -280, 640, 560, UI_PALETTE\.cyan, 252\)/);
-    assert.match(shopSource, /resume\(\) \{ this\.node\.active = true; \}/);
+    assert.match(shopSource, /resume\(\) \{[\s\S]*this\.node\.active = true;[\s\S]*this\.fitToVisible\(\)/);
     assert.match(gameSource, /case 'augment':[\s\S]*this\._shopUI\.hide\(\)[\s\S]*this\._shopUI\.resume\(\)/);
 });
 

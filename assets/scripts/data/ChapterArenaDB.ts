@@ -77,7 +77,9 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-right-pipe-base', 1160, 215, 1280, 285),
         edge('left-pipes', 0, 235, 130, 435),
         edge('lower-left-furnace', 0, 450, 175, 648),
+        edge('lower-left-furnace-front', 175, 490, 245, 620),
         edge('lower-right-pipes', 1110, 490, 1280, 648),
+        edge('lower-right-pipes-front', 1040, 525, 1110, 620),
     ],
     3: [
         ...COMMON_EDGES,
@@ -93,8 +95,10 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('top-rift-wall', 0, 0, 1280, 66),
         edge('upper-left-ruin', 0, 0, 165, 190),
         edge('upper-right-portal', 1085, 0, 1280, 210),
+        edge('upper-right-portal-front', 1015, 90, 1085, 210),
         edge('left-rift-pillar', 0, 220, 95, 390),
         edge('lower-left-ruin', 0, 470, 225, 648),
+        edge('lower-left-ruin-front', 225, 490, 255, 620),
         edge('lower-right-ruin', 1110, 435, 1280, 648),
     ],
     5: [
@@ -104,6 +108,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-right-mech', 1080, 0, 1280, 245),
         edge('left-armored-wall', 0, 225, 140, 455),
         edge('lower-left-mech', 0, 470, 215, 648),
+        edge('lower-left-mech-front', 215, 500, 240, 620),
         edge('lower-right-platform', 1100, 445, 1280, 648),
     ],
     6: [
@@ -115,7 +120,9 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-right-reactor-base', 1170, 255, 1280, 325),
         edge('left-broken-frame', 0, 230, 165, 430),
         edge('lower-left-core', 0, 470, 220, 648),
+        edge('lower-left-core-front', 220, 500, 270, 620),
         edge('lower-right-core', 1090, 435, 1280, 648),
+        edge('lower-right-core-front', 1010, 515, 1090, 620),
     ],
 };
 
