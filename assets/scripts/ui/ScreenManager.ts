@@ -5,6 +5,7 @@ import {
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
 import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
+import { CHAPTERS } from '../data/WaveData';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
@@ -370,28 +371,22 @@ export class ScreenManager extends Component {
         sub.setPosition(new Vec3(0, 244, 0));
         sub.addComponent(UITransform).setContentSize(760, 22);
         const sl = sub.addComponent(Label);
-        sl.string = '当前全部章节位于废土地图 · 选定后进入难度选择';
+        sl.string = '主线六章各有独立战场 · 选定后进入难度选择';
         sl.fontSize = 14; sl.color = new Color(150, 172, 190, 235);
         styleLabel(sl);
 
         // 地图1 废土（可选）：全部章节所在地图
-        const maps: { x: number; name: string; desc: string; art: string; accent: Color; locked: boolean }[] = [
-            { x: -240, name: '地图 1 · 废土', desc: '第一章 ~ 第六章 · 全部现有章节', art: 'bg_chapter1', accent: new Color(40, 224, 218, 255), locked: false },
-            { x: 240,  name: '地图 2 · 深海', desc: '全新深海战场 · 敬请期待', art: 'bg_chapter3', accent: new Color(90, 90, 110, 255), locked: true },
+        const maps: { x: number; name: string; desc: string; accent: Color; locked: boolean }[] = [
+            { x: -240, name: '地图 1 · 废土', desc: '六章连续战场 · 从废土街道出发', accent: new Color(40, 224, 218, 255), locked: false },
+            { x: 240,  name: '地图 2 · 深海', desc: '全新深海战场 · 敬请期待', accent: new Color(90, 90, 110, 255), locked: true },
         ];
         for (const m of maps) {
             const card = new Node(`Map_${m.name}`); card.setParent(p);
             card.setPosition(new Vec3(m.x, -20, 0));
             card.addComponent(UITransform).setContentSize(420, 360);
 
-            // 地图缩略图（复用章节背景美术，锁定地图压暗）
-            const artN = new Node('Art'); artN.setParent(card);
-            artN.setPosition(new Vec3(0, 46, 0));
-            artN.addComponent(UITransform).setContentSize(376, 176);
-            const art = artN.addComponent(Sprite);
-            art.sizeMode = Sprite.SizeMode.CUSTOM;
-            art.color = m.locked ? new Color(120, 130, 145, 110) : new Color(255, 255, 255, 235);
-            loadArtSprite(m.art, frame => { if (art.isValid) art.spriteFrame = frame; });
+            if (m.locked) this._buildLockedMapPreview(card);
+            else this._buildChapterMapPreview(card);
 
             const nameN = new Node('Name'); nameN.setParent(card);
             nameN.setPosition(new Vec3(0, -70, 0));
@@ -420,6 +415,68 @@ export class ScreenManager extends Component {
                 card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(), this);
             }
         }
+    }
+
+    /** 主线地图卡展示六章真实场景，避免只用首章画面代表整段旅程。 */
+    private _buildChapterMapPreview(card: Node): void {
+        const grid = new Node('ChapterPreviews'); grid.setParent(card);
+        grid.setPosition(new Vec3(0, 46, 0));
+        for (const [i, chapter] of CHAPTERS.slice(0, 6).entries()) {
+            const tile = new Node(`Chapter_${chapter.id}`); tile.setParent(grid);
+            tile.setPosition(new Vec3(-128 + i % 3 * 128, 38 - Math.floor(i / 3) * 76, 0));
+            tile.addComponent(UITransform).setContentSize(120, 68);
+            const frame = tile.addComponent(Graphics);
+            frame.fillColor = new Color(8, 20, 32, 255);
+            frame.roundRect(-60, -34, 120, 68, 6); frame.fill();
+            frame.strokeColor = new Color(105, 150, 174, 160);
+            frame.lineWidth = 1;
+            frame.roundRect(-60, -34, 120, 68, 6); frame.stroke();
+
+            const artNode = new Node('Art'); artNode.setParent(tile);
+            artNode.addComponent(UITransform).setContentSize(116, 64);
+            const art = artNode.addComponent(Sprite);
+            art.sizeMode = Sprite.SizeMode.CUSTOM;
+            art.color = new Color(235, 245, 252, 235);
+            applyArtSprite(art, chapter.bgKey);
+
+            const badge = new Node('ChapterNumber'); badge.setParent(tile);
+            badge.setPosition(new Vec3(-43, -23, 0));
+            badge.addComponent(UITransform).setContentSize(30, 18);
+            const badgeBg = badge.addComponent(Graphics);
+            badgeBg.fillColor = new Color(8, 20, 32, 215);
+            badgeBg.roundRect(-15, -9, 30, 18, 4); badgeBg.fill();
+            const number = new Node('Number'); number.setParent(badge);
+            number.addComponent(UITransform).setContentSize(28, 17);
+            const label = number.addComponent(Label);
+            label.string = chapter.id < 10 ? `0${chapter.id}` : String(chapter.id);
+            label.fontSize = 12; label.lineHeight = 15;
+            label.color = new Color(225, 241, 249, 255);
+            styleLabel(label);
+        }
+    }
+
+    /** 未开放地图使用明确的雷达占位，不借用现有章节的实验室底图。 */
+    private _buildLockedMapPreview(card: Node): void {
+        const preview = new Node('LockedPreview'); preview.setParent(card);
+        preview.setPosition(new Vec3(0, 46, 0));
+        preview.addComponent(UITransform).setContentSize(376, 176);
+        const g = preview.addComponent(Graphics);
+        g.fillColor = new Color(12, 28, 46, 255);
+        g.roundRect(-188, -88, 376, 176, 10); g.fill();
+        g.strokeColor = new Color(92, 125, 149, 120);
+        g.lineWidth = 1;
+        g.roundRect(-188, -88, 376, 176, 10); g.stroke();
+        g.strokeColor = new Color(65, 116, 148, 85);
+        for (const radius of [34, 64, 78]) { g.circle(0, 0, radius); g.stroke(); }
+        g.moveTo(-170, 0); g.lineTo(170, 0); g.stroke();
+        g.moveTo(0, -80); g.lineTo(0, 80); g.stroke();
+        const title = new Node('UnknownArea'); title.setParent(preview);
+        title.addComponent(UITransform).setContentSize(250, 32);
+        const label = title.addComponent(Label);
+        label.string = '未探明区域';
+        label.fontSize = 22; label.lineHeight = 28;
+        label.color = new Color(178, 199, 212, 245);
+        styleLabel(label);
     }
 
     // ── 难度选择页 ─────────────────────────────────────────────

@@ -67,6 +67,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('lower-left-wreckage', 0, 475, 225, 648),
         edge('lower-left-van-front', 225, 545, 285, 625),
         edge('lower-right-crates', 1110, 492, 1280, 648),
+        edge('lower-right-crates-front', 1070, 525, 1110, 620),
     ],
     2: [
         ...COMMON_EDGES,
@@ -92,6 +93,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('lower-left-vats', 0, 390, 155, 648),
         edge('lower-left-vat-front', 155, 445, 182, 550),
         edge('lower-right-lab', 1120, 430, 1280, 648),
+        edge('lower-right-lab-front', 1080, 530, 1120, 620),
     ],
     4: [
         ...COMMON_EDGES,
@@ -103,6 +105,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('lower-left-ruin', 0, 470, 225, 648),
         edge('lower-left-ruin-front', 225, 490, 255, 620),
         edge('lower-right-ruin', 1110, 435, 1280, 648),
+        edge('lower-right-ruin-front', 1015, 550, 1110, 620),
     ],
     5: [
         ...COMMON_EDGES,
@@ -113,6 +116,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('lower-left-mech', 0, 470, 215, 648),
         edge('lower-left-mech-front', 215, 500, 240, 620),
         edge('lower-right-platform', 1100, 445, 1280, 648),
+        edge('lower-right-platform-front', 1060, 530, 1100, 620),
     ],
     6: [
         ...COMMON_EDGES,
@@ -120,13 +124,15 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-left-frame', 0, 0, 175, 225),
         edge('upper-left-frame-rubble', 175, 75, 210, 185),
         edge('upper-right-reactor', 1080, 0, 1280, 255),
-        edge('upper-reactor-rubble', 790, 70, 1080, 175),
+        edge('upper-reactor-rubble-left', 790, 70, 925, 145),
+        edge('upper-reactor-rubble-right', 925, 70, 1080, 190),
         edge('upper-right-reactor-base', 1170, 255, 1280, 325),
         edge('left-broken-frame', 0, 230, 165, 430),
         edge('lower-left-core', 0, 470, 220, 648),
         edge('lower-left-core-front', 220, 500, 270, 620),
         edge('lower-right-core', 1090, 435, 1280, 648),
         edge('lower-right-core-front', 1010, 515, 1090, 620),
+        edge('lower-right-core-rubble-tip', 975, 535, 1010, 620),
     ],
 };
 

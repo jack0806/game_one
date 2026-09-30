@@ -135,9 +135,30 @@ test('底图上突出的废车、熔炉和反应堆碎石不能被角色踩过',
         assert.equal(isArenaFree(layout, 900, 160, 18), true, `${layout.id} 熔炉左侧仍有通路`);
     }
     for (const layout of arenasForChapter(6)) {
-        const point = moveInArena(layout, 900, 280, 0, -220, 18);
-        assert.ok(point.y >= 193, `${layout.id} 反应堆碎石挡住向上行走`);
+        const point = moveInArena(layout, 1000, 280, 0, -220, 18);
+        assert.ok(point.y >= 208, `${layout.id} 反应堆右侧碎石挡住向上行走`);
         assert.equal(isArenaFree(layout, 700, 150, 18), true, `${layout.id} 碎石左侧仍有通路`);
+    }
+});
+
+test('第六章右上碎石按画面外形分段，空地可走而碎石仍挡脚底', () => {
+    const edges = { ...arenaForChapter(6), obstacles: [] };
+    const across = moveInArena(edges, 650, 180, 600, 0, 18);
+    assert.ok(across.x >= 895 && across.x <= 925, `沿空地走到右侧碎石前：${across.x}`);
+    const left = moveInArena(edges, 850, 280, 0, -220, 18);
+    assert.ok(left.y >= 163 && left.y <= 185, `左侧碎石上沿：${left.y}`);
+    const right = moveInArena(edges, 1000, 280, 0, -220, 18);
+    assert.ok(right.y >= 208, `右侧碎石下沿：${right.y}`);
+});
+
+test('右下背景设备和碎石的外凸底座挡住横向行走', () => {
+    for (const [chapter, maxX] of [[1, 1060], [3, 1072], [4, 1002], [5, 1050], [6, 965]]) {
+        for (const layout of arenasForChapter(chapter)) {
+            const point = moveInArena(layout, 850, 560, 400, 0, 18);
+            assert.ok(point.x <= maxX, `${layout.id} 右下底座外沿：${point.x}`);
+            assert.equal(isArenaFree(layout, 850, 560, 18), true,
+                `${layout.id} 中央右侧仍可通行`);
+        }
     }
 });
 

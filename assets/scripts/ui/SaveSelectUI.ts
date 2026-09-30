@@ -41,12 +41,15 @@ function clippedPath(g: Graphics, w: number, h: number, cut: number): void {
 /** 存档槽卡片视图：卡片内容随 refresh() 重绘，删除按钮有两步确认态。 */
 interface SlotCardView {
     slot: number;
+    card: Node;
     graphics: Graphics;
     body: Node;      // 整卡点击区（新建/继续）
     lines: Label[];  // 概览文本行（含标题下空行占位）
     deleteBtn: Node;
     deleteLabel: Label;
     deleteArmed: boolean;
+    state: 'normal' | 'hover' | 'pressed';
+    summary?: SaveSlotSummary;
 }
 
 export class SaveSelectUI {
@@ -83,6 +86,8 @@ export class SaveSelectUI {
         const slots = SaveSystem.listSlots();
         for (const view of this._cards) {
             const summary = slots[view.slot]!;
+            view.state = 'normal';
+            view.card.setScale(new Vec3(1, 1, 1));
             this._drawCard(view, summary);
             view.deleteBtn.active = summary.exists;
             view.deleteArmed = false;
@@ -175,7 +180,15 @@ export class SaveSelectUI {
         deleteLabel.verticalAlign = VerticalTextAlignment.CENTER;
         deleteLabel.overflow = Label.Overflow.SHRINK;
         styleLabel(deleteLabel);
-        const view: SlotCardView = { slot, graphics: g, body, lines, deleteBtn, deleteLabel, deleteArmed: false };
+        const view: SlotCardView = {
+            slot, card, graphics: g, body, lines, deleteBtn, deleteLabel,
+            deleteArmed: false, state: 'normal',
+        };
+        body.on(Node.EventType.MOUSE_ENTER, () => this._setCardState(view, 'hover'));
+        body.on(Node.EventType.MOUSE_LEAVE, () => this._setCardState(view, 'normal'));
+        body.on(Node.EventType.TOUCH_START, () => this._setCardState(view, 'pressed'));
+        body.on(Node.EventType.TOUCH_END, () => this._setCardState(view, 'hover'));
+        body.on(Node.EventType.TOUCH_CANCEL, () => this._setCardState(view, 'normal'));
         deleteBtn.on(Node.EventType.TOUCH_END, (ev: any) => {
             // 拦截冒泡：删除点击不能落进卡片 body 触发选档
             ev.propagationStopped = true;
@@ -193,12 +206,8 @@ export class SaveSelectUI {
     }
 
     private _drawCard(view: SlotCardView, summary: SaveSlotSummary): void {
-        const g = view.graphics;
-        const accent = summary.exists ? CYAN : new Color(96, 118, 134, 255);
-        g.clear();
-        drawHexPanel(g, -150, -200, 300, 400, accent, 247);
-        g.strokeColor = new Color(accent.r, accent.g, accent.b, 220); g.lineWidth = 3;
-        g.moveTo(-118, 186); g.lineTo(118, 186); g.stroke();
+        view.summary = summary;
+        this._drawCardSkin(view);
 
         const p = summary.profile;
         if (summary.exists && p) {
@@ -214,11 +223,6 @@ export class SaveSelectUI {
             view.lines[1].string = '创建新行动档案';
             view.lines[2].string = '';
             view.lines[3].string = '';
-            // 空槽中央的「+ 新征程」引导
-            g.strokeColor = new Color(120, 150, 168, 200); g.lineWidth = 2;
-            g.circle(0, -30, 34); g.stroke();
-            g.moveTo(-12, -30); g.lineTo(12, -30);
-            g.moveTo(0, -42); g.lineTo(0, -18); g.stroke();
         }
         const hint = summary.exists ? '点按继续  ·  进入存档大厅' : '点按新建存档';
         view.body.removeAllChildren();
@@ -232,6 +236,41 @@ export class SaveSelectUI {
         hl.verticalAlign = VerticalTextAlignment.CENTER;
         hl.overflow = Label.Overflow.SHRINK;
         styleLabel(hl);
+    }
+
+    /** 存档卡与地图卡共用轻微悬停/按下反馈；概览文字保持独立节点。 */
+    private _setCardState(view: SlotCardView, state: SlotCardView['state']): void {
+        if (view.state === state) return;
+        view.state = state;
+        const scale = state === 'pressed' ? 0.99 : state === 'hover' ? 1.012 : 1;
+        view.card.setScale(new Vec3(scale, scale, 1));
+        this._drawCardSkin(view);
+    }
+
+    private _drawCardSkin(view: SlotCardView): void {
+        const summary = view.summary;
+        if (!summary) return;
+        const g = view.graphics;
+        const accent = summary.exists ? CYAN : new Color(96, 118, 134, 255);
+        g.clear();
+        drawHexPanel(g, -150, -200, 300, 400, accent, 247);
+        if (view.state !== 'normal') {
+            g.fillColor = new Color(accent.r, accent.g, accent.b,
+                view.state === 'pressed' ? 30 : 16);
+            g.roundRect(-146, -196, 292, 392, 14); g.fill();
+            g.strokeColor = new Color(accent.r, accent.g, accent.b, 245);
+            g.lineWidth = view.state === 'pressed' ? 2 : 3;
+            g.roundRect(-150, -200, 300, 400, 18); g.stroke();
+        }
+        g.strokeColor = new Color(accent.r, accent.g, accent.b, 220); g.lineWidth = 3;
+        g.moveTo(-118, 186); g.lineTo(118, 186); g.stroke();
+        if (!summary.exists) {
+            // 空槽中央的「+ 新征程」引导随底板一起重绘。
+            g.strokeColor = new Color(120, 150, 168, 200); g.lineWidth = 2;
+            g.circle(0, -30, 34); g.stroke();
+            g.moveTo(-12, -30); g.lineTo(12, -30);
+            g.moveTo(0, -42); g.lineTo(0, -18); g.stroke();
+        }
     }
 
     /** 任一次其它交互都撤销删除按钮的 armed 态，防误删。 */
