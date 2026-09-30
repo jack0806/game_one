@@ -439,18 +439,20 @@ export class ScreenManager extends Component {
             art.color = new Color(235, 245, 252, 235);
             applyArtSprite(art, chapter.bgKey);
 
-            const badge = new Node('ChapterNumber'); badge.setParent(tile);
-            badge.setPosition(new Vec3(-43, -23, 0));
-            badge.addComponent(UITransform).setContentSize(30, 18);
-            const badgeBg = badge.addComponent(Graphics);
-            badgeBg.fillColor = new Color(8, 20, 32, 215);
-            badgeBg.roundRect(-15, -9, 30, 18, 4); badgeBg.fill();
-            const number = new Node('Number'); number.setParent(badge);
-            number.addComponent(UITransform).setContentSize(28, 17);
-            const label = number.addComponent(Label);
-            label.string = chapter.id < 10 ? `0${chapter.id}` : String(chapter.id);
+            const caption = new Node('ChapterCaption'); caption.setParent(tile);
+            caption.setPosition(new Vec3(0, -22, 0));
+            caption.addComponent(UITransform).setContentSize(116, 20);
+            const captionBg = caption.addComponent(Graphics);
+            captionBg.fillColor = new Color(8, 20, 32, 225);
+            captionBg.fillRect(-58, -10, 116, 20);
+            const title = new Node('Title'); title.setParent(caption);
+            title.addComponent(UITransform).setContentSize(110, 18);
+            const label = title.addComponent(Label);
+            label.string = `${chapter.id < 10 ? `0${chapter.id}` : chapter.id} ${chapter.name}`;
             label.fontSize = 12; label.lineHeight = 15;
             label.color = new Color(225, 241, 249, 255);
+            label.overflow = Label.Overflow.SHRINK;
+            label.enableWrapText = false;
             styleLabel(label);
         }
     }

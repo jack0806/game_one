@@ -196,6 +196,35 @@ test('第三章左下培养罐的外凸底座挡住横向行走', () => {
     }
 });
 
+test('第五章左侧装甲墙外凸顶面挡住角色脚底并保留上方通路', () => {
+    for (const layout of arenasForChapter(5)) {
+        const point = moveInArena(layout, 400, 390, -360, 0, 18);
+        assert.ok(point.x >= 185, `${layout.id} 装甲墙外凸顶面：${point.x}`);
+        assert.equal(isArenaFree(layout, 180, 300, 18), true,
+            `${layout.id} 装甲墙上方仍可通行`);
+    }
+});
+
+test('第四章左侧遗迹过渡碎石封住两段建筑之间的空档', () => {
+    for (const layout of arenasForChapter(4)) {
+        const point = moveInArena(layout, 400, 430, -360, 0, 18);
+        assert.ok(point.x >= 160, `${layout.id} 左下遗迹顶面不可站立：${point.x}`);
+        assert.equal(isArenaFree(layout, 240, 430, 18), true,
+            `${layout.id} 遗迹右侧仍可通行`);
+    }
+});
+
+test('第二章右侧炉台斜坡挡住脚底且保留上方地面', () => {
+    for (const layout of arenasForChapter(2)) {
+        const upper = moveInArena(layout, 900, 420, 360, 0, 18);
+        const front = moveInArena(layout, 900, 450, 360, 0, 18);
+        assert.ok(upper.x <= 1200, `${layout.id} 炉台斜坡上段：${upper.x}`);
+        assert.ok(front.x <= 1160, `${layout.id} 炉台斜坡前沿：${front.x}`);
+        assert.equal(isArenaFree(layout, 1150, 390, 18), true,
+            `${layout.id} 炉台上方仍可通行`);
+    }
+});
+
 test('左上外凸炉台、培养罐与支架碎石不被脚底踩入', () => {
     for (const [chapter, minX] of [[2, 208], [3, 213], [6, 228]]) {
         for (const layout of arenasForChapter(chapter)) {

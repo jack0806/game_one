@@ -118,7 +118,7 @@ export class SaveSelectUI {
         veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
 
-        this._mkLabel(page, -467, 326, 170, 20, 'SAVE TERMINAL / 选择作战档案', 12,
+        this._mkLabel(page, -467, 326, 240, 20, 'SAVE TERMINAL / 选择作战档案', 12,
             new Color(CYAN.r, CYAN.g, CYAN.b, 220), HorizontalTextAlignment.LEFT);
         const title = this._mkLabel(page, -272, 291, 560, 48, '选择存档', 30, WHITE, HorizontalTextAlignment.LEFT);
         title.overflow = Label.Overflow.SHRINK;

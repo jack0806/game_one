@@ -133,7 +133,11 @@ export function applyHexButtonSkin(
 
     draw();
     // 页面激活时皮肤可能因"隐藏状态下绘制丢失"而不可见，onEnable 强制重绘兜底
-    attachEnableRedraw(node, draw);
+    attachEnableRedraw(node, () => {
+        state = disabled ? 'disabled' : 'normal';
+        node.setScale(new Vec3(1, 1, 1));
+        draw();
+    });
     return {
         setDisabled(value: boolean) {
             disabled = value;

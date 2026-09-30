@@ -166,7 +166,7 @@ export class MetaPageUI {
         const veilN = new Node('Veil'); veilN.setParent(page);
         veilN.addComponent(Graphics);
 
-        this._mkLabel(page, -467, 326, 170, 20, eyebrow, 12,
+        this._mkLabel(page, -467, 326, 240, 20, eyebrow, 12,
             new Color(accent.r, accent.g, accent.b, 220), HorizontalTextAlignment.LEFT);
         const titleLbl = this._mkLabel(page, -272, 291, 560, 48, title, 30, WHITE, HorizontalTextAlignment.LEFT);
         titleLbl.overflow = Label.Overflow.SHRINK;
