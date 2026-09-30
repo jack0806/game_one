@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { WaveManager } = require('../dist/systems/WaveManager');
 const { ENEMY_COUNT_BY_WAVE, chapterForWave } = require('../dist/data/WaveData');
-const { makeMockGame } = require('./mockGame');
+const { makeMockGame, makePlayer } = require('./mockGame');
 const { MINI_BOSSES } = require('../dist/data/BossDB');
 const MINI_IDS = new Set(MINI_BOSSES.map(m => m.id));
 
@@ -98,16 +98,16 @@ test('完整主线1~30波(六章每章5波)与无尽31波的队列均可生成,�
             }
         }
 
-        // 无尽开启后的第26波会激活首个变异；固定随机数选择非增殖型变异，
-        // 同时避开随机精英追加，以验证主线通关后仍可继续建立第5章敌群。
+        // 无尽开启后的第31波会激活首个变异；固定随机数选择非增殖型变异，
+        // 同时避开随机精英追加，以验证主线通关后仍可继续建立第6章敌群。
         Math.random = () => 0.5;
         wm.endless = true;
         game.enemies = [];
         wm.startWave(game);
         drainSpawning(wm, game);
-        assert.equal(wm.wave, 26);
+        assert.equal(wm.wave, 31);
         assert.equal(wm.chapter, 6);
-        assert.equal(game.enemies.length, 3 + ENEMY_COUNT_BY_WAVE(26, 'normal'), '第五章(无尽)每波固定3只小BOSS');
+        assert.equal(game.enemies.length, 3 + ENEMY_COUNT_BY_WAVE(31, 'normal'), '第六章(无尽)每波固定3只小BOSS');
     } finally {
         Math.random = originalRandom;
     }

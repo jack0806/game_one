@@ -12,7 +12,7 @@ import { ActorCorpses } from './ActorCorpses';
 import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
 import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 import { animationAlphaTop } from '../data/AnimationBoundsDB';
-import { styleLabel, refreshAllLabels } from './LabelUtils';
+import { styleLabel, refreshAllLabels, loadUIFont } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
@@ -279,6 +279,7 @@ export class GameManager extends Component {
         // 本身被当成单个资源 key。显式使用 Array.from 保证构建产物仍是字符串数组。
         preloadArt(Array.from(new Set(Object.keys(EFFECT_ANIMATIONS).map(key => EFFECT_ANIMATIONS[key].sheet))));
         this._setState('menu');
+        loadUIFont(this.node);
 
     }
 

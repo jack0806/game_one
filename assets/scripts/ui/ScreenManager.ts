@@ -57,6 +57,7 @@ export class ScreenManager extends Component {
     private _menuArtNode?: Node;
     private _drawSettingsBg?: () => void;
     private _drawExitVeil?: () => void;
+    private _drawCharDetailDim?: () => void;
     private _runReports = new Map<ReportName, RunReportView>();
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
@@ -138,6 +139,8 @@ export class ScreenManager extends Component {
         this._menuArtNode?.getComponent(UITransform)?.setContentSize(width, 720);
         this._panels.get('settings')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawSettingsBg?.();
+        this._panels.get('charDetail')?.getComponent(UITransform)?.setContentSize(width, 720);
+        this._drawCharDetailDim?.();
         this._panels.get('exitVeil')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawExitVeil?.();
         for (const name of ['gameover', 'chapterClear'] as ReportName[]) {
@@ -155,7 +158,7 @@ export class ScreenManager extends Component {
         const p = this._panels.get(name);
         if (p) p.active = true;
         if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings'
-            || name === 'gameover' || name === 'chapterClear') {
+            || name === 'gameover' || name === 'chapterClear' || name === 'charDetail') {
             this.fitToVisible();
         }
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
@@ -562,10 +565,11 @@ export class ScreenManager extends Component {
             // 「选择出战」按钮，玩家想先看技能时不会误触开局。
             const nameN = new Node('Name'); nameN.setParent(card);
             nameN.setPosition(new Vec3(0, 12, 0));
-            nameN.addComponent(UITransform).setContentSize(320, 26);
+            nameN.addComponent(UITransform).setContentSize(320, 30);
             const nameLbl = nameN.addComponent(Label);
             nameLbl.string = names[i] ?? `Char${i}`;
             nameLbl.fontSize = 20;
+            nameLbl.lineHeight = 24;
             nameLbl.color = locked
                 ? new Color(150, 150, 150, 220)
                 : (colors[i] ?? new Color(80, 140, 180, 255));
@@ -589,10 +593,11 @@ export class ScreenManager extends Component {
 
                 const lockNameN = new Node('LockName'); lockNameN.setParent(card);
                 lockNameN.setPosition(new Vec3(0, 12, 0));
-                lockNameN.addComponent(UITransform).setContentSize(320, 26);
+                lockNameN.addComponent(UITransform).setContentSize(320, 30);
                 const lockName = lockNameN.addComponent(Label);
                 lockName.string = names[i] ?? `Char${i}`;
                 lockName.fontSize = 20;
+                lockName.lineHeight = 24;
                 lockName.color = new Color(174, 190, 204, 255);
                 lockName.overflow = Label.Overflow.SHRINK;
                 lockName.enableWrapText = false;
@@ -612,6 +617,7 @@ export class ScreenManager extends Component {
                 const hintLbl = hintN.addComponent(Label);
                 hintLbl.string = def?.unlockHint ?? '未解锁';
                 hintLbl.fontSize = 16;
+                hintLbl.lineHeight = 20;
                 hintLbl.color = new Color(255, 202, 112, 255);
                 hintLbl.overflow = Label.Overflow.SHRINK;
                 hintLbl.enableWrapText = true;
@@ -663,11 +669,18 @@ export class ScreenManager extends Component {
      * 填充。面板登记进 _panels，因此 hideAll()（含 GameManager 切状态）会一并关闭。
      */
     private _buildCharDetailPanel() {
-        const p = this._mkPanel('charDetail', 1280, 720);
+        const p = this._mkPanel('charDetail', visibleDesignWidth(), 720);
 
         const dim = p.addComponent(Graphics);
-        dim.fillColor = new Color(4, 6, 12, 170);
-        dim.fillRect(-640, -360, 1280, 720);
+        const drawDim = () => {
+            const width = visibleDesignWidth();
+            dim.clear();
+            dim.fillColor = new Color(4, 6, 12, 170);
+            dim.fillRect(-width / 2, -360, width, 720);
+        };
+        this._drawCharDetailDim = drawDim;
+        drawDim();
+        attachEnableRedraw(p, drawDim);
         // 拦截触摸：弹窗打开期间，落在遮罩上的点击不会穿透到选人卡按钮
         const block = (ev: any) => { ev.propagationStopped = true; };
         p.on(Node.EventType.TOUCH_START, block, this);
@@ -725,9 +738,10 @@ export class ScreenManager extends Component {
             }
             const hd = new Node(`SkillHead${k}`); hd.setParent(dlg);
             hd.setPosition(new Vec3(RX, headY[k], 0));
-            hd.addComponent(UITransform).setContentSize(RW, 26);
+            hd.addComponent(UITransform).setContentSize(RW, 30);
             const hl = hd.addComponent(Label);
             hl.fontSize = 19;
+            hl.lineHeight = 24;
             hl.horizontalAlign = HorizontalTextAlignment.LEFT;
             hl.overflow = Label.Overflow.SHRINK;
             hl.enableWrapText = false;

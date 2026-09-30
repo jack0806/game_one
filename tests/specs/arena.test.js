@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { ARENA_ART_SOLID_TOP, CHAPTER_ARENAS, arenaForChapter, arenasForChapter } = require('../dist/data/ChapterArenaDB');
 const {
-    isArenaFree, moveInArena, safeArenaPoint, firstArenaBulletHit, arenaSteerTarget,
+    isArenaFree, moveInArena, safeArenaPoint, firstArenaBulletHit, arenaSteerTarget, overlapsObstacle,
 } = require('../dist/core/ArenaGeometry');
 const { BulletPool } = require('../dist/entities/BulletController');
 const { makeMockGame, makePlayer } = require('./mockGame');
@@ -177,8 +177,12 @@ test('第一章三个残骸的上沿不再被玩家脚底踩入', () => {
     // 上沿来自当前透明素材在游戏尺寸下的不透明像素，而非逻辑矩形自身。
     const artTop = { 'west-wall': 255, 'east-wreck': 235, 'south-barrier': 519 };
     for (const prop of arena.obstacles) {
-        const point = moveInArena(arena, prop.x, prop.y - 160, 0, 250, 18);
+        const startY = Math.max(125, prop.y - 120);
+        assert.equal(isArenaFree(arena, prop.x, startY, 18), true, `${prop.id} 的起点可通行`);
+        const point = moveInArena(arena, prop.x, startY, 0, 250, 18);
+        assert.ok(point.y > startY + 20, `${prop.id} 从上方走到残骸边缘`);
         assert.ok(point.y + 37 <= artTop[prop.id] + 1, `${prop.id} 的脚底停在素材上沿之前`);
+        assert.ok(point.y + 37 >= artTop[prop.id] - 25, `${prop.id} 没有过早停步`);
     }
 });
 
@@ -188,9 +192,19 @@ test('六章全部独立残骸的实体像素上沿挡住玩家脚底', () => {
             const opaqueTopFraction = ARENA_ART_SOLID_TOP[prop.artKey];
             assert.ok(Number.isFinite(opaqueTopFraction), `${prop.artKey} 有实体像素边界数据`);
             const artTop = prop.y - prop.visualH / 2 + opaqueTopFraction * prop.visualH;
-            const point = moveInArena(layout, prop.x, prop.y - 160, 0, 250, 18);
+            const startY = Math.max(125, prop.y - 120);
+            // 个别北侧残骸嵌在背景建筑下方，正上方起点本身是建筑实体。
+            if (!isArenaFree(layout, prop.x, startY, 18)) {
+                assert.ok(layout.boundaries.some(b => overlapsObstacle(prop.x, startY, 18, b)),
+                    `${layout.id}/${prop.id} 的上方由背景建筑封住`);
+                continue;
+            }
+            const point = moveInArena(layout, prop.x, startY, 0, 250, 18);
+            assert.ok(point.y > startY + 20, `${layout.id}/${prop.id} 从合法起点抵达残骸`);
             assert.ok(point.y + 37 <= artTop + 1,
                 `${layout.id}/${prop.id} 脚底 ${point.y + 37} 不压入上沿 ${artTop}`);
+            assert.ok(point.y + 37 >= artTop - 25,
+                `${layout.id}/${prop.id} 脚底没有离上沿过远`);
         }
     }
 });

@@ -2,18 +2,35 @@
 //  LabelUtils.ts — 文字清晰度统一处理
 // ============================================================
 //
-// 现状根因：项目里所有 Label 全部走 Cocos 引擎默认路径——没有描边
-// (enableOutline)、没有加粗(isBold)，小字号文字在色彩丰富的章节背景图/
-// 特效贴图衬托下边缘发虚，读起来就是"糊成一片"（用户反馈"文字都很模糊"）。
-// Cocos 的抗锯齿由字体渲染器统一处理，代码侧唯一能显著改善描边清晰度的
-// 手段就是加黑色描边撑出文字轮廓，这里封装成统一入口，避免每处 Label
-// 创建点各写一遍还容易漏改。
+// 界面统一使用项目内简体中文 TTF，避免各设备以不同系统字体代替。
+// 已创建的页面标签在字体异步载入后统一切换；之后新建的标签由 styleLabel
+// 直接绑定。小字号和战斗浮字的描边仍由此处统一控制。
 //
 // 用法：Label 的 fontSize / color 赋值完成后调用 styleLabel(lbl)，
 // outlineWidth 会按当前 fontSize 自动选取（大字号描边更粗，小字号避免
 // 描边把字形吃掉变成黑团）。
 
-import { Label, Color, Node } from 'cc';
+import { Label, Color, Font, Node, resources } from 'cc';
+
+let uiFont: Font | null = null;
+
+/** 启动时载入项目内字体；异步完成后更新已创建的全部页面标签。 */
+export function loadUIFont(root: Node): void {
+    resources.load('fonts/NotoSansSC-Regular', Font, (err, font) => {
+        if (err || !font) {
+            console.warn('[LabelUtils] 无法加载界面字体', err);
+            return;
+        }
+        uiFont = font;
+        const applyToTree = (node: Node) => {
+            if (!node.isValid) return;
+            const label = node.getComponent(Label);
+            if (label?.isValid) label.font = font;
+            for (const child of node.children) applyToTree(child);
+        };
+        applyToTree(root);
+    });
+}
 
 export interface LabelStyleOpts {
     /** 是否加黑色描边，默认 true。 */
@@ -27,6 +44,7 @@ export interface LabelStyleOpts {
 }
 
 export function styleLabel(lbl: Label, opts: LabelStyleOpts = {}): void {
+    if (uiFont) lbl.font = uiFont;
     lbl.isBold = opts.bold ?? true;
     if (opts.outline ?? true) {
         lbl.enableOutline = true;
