@@ -5,7 +5,7 @@
 // ============================================================
 import {
     _decorator, Component, Node, Label, Graphics, Sprite,
-    Color, Vec3, UITransform, HorizontalTextAlignment, VerticalTextAlignment
+    Color, Vec3, UITransform, HorizontalTextAlignment, VerticalTextAlignment, sys
 } from 'cc';
 import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR } from '../core/Constants';
@@ -248,7 +248,8 @@ export class StatsPanel extends Component {
         fn.setPosition(new Vec3(0, -284, 0));
         fn.addComponent(UITransform).setContentSize(500, 22);
         const fl = fn.addComponent(Label);
-        fl.string = '按 M 键返回战斗';
+        fl.string = sys.hasFeature(sys.Feature.INPUT_TOUCH)
+            ? '点右上角「返回」回到战斗' : '按 M 键返回战斗';
         fl.fontSize = 15;
         fl.color = new Color(150, 160, 180, 230);
         styleLabel(fl);

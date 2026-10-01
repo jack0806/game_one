@@ -485,7 +485,7 @@ test('屏幕适配使用新版windowSize API,避免Creator预览控制台持续�
     assert.doesNotMatch(fitSource, /view\.getFrameSize\(\)/);
 });
 
-test('属性页清理上一帧浮字但不销毁持续战斗特效', () => {
-    assert.match(gameSource, /if \(s === 'stats'\) \{[\s\S]*this\._floatText\?\.clear\(\)/);
-    assert.doesNotMatch(gameSource, /if \(s === 'stats'\) \{[\s\S]{0,180}this\._particles\?\.clear\(\)/);
+test('暂停与属性页清理上一帧浮字但不销毁持续战斗特效', () => {
+    assert.match(gameSource, /if \(s === 'paused' \|\| s === 'stats'\) \{[\s\S]*this\._floatText\?\.clear\(\)/);
+    assert.doesNotMatch(gameSource, /if \(s === 'paused' \|\| s === 'stats'\) \{[\s\S]{0,180}this\._particles\?\.clear\(\)/);
 });

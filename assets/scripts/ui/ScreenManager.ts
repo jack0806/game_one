@@ -1,7 +1,7 @@
 import {
     _decorator, Component, Node, Label, Graphics, Sprite,
     Color, Vec3, UITransform, BlockInputEvents, HorizontalTextAlignment, VerticalTextAlignment,
-    Input, input, KeyCode, EventKeyboard, game,
+    Input, input, KeyCode, EventKeyboard, game, sys,
 } from 'cc';
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
@@ -12,7 +12,8 @@ import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
     isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
-import { visibleDesignWidth } from '../core/ScreenFit';
+import { visibleDesignWidth, visibleDesignHeight } from '../core/ScreenFit';
+import { CANVAS_H } from '../core/Constants';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
 import { SaveSelectUI } from './SaveSelectUI';
 import { LobbyUI } from './LobbyUI';
@@ -167,7 +168,7 @@ export class ScreenManager extends Component {
             backdrop?.art.getComponent(UITransform)?.setContentSize(width, 720);
             backdrop?.redraw();
         }
-        this._panels.get('exitVeil')?.getComponent(UITransform)?.setContentSize(width, 720);
+        this._panels.get('exitVeil')?.getComponent(UITransform)?.setContentSize(width, visibleDesignHeight());
         this._drawExitVeil?.();
         for (const name of ['gameover', 'chapterClear'] as ReportName[]) {
             this._panels.get(name)?.getComponent(UITransform)?.setContentSize(width, 720);
@@ -1164,13 +1165,14 @@ export class ScreenManager extends Component {
     }
 
     private _buildPausePanel() {
-        const p = this._mkPanel('pause', 500, 360);
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const p = this._mkPanel('pause', 500, touch ? 430 : 360);
 
         const bg = p.addComponent(Graphics);
-        drawHexPanel(bg, -250, -180, 500, 360, UI_PALETTE.cyan, 244);
+        drawHexPanel(bg, -250, touch ? -215 : -180, 500, touch ? 430 : 360, UI_PALETTE.cyan, 244);
 
         const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 130, 0));
+        tn.setPosition(new Vec3(0, touch ? 155 : 130, 0));
         tn.addComponent(UITransform).setContentSize(300, 44);
         const tl = tn.addComponent(Label);
         tl.string = '游戏暂停';
@@ -1178,9 +1180,11 @@ export class ScreenManager extends Component {
         styleLabel(tl);
 
         // 文案用中性的「退出战斗」：正式局退回存档大厅，测试房退回首页（由 GameManager 按来源分流）
-        const r = this._mkBtn(p, '继续游戏', 0,  30, 200, 44, new Color(40, 140, 80, 230));
-        const m = this._mkBtn(p, '退出战斗', 0, -40, 200, 44, new Color(60, 60, 90, 230));
-        const st = this._mkBtn(p, '设置', 0, -110, 200, 44, new Color(70, 105, 130, 230));
+        const btnW = touch ? 280 : 200;
+        const btnH = touch ? 72 : 44;
+        const r = this._mkBtn(p, '继续游戏', 0, touch ? 50 : 30, btnW, btnH, new Color(40, 140, 80, 230));
+        const m = this._mkBtn(p, '退出战斗', 0, touch ? -45 : -40, btnW, btnH, new Color(60, 60, 90, 230));
+        const st = this._mkBtn(p, '设置', 0, touch ? -140 : -110, btnW, btnH, new Color(70, 105, 130, 230));
         r.on(Node.EventType.TOUCH_END, () => this.onResumePressed?.(), this);
         m.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
         // 暂停中调音量：设置面板盖在暂停面板之上，关闭后回到暂停
@@ -1197,30 +1201,43 @@ export class ScreenManager extends Component {
         }
         const veil = new Node('exitVeil'); veil.setParent(this.node);
         this._panels.set('exitVeil', veil);
-        veil.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        veil.addComponent(UITransform).setContentSize(visibleDesignWidth(), visibleDesignHeight());
         const vg = veil.addComponent(Graphics);
-        const drawVeil = () => {
-            vg.clear();
-            vg.fillColor = new Color(4, 6, 12, 250);
-            const width = visibleDesignWidth();
-            vg.fillRect(-width / 2, -360, width, 720);
-        };
-        this._drawExitVeil = drawVeil;
-        drawVeil();
-        attachEnableRedraw(veil, drawVeil);
-        const t = new Node('T'); t.setParent(veil);
+        const content = new Node('Content'); content.setParent(veil);
+        const t = new Node('T'); t.setParent(content);
         t.addComponent(UITransform).setContentSize(700, 60);
         const tl = t.addComponent(Label);
         tl.string = '感谢游玩 · 游戏已退出';
         tl.fontSize = 40; tl.color = new Color(220, 228, 238, 255);
         styleLabel(tl);
-        const sub = new Node('S'); sub.setParent(veil);
+        const sub = new Node('S'); sub.setParent(content);
         sub.setPosition(new Vec3(0, -56, 0));
-        sub.addComponent(UITransform).setContentSize(700, 30);
+        sub.addComponent(UITransform).setContentSize(700, 68);
         const sl = sub.addComponent(Label);
         sl.string = '浏览器拦截了自动关闭，可直接关闭窗口/标签页退出';
         sl.fontSize = 16; sl.color = new Color(140, 158, 174, 230);
         styleLabel(sl);
+        const drawVeil = () => {
+            const width = visibleDesignWidth();
+            const height = visibleDesignHeight();
+            const portrait = height > CANVAS_H;
+            veil.getComponent(UITransform)!.setContentSize(width, height);
+            vg.clear();
+            vg.fillColor = new Color(4, 6, 12, 250);
+            vg.fillRect(-width / 2, -height / 2, width, height);
+            content.setScale(new Vec3(portrait ? 2.4 : 1, portrait ? 2.4 : 1, 1));
+            t.setPosition(new Vec3(0, portrait ? 50 : 0, 0));
+            tl.fontSize = portrait ? 44 : 40;
+            sub.setPosition(new Vec3(0, portrait ? -45 : -56, 0));
+            sl.fontSize = portrait ? 22 : 16;
+            sl.lineHeight = portrait ? 28 : 22;
+            sl.string = portrait
+                ? '浏览器未能自动关闭\n请关闭此窗口或标签页'
+                : '浏览器拦截了自动关闭，可直接关闭窗口/标签页退出';
+        };
+        this._drawExitVeil = drawVeil;
+        drawVeil();
+        attachEnableRedraw(veil, drawVeil);
     }
 
     // ── 设置页：音乐/音量滑杆 ──────────────────────────────
@@ -1279,7 +1296,9 @@ export class ScreenManager extends Component {
         hl.color = new Color(140, 158, 174, 220);
         styleLabel(hl);
 
-        const close = this._mkBtn(p, '关闭', 0, -150, 200, 44, new Color(60, 100, 80, 235));
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const close = this._mkBtn(p, '关闭', 0, -150, touch ? 240 : 200,
+            touch ? 72 : 44, new Color(60, 100, 80, 235));
         close.on(Node.EventType.TOUCH_END, () => this.hide('settings'), this);
     }
 
@@ -1296,22 +1315,24 @@ export class ScreenManager extends Component {
     private _mkVolumeSlider(parent: Node, y: number, label: string, initRatio: number,
                             onChange: (ratio: number) => void): { setRatio(r: number): void } {
         const WIDTH = 300;
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const hitHeight = touch ? 64 : 34;
         const row = new Node(`Slider_${label}`); row.setParent(parent);
         row.setPosition(new Vec3(40, y, 0));
-        row.addComponent(UITransform).setContentSize(520, 40);
+        row.addComponent(UITransform).setContentSize(520, hitHeight);
 
         const nameN = new Node('Name'); nameN.setParent(row);
         nameN.setPosition(new Vec3(-210, 0, 0));
         nameN.addComponent(UITransform).setContentSize(110, 26);
         const nl = nameN.addComponent(Label);
-        nl.string = label; nl.fontSize = 17;
+        nl.string = label; nl.fontSize = touch ? 20 : 17;
         nl.color = new Color(205, 218, 228, 255);
         nl.horizontalAlign = HorizontalTextAlignment.RIGHT;
         styleLabel(nl);
 
-        // 轨道：触摸热区(宽×34) + 绘制条(宽×10)
+        // 轨道：触屏端扩大隐形热区，绘制条仍保持细线便于观察当前值。
         const track = new Node('Track'); track.setParent(row);
-        track.addComponent(UITransform).setContentSize(WIDTH, 34);
+        track.addComponent(UITransform).setContentSize(WIDTH, hitHeight);
         const tg = track.addComponent(Graphics);
         const knob = new Node('Knob'); knob.setParent(track);
         const kg = knob.addComponent(Graphics);
@@ -1319,7 +1340,7 @@ export class ScreenManager extends Component {
         pctN.setPosition(new Vec3(WIDTH / 2 + 36, 0, 0));
         pctN.addComponent(UITransform).setContentSize(56, 26);
         const pct = pctN.addComponent(Label);
-        pct.fontSize = 16; pct.color = new Color(255, 214, 90, 255);
+        pct.fontSize = touch ? 18 : 16; pct.color = new Color(255, 214, 90, 255);
         styleLabel(pct);
 
         const draw = (r: number) => {
@@ -1332,11 +1353,11 @@ export class ScreenManager extends Component {
             tg.lineWidth = 1.5; tg.rect(-WIDTH / 2, -5, WIDTH, 10); tg.stroke();
             kg.clear();
             kg.fillColor = new Color(8, 14, 24, 250);
-            kg.circle(0, 0, 13); kg.fill();
+            kg.circle(0, 0, touch ? 16 : 13); kg.fill();
             kg.fillColor = new Color(120, 235, 205, 255);
-            kg.circle(0, 0, 9); kg.fill();
+            kg.circle(0, 0, touch ? 11 : 9); kg.fill();
             kg.strokeColor = new Color(180, 255, 235, 255);
-            kg.lineWidth = 1.5; kg.circle(0, 0, 13); kg.stroke();
+            kg.lineWidth = 1.5; kg.circle(0, 0, touch ? 16 : 13); kg.stroke();
         };
 
         const slider = { setRatio(r: number): void {} };
@@ -1355,7 +1376,7 @@ export class ScreenManager extends Component {
             onChange(ratio);
             return true;
         };
-        registerKeyboardFocus(track, WIDTH, 34, {
+        registerKeyboardFocus(track, WIDTH, hitHeight, {
             activate: () => { nudge(1); },
             onDirection: nudge,
         });

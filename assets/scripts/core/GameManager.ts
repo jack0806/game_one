@@ -284,6 +284,7 @@ export class GameManager extends Component {
     }
 
     update(rawDt: number) {
+        this._touchUI.refreshRotateHint();
         const dt = Math.min(rawDt, DT_MAX);
         this._visualTime += dt;
         this._visualDt = dt;
@@ -540,14 +541,16 @@ export class GameManager extends Component {
         // 虚拟操控在战斗与属性面板期间常驻：属性面板打开时触屏端靠右上按钮返回
         this._touchUI.node.active  = (s === 'playing' || s === 'testRoom' || s === 'stats');
         this._touchUI.setTestRoomMode(s === 'testRoom');
+        this._touchUI.setStatsMode(s === 'stats');
+        this._touchUI.refreshRotateHint();
         this._augUI.node.active    = false;
         this._shopUI.node.active   = false;
         this._statsUI.node.active  = false;
         this._testUI.node.active   = false;
 
-        // 属性页是高密度阅读界面；切换英雄/伤害等上一帧浮字若继续留在 UI 层，
-        // 会穿过不透明面板标题与技能说明。这里只清浮字，不销毁持续战斗特效。
-        if (s === 'stats') {
+        // 暂停与属性页是阅读界面；上一帧浮字会穿过面板标题。
+        // 这里只清浮字，不销毁持续战斗特效。
+        if (s === 'paused' || s === 'stats') {
             this._floatText?.clear();
             for (const label of this._floatLabels) label.active = false;
         }

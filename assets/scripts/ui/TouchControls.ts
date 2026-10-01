@@ -19,7 +19,7 @@ import {
     Color, Vec3, UITransform, sys, Input, input, view, game,
 } from 'cc';
 import { CANVAS_W, CANVAS_H } from '../core/Constants';
-import { visibleDesignWidth, applyScreenPolicy } from '../core/ScreenFit';
+import { visibleDesignWidth, visibleDesignHeight, applyScreenPolicy } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin } from '../core/UIStyle';
@@ -90,6 +90,10 @@ export class TouchControls extends Component {
     private _jumpButton?: Node;
     /** 竖屏提示遮罩（触屏端）。 */
     private _rotateHint!: Node;
+    private _rotateContent!: Node;
+    private _rotateTitle!: Label;
+    private _rotateSub!: Label;
+    private _rotateContinueLabel!: Label;
     /** 用户点「继续游戏」后不再弹竖屏遮罩（本局会话内）。 */
     private _hintDismissed = false;
     /** 全屏/横屏锁定成功后不再重复请求（失败可重试）。 */
@@ -101,6 +105,8 @@ export class TouchControls extends Component {
     private _skillBtns: SkillButtonView[] = [];
     /** 测试房底部有96px单位工具条，触控摇杆与技能弧整体上移避免遮挡/抢事件。 */
     private _testRoomMode = false;
+    /** 属性阅读页只保留右上角返回，隐藏战斗输入与视觉控件。 */
+    private _statsMode = false;
 
     /** 摇杆最大拖动半径（超出按边缘方向钳制）。 */
     private readonly STICK_R = 84;
@@ -115,6 +121,19 @@ export class TouchControls extends Component {
         if (this._testRoomMode === on) return;
         this._testRoomMode = on;
         this._layoutByVisible();
+    }
+    setStatsMode(on: boolean): void {
+        if (this._statsMode === on) return;
+        this._statsMode = on;
+        this._topRightBtns[0].active = !on;
+        this._topRightBtns[1].getChildByName('L')!.getComponent(Label)!.string = on ? '返回' : '属性';
+        if (!this._touchMode) return;
+        this._joyActive = false;
+        this._input?.setStick(0, 0);
+        this._stickZone.active = !on;
+        this._joyRoot.active = !on;
+        for (const btn of this._skillBtns) btn.node.active = !on;
+        if (this._jumpButton) this._jumpButton.active = !on;
     }
 
     onLoad() {
@@ -144,10 +163,11 @@ export class TouchControls extends Component {
         this._win?.removeEventListener?.('orientationchange', this._onViewChange);
         this._win?.removeEventListener?.('resize', this._onViewChange);
         if (this._layoutTimer) clearTimeout(this._layoutTimer);
+        if (this._rotateHint?.isValid && this._rotateHint.parent !== this.node) this._rotateHint.destroy();
     }
 
-    /** 竖屏时全屏提示旋转（触屏端每帧检测物理画布比例；用户选择继续后不再弹）。 */
-    update() {
+    /** 提示层是 UILayer 的常驻子节点；大厅关闭触控层时仍须刷新其显隐。 */
+    refreshRotateHint(): void {
         if (!this._touchMode || !this._rotateHint) return;
         const f = view.getFrameSize();
         this._rotateHint.active = !this._hintDismissed && f.height > f.width;
@@ -195,9 +215,29 @@ export class TouchControls extends Component {
                 0,
             ));
         }
-        // 竖屏遮罩铺满可见区（遮罩矩形绘制时已用超大宽度，无需重画）
+        // 竖屏遮罩按实际可见高度铺满；横竖切换时同步调整文案与触摸热区。
         this._jumpButton?.setPosition(new Vec3(right - 140, -292 + (this._testRoomMode ? 110 : 0), 0));
-        this._rotateHint.getComponent(UITransform)!.setContentSize(right * 2, CANVAS_H);
+        if (this._rotateHint) {
+            const height = visibleDesignHeight();
+            this._rotateHint.getComponent(UITransform)!.setContentSize(right * 2, height);
+            const g = this._rotateHint.getComponent(Graphics)!;
+            g.clear();
+            g.fillColor = new Color(4, 6, 12, 246);
+            g.fillRect(-right, -height / 2, right * 2, height);
+            const portrait = view.getFrameSize().height > view.getFrameSize().width;
+            this._rotateContent.setScale(new Vec3(portrait ? 2.4 : 1, portrait ? 2.4 : 1, 1));
+            this._rotateTitle.fontSize = portrait ? 42 : 34;
+            this._rotateTitle.node.setPosition(new Vec3(0, portrait ? 140 : 96, 0));
+            this._rotateSub.fontSize = portrait ? 22 : 16;
+            this._rotateSub.lineHeight = portrait ? 28 : 22;
+            this._rotateSub.string = portrait
+                ? '点击进入全屏并锁定横屏\n微信内请手动旋转设备'
+                : '点击屏幕进入全屏并锁定横屏；微信内请旋转设备';
+            this._rotateSub.node.setPosition(new Vec3(0, portrait ? -80 : -56, 0));
+            this._rotateContinueLabel.fontSize = portrait ? 22 : 17;
+            this._rotateContinueLabel.node.parent!.setPosition(new Vec3(0, portrait ? -190 : -124, 0));
+            this.refreshRotateHint();
+        }
     }
 
     // ── 构建 ─────────────────────────────────────────────────
@@ -259,14 +299,16 @@ export class TouchControls extends Component {
 
     /** 竖屏提示遮罩：压暗 + 旋转图标 + 文案 + 「继续游戏」逃生按钮（绝不困死在遮罩上）。 */
     private _buildRotateHint() {
-        const n = new Node('RotateHint'); n.setParent(this.node);
+        const n = new Node('RotateHint'); n.setParent(this.node.parent!);
         n.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
         const g = n.addComponent(Graphics);
         g.fillColor = new Color(4, 6, 12, 246);
-        // 超宽矩形绘制（±1600）：可见宽度变化时无需重画
         g.fillRect(-1600, -CANVAS_H / 2, 3200, CANVAS_H);
 
-        const ln = new Node('L'); ln.setParent(n);
+        const content = new Node('Content'); content.setParent(n);
+        this._rotateContent = content;
+
+        const ln = new Node('L'); ln.setParent(content);
         ln.setPosition(new Vec3(0, 96, 0));
         ln.addComponent(UITransform).setContentSize(460, 54);
         const lbl = ln.addComponent(Label);
@@ -274,9 +316,10 @@ export class TouchControls extends Component {
         lbl.fontSize = 34;
         lbl.color = new Color(235, 246, 250, 255);
         styleLabel(lbl);
+        this._rotateTitle = lbl;
 
         // 旋转图标：竖置手机外框 + 环形箭头
-        const iconN = new Node('Icon'); iconN.setParent(n);
+        const iconN = new Node('Icon'); iconN.setParent(content);
         iconN.setPosition(new Vec3(0, 18, 0));
         iconN.addComponent(UITransform).setContentSize(140, 120);
         const ig = iconN.addComponent(Graphics);
@@ -287,17 +330,19 @@ export class TouchControls extends Component {
         ig.fillColor = new Color(120, 200, 235, 235);
         ig.circle(Math.cos(Math.PI * 1.05) * 46, 2 + Math.sin(Math.PI * 1.05) * 46, 7); ig.fill();
 
-        const sub = new Node('S'); sub.setParent(n);
+        const sub = new Node('S'); sub.setParent(content);
         sub.setPosition(new Vec3(0, -56, 0));
-        sub.addComponent(UITransform).setContentSize(520, 36);
+        sub.addComponent(UITransform).setContentSize(520, 68);
         const sl = sub.addComponent(Label);
         sl.string = '点击屏幕进入全屏并锁定横屏；微信内请旋转设备';
         sl.fontSize = 16;
         sl.color = new Color(172, 192, 212, 235);
         styleLabel(sl);
+        this._rotateSub = sl;
 
         // 逃生口：全屏不可用（微信/部分浏览器）时也允许竖屏小窗继续游玩
-        const contBtn = this._mkHintButton(n, '继续游戏（竖屏小窗）', 0, -118, 280, 46);
+        const contBtn = this._mkHintButton(content, '继续游戏（竖屏小窗）', 0, -124, 300, 64);
+        this._rotateContinueLabel = contBtn.getChildByName('L')!.getComponent(Label)!;
         contBtn.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
             this._hintDismissed = true;
@@ -433,6 +478,7 @@ export class TouchControls extends Component {
     }
 
     private _onStickStart(ev: any) {
+        if (this._statsMode) return;
         const p = this._toLocal(ev);
         this._joyActive = true;
         this._joyBaseX = p.x; this._joyBaseY = p.y;
@@ -458,7 +504,7 @@ export class TouchControls extends Component {
         // 松手后摇杆回到左下角默认位置并保持可见（静态摇杆），不隐藏
         this._joyRoot.setPosition(new Vec3(this._joyHomeX, this._joyHomeY, 0));
         this._joyKnob.setPosition(Vec3.ZERO);
-        this._joyRoot.active = true;
+        this._joyRoot.active = !this._statsMode;
         this._input?.setStick(0, 0);
     }
 

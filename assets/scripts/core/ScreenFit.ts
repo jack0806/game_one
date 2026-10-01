@@ -5,8 +5,9 @@
 //  SHOW_ALL 保比例缩放会在左右留黑边。这里按屏幕比例动态选择策略：
 //   · 宽高比 ≥ 16:9 → FIXED_HEIGHT：高度锁定 720，可见宽度按比例延展，
 //     横向铺满全屏；游戏世界仍以 1280 居中，多出的宽度由背景与边缘UI吸收。
-//   · 宽高比 < 16:9（更方的屏幕）→ SHOW_ALL：保高留边，避免裁掉战斗区。
-import { director, view, screen, ResolutionPolicy } from 'cc';
+//   · 触屏竖屏 → FIXED_WIDTH：提示层铺满整个手机视口，仍保留横向战场宽度。
+//   · 其他宽高比 < 16:9 → SHOW_ALL：保高留边，避免裁掉战斗区。
+import { director, view, screen, sys, ResolutionPolicy } from 'cc';
 import { CANVAS_W, CANVAS_H } from './Constants';
 
 /** 当前可见设计宽度：宽于16:9时为实际可见宽度（>1280），否则为1280。 */
@@ -15,13 +16,20 @@ export function visibleDesignWidth(): number {
     return Math.max(CANVAS_W, Math.round(vis.width));
 }
 
+/** 触屏竖屏时的可见设计高度；横屏和普通窗口仍至少为 720。 */
+export function visibleDesignHeight(): number {
+    return Math.max(CANVAS_H, Math.round(view.getVisibleSize().height));
+}
+
 /** 按当前屏幕比例应用适配策略（窗口尺寸变化后可重复调用）。 */
 export function applyScreenPolicy(): void {
     const f = screen.windowSize;
     const wide = f.width / f.height >= CANVAS_W / CANVAS_H - 1e-3;
+    const portraitTouch = sys.hasFeature(sys.Feature.INPUT_TOUCH) && f.height > f.width;
     view.setDesignResolutionSize(
         CANVAS_W, CANVAS_H,
-        wide ? ResolutionPolicy.FIXED_HEIGHT : ResolutionPolicy.SHOW_ALL,
+        portraitTouch ? ResolutionPolicy.FIXED_WIDTH
+            : wide ? ResolutionPolicy.FIXED_HEIGHT : ResolutionPolicy.SHOW_ALL,
     );
     // 浏览器 canvas 已变宽时，Cocos 渲染窗口偶尔仍停在旧尺寸，右侧露黑条。
     // view 的 resize 事件通常会同步 root；这里仅在尺寸不一致时补齐。
