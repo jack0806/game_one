@@ -168,14 +168,14 @@ export class SaveSelectUI {
 
         // 删除按钮：独立于卡片点击区，第一次点变成红色「确认删除」，再点才真删。
         const deleteBtn = new Node('DeleteBtn'); deleteBtn.setParent(card);
-        deleteBtn.setPosition(new Vec3(120, 172, 0));
-        deleteBtn.addComponent(UITransform).setContentSize(56, 26);
-        applyHexButtonSkin(deleteBtn, 56, 26, new Color(78, 111, 135, 255));
+        deleteBtn.setPosition(new Vec3(108, 174, 0));
+        deleteBtn.addComponent(UITransform).setContentSize(80, 30);
+        applyHexButtonSkin(deleteBtn, 80, 30, new Color(78, 111, 135, 255));
         const dl = new Node('L'); dl.setParent(deleteBtn);
-        dl.addComponent(UITransform).setContentSize(50, 22);
+        dl.addComponent(UITransform).setContentSize(74, 26);
         const deleteLabel = dl.addComponent(Label);
-        deleteLabel.string = '删除'; deleteLabel.fontSize = 12;
-        deleteLabel.lineHeight = 15; deleteLabel.color = MUTED;
+        deleteLabel.string = '删除'; deleteLabel.fontSize = 14;
+        deleteLabel.lineHeight = 18; deleteLabel.color = MUTED;
         deleteLabel.horizontalAlign = HorizontalTextAlignment.CENTER;
         deleteLabel.verticalAlign = VerticalTextAlignment.CENTER;
         deleteLabel.overflow = Label.Overflow.SHRINK;

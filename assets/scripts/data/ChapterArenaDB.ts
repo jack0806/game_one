@@ -10,6 +10,8 @@ export interface ArenaSolid {
     h: number;
     /** 实心边界和高大残骸挡住双方弹体。 */
     blocksBullets: boolean;
+    /** 侧角细碰撞只补小半径单位；大单位的主矩形已覆盖同一贴图外沿。 */
+    maxActorRadius?: number;
 }
 
 export interface ArenaObstacle extends ArenaSolid {
@@ -18,6 +20,10 @@ export interface ArenaObstacle extends ArenaSolid {
     artKey: string;
     visualW: number;
     visualH: number;
+    /** 个别布局的侧角比同图其它位置更容易被走到，可单独补落地上沿。 */
+    sideTop?: { left?: number; right?: number };
+    /** 主矩形已能挡住较大单位时，不让细碰撞段扰动其绕行。 */
+    sideMaxRadius?: { left?: number; right?: number };
 }
 
 export interface ArenaLayout {
@@ -43,6 +49,13 @@ export const ARENA_ART_SOLID_TOP: Readonly<Record<string, number>> = {
     arena_vat_ch3: 98 / 1060,
     arena_wall_ch1: 139 / 768,
     arena_wreck_ch1: 112 / 961,
+};
+
+/** 圆形残骸侧角的可见实体起点；窄边碰撞只覆盖贴图真正落地的下半段。 */
+export const ARENA_ART_SIDE_TOP: Readonly<Record<string, { left?: number; right?: number }>> = {
+    arena_mech_ch5: { left: 0.69, right: 0.65 },
+    arena_portal_ch4: { right: 0.58 },
+    arena_reactor_ch6: { right: 0.55 },
 };
 
 function edge(id: string, left: number, top: number, right: number, bottom: number): ArenaSolid {
@@ -231,7 +244,7 @@ export const CHAPTER_ARENAS: readonly ArenaLayout[] = [
     {
         id: 'ch6-broken-frame', chapter: 6, boundaries: CHAPTER_EDGES[6],
         obstacles: [
-            { id: 'north-reactor', kind: 'reactor', x: 870, y: 245, w: 126, h: 64, artKey: 'arena_reactor_ch6', visualW: 174, visualH: 108, blocksBullets: true },
+            { id: 'north-reactor', kind: 'reactor', x: 870, y: 245, w: 126, h: 64, artKey: 'arena_reactor_ch6', visualW: 174, visualH: 108, blocksBullets: true, sideTop: { left: 0.60 }, sideMaxRadius: { left: 18 } },
             { id: 'west-support', kind: 'support', x: 285, y: 470, w: 104, h: 36, artKey: 'arena_support_ch6', visualW: 142, visualH: 72, blocksBullets: true },
         ],
     },

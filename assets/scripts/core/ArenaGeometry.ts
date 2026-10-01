@@ -2,18 +2,46 @@
 //  ArenaGeometry.ts — 无引擎依赖的角色、弹体、出生几何规则
 // ============================================================
 import { CANVAS_W, PLAYFIELD_BOTTOM } from './Constants';
-import { ARENA_ART_SOLID_TOP, ArenaLayout, ArenaObstacle, ArenaSolid } from '../data/ChapterArenaDB';
+import { ARENA_ART_SIDE_TOP, ARENA_ART_SOLID_TOP, ArenaLayout, ArenaObstacle, ArenaSolid } from '../data/ChapterArenaDB';
 
 export interface ArenaPoint { x: number; y: number }
 
 /** 玩家脚底比圆形碰撞半径低约 19px，另留 1px 防止渲染采样压线。 */
 const PLAYER_FOOT_OVERHANG = 20;
+const PLAYER_COLLISION_RADIUS = 16;
 const solidCache = new WeakMap<ArenaLayout, readonly ArenaSolid[]>();
 
 function arenaSolids(arena: ArenaLayout): readonly ArenaSolid[] {
     let solids = solidCache.get(arena);
     if (!solids) {
-        solids = arena.boundaries?.length ? [...arena.obstacles, ...arena.boundaries] : arena.obstacles;
+        const sideSolids: ArenaSolid[] = [];
+        for (const prop of arena.obstacles) {
+            const commonTop = ARENA_ART_SIDE_TOP[prop.artKey];
+            if (!commonTop && !prop.sideTop) continue;
+            const sideTop = { ...commonTop, ...prop.sideTop };
+            // 主矩形加玩家半径仍够不到贴图外沿时，仅补落地的侧角；直接加宽
+            // 整个主矩形会把侧角上方的空地也封死。
+            const sideReach = (prop.visualW - prop.w) / 2;
+            const width = sideReach - PLAYER_COLLISION_RADIUS + 1;
+            if (width <= 0) continue;
+            const bottom = prop.y + prop.h / 2;
+            for (const side of ['left', 'right'] as const) {
+                const fraction = sideTop[side];
+                if (fraction === undefined) continue;
+                const top = prop.y - prop.visualH / 2 + fraction * prop.visualH;
+                const innerX = prop.x + (side === 'left' ? -prop.w / 2 : prop.w / 2);
+                sideSolids.push({
+                    id: `${prop.id}-${side}-rim`,
+                    x: innerX + (side === 'left' ? -width / 2 : width / 2),
+                    y: (top + bottom) / 2,
+                    w: width,
+                    h: bottom - top,
+                    blocksBullets: prop.blocksBullets,
+                    maxActorRadius: prop.sideMaxRadius?.[side] ?? sideReach,
+                });
+            }
+        }
+        solids = [...arena.obstacles, ...(arena.boundaries ?? []), ...sideSolids];
         solidCache.set(arena, solids);
     }
     return solids;
@@ -37,6 +65,7 @@ function clampValue(value: number, min: number, max: number): number {
 
 /** 角色用圆形碰撞体；残骸逻辑体为轴对齐矩形。 */
 export function overlapsObstacle(x: number, y: number, radius: number, obstacle: ArenaSolid): boolean {
+    if (obstacle.maxActorRadius !== undefined && radius >= obstacle.maxActorRadius) return false;
     const nearestX = clampValue(x, obstacle.x - obstacle.w / 2, obstacle.x + obstacle.w / 2);
     const nearestY = clampValue(y, topOf(obstacle, true), obstacle.y + obstacle.h / 2);
     const dx = x - nearestX, dy = y - nearestY;
@@ -86,6 +115,7 @@ function firstSegmentHit(arena: ArenaLayout, ax: number, ay: number, bx: number,
     const dx = bx - ax, dy = by - ay;
     for (const obstacle of arenaSolids(arena)) {
         if (bulletOnly && !obstacle.blocksBullets) continue;
+        if (!bulletOnly && obstacle.maxActorRadius !== undefined && radius >= obstacle.maxActorRadius) continue;
         const left = obstacle.x - obstacle.w / 2 - radius;
         const right = obstacle.x + obstacle.w / 2 + radius;
         const top = topOf(obstacle, !bulletOnly) - radius;

@@ -226,6 +226,25 @@ test('第六章左侧断框与核心之间的碎石不让角色踩上去', () =>
     }
 });
 
+test('第四章遗迹与第六章核心的左侧碎块挡住从上方走来的玩家脚底', () => {
+    // 按运行时玩家半径与连续帧的小步长推进，避免一次大位移提前停住而误判通过。
+    for (const [chapter, x, visualTop] of [[4, 120, 430], [6, 240, 435]]) {
+        for (const layout of arenasForChapter(chapter)) {
+            const edges = { ...layout, obstacles: [] };
+            assert.equal(isArenaFree(edges, x, 360, 16), true, `${layout.id} 从合法地面起步`);
+            let y = 360;
+            for (let i = 0; i < 200; i++) {
+                const next = moveInArena(edges, x, y, 0, 2, 16);
+                if (next.y === y) break;
+                y = next.y;
+            }
+            const foot = y + 36;
+            assert.ok(foot >= visualTop - 8 && foot <= visualTop,
+                `${layout.id} 玩家走到碎块前且脚底不压入：${foot}`);
+        }
+    }
+});
+
 test('第二章右侧炉台斜坡挡住脚底且保留上方地面', () => {
     for (const layout of arenasForChapter(2)) {
         const upper = moveInArena(layout, 900, 420, 360, 0, 18);
@@ -289,6 +308,48 @@ test('六章全部独立残骸的实体像素上沿挡住玩家脚底', () => {
                 `${layout.id}/${prop.id} 脚底没有离上沿过远`);
         }
     }
+});
+
+test('传送门、机械和反应堆的落地侧角不让玩家从上方踩入', () => {
+    // 这些列在主矩形外，旧碰撞只与玩家圆形相切，角色会沿可见侧角穿过去。
+    const cases = [
+        ['ch4-rift', 'west-gate', 353, 282.8],
+        ['ch5-magnetic-rail', 'west-mech', 203, 294.1],
+        ['ch5-magnetic-rail', 'west-mech', 377, 289.9],
+        ['ch5-magnetic-rail', 'east-mech', 771, 376.8],
+        ['ch5-armored-islands', 'north-mech', 753, 274.1],
+        ['ch5-armored-islands', 'north-mech', 927, 269.9],
+        ['ch6-final-core', 'west-reactor', 349, 278.7],
+    ];
+    for (const [layoutId, propId, x, artTop] of cases) {
+        const layout = CHAPTER_ARENAS.find(a => a.id === layoutId);
+        const prop = layout.obstacles.find(o => o.id === propId);
+        const startY = Math.max(110, prop.y - prop.visualH / 2 - 60);
+        assert.equal(isArenaFree(layout, x, startY, 16), true, `${layoutId}/${propId} 从地面起步`);
+        let y = startY;
+        for (let i = 0; i < 180; i++) {
+            const next = moveInArena(layout, x, y, 0, 2, 16);
+            if (next.y === y) break;
+            y = next.y;
+        }
+        const foot = y + 36;
+        assert.ok(foot > startY + 40, `${layoutId}/${propId} 走到了侧角前`);
+        assert.ok(foot >= artTop - 8 && foot <= artTop + 1,
+            `${layoutId}/${propId} 脚底 ${foot} 与贴图侧角上沿 ${artTop} 对齐`);
+    }
+});
+
+test('第六章第二套反应堆左缘挡住斜向贴边且保留外侧通路', () => {
+    const layout = CHAPTER_ARENAS.find(a => a.id === 'ch6-broken-frame');
+    let point = { x: 753, y: 136 };
+    assert.equal(isArenaFree(layout, point.x, point.y, 16), true);
+    for (let i = 0; i < 150; i++) {
+        point = moveInArena(layout, point.x, point.y, 2, 2, 16);
+    }
+    assert.ok(point.x >= 789 && point.x <= 793, `玩家已贴到反应堆左缘：${point.x}`);
+    assert.ok(point.y + 36 <= 258, `脚底未沿侧角滑入贴图：${point.y + 36}`);
+    const bypass = moveInArena(layout, 750, 136, 0, 160, 16);
+    assert.ok(bypass.y >= 290, `残骸左侧地面仍可走：${bypass.y}`);
 });
 
 test('玩家沿断墙滑动且不会穿过薄墙', () => {
