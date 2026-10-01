@@ -191,12 +191,12 @@ export class MetaPageUI {
         mainTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('main'));
         sideTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('side'));
         challengeTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('challenge'));
-        this._taskBranchLabel = this._mkLabel(page, 48, 222, 370, 28, '', 13, MUTED, HorizontalTextAlignment.RIGHT);
+        this._taskBranchLabel = this._mkLabel(page, 48, 222, 370, 28, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
 
         const treePanel = new Node('TaskTreePanel'); treePanel.setParent(page);
         treePanel.setPosition(new Vec3(-178, -35, 0));
         const treeG = treePanel.addComponent(Graphics); drawPanel(treeG, 856, 478, CYAN);
-        this._mkLabel(treePanel, -217, 208, 380, 26, '任务链路 / 点击节点查看详情', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(treePanel, -217, 208, 380, 26, '任务链路 / 点击节点查看详情', 14, MUTED, HorizontalTextAlignment.LEFT);
 
         for (const branch of ['main', 'side', 'challenge'] as QuestBranch[]) {
             const root = new Node(`${branch}_tree`); root.setParent(treePanel);
@@ -225,7 +225,7 @@ export class MetaPageUI {
                 n.addComponent(UITransform).setContentSize(170, 104);
                 const g = n.addComponent(Graphics);
                 const title = this._mkLabel(n, 0, 15, 144, 30, def.name, 16, WHITE);
-                const status = this._mkLabel(n, 0, -24, 144, 20, '', 12, MUTED);
+                const status = this._mkLabel(n, 0, -24, 144, 22, '', 14, MUTED);
                 const view = { def, node: n, graphics: g, title, status };
                 this._taskViews.push(view);
                 n.on(Node.EventType.TOUCH_END, () => this._selectQuest(def));
@@ -235,15 +235,15 @@ export class MetaPageUI {
         const detail = new Node('TaskDetail'); detail.setParent(page);
         detail.setPosition(new Vec3(431, -35, 0));
         const detailG = detail.addComponent(Graphics); drawPanel(detailG, 334, 478, GOLD);
-        this._mkLabel(detail, 0, 208, 268, 22, '任务简报', 12, GOLD, HorizontalTextAlignment.LEFT);
-        this._taskDetailChapter = this._mkLabel(detail, 0, 169, 266, 22, '', 12, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(detail, 0, 208, 268, 22, '任务简报', 14, GOLD, HorizontalTextAlignment.LEFT);
+        this._taskDetailChapter = this._mkLabel(detail, 0, 169, 266, 22, '', 14, MUTED, HorizontalTextAlignment.LEFT);
         this._taskDetailName = this._mkLabel(detail, 0, 131, 266, 34, '', 21, WHITE, HorizontalTextAlignment.LEFT);
-        this._taskDetailDesc = this._mkLabel(detail, 0, 54, 268, 90, '', 14, new Color(197, 214, 226, 255), HorizontalTextAlignment.LEFT, true);
+        this._taskDetailDesc = this._mkLabel(detail, 0, 54, 268, 90, '', 16, new Color(197, 214, 226, 255), HorizontalTextAlignment.LEFT, true);
         this._mkDivider(detail, 0, -5, 268, CYAN);
-        this._taskDetailObjective = this._mkLabel(detail, 0, -36, 268, 45, '', 13, WHITE, HorizontalTextAlignment.LEFT, true);
-        this._taskDetailProgress = this._mkLabel(detail, 0, -88, 268, 24, '', 13, CYAN, HorizontalTextAlignment.LEFT);
+        this._taskDetailObjective = this._mkLabel(detail, 0, -36, 268, 50, '', 16, WHITE, HorizontalTextAlignment.LEFT, true);
+        this._taskDetailProgress = this._mkLabel(detail, 0, -88, 268, 24, '', 15, CYAN, HorizontalTextAlignment.LEFT);
         this._mkDivider(detail, 0, -119, 268, GOLD);
-        this._mkLabel(detail, 0, -148, 268, 20, '奖励预览', 12, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(detail, 0, -148, 268, 22, '奖励预览', 14, MUTED, HorizontalTextAlignment.LEFT);
         this._taskDetailReward = this._mkLabel(detail, 0, -181, 268, 30, '', 16, GOLD, HorizontalTextAlignment.LEFT);
 
         this._showTaskBranch('main');
@@ -339,9 +339,9 @@ export class MetaPageUI {
                 if (def.unlocked) this._mkArt(card, def.artKey, 88, 88, 0, 27);
                 else this._mkLabel(card, 0, 28, 88, 88, '?', 56, new Color(105, 126, 143, 255));
 
-                this._mkLabel(card, 0, -47, 164, 26, def.unlocked ? def.name : '未知样本', 14,
+                this._mkLabel(card, 0, -47, 164, 26, def.unlocked ? def.name : '未知样本', 16,
                     def.unlocked ? WHITE : new Color(126, 139, 151, 255));
-                this._mkLabel(card, 0, -70, 164, 18, def.unlocked ? def.rarity : '未解锁', 11,
+                this._mkLabel(card, 0, -70, 164, 20, def.unlocked ? def.rarity : '未解锁', 13,
                     def.unlocked ? hexColor(def.color) : new Color(91, 105, 118, 255));
                 card.on(Node.EventType.TOUCH_END, () => this._selectCodex(def));
             });
@@ -350,7 +350,7 @@ export class MetaPageUI {
         const detail = new Node('CodexDetail'); detail.setParent(page);
         detail.setPosition(new Vec3(431, -35, 0));
         const detailG = detail.addComponent(Graphics); drawPanel(detailG, 334, 478, new Color(69, 204, 255, 255));
-        this._mkLabel(detail, 0, 208, 268, 22, '样本分析', 12, new Color(69, 204, 255, 255), HorizontalTextAlignment.LEFT);
+        this._mkLabel(detail, 0, 208, 268, 22, '样本分析', 14, new Color(69, 204, 255, 255), HorizontalTextAlignment.LEFT);
 
         const artFrame = new Node('DetailArtFrame'); artFrame.setParent(detail);
         artFrame.setPosition(new Vec3(0, 103, 0));
@@ -365,11 +365,11 @@ export class MetaPageUI {
         this._codexQuestion = this._mkLabel(detail, 0, 103, 150, 150, '?', 74, new Color(107, 130, 148, 255));
 
         this._codexDetailName = this._mkLabel(detail, 0, 2, 268, 32, '', 20, WHITE, HorizontalTextAlignment.LEFT);
-        this._codexDetailSub = this._mkLabel(detail, 0, -29, 268, 22, '', 12, new Color(69, 204, 255, 255), HorizontalTextAlignment.LEFT);
+        this._codexDetailSub = this._mkLabel(detail, 0, -29, 268, 22, '', 14, new Color(69, 204, 255, 255), HorizontalTextAlignment.LEFT);
         this._mkDivider(detail, 0, -53, 268, new Color(69, 204, 255, 255));
-        this._codexDetailDesc = this._mkLabel(detail, 0, -111, 268, 94, '', 13, new Color(194, 211, 224, 255), HorizontalTextAlignment.LEFT, true);
-        this._codexDetailTraits = this._mkLabel(detail, 0, -174, 268, 28, '', 12, GOLD, HorizontalTextAlignment.LEFT);
-        this._codexLockHint = this._mkLabel(detail, 0, -205, 268, 22, '', 11, MUTED, HorizontalTextAlignment.LEFT);
+        this._codexDetailDesc = this._mkLabel(detail, 0, -111, 268, 94, '', 16, new Color(194, 211, 224, 255), HorizontalTextAlignment.LEFT, true);
+        this._codexDetailTraits = this._mkLabel(detail, 0, -174, 268, 28, '', 14, GOLD, HorizontalTextAlignment.LEFT);
+        this._codexLockHint = this._mkLabel(detail, 0, -205, 268, 22, '', 13, MUTED, HorizontalTextAlignment.LEFT);
 
         this._showCodexCategory('monster');
     }
@@ -430,24 +430,24 @@ export class MetaPageUI {
             const c = hexColor(r[1]);
             const dot = new Node(`Dot_${r[0]}`); dot.setParent(legend); dot.setPosition(new Vec3(-164 + i * 103, 0, 0));
             const dg = dot.addComponent(Graphics); dg.fillColor = c; dg.circle(-22, 0, 4); dg.fill();
-            this._mkLabel(dot, 12, 0, 62, 20, r[0], 11, c);
+            this._mkLabel(dot, 12, 0, 62, 22, r[0], 13, c);
         });
-        this._mkLabel(page, 387, 226, 360, 24, '稀有度代表达成条件的特殊性  ·  奖励为预览', 12, MUTED, HorizontalTextAlignment.RIGHT);
+        this._mkLabel(page, 387, 226, 360, 24, '稀有度代表达成条件的特殊性  ·  奖励为预览', 14, MUTED, HorizontalTextAlignment.RIGHT);
 
         ACHIEVEMENTS.forEach((def, i) => {
-            const col = i % 4, row = Math.floor(i / 4);
+            const col = i % 3, row = Math.floor(i / 3);
             const card = new Node(`Achievement_${def.id}`); card.setParent(page);
-            card.setPosition(new Vec3(-426 + col * 284, 127 - row * 158, 0));
-            card.addComponent(UITransform).setContentSize(270, 146);
+            card.setPosition(new Vec3(-390 + col * 390, 135 - row * 128, 0));
+            card.addComponent(UITransform).setContentSize(370, 116);
             const g = card.addComponent(Graphics);
 
-            this._mkArt(card, `ui_icon_${def.artKey}`, 50, 50, -92, 27);
-            const name = this._mkLabel(card, 13, 43, 130, 25, def.name, 16, WHITE, HorizontalTextAlignment.LEFT);
-            const rarity = this._mkLabel(card, 103, 44, 55, 20, def.rarity, 12, GOLD, HorizontalTextAlignment.RIGHT);
-            this._mkLabel(card, 25, 14, 154, 38, def.desc, 12, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT, true);
-            this._mkLabel(card, 0, -27, 220, 20, `奖励  ${def.reward}`, 12, GOLD, HorizontalTextAlignment.LEFT);
-            const progress = this._mkLabel(card, 82, -52, 64, 18, '', 11, MUTED, HorizontalTextAlignment.RIGHT);
-            const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-17, -53, 0));
+            this._mkArt(card, `ui_icon_${def.artKey}`, 50, 50, -150, 17);
+            const name = this._mkLabel(card, -24, 30, 200, 30, def.name, 19, WHITE, HorizontalTextAlignment.LEFT);
+            const rarity = this._mkLabel(card, 146, 31, 62, 24, def.rarity, 14, GOLD, HorizontalTextAlignment.RIGHT);
+            this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
+            this._mkLabel(card, -38, -24, 200, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
+            const progress = this._mkLabel(card, 145, -45, 70, 18, '', 12, MUTED, HorizontalTextAlignment.RIGHT);
+            const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-28, -47, 0));
             const pg = bar.addComponent(Graphics);
             this._achievementCards.push({ def, graphics: g, name, rarity, progress, progressGraphics: pg });
         });
@@ -467,23 +467,23 @@ export class MetaPageUI {
 
             view.graphics.clear();
             view.graphics.fillColor = done ? new Color(22, 20, 10, 248) : new Color(7, 13, 23, 246);
-            clippedPath(view.graphics, 270, 146, 12); view.graphics.fill();
+            clippedPath(view.graphics, 370, 116, 12); view.graphics.fill();
             view.graphics.fillColor = new Color(c.r, c.g, c.b, done ? 32 : 12);
-            clippedPath(view.graphics, 264, 140, 10); view.graphics.fill();
+            clippedPath(view.graphics, 364, 110, 10); view.graphics.fill();
             view.graphics.strokeColor = new Color(c.r, c.g, c.b, done ? 235 : 115);
             view.graphics.lineWidth = done ? 2.5 : 1.2;
-            clippedPath(view.graphics, 270, 146, 12); view.graphics.stroke();
+            clippedPath(view.graphics, 370, 116, 12); view.graphics.stroke();
             view.graphics.strokeColor = new Color(c.r, c.g, c.b, 220); view.graphics.lineWidth = 3;
-            view.graphics.moveTo(-109, 68); view.graphics.lineTo(109, 68); view.graphics.stroke();
+            view.graphics.moveTo(-157, 54); view.graphics.lineTo(157, 54); view.graphics.stroke();
 
             view.name.color = done ? WHITE : new Color(165, 179, 191, 255);
             view.rarity.color = c;
             view.progress.string = done ? '已达成' : `${Math.floor(current)}/${view.def.goal}`;
             view.progress.color = done ? new Color(104, 230, 150, 255) : MUTED;
             const pg = view.progressGraphics; pg.clear();
-            pg.fillColor = new Color(24, 33, 43, 255); pg.fillRect(-91, -3, 146, 6);
+            pg.fillColor = new Color(24, 33, 43, 255); pg.fillRect(-122, -3, 240, 6);
             pg.fillColor = done ? new Color(89, 222, 143, 255) : c;
-            pg.fillRect(-91, -3, 146 * Math.max(0, Math.min(1, ratio)), 6);
+            pg.fillRect(-122, -3, 240 * Math.max(0, Math.min(1, ratio)), 6);
         }
         const legendary = ACHIEVEMENTS.filter(a => a.rarity === '传奇').length;
         this._achievementSummary.string = `已解锁 ${unlocked} / ${ACHIEVEMENTS.length}   ·   传奇成就 ${legendary}`;

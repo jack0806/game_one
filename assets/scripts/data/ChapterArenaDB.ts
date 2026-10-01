@@ -132,6 +132,8 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-reactor-rubble-right', 925, 70, 1080, 190),
         edge('upper-right-reactor-base', 1170, 255, 1280, 325),
         edge('left-broken-frame', 0, 230, 165, 430),
+        edge('left-broken-frame-rubble', 165, 405, 205, 455),
+        edge('left-core-rubble-transition', 205, 435, 245, 480),
         edge('lower-left-core', 0, 470, 220, 648),
         edge('lower-left-core-front', 220, 500, 270, 620),
         edge('lower-right-core', 1090, 435, 1280, 648),

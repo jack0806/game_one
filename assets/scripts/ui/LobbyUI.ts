@@ -2,12 +2,12 @@
 //  LobbyUI.ts — 存档大厅（选定存档后的中枢页面）
 // ============================================================
 // 左侧：存档概要 + 任务树/图鉴/成就档案入口（自首页迁移而来）。
-// 右侧：出击传送门——纯 Graphics 逐帧绘制的三层旋转符文环 + 环绕粒子，
+// 右侧：出击传送门——透明装甲门框、独立核心光与旋转符文环，
 // 点击进入角色选择开战。页面由代码构建，不依赖 prefab。
 
 import {
     Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite,
-    UITransform, Vec3, VerticalTextAlignment,
+    UITransform, Vec3, VerticalTextAlignment, tween,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
@@ -48,6 +48,7 @@ function drawPanel(g: Graphics, w: number, h: number, accent: Color, alpha = 242
 
 export class LobbyUI {
     private readonly _panel: Node;
+    private _portalCoreGfx!: Graphics;
     private _portalGfx!: Graphics;
     private _portalT = 0;
     private _summaryTitle!: Label;
@@ -122,7 +123,7 @@ export class LobbyUI {
         veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
 
-        this._mkLabel(page, -467, 326, 190, 20, 'OPERATION LOBBY / 存档大厅', 12,
+        this._mkLabel(page, -467, 326, 240, 20, 'OPERATION LOBBY / 存档大厅', 12,
             new Color(CYAN.r, CYAN.g, CYAN.b, 220), HorizontalTextAlignment.LEFT);
         this._mkLabel(page, -272, 291, 560, 48, '作战大厅', 30, WHITE, HorizontalTextAlignment.LEFT);
 
@@ -140,11 +141,11 @@ export class LobbyUI {
         const panel = new Node('SaveSummary'); panel.setParent(page);
         panel.setPosition(new Vec3(-431, 130, 0));
         const g = panel.addComponent(Graphics); drawPanel(g, 334, 226, CYAN);
-        this._mkLabel(panel, 0, 88, 268, 24, '当前档案', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(panel, 0, 88, 268, 24, '当前档案', 14, MUTED, HorizontalTextAlignment.LEFT);
         this._summaryTitle = this._mkLabel(panel, 0, 56, 268, 34, '', 22, GOLD, HorizontalTextAlignment.LEFT);
         const rowY = [12, -24, -60, -92];
         for (let i = 0; i < 4; i++) {
-            this._summaryLines.push(this._mkLabel(panel, 0, rowY[i], 292, 26, '', 13,
+            this._summaryLines.push(this._mkLabel(panel, 0, rowY[i], 292, 26, '', 14,
                 new Color(197, 214, 226, 255), HorizontalTextAlignment.LEFT));
         }
     }
@@ -155,7 +156,7 @@ export class LobbyUI {
         dock.setPosition(new Vec3(-431, -160, 0));
         dock.addComponent(UITransform).setContentSize(334, 300);
 
-        this._mkLabel(dock, 0, 128, 334, 22, '情报终端', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(dock, 0, 128, 334, 22, '情报终端', 14, MUTED, HorizontalTextAlignment.LEFT);
         const entries: [MetaPageName, string, Color][] = [
             ['tasks', '任务树', CYAN],
             ['codex', '图鉴', new Color(62, 164, 235, 255)],
@@ -167,11 +168,53 @@ export class LobbyUI {
         });
     }
 
-    /** 右侧：出击传送门（逐帧重绘的三层符文环 + 环绕粒子）。 */
+    /** 右侧：透明装甲门框、独立核心光与 Tween 旋转符文环。 */
     private _buildPortal(page: Node): void {
         const portal = new Node('Portal'); portal.setParent(page);
         portal.setPosition(new Vec3(430, -20, 0));
         portal.addComponent(UITransform).setContentSize(360, 460);
+
+        const coreNode = new Node('PortalCore'); coreNode.setParent(portal);
+        coreNode.addComponent(UITransform).setContentSize(340, 340);
+        this._portalCoreGfx = coreNode.addComponent(Graphics);
+
+        const coreArtNode = new Node('PortalCoreArt'); coreArtNode.setParent(portal);
+        coreArtNode.addComponent(UITransform).setContentSize(184, 184);
+        const coreArt = coreArtNode.addComponent(Sprite);
+        coreArt.sizeMode = Sprite.SizeMode.CUSTOM;
+        coreArt.color = new Color(220, 248, 255, 185);
+        applyArtSprite(coreArt, 'fx_hex_ring');
+        tween(coreArtNode).by(32, { angle: 360 }).repeatForever().start();
+
+        const frameNode = new Node('PortalFrame'); frameNode.setParent(portal);
+        frameNode.addComponent(UITransform).setContentSize(340, 340);
+        const frame = frameNode.addComponent(Sprite);
+        frame.sizeMode = Sprite.SizeMode.CUSTOM;
+        frame.trim = false;
+        applyArtSprite(frame, 'ui_lobby_portal_frame');
+
+        const inner = new Node('PortalInnerRunes'); inner.setParent(portal);
+        inner.addComponent(UITransform).setContentSize(340, 340);
+        const innerGfx = inner.addComponent(Graphics);
+        innerGfx.strokeColor = new Color(VIOLET.r, VIOLET.g, VIOLET.b, 180);
+        innerGfx.lineWidth = 3;
+        for (let i = 0; i < 6; i++) {
+            const a = i * Math.PI / 3;
+            innerGfx.arc(0, 0, 103, a, a + 0.33, false); innerGfx.stroke();
+        }
+        tween(inner).by(18, { angle: -360 }).repeatForever().start();
+
+        const outer = new Node('PortalOuterRunes'); outer.setParent(portal);
+        outer.addComponent(UITransform).setContentSize(340, 340);
+        const outerGfx = outer.addComponent(Graphics);
+        outerGfx.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 205);
+        outerGfx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            const a = i * Math.PI / 4;
+            outerGfx.arc(0, 0, 156, a, a + 0.32, false); outerGfx.stroke();
+        }
+        tween(outer).by(26, { angle: 360 }).repeatForever().start();
+
         const gfxNode = new Node('PortalGfx'); gfxNode.setParent(portal);
         gfxNode.addComponent(UITransform).setContentSize(360, 460);
         this._portalGfx = gfxNode.addComponent(Graphics);
@@ -182,44 +225,28 @@ export class LobbyUI {
         });
 
         this._mkLabel(portal, 0, -180, 340, 40, '出击传送门', 26, WHITE);
-        this._mkLabel(portal, 0, -212, 340, 24, '选择难度  ·  选择英雄', 13, CYAN);
+        this._mkLabel(portal, 0, -212, 340, 24, '选择难度  ·  选择英雄', 15, CYAN);
     }
 
     /** t=0 画静态门体；t>0 按时间推进旋转/脉冲/环绕粒子。 */
     private _drawPortal(t: number): void {
+        const core = this._portalCoreGfx;
         const g = this._portalGfx;
-        if (!g) return;
+        if (!core || !g) return;
+        core.clear();
         g.clear();
 
         // 中心辉光：三层低透明度圆叠加出发光核心
         const glow: [number, number][] = [[86, 22], [62, 38], [36, 64]];
         for (const [r, a] of glow) {
-            g.fillColor = new Color(40, 224, 218, a);
-            g.circle(0, 0, r + Math.sin(t * 2.4) * 3); g.fill();
+            core.fillColor = new Color(40, 224, 218, a);
+            core.circle(0, 0, r + Math.sin(t * 2.4) * 3); core.fill();
         }
 
-        // 内环：整圈呼吸脉冲
+        // 核心边缘脉冲，门框和旋转符文保持独立层级。
         const pulse = 108 + Math.sin(t * 2.4) * 5;
         g.strokeColor = new Color(40, 224, 218, 130);
-        g.lineWidth = 5; g.circle(0, 0, pulse); g.stroke();
-
-        // 中环：6 段符文弧，反向旋转
-        g.strokeColor = new Color(184, 104, 255, 190);
-        g.lineWidth = 3;
-        const midBase = -t * 0.9;
-        for (let i = 0; i < 6; i++) {
-            const a = midBase + i * (Math.PI * 2 / 6);
-            g.arc(0, 0, 132, a, a + 0.42, false); g.stroke();
-        }
-
-        // 外环：8 段长弧，正向旋转
-        g.strokeColor = new Color(40, 224, 218, 210);
-        g.lineWidth = 3;
-        const outBase = t * 0.6;
-        for (let i = 0; i < 8; i++) {
-            const a = outBase + i * (Math.PI * 2 / 8);
-            g.arc(0, 0, 158, a, a + 0.52, false); g.stroke();
-        }
+        g.lineWidth = 3; g.circle(0, 0, pulse); g.stroke();
 
         // 环绕粒子：5 颗青/紫交替，沿最大环缓慢公转
         for (let i = 0; i < 5; i++) {

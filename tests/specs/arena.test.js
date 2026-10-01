@@ -214,6 +214,18 @@ test('第四章左侧遗迹过渡碎石封住两段建筑之间的空档', () =>
     }
 });
 
+test('第六章左侧断框与核心之间的碎石不让角色踩上去', () => {
+    for (const layout of arenasForChapter(6)) {
+        const edges = { ...layout, obstacles: [] };
+        const upper = moveInArena(edges, 400, 430, -360, 0, 18);
+        const lower = moveInArena(edges, 400, 450, -360, 0, 18);
+        assert.ok(upper.x >= 255, `${layout.id} 断框下沿碎石：${upper.x}`);
+        assert.ok(lower.x >= 255, `${layout.id} 核心上沿碎石：${lower.x}`);
+        assert.equal(isArenaFree(edges, 300, 430, 18), true,
+            `${layout.id} 碎石右侧仍可通行`);
+    }
+});
+
 test('第二章右侧炉台斜坡挡住脚底且保留上方地面', () => {
     for (const layout of arenasForChapter(2)) {
         const upper = moveInArena(layout, 900, 420, 360, 0, 18);
