@@ -108,7 +108,7 @@ test('六章底图边缘的实体建筑挡住角色且保留中心通路', () =>
     }
     assert.ok(moveInArena(arena, 640, 150, -700, 0, 18).x >= 143);
     // 左侧岗哨的箱体延伸到画面约 x=155、y=390，角色脚底不能压在箱体上。
-    assert.ok(moveInArena(arena, 640, 350, -700, 0, 18).x >= 183);
+    assert.ok(moveInArena(arena, 640, 380, -700, 0, 18).x >= 183);
     assert.ok(moveInArena(arena, 300, 520, -400, 0, 18).x >= 243);
     // 各章侧边的熔炉、培养罐、装甲和破损框架都画在背景里，也要挡住角色。
     for (const [chapter, minX] of [[2, 148], [3, 163], [5, 158], [6, 183]]) {
@@ -345,7 +345,7 @@ test('左上外凸炉台、培养罐与支架碎石不被脚底踩入', () => {
 
 test('背景岗哨和遗迹的上沿不被角色脚底踩入', () => {
     const guardrail = moveInArena(arena, 145, 220, 0, 180, 18);
-    assert.ok(guardrail.y + 37 <= 270, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);
+    assert.ok(guardrail.y + 37 <= 385, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);
     const ruin = moveInArena(arenaForChapter(4), 150, 360, 0, 200, 18);
     assert.ok(ruin.y + 37 <= 470, `第四章遗迹脚底停在上沿：${ruin.y + 37}`);
 });
@@ -539,4 +539,15 @@ test('友敌高速弹均在残骸前释放，穿透数不允许穿墙', () => {
     hostile.updateEnemyBullets(0.05, player, game);
     assert.equal(hostile.active.length, 0);
     assert.equal(player.hp, 100);
+});
+
+// 用户标注的第一章左上红框：横杆下方路面可通过，落地机柜仍挡住玩家。
+test('第一章悬空横杆下可以通行且不能穿入护栏机柜', () => {
+    for (const layout of CHAPTER_ARENAS.filter(a => a.chapter === 1)) {
+        const next = moveInArena(layout, 125, 230, 0, 105, 16);
+        assert.ok(next.y >= 334, `${layout.id} 可走过红框区域：${next.y}`);
+        const blocked = moveInArena(layout, next.x, next.y, 0, 100, 16);
+        assert.ok(blocked.y <= 350, `${layout.id} 机柜前停下：${blocked.y}`);
+        assert.equal(isArenaFree(layout, blocked.x, blocked.y, 16), true);
+    }
 });

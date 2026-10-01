@@ -25,10 +25,10 @@ const webShellStyle = fs.readFileSync(path.join(root, 'build-templates/web-deskt
 const webBuild = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-desktop.json'), 'utf8'));
 const webBuildMobile = JSON.parse(fs.readFileSync(path.join(root, 'tools/build-web-mobile.json'), 'utf8'));
 
-test('首页标题与按钮为真实节点，操作区使用半透明圆整面板', () => {
+test('首页标题与按钮为真实节点，独立按钮直接叠在场景上', () => {
     assert.match(screenSource, /setContentSize\(568, 410\)/);
     assert.match(screenSource, /new Node\('MenuActions'\)/);
-    assert.match(screenSource, /drawHexPanel\(menuPanelG, -250, -197, 500, 390, UI_PALETTE\.cyan, 219\)/);
+    assert.doesNotMatch(screenSource, /menuPanelG/);
     assert.doesNotMatch(screenSource, /fillRect\(-284, -205, 568, 410\)/);
     assert.doesNotMatch(screenSource, /dockG\.fillRect/);
 });
@@ -152,43 +152,17 @@ test('成就墙一屏展示数量、稀有度特殊性、图片、进度与奖�
     assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{ACHIEVEMENTS\.length\}/);
 });
 
-test('角色介绍卡有圆整统一底板，底部为「选择出战/英雄介绍」双按钮', () => {
-    assert.match(screenSource, /setContentSize\(360, 280\)/);
-    assert.match(screenSource, /drawHexPanel\(cardG, -180, -140, 360, 280, cardCol, locked \? 218 : 242\)/);
-    assert.match(screenSource, /cardG\.roundRect\(-180, -140, 360, 280, 18\)/);
-    assert.match(screenSource, /cardG\.lineWidth = locked \? 1 : 2/);
-    assert.match(screenSource, /const corner = 18/);
-    assert.match(screenSource, /frameN\.setPosition\(new Vec3\(0, 84, 0\)\)/);
-    assert.match(screenSource, /this\._loadPortrait\(card, `char_\$\{charId\}`, 88, 84\)/);
-    assert.match(screenSource, /skN\.setPosition\(new Vec3\(0, touch \? -26 : -40, 0\)\)/);
-    assert.match(screenSource, /nameN\.setPosition\(new Vec3\(0, touch \? 26 : 12, 0\)\)/);
-    assert.match(screenSource, /const cy = 100 - row \* 295/);
-    assert.match(screenSource, /hintN\.setPosition\(new Vec3\(0, -110, 0\)\)/);
-    // 选择出战按钮直接开战；整张卡不再绑定开局回调，看介绍时不会误触
-    assert.match(screenSource, /'选择出战'/);
-    assert.match(screenSource, /selBtn\.on\(Node\.EventType\.TOUCH_END,\s*\(\) => this\.onCharSelected\?\.\(CHARS\[idx\]!\), this\);/);
-    const charCards = screenSource.slice(screenSource.indexOf('private _buildCharSelectPanel()'),
-        screenSource.indexOf('private _buildCharDetailPanel()'));
-    assert.doesNotMatch(charCards, /card\.on\(Node\.EventType\.TOUCH_END/);
-});
-
-test('选人页与英雄介绍文字保持可读字号：速览14px、锁定提示16px', () => {
-    // 卡片速览正文不再使用11/12px小字
-    assert.match(screenSource, /skLbl\.fontSize = 14/);
-    assert.match(screenSource, /skLbl\.lineHeight = 21/);
-    assert.match(screenSource, /hintLbl\.fontSize = 16/);
-    assert.match(screenSource, /lockLbl\.fontSize = 22/);
-    // 桌面保留40px按钮，触屏扩至72px，保证手机上的文字和点击区域。
-    assert.match(screenSource, /'选择出战', -85, touch \? -104 : -110,\s*150, touch \? 72 : 40/);
-    assert.match(screenSource, /'英雄介绍', 85, touch \? -104 : -110,\s*150, touch \? 72 : 40/);
-    assert.match(screenSource, /sys\.hasFeature\(sys\.Feature\.INPUT_TOUCH\) \? 72 : 42/);
-    assert.doesNotMatch(screenSource, /skLbl\.fontSize = 1[123]/);
+test('英雄名单点击只切换预览，出战必须确认且锁定英雄不能开局', () => {
+    assert.match(screenSource, /tile\.on\(Node\.EventType\.TOUCH_END, \(\) => focusHero\(i\)/);
+    assert.match(screenSource, /if \(def\.unlocked\) this\.onCharSelected\?\.\(def\)/);
+    assert.match(screenSource, /UI_PALETTE\.reward, locked/);
+    assert.match(screenSource, /def\.unlockHint/);
 });
 
 test('英雄介绍弹窗展示被动与Q/E/R详细描述、冷却与基础属性', () => {
     // 入口：卡片「英雄介绍」按钮打开 charDetail 模态弹窗
     assert.match(screenSource, /'英雄介绍'/);
-    assert.match(screenSource, /introBtn\.on\(Node\.EventType\.TOUCH_END,\s*\(\) => this\.showCharDetail\(CHARS\[idx\]!\), this\);/);
+    assert.match(screenSource, /detail\.on\(Node\.EventType\.TOUCH_END,\s*\(\) => this\.showCharDetail\(def\), this\);/);
     assert.match(screenSource, /'charDetail'/);
     // 遮罩拦截触摸，防止点击穿透到背后的选人卡
     assert.match(screenSource, /const block = \(ev: any\) => \{ ev\.propagationStopped = true; \};/);
@@ -215,20 +189,12 @@ test('英雄介绍弹窗文字放大后保持可读：属性16px、技能标题1
     assert.match(screenSource, /dl\.fontSize = 16/);
     assert.match(screenSource, /dl\.lineHeight = 24/);
     // 桌面保持52px，触屏增至72px且左右留缝。
-    assert.match(screenSource, /'选择出战', touch \? -145 : -130, -234,\s*260, touch \? 72 : 52/);
-    assert.match(screenSource, /'返回', touch \? 145 : 130, -234,\s*260, touch \? 72 : 52/);
+    assert.match(screenSource, /'选择出战', -174, -234,\s*260, touch \? 72 : 52/);
+    assert.match(screenSource, /'返回', 174, -234,\s*260, touch \? 72 : 52/);
     // 只检查详情弹窗的说明 Label；地图页另有独立的 15px 描述。
     const detailSource = screenSource.slice(screenSource.indexOf('private _buildCharDetailPanel()'),
         screenSource.indexOf('private _buildGameoverPanel()'));
     assert.doesNotMatch(detailSource, /dl\.fontSize = 1[345]/);
-});
-
-test('未解锁角色遮罩位于立绘上方,不会再把Portrait推回前景', () => {
-    assert.match(screenSource, /const dim = new Node\('LockDim'\); dim\.setParent\(card\)/);
-    assert.doesNotMatch(screenSource, /dim\.setSiblingIndex\(1\)/);
-    assert.match(screenSource, /dim\.setPosition\(Vec3\.ZERO\)/);
-    assert.match(screenSource, /setContentSize\(360, 280\)/);
-    assert.match(screenSource, /fillRect\(-180, -140, 360, 280\)/);
 });
 
 test('玩家护盾在粒子上层包住角色，敌人持续护盾仍使用能量壳', () => {
@@ -246,19 +212,19 @@ test('战斗角色关闭auto-trim，避免裁剪框被强塞为正方形后横�
 
 test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
     assert.match(hudSource, /Math\.min\(1, d\.shield \/ d\.maxShield\)/);
-    assert.match(hudSource, /ShieldFg', -500, 304/);
-    assert.match(hudSource, /HpLbl', -380, 336/);
-    assert.match(hudSource, /ShieldLbl', -380, 312/);
+    assert.match(hudSource, /ShieldFg', -508, 290/);
+    assert.match(hudSource, /HpLbl', -388, 337/);
+    assert.match(hudSource, /ShieldLbl', -388, 305/);
     assert.match(hudSource, /this\._hpLabel\.fontSize = 16/);
-    assert.match(hudSource, /this\._shieldLabel\.fontSize = 14/);
+    assert.match(hudSource, /this\._shieldLabel\.fontSize = 13/);
     assert.match(hudSource, /生命  \$\{Math\.ceil\(d\.hp\)\} \/ \$\{Math\.round\(d\.maxHp\)\}/);
     assert.match(hudSource, /护盾  \$\{Math\.ceil\(d\.shield\)\} \/ \$\{Math\.round\(d\.maxShield\)\}/);
-    assert.match(hudSource, /BossRoot', -this\.BOSS_W \/ 2, 282/);
-    assert.match(hudSource, /ln\.setPosition\(new Vec3\(this\.BOSS_W \/ 2, this\.BOSS_H \/ 2, 0\)\)/);
+    assert.match(hudSource, /BossRoot', -this\.BOSS_W \/ 2, 238/);
+    assert.match(hudSource, /ln\.setPosition\(this\.BOSS_W \/ 2, 41\)/);
 });
 
 test('商店使用不透明独立面板，神秘强化作为二级模态弹窗', () => {
-    assert.match(shopSource, /drawHexPanel\(pg, -320, -280, 640, 560, UI_PALETTE\.cyan, 252\)/);
+    assert.match(shopSource, /drawHexPanel\(pg, -340, -320, 680, 640, UI_PALETTE\.muted, 252\)/);
     assert.match(shopSource, /resume\(\) \{[\s\S]*this\.node\.active = true;[\s\S]*this\.fitToVisible\(\)/);
     assert.match(gameSource, /case 'augment':[\s\S]*this\._shopUI\.hide\(\)[\s\S]*this\._shopUI\.resume\(\)/);
 });

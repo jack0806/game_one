@@ -787,23 +787,14 @@ export class GameManager extends Component {
         const railY = wall.y + wall.h / 2;
         const y = CANVAS_H / 2 - railY;
         const edgesOnly: ArenaLayout = { ...this._arena, obstacles: [] };
-        const accent = this._arenaRailAccent();
+        // 路缘用间隔铺装与短警示漆标记，不再横贯战场绘制发光护栏。
         const drawSegment = (left: number, right: number) => {
-            if (right - left < 40) return;
-            const localLeft = left - CANVAS_W / 2;
-            const localRight = right - CANVAS_W / 2;
-            g.strokeColor = new Color(9, 18, 29, 220);
-            g.lineWidth = 11;
-            g.moveTo(localLeft, y); g.lineTo(localRight, y); g.stroke();
-            g.strokeColor = accent;
-            g.lineWidth = 3;
-            g.moveTo(localLeft, y); g.lineTo(localRight, y); g.stroke();
-            for (let x = left; x <= right; x += 40) {
-                const localX = x - CANVAS_W / 2;
-                g.fillColor = new Color(17, 31, 44, 235);
-                g.rect(localX - 6, y - 9, 12, 18); g.fill();
-                g.fillColor = accent;
-                g.rect(localX - 3, y + 3, 6, 3); g.fill();
+            for (let x = left + 28; x + 48 < right; x += 120) {
+                const lx = x - CANVAS_W / 2;
+                g.fillColor = new Color(91, 106, 115, 155);
+                g.fillRect(lx, y - 2, 48, 4);
+                g.fillColor = new Color(185, 149, 83, 175);
+                g.fillRect(lx + 16, y - 2, 16, 4);
             }
         };
         let spanLeft = -1;
@@ -3491,10 +3482,12 @@ export class GameManager extends Component {
                     : displayedVisualR;
                 const bar = entityHealthBar(bodyX, bodyY, r, displayedVisualR, topOffset);
                 const { x: rx, y: ry, width: rw, height: rh } = bar;
-                g.fillColor = new Color(40, 40, 40, 180);
-                g.fillRect(rx, ry, rw, rh);
-                g.fillColor = new Color(220, 60, 60, 230);
-                g.fillRect(rx, ry, rw * (e.hp / e.maxHp), rh);
+                g.fillColor = new Color(12, 24, 34, 235);
+                g.roundRect(rx - 2, ry - 2, rw + 4, rh + 4, 3); g.fill();
+                g.fillColor = e.isMiniBoss ? new Color(224, 175, 99, 255) : new Color(192, 122, 100, 245);
+                g.fillRect(rx, ry, rw * Math.max(0, Math.min(1, e.hp / e.maxHp)), rh);
+                g.fillColor = new Color(240, 219, 181, 130);
+                g.fillRect(rx, ry + rh - 1, rw * Math.max(0, Math.min(1, e.hp / e.maxHp)), 1);
                 // 护盾剩余：血条上方细蓝条
                 if (e.shieldActive && e.shieldHp > 0 && e.maxShieldHp > 0) {
                     const sh = 3;

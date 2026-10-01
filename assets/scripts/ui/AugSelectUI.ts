@@ -6,7 +6,7 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, attachEnableRedraw, HexButtonSkin,
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin,
     keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 
@@ -135,9 +135,9 @@ export class AugSelectUI extends Component {
         n.setPosition(new Vec3(-60, 312, 0));
         n.addComponent(UITransform).setContentSize(520, 42);
         const lbl = n.addComponent(Label);
-        lbl.string = '— 海克斯商店 —';
+        lbl.string = '海克斯强化';
         lbl.fontSize = 26;
-        lbl.color = new Color(255, 215, 90, 255);
+        lbl.color = UI_PALETTE.text;
         styleLabel(lbl);
 
         const g = new Node('Gold'); g.setParent(this.node);
@@ -380,17 +380,11 @@ export class AugSelectUI extends Component {
         const col = Color.fromHEX(new Color(), hex);
 
         c.bg.clear();
-        c.bg.fillColor = new Color(30, 27, 38, 255);
-        c.bg.fillRect(-this.CARD_W / 2, -this.CARD_H / 2, this.CARD_W, this.CARD_H);
-        if (!sold) {
-            // 稀有度色调层只作为暗色衬底（低 alpha），保证说明文字对比度
-            c.bg.fillColor = new Color(col.r, col.g, col.b, 28);
-            c.bg.fillRect(-this.CARD_W / 2, -this.CARD_H / 2, this.CARD_W, this.CARD_H);
-        }
-        c.bg.strokeColor = sold ? new Color(70, 74, 84, 200) : col;
-        c.bg.lineWidth = 2;
-        c.bg.rect(-this.CARD_W / 2, -this.CARD_H / 2, this.CARD_W, this.CARD_H);
-        c.bg.stroke();
+        // 与补给商店共用蓝灰装甲底板，稀有度只占上沿色带。
+        drawHexPanel(c.bg, -this.CARD_W / 2, -this.CARD_H / 2, this.CARD_W, this.CARD_H,
+            sold ? new Color(70, 84, 96) : new Color(96, 123, 144), 255);
+        c.bg.fillColor = sold ? new Color(70, 84, 96) : col;
+        c.bg.fillRect(-this.CARD_W / 2 + 18, this.CARD_H / 2 - 6, this.CARD_W - 36, 3);
 
         const price = aug._price ?? 0;
         const afford = gold >= price && !sold;

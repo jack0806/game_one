@@ -84,7 +84,9 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('top-structure', 0, 0, 1280, 44),
         edge('upper-left-building', 0, 0, 125, 195),
         edge('upper-right-building', 1135, 0, 1280, 225),
-        edge('left-guardrail', 0, 270, 165, 440),
+        // 横杆悬空，碰撞只覆盖立柱；下方机柜另设落地轮廓。
+        edge('left-guardrail', 0, 290, 92, 440),
+        edge('left-guardrail-cabinet', 0, 385, 165, 440),
         edge('lower-left-wreckage', 0, 475, 225, 648),
         edge('lower-left-van-front', 225, 545, 285, 625),
         edge('lower-right-crates', 1110, 492, 1280, 648),

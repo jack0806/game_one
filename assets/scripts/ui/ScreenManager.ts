@@ -414,14 +414,6 @@ export class ScreenManager extends Component {
         const menuActions = new Node('MenuActions'); menuActions.setParent(p);
         menuActions.setPosition(new Vec3(0, -70, 0));
         menuActions.addComponent(UITransform).setContentSize(568, 410);
-        const menuPanelG = menuActions.addComponent(Graphics);
-        const drawMenuPanel = () => {
-            menuPanelG.clear();
-            drawHexPanel(menuPanelG, -250, -197, 500, 390, UI_PALETTE.cyan, 219);
-        };
-        drawMenuPanel();
-        attachEnableRedraw(menuActions, drawMenuPanel);
-
         const btn = this._mkBtn(menuActions, '开始游戏', 0, 105, 450, 64, new Color(20, 220, 210, 255));
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
 
@@ -510,8 +502,8 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 280, 0));
         tn.addComponent(UITransform).setContentSize(500, 44);
         const tl = tn.addComponent(Label);
-        tl.string = '— 选择作战地图 —';
-        tl.fontSize = 28; tl.color = new Color(255, 215, 90, 255);
+        tl.string = '选择作战地图';
+        tl.fontSize = 28; tl.color = UI_PALETTE.text;
         styleLabel(tl);
 
         const sub = new Node('Sub'); sub.setParent(p);
@@ -650,8 +642,8 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 280, 0));
         tn.addComponent(UITransform).setContentSize(500, 44);
         const tl = tn.addComponent(Label);
-        tl.string = '— 选择作战难度 —';
-        tl.fontSize = 28; tl.color = new Color(255, 215, 90, 255);
+        tl.string = '选择作战难度';
+        tl.fontSize = 28; tl.color = UI_PALETTE.text;
         styleLabel(tl);
 
         const sub = new Node('Sub'); sub.setParent(p);
@@ -713,193 +705,97 @@ export class ScreenManager extends Component {
 
     private _buildCharSelectPanel() {
         const p = this._mkPanel('charSelect', 1280, 720);
-
         const bg = p.addComponent(Graphics);
         bg.fillColor = UI_PALETTE.deep;
         bg.fillRect(-1600, -360, 3200, 720);
         this._buildSelectionBackdrop(p);
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const label = (parent: Node, name: string, text: string, x: number, y: number,
+                       w: number, h: number, size: number, color = UI_PALETTE.text) => {
+            const n = new Node(name); n.setParent(parent); n.setPosition(x, y);
+            n.addComponent(UITransform).setContentSize(w, h);
+            const l = n.addComponent(Label); l.string = text;
+            l.fontSize = size; l.lineHeight = size + 7; l.color = color;
+            l.horizontalAlign = HorizontalTextAlignment.LEFT;
+            l.verticalAlign = VerticalTextAlignment.CENTER;
+            l.overflow = Label.Overflow.SHRINK;
+            styleLabel(l, { outline: false });
+            return l;
+        };
+        const back = this._mkBtn(p, '返回大厅', -510, 305, 170, touch ? 72 : 48, UI_PALETTE.muted);
+        back.on(Node.EventType.TOUCH_END, () => this.onCharSelectBack?.(), this);
+        label(p, 'T', '选择出战英雄', 0, 305, 600, 44, 30).horizontalAlign = HorizontalTextAlignment.CENTER;
+        this._charDiffLabel = label(p, 'DiffBadge', '', 130, 260, 920, 25, 15, UI_PALETTE.muted);
 
-        // 选人页位于存档大厅之后：左上角提供返回大厅出口（卡片在 y≤240，
-        // 按钮放 320 高度不与标题/卡片重叠）。
-        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160,
-            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
-        backBtn.on(Node.EventType.TOUCH_END, () => this.onCharSelectBack?.(), this);
-
-        const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 280, 0));
-        tn.addComponent(UITransform).setContentSize(500, 44);
-        const tl = tn.addComponent(Label);
-        tl.string = '— 选择角色 —';
-        tl.fontSize = 28; tl.color = new Color(255, 215, 90, 255);
-        styleLabel(tl);
-
-        // 标题下的作战难度徽标：玩家在难度选择页点选后由 setRunDifficulty() 填充
-        const diffN = new Node('DiffBadge'); diffN.setParent(p);
-        diffN.setPosition(new Vec3(0, 250, 0));
-        diffN.addComponent(UITransform).setContentSize(700, 22);
-        this._charDiffLabel = diffN.addComponent(Label);
-        this._charDiffLabel.string = '';
-        this._charDiffLabel.fontSize = 15;
-        this._charDiffLabel.color = new Color(150, 172, 190, 235);
-        styleLabel(this._charDiffLabel);
-
-        // 6 character cards in a 3×2 grid: portrait on top, nameplate button below
-        const names  = CHARS.map(c => c.name);
-        // 卡框、名牌、战斗棋子和技能特效共用 CharacterDB 的身份色。
-        // 旧手写数组把 Vivian/Olia/Graf/Liana 分别错配成粉/绿/黄/紫，
-        // 选人页与进入战斗后的视觉语言完全脱节。
-        const colors = CHARS.map(c => Color.fromHEX(new Color(), c.color));
-        for (let i = 0; i < 6; i++) {
-            const col = i % 3, row = Math.floor(i / 3);
-            const cx = -400 + col * 400;
-            // 卡片加高到280px容纳14px速览正文与40px双按钮行；行距295保证
-            // 两排卡片之间仍有15px间隙，底排距画布底边保留25px安全区。
-            const cy = 100 - row * 295;
-
-            const card = new Node(`Card_${i}`); card.setParent(p);
-            card.setPosition(new Vec3(cx, cy, 0));
-            card.addComponent(UITransform).setContentSize(360, 280);
-
-            const idx = i;
-            const def = CHARS[idx];
-            const charId = def?.id;
-            const locked = !!def && !def.unlocked;
-            const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
-
-            // 整张卡提供低对比实体底板，把居中的头像、名牌和说明收束为一组；
-            // 旧版只有头像框与名牌，四行左对齐文字像漂在页面背景上。
-            const cardG = card.addComponent(Graphics);
-            const cardCol = colors[i] ?? new Color(80, 140, 180, 255);
-            drawHexPanel(cardG, -180, -140, 360, 280, cardCol, locked ? 218 : 242);
-            // 整张角色卡才是实际点击单位，因此身份色选框必须包住完整的
-            // “立绘—名牌—定位”信息组。只框头像会误导为头像裁切框或选中态。
-            cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, locked ? 72 : 188);
-            cardG.lineWidth = locked ? 1 : 2;
-            cardG.roundRect(-180, -140, 360, 280, 18); cardG.stroke();
-            if (!locked) {
-                cardG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 255);
-                cardG.lineWidth = 3;
-                const corner = 18;
-                for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-                    const x = sx * 178, y = sy * 138;
-                    cardG.moveTo(x, y - sy * corner); cardG.lineTo(x, y); cardG.lineTo(x - sx * corner, y);
-                    cardG.stroke();
-                }
-            }
-
-            // 头像框收窄到96px，为底部「选择/介绍」双按钮行腾出高度。
-            const frameN = new Node('PortraitFrame'); frameN.setParent(card);
-            frameN.setPosition(new Vec3(0, 84, 0));
-            frameN.addComponent(UITransform).setContentSize(96, 96);
-            const frameG = frameN.addComponent(Graphics);
-            frameG.fillColor = new Color(9, 15, 24, 245);
-            frameG.fillRect(-48, -48, 96, 96);
-            frameG.strokeColor = new Color(cardCol.r, cardCol.g, cardCol.b, 150);
-            frameG.lineWidth = 1.5;
-            frameG.rect(-48, -48, 96, 96); frameG.stroke();
-
-            if (charId) this._loadPortrait(card, `char_${charId}`, 88, 84);
-
-            // 名牌从按钮降为纯标签：整卡点击不再直接开战，出战入口收口到底部
-            // 「选择出战」按钮，玩家想先看技能时不会误触开局。
-            const nameN = new Node('Name'); nameN.setParent(card);
-            nameN.setPosition(new Vec3(0, touch ? 26 : 12, 0));
-            nameN.addComponent(UITransform).setContentSize(320, 30);
-            const nameLbl = nameN.addComponent(Label);
-            nameLbl.string = names[i] ?? `Char${i}`;
-            nameLbl.fontSize = 20;
-            nameLbl.lineHeight = 24;
-            nameLbl.color = locked
-                ? new Color(150, 150, 150, 220)
-                : (colors[i] ?? new Color(80, 140, 180, 255));
-            nameLbl.overflow = Label.Overflow.SHRINK;
-            nameLbl.enableWrapText = false;
-            styleLabel(nameLbl);
-
+        // 当前英雄占据主舞台，名单只负责切换；完整技能说明在介绍页展开。
+        const focusPanels: Node[] = [];
+        const markers: Graphics[] = [];
+        const focusHero = (idx: number) => {
+            focusPanels.forEach((n, i) => { n.active = i === idx; });
+            markers.forEach((g, i) => {
+                g.clear();
+                if (i !== idx) return;
+                g.fillColor = UI_PALETTE.reward;
+                g.fillRect(-76, -62, 152, 4);
+            });
+        };
+        const roles = ['贯穿射击 / 爆发输出', '炮台部署 / 火力支援', '近身作战 / 吸血续航',
+            '时空切换 / 灵活突袭', '混沌法术 / 范围压制', '远程狙击 / 冰霜控制'];
+        CHARS.forEach((def, i) => {
+            const accent = Color.fromHEX(new Color(), def.color);
+            const focus = new Node(`HeroFocus_${i}`); focus.setParent(p); focus.setPosition(0, 45);
+            focus.addComponent(UITransform).setContentSize(1180, 360);
+            const g = focus.addComponent(Graphics);
+            const draw = () => {
+                g.clear();
+                drawHexPanel(g, -590, -180, 1180, 360, new Color(86, 116, 139), 242);
+                g.fillColor = new Color(11, 24, 36, 210);
+                g.roundRect(-570, -158, 326, 316, 12); g.fill();
+                g.fillColor = accent; g.fillRect(-225, -146, 3, 290);
+            };
+            draw(); attachEnableRedraw(focus, draw);
+            const portrait = new Node('PortraitMount'); portrait.setParent(focus); portrait.setPosition(-407, 6);
+            this._loadPortrait(portrait, `char_${def.id}`, 296, 0);
+            label(focus, 'HeroName', def.name, 170, 125, 730, 48, 34);
+            label(focus, 'Role', roles[i], 170, 81, 730, 28, 17, accent);
+            label(focus, 'Passive', `被动  ${def.desc}`, 170, 30, 730, 66, 19, UI_PALETTE.muted);
+            const keys = ['q', 'e', 'r'] as const;
+            keys.forEach((key, k) => {
+                const x = -174 + k * 246;
+                const icon = new Node(`Skill_${key}`); icon.setParent(focus); icon.setPosition(x, -45);
+                icon.addComponent(UITransform).setContentSize(36, 36);
+                const sp = icon.addComponent(Sprite); sp.sizeMode = Sprite.SizeMode.CUSTOM;
+                applyArtSprite(sp, `ui_icon_${def.skillIcons[key]}`);
+                label(focus, `SkillName_${key}`, `${key.toUpperCase()}  ${splitSkillText(def.skills[key])[0]}`,
+                    x + 116, -45, 180, 34, 17);
+            });
+            const locked = !def.unlocked;
+            const select = this._mkBtn(focus, locked ? '尚未解锁' : '确认出战', 365, -130, 300, 64,
+                UI_PALETTE.reward, locked);
+            select.on(Node.EventType.TOUCH_END, () => { if (def.unlocked) this.onCharSelected?.(def); }, this);
             if (locked) {
-                // Dim the whole card and show a lock badge + unlock hint instead
-                // of wiring the select callback — clicking a locked card does nothing.
-                const dim = new Node('LockDim'); dim.setParent(card);
-                // LockDim 创建时已是卡片最上层。不要再塞回 sibling 1：Portrait
-                // 本身也在 sibling 1，插入后会把立绘推到遮罩上方，造成“黑框只遮
-                // 下半张卡、角色仍全亮”的层级穿帮。后续锁标与提示继续创建，
-                // 自然位于遮罩之上。
-                dim.setPosition(Vec3.ZERO);
-                dim.addComponent(UITransform).setContentSize(360, 280);
-                const dimG = dim.addComponent(Graphics);
-                dimG.fillColor = new Color(0, 0, 0, 115);
-                dimG.fillRect(-180, -140, 360, 280);
-
-                const lockNameN = new Node('LockName'); lockNameN.setParent(card);
-                lockNameN.setPosition(new Vec3(0, touch ? 26 : 12, 0));
-                lockNameN.addComponent(UITransform).setContentSize(320, 30);
-                const lockName = lockNameN.addComponent(Label);
-                lockName.string = names[i] ?? `Char${i}`;
-                lockName.fontSize = 20;
-                lockName.lineHeight = 24;
-                lockName.color = new Color(174, 190, 204, 255);
-                lockName.overflow = Label.Overflow.SHRINK;
-                lockName.enableWrapText = false;
-                styleLabel(lockName);
-
-                const lockN = new Node('LockIcon'); lockN.setParent(card);
-                lockN.setPosition(new Vec3(0, 56, 0));
-                lockN.addComponent(UITransform).setContentSize(180, 40);
-                const lockLbl = lockN.addComponent(Label);
-                lockLbl.string = '未解锁'; lockLbl.fontSize = 22;
-                lockLbl.color = new Color(220, 220, 220, 255);
-                styleLabel(lockLbl);
-
-                const hintN = new Node('LockHint'); hintN.setParent(card);
-                hintN.setPosition(new Vec3(0, -110, 0));
-                hintN.addComponent(UITransform).setContentSize(344, 30);
-                const hintLbl = hintN.addComponent(Label);
-                hintLbl.string = def?.unlockHint ?? '未解锁';
-                hintLbl.fontSize = 16;
-                hintLbl.lineHeight = 20;
-                hintLbl.color = new Color(255, 202, 112, 255);
-                hintLbl.overflow = Label.Overflow.SHRINK;
-                hintLbl.enableWrapText = true;
-                styleLabel(hintLbl);
+                label(focus, 'UnlockHint', def.unlockHint ?? '尚未解锁', -10, -130, 390, 48, 18, UI_PALETTE.reward);
             } else {
-                // 被动一行 + Q/E/R 技能名一行的速览；完整效果说明、冷却与
-                // 基础属性在「英雄介绍」弹窗里展开（见 _buildCharDetailPanel）。
-                // 正文14px/行距21px：最长被动（狂战士31字符）换行后共3行，
-                // 68px文本框无需触发SHRINK缩字。
-                const skN = new Node('Skills'); skN.setParent(card);
-                skN.setPosition(new Vec3(0, touch ? -26 : -40, 0));
-                skN.addComponent(UITransform).setContentSize(332, 68);
-                const skLbl = skN.addComponent(Label);
-                if (def) {
-                    skLbl.string = `被动 · ${def.desc}\n` +
-                        `Q ${splitSkillText(def.skills.q)[0]}  ·  E ${splitSkillText(def.skills.e)[0]}  ·  R ${splitSkillText(def.skills.r)[0]}`;
-                } else {
-                    skLbl.string = '';
-                }
-                skLbl.fontSize = 14;
-                skLbl.lineHeight = 21;
-                skLbl.color = new Color(210, 222, 238, 248);
-                skLbl.horizontalAlign = HorizontalTextAlignment.CENTER;
-                skLbl.verticalAlign = VerticalTextAlignment.CENTER;
-                skLbl.overflow = Label.Overflow.SHRINK;
-                skLbl.enableWrapText = true;
-                styleLabel(skLbl);
-
-                // 选择出战：点击后直接开始游戏
-                const selBtn = this._mkBtn(card, '选择出战', -85, touch ? -104 : -110,
-                    150, touch ? 72 : 40,
-                    colors[i] ?? new Color(80, 140, 180, 255));
-                selBtn.on(Node.EventType.TOUCH_END,
-                    () => this.onCharSelected?.(CHARS[idx]!), this);
-
-                // 英雄介绍：弹出该角色的详细技能介绍，不直接开战
-                const introBtn = this._mkBtn(card, '英雄介绍', 85, touch ? -104 : -110,
-                    150, touch ? 72 : 40,
-                    new Color(62, 120, 200, 255));
-                introBtn.on(Node.EventType.TOUCH_END,
-                    () => this.showCharDetail(CHARS[idx]!), this);
+                const detail = this._mkBtn(focus, '英雄介绍', -50, -130, 280, 64, UI_PALETTE.muted);
+                detail.on(Node.EventType.TOUCH_END, () => this.showCharDetail(def), this);
             }
-        }
+            focusPanels.push(focus);
+            const tile = this._mkBtn(p, def.name.split('·').pop()!.trim(), -500 + i * 200, -254,
+                180, 120, new Color(83, 114, 137));
+            tile.name = `HeroTile_${i}`;
+            const name = tile.getChildByName('L')!;
+            name.setPosition(0, -39);
+            name.getComponent(Label)!.fontSize = 19;
+            name.getComponent(Label)!.lineHeight = 26;
+            name.getComponent(UITransform)!.setContentSize(170, 28);
+            this._loadPortrait(tile, `char_${def.id}`, 76, 16);
+            if (locked) label(tile, 'Locked', '未解锁', 0, 12, 78, 28, 15, UI_PALETTE.reward);
+            const marker = new Node('Selected'); marker.setParent(tile);
+            markers.push(marker.addComponent(Graphics));
+            tile.on(Node.EventType.TOUCH_END, () => focusHero(i), this);
+        });
+        focusHero(0);
+        attachEnableRedraw(p, () => focusHero(0));
     }
 
     // ── 英雄介绍弹窗 ─────────────────────────────────────────
@@ -1006,12 +902,12 @@ export class ScreenManager extends Component {
 
         // 底部：弹窗内可直接出战，或返回选人页
         const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
-        const selBtn = this._mkBtn(dlg, '选择出战', touch ? -145 : -130, -234,
+        const selBtn = this._mkBtn(dlg, '选择出战', -174, -234,
             260, touch ? 72 : 52, new Color(24, 170, 120, 255));
         selBtn.on(Node.EventType.TOUCH_END, () => {
             if (this._detailDef) this.onCharSelected?.(this._detailDef);
         }, this);
-        const backBtn = this._mkBtn(dlg, '返回', touch ? 145 : 130, -234,
+        const backBtn = this._mkBtn(dlg, '返回', 174, -234,
             260, touch ? 72 : 52, new Color(70, 90, 130, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.hide('charDetail'), this);
     }
@@ -1023,23 +919,10 @@ export class ScreenManager extends Component {
 
         const g = this._detailGfx;
         g.clear();
-        g.fillColor = new Color(9, 15, 26, 252);
-        g.fillRect(-440, -290, 880, 580);
-        g.strokeColor = new Color(col.r, col.g, col.b, 205);
-        g.lineWidth = 2.5;
-        g.rect(-440, -290, 880, 580); g.stroke();
-        // 标题下弱分隔线 + 四角高亮，与选人卡的视觉语言保持一致
-        g.strokeColor = new Color(col.r, col.g, col.b, 70);
-        g.lineWidth = 1;
+        drawHexPanel(g, -440, -290, 880, 580, new Color(86, 116, 139), 255);
+        g.strokeColor = new Color(col.r, col.g, col.b, 115);
+        g.lineWidth = 2;
         g.moveTo(-392, 218); g.lineTo(392, 218); g.stroke();
-        const corner = 22;
-        g.strokeColor = new Color(col.r, col.g, col.b, 255);
-        g.lineWidth = 3;
-        for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-            const x = sx * 438, y = sy * 288;
-            g.moveTo(x, y - sy * corner); g.lineTo(x, y); g.lineTo(x - sx * corner, y);
-            g.stroke();
-        }
 
         const pg = this._detailPortraitGfx;
         pg.clear();
@@ -1050,7 +933,7 @@ export class ScreenManager extends Component {
         pg.rect(-74, -74, 148, 148); pg.stroke();
 
         this._detailTitle.string = def.name;
-        this._detailTitle.color = col;
+        this._detailTitle.color = UI_PALETTE.text;
 
         loadArtSprite(`char_${def.id}`, (frame) => {
             if (frame && this._detailPortrait.isValid) this._detailPortrait.spriteFrame = frame;
@@ -1099,7 +982,7 @@ export class ScreenManager extends Component {
     }
 
     private _buildChapterClearPanel() {
-        this._buildRunReportPanel('chapterClear', new Color(80, 230, 120, 255));
+        this._buildRunReportPanel('chapterClear', new Color(104, 190, 158, 255));
     }
 
     private _buildRunReportPanel(name: ReportName, accent: Color): void {
@@ -1191,7 +1074,7 @@ export class ScreenManager extends Component {
         tn.addComponent(UITransform).setContentSize(300, 44);
         const tl = tn.addComponent(Label);
         tl.string = '游戏暂停';
-        tl.fontSize = 36; tl.color = new Color(200, 200, 240, 255);
+        tl.fontSize = 36; tl.color = UI_PALETTE.text;
         styleLabel(tl);
 
         // 文案用中性的「退出战斗」：正式局退回存档大厅，测试房退回首页（由 GameManager 按来源分流）
@@ -1293,7 +1176,7 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 168, 0));
         tn.addComponent(UITransform).setContentSize(300, 44);
         const tl = tn.addComponent(Label);
-        tl.string = '设置'; tl.fontSize = 34; tl.color = new Color(200, 200, 240, 255);
+        tl.string = '设置'; tl.fontSize = 34; tl.color = UI_PALETTE.text;
         styleLabel(tl);
 
         const v = this.getAudioVolumes?.() ?? { bgm: 0.48, sfx: 1 };

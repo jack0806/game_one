@@ -5,7 +5,7 @@ import {
 import { AugDef } from '../data/AugmentDB';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
-import { drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { attachEnableRedraw, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -45,10 +45,10 @@ export class HUD extends Component {
     private _testRoomMode = false;
 
     private readonly BAR_W   = 240;
-    private readonly BAR_H   = 20;
-    private readonly SHIELD_H = 16;
+    private readonly BAR_H   = 8;
+    private readonly SHIELD_H = 4;
     private readonly BOSS_W  = 460;
-    private readonly BOSS_H  = 24;
+    private readonly BOSS_H  = 10;
     private readonly SKILL_R = 28;
 
     onLoad() {
@@ -62,88 +62,93 @@ export class HUD extends Component {
 
     // ── builders ──────────────────────────────────────────────
 
+    /** 哑光装甲底座只承托读数；颜色集中在细能量槽，避免满屏彩框。 */
+    private _plate(node: Node, x: number, y: number, w: number, h: number): Graphics {
+        const g = node.addComponent(Graphics);
+        const draw = () => {
+            g.clear();
+            g.fillColor = new Color(8, 17, 25, 244);
+            g.roundRect(x, y - 3, w, h, 8); g.fill();
+            g.fillColor = new Color(27, 42, 54, 250);
+            g.roundRect(x, y, w, h, 8); g.fill();
+            g.strokeColor = new Color(109, 134, 148, 180); g.lineWidth = 1;
+            g.roundRect(x, y, w, h, 8); g.stroke();
+        };
+        draw(); attachEnableRedraw(node, draw);
+        return g;
+    }
+
     private _buildHpBar() {
-        const panel = this._mkNode('VitalsPanel', -510, 302);
-        const panelG = panel.addComponent(Graphics);
-        drawHexPanel(panelG, -8, -8, this.BAR_W + 28, 58);
-
-        const bg = this._mkNode('HpBg', -500, 326);
-        const bgG = bg.addComponent(Graphics);
-        bgG.fillColor = UI_PALETTE.deep;
-        bgG.fillRect(0, 0, this.BAR_W, this.BAR_H);
-        bgG.strokeColor = UI_PALETTE.danger;
-        bgG.lineWidth = 1; bgG.rect(0, 0, this.BAR_W, this.BAR_H); bgG.stroke();
-
-        this._hpBarFg = this._mkNode('HpFg', -500, 326).addComponent(Graphics);
-
-        const shieldBg = this._mkNode('ShieldBg', -500, 304);
-        const shieldBgG = shieldBg.addComponent(Graphics);
-        shieldBgG.fillColor = new Color(18, 30, 44, 225);
-        shieldBgG.fillRect(0, 0, this.BAR_W, this.SHIELD_H);
-        shieldBgG.strokeColor = new Color(55, 90, 120, 230);
-        shieldBgG.lineWidth = 1;
-        shieldBgG.rect(0, 0, this.BAR_W, this.SHIELD_H); shieldBgG.stroke();
-        this._shieldBarFg = this._mkNode('ShieldFg', -500, 304).addComponent(Graphics);
-
-        // 两条状态条留出间距，让数值与边框各自清晰可读。
-        const ln = this._mkNode('HpLbl', -380, 336);
-        ln.addComponent(UITransform).setContentSize(this.BAR_W - 12, this.BAR_H);
+        const panel = this._mkNode('VitalsPanel', -516, 278);
+        this._plate(panel, -8, 0, this.BAR_W + 32, 74);
+        const tracks = this._mkNode('VitalTracks', -508, 290);
+        const g = tracks.addComponent(Graphics);
+        const draw = () => {
+            g.clear(); g.fillColor = new Color(10, 23, 32, 255);
+            g.fillRect(0, 26, this.BAR_W, this.BAR_H);
+            g.fillRect(0, 0, this.BAR_W, this.SHIELD_H);
+        };
+        draw(); attachEnableRedraw(tracks, draw);
+        this._hpBarFg = this._mkNode('HpFg', -508, 316).addComponent(Graphics);
+        this._shieldBarFg = this._mkNode('ShieldFg', -508, 290).addComponent(Graphics);
+        const ln = this._mkNode('HpLbl', -388, 337);
+        ln.addComponent(UITransform).setContentSize(this.BAR_W, 22);
         this._hpLabel = ln.addComponent(Label);
-        this._hpLabel.fontSize = 16;
-        this._hpLabel.lineHeight = 20;
-        this._hpLabel.color = new Color(245, 250, 245, 255);
-        styleLabel(this._hpLabel);
-
-        const sn = this._mkNode('ShieldLbl', -380, 312);
-        sn.addComponent(UITransform).setContentSize(this.BAR_W - 12, this.SHIELD_H);
+        this._hpLabel.fontSize = 16; this._hpLabel.lineHeight = 22;
+        this._hpLabel.color = UI_PALETTE.text;
+        styleLabel(this._hpLabel, { outline: false });
+        const sn = this._mkNode('ShieldLbl', -388, 305);
+        sn.addComponent(UITransform).setContentSize(this.BAR_W, 18);
         this._shieldLabel = sn.addComponent(Label);
-        this._shieldLabel.fontSize = 14;
-        this._shieldLabel.lineHeight = 16;
-        this._shieldLabel.color = new Color(225, 242, 255, 255);
-        styleLabel(this._shieldLabel);
+        this._shieldLabel.fontSize = 13; this._shieldLabel.lineHeight = 18;
+        this._shieldLabel.color = new Color(157, 191, 211, 255);
+        styleLabel(this._shieldLabel, { outline: false, bold: false });
     }
 
     private _buildGoldDisplay() {
-        const n = this._mkNode('GoldLbl', 440, 330);
-        n.addComponent(UITransform).setContentSize(160, 28);
+        const plate = this._mkNode('GoldPlate', 438, 331);
+        this._plate(plate, -83, -21, 166, 42);
+        const n = this._mkNode('GoldLbl', 438, 331);
+        n.addComponent(UITransform).setContentSize(154, 30);
         this._goldLabel = n.addComponent(Label);
-        this._goldLabel.fontSize = 20;
-        this._goldLabel.color = new Color(255, 210, 50, 255);
-        styleLabel(this._goldLabel);
+        this._goldLabel.fontSize = 19; this._goldLabel.lineHeight = 26;
+        this._goldLabel.overflow = Label.Overflow.SHRINK;
+        this._goldLabel.color = new Color(255, 216, 141, 255);
+        styleLabel(this._goldLabel, { outline: false });
     }
 
     private _buildWaveDisplay() {
-        const n = this._mkNode('WaveLbl', 0, 330);
-        n.addComponent(UITransform).setContentSize(220, 28);
+        const plate = this._mkNode('WavePlate', 0, 331);
+        this._plate(plate, -157, -21, 314, 42);
+        const n = this._mkNode('WaveLbl', 0, 331);
+        n.addComponent(UITransform).setContentSize(294, 28);
         this._waveLabel = n.addComponent(Label);
-        this._waveLabel.fontSize = 17;
-        this._waveLabel.color = new Color(180, 200, 255, 255);
-        styleLabel(this._waveLabel);
+        this._waveLabel.fontSize = 17; this._waveLabel.lineHeight = 24;
+        this._waveLabel.color = UI_PALETTE.text;
+        styleLabel(this._waveLabel, { outline: false });
     }
 
     private _buildBossBar() {
-        // 顶部第一行只放玩家状态 / 波次 / 金币；Boss 条单独居中下沉一行，
-        // 避免名称贴着玩家血条、数值又跑到红条左侧。
-        this._bossBarRoot = this._mkNode('BossRoot', -this.BOSS_W / 2, 282);
-
+        this._bossBarRoot = this._mkNode('BossRoot', -this.BOSS_W / 2, 238);
         const bg = new Node('BossBg'); bg.setParent(this._bossBarRoot);
-        const bgG = bg.addComponent(Graphics);
-        bgG.fillColor = new Color(18, 8, 8, 220);
-        bgG.fillRect(0, 0, this.BOSS_W, this.BOSS_H);
-        bgG.strokeColor = new Color(190, 30, 30, 255);
-        bgG.lineWidth = 2; bgG.rect(0, 0, this.BOSS_W, this.BOSS_H); bgG.stroke();
-
-        const fgN = new Node('BossFg'); fgN.setParent(this._bossBarRoot);
+        this._plate(bg, -14, 0, this.BOSS_W + 28, 60);
+        const track = new Node('BossTrack'); track.setParent(this._bossBarRoot);
+        const g = track.addComponent(Graphics);
+        const draw = () => {
+            g.clear(); g.fillColor = new Color(10, 23, 32, 255);
+            g.fillRect(0, 12, this.BOSS_W, this.BOSS_H);
+        };
+        draw(); attachEnableRedraw(track, draw);
+        const fgN = new Node('BossFg'); fgN.setParent(this._bossBarRoot); fgN.setPosition(0, 12);
         this._bossBarFg = fgN.addComponent(Graphics);
-
         const ln = new Node('BossLbl'); ln.setParent(this._bossBarRoot);
-        ln.setPosition(new Vec3(this.BOSS_W / 2, this.BOSS_H / 2, 0));
-        ln.addComponent(UITransform).setContentSize(this.BOSS_W - 18, this.BOSS_H);
+        ln.setPosition(this.BOSS_W / 2, 41);
+        ln.addComponent(UITransform).setContentSize(this.BOSS_W, 26);
         this._bossLabel = ln.addComponent(Label);
-        this._bossLabel.fontSize = 15;
-        this._bossLabel.color = new Color(255, 225, 215, 255);
-        styleLabel(this._bossLabel);
-
+        this._bossLabel.fontSize = 16; this._bossLabel.lineHeight = 22;
+        this._bossLabel.overflow = Label.Overflow.SHRINK;
+        this._bossLabel.color = new Color(242, 211, 167, 255);
+        styleLabel(this._bossLabel, { outline: false });
         this._bossBarRoot.active = false;
     }
 
@@ -222,7 +227,7 @@ export class HUD extends Component {
 
         const fg = this._hpBarFg;
         fg.clear();
-        fg.fillColor = hR > 0.4 ? new Color(55, 200, 75, 255) : new Color(220, 55, 55, 255);
+        fg.fillColor = hR > 0.4 ? new Color(104, 190, 158, 255) : hR > 0.2 ? new Color(222, 177, 92, 255) : new Color(220, 108, 88, 255);
         fg.fillRect(0, 0, this.BAR_W * hR, this.BAR_H);
 
         const sf = this._shieldBarFg;
@@ -238,7 +243,7 @@ export class HUD extends Component {
     }
 
     private _refreshGold(gold: number) {
-        this._goldLabel.string = `⬡ ${gold}`;
+        this._goldLabel.string = `金币  ${Math.floor(gold).toLocaleString()}`;
     }
 
     private _refreshWave(d: HudData) {
@@ -254,8 +259,12 @@ export class HUD extends Component {
         if (!has) return;
         const r = Math.max(0, Math.min(1, d.bossHp! / d.bossMaxHp!));
         this._bossBarFg.clear();
-        this._bossBarFg.fillColor = new Color(220, 40, 40, 255);
+        this._bossBarFg.fillColor = new Color(205, 145, 89, 255);
         this._bossBarFg.fillRect(0, 0, this.BOSS_W * r, this.BOSS_H);
+        this._bossBarFg.fillColor = new Color(245, 214, 166, 150);
+        this._bossBarFg.fillRect(0, this.BOSS_H - 2, this.BOSS_W * r, 2);
+        this._bossBarFg.fillColor = new Color(18, 31, 42, 210);
+        for (let i = 1; i < 10; i++) this._bossBarFg.fillRect(this.BOSS_W * i / 10, 0, 2, this.BOSS_H);
         this._bossLabel.string = `首领 · ${d.bossName ?? '未知'}   ${Math.ceil(d.bossHp!)} / ${d.bossMaxHp}`;
     }
 

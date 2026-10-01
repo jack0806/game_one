@@ -1,6 +1,6 @@
 import {
     _decorator, Component, Node, Label, Graphics,
-    Color, Vec3, UITransform, HorizontalTextAlignment
+    Color, Vec3, UITransform, HorizontalTextAlignment, sys
 } from 'cc';
 import { Economy, ShopItem } from '../systems/Economy';
 import { RARITY_COLOR } from '../core/Constants';
@@ -93,11 +93,11 @@ export class ShopUI extends Component {
         // 商品列表拥有自己的近乎不透明金属面板。即使未来再叠确认框，底层
         // 战斗/强化卡也不会穿过六行商品文字造成“整个商店变透明”的错觉。
         const panel = new Node('ShopPanel'); panel.setParent(this.node);
-        panel.addComponent(UITransform).setContentSize(640, 560);
+        panel.addComponent(UITransform).setContentSize(680, 640);
         const pg = panel.addComponent(Graphics);
         const drawPanel = () => {
             pg.clear();
-            drawHexPanel(pg, -320, -280, 640, 560, UI_PALETTE.cyan, 252);
+            drawHexPanel(pg, -340, -320, 680, 640, UI_PALETTE.muted, 252);
         };
         drawDim();
         drawPanel();
@@ -109,17 +109,17 @@ export class ShopUI extends Component {
 
     private _buildTitle() {
         const n = new Node('Title'); n.setParent(this.node);
-        n.setPosition(new Vec3(0, 280, 0));
+        n.setPosition(new Vec3(0, 265, 0));
         n.addComponent(UITransform).setContentSize(400, 40);
         const lbl = n.addComponent(Label);
-        lbl.string = '— 商店 —';
-        lbl.fontSize = 28; lbl.color = new Color(255, 215, 90, 255);
+        lbl.string = '补给商店';
+        lbl.fontSize = 28; lbl.color = UI_PALETTE.text;
         styleLabel(lbl);
     }
 
     private _buildGoldDisplay() {
         const n = new Node('Gold'); n.setParent(this.node);
-        n.setPosition(new Vec3(0, 235, 0));
+        n.setPosition(new Vec3(0, 215, 0));
         n.addComponent(UITransform).setContentSize(200, 30);
         this._goldLabel = n.addComponent(Label);
         this._goldLabel.fontSize = 20;
@@ -133,14 +133,15 @@ export class ShopUI extends Component {
 
     private _buildLeaveBtn() {
         this._leaveBtn = new Node('LeaveBtn'); this._leaveBtn.setParent(this.node);
-        this._leaveBtn.setPosition(new Vec3(0, -295, 0));
-        this._leaveBtn.addComponent(UITransform).setContentSize(160, 40);
-        applyHexButtonSkin(this._leaveBtn, 160, 40, new Color(95, 145, 175, 255));
+        this._leaveBtn.setPosition(new Vec3(0, -278, 0));
+        const height = sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 64 : 48;
+        this._leaveBtn.addComponent(UITransform).setContentSize(200, height);
+        applyHexButtonSkin(this._leaveBtn, 200, height, new Color(95, 145, 175, 255));
         const ln = new Node('L'); ln.setParent(this._leaveBtn);
         ln.addComponent(UITransform).setContentSize(160, 40);
         const lbl = ln.addComponent(Label);
         lbl.string = '离开'; lbl.fontSize = 18;
-        lbl.color = new Color(180, 180, 220, 220);
+        lbl.color = UI_PALETTE.text;
         styleLabel(lbl);
         this._leaveBtn.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
@@ -156,8 +157,8 @@ export class ShopUI extends Component {
         this._itemNodes = [];
         this._rowStates = [];
 
-        const startY = 160;
-        const rowH   = 72;
+        const startY = 150;
+        const rowH   = 70;
         items.forEach((item, i) => {
             const row = this._mkItemRow(item, 0, startY - i * rowH);
             this._itemNodes.push(row);

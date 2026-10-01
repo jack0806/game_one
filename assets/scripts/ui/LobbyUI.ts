@@ -140,7 +140,7 @@ export class LobbyUI {
     /** 左上：当前存档概要面板（refresh 按选中槽填充）。 */
     private _buildSummaryPanel(page: Node): void {
         const panel = new Node('SaveSummary'); panel.setParent(page);
-        panel.setPosition(new Vec3(-431, 130, 0));
+        panel.setPosition(new Vec3(-431, 104, 0));
         const g = panel.addComponent(Graphics); drawPanel(g, 334, 226, CYAN);
         this._mkLabel(panel, 0, 88, 268, 24, '当前档案', 14, MUTED, HorizontalTextAlignment.LEFT);
         this._summaryTitle = this._mkLabel(panel, 0, 56, 268, 34, '', 22, GOLD, HorizontalTextAlignment.LEFT);
