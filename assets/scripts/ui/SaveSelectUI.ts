@@ -226,11 +226,13 @@ export class SaveSelectUI {
             view.lines[3].string = '';
         }
         const hint = summary.exists ? '点按继续  ·  进入存档大厅' : '点按新建存档';
-        view.body.removeAllChildren();
-        const hintN = new Node('Hint'); hintN.setParent(view.body);
-        hintN.setPosition(new Vec3(0, -173, 0));
-        hintN.addComponent(UITransform).setContentSize(256, 24);
-        const hl = hintN.addComponent(Label);
+        let hintN = view.body.getChildByName('Hint');
+        if (!hintN) {
+            hintN = new Node('Hint'); hintN.setParent(view.body);
+            hintN.setPosition(new Vec3(0, -173, 0));
+            hintN.addComponent(UITransform).setContentSize(256, 24);
+        }
+        const hl = hintN.getComponent(Label) ?? hintN.addComponent(Label);
         hl.string = hint; hl.fontSize = 16; hl.lineHeight = 20;
         hl.color = summary.exists ? CYAN : UI_PALETTE.muted;
         hl.horizontalAlign = HorizontalTextAlignment.CENTER;

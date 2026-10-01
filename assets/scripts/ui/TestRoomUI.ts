@@ -4,7 +4,8 @@ import {
     HorizontalTextAlignment, VerticalTextAlignment
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel,
+    registerKeyboardFocus, registerKeyboardModalScope, unregisterKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { clamp } from '../core/MathUtils';
@@ -292,6 +293,7 @@ export class TestRoomUI extends Component {
                 this._rebuildCards();
             }, this);
             attachEnableRedraw(tab, () => this._refreshTabs());
+            registerKeyboardFocus(tab, 80, 30);
             this._tabs.push({ g, key: cat.key });
         });
         this._refreshTabs();
@@ -348,6 +350,7 @@ export class TestRoomUI extends Component {
                 this.onButtonSfx?.();
                 this.onSpawnUnit?.(entry.id, this._count);
             }, this);
+            registerKeyboardFocus(card, 116, 34);
             this._unitCards.push(card);
         });
 
@@ -360,6 +363,7 @@ export class TestRoomUI extends Component {
             );
             const next = this._mkSmallBtn(this.node, '›', 590, -26, 42, 32, new Color(45, 70, 96, 245));
             page.off(Node.EventType.TOUCH_END);
+            unregisterKeyboardFocus(page);
             prev.on(Node.EventType.TOUCH_END, () => {
                 this.onButtonSfx?.();
                 this._unitPage = (this._unitPage - 1 + maxPage + 1) % (maxPage + 1);
@@ -453,6 +457,7 @@ export class TestRoomUI extends Component {
     /** 英雄选择浮层：全屏半透明遮罩 + 3×2 角色卡，点卡即切换并关闭。 */
     private _buildHeroPanel() {
         const panel = this._heroPanel = new Node('HeroPanel'); panel.setParent(this.node);
+        registerKeyboardModalScope(panel);
         panel.active = false;
 
         // 遮罩从工具条局部坐标铺满整屏，点遮罩关闭（不挡正式 HUD 之外的战斗区交互）
@@ -517,9 +522,15 @@ export class TestRoomUI extends Component {
                 this.onSelectHero?.(def.id);
                 this._hideHeroPanel();
             }, this);
+            registerKeyboardFocus(card, 150, 108);
             attachEnableRedraw(card, () => this._refreshHeroCards());
             this._heroCards.push({ g, id: def.id });
         }
+        const close = this._mkSmallBtn(box, '关闭', 400, 130, 76, 30, UI_PALETTE.cyan);
+        close.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._hideHeroPanel();
+        }, this);
         this._refreshHeroCards();
     }
 
@@ -589,6 +600,7 @@ export class TestRoomUI extends Component {
     /** 海克斯授予浮层：遮罩 + 每页 6 张高卡（名称/等级/一档说明）。 */
     private _buildAugPanel() {
         const panel = this._augPanel = new Node('AugPanel'); panel.setParent(this.node);
+        registerKeyboardModalScope(panel);
         panel.active = false;
 
         const dim = new Node('Dim'); dim.setParent(panel);
@@ -675,9 +687,15 @@ export class TestRoomUI extends Component {
                 this.onGrantAugment?.(def.id);
                 this._refreshAugCards();
             }, this);
+            registerKeyboardFocus(card, 176, 470);
             attachEnableRedraw(card, () => this._refreshAugCards());
             this._augCards.push({ node: card, g, id: def.id, lvLbl });
         });
+        const close = this._mkSmallBtn(box, '关闭', 520, 300, 76, 30, UI_PALETTE.cyan);
+        close.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._hideAugPanel();
+        }, this);
         const prev = this._mkSmallBtn(box, '上一页', -478, -302, 132, 34, new Color(116, 135, 164, 255));
         prev.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();

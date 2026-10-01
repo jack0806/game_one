@@ -171,11 +171,13 @@ test('卖出回退加成并回收75%实付价', () => {
     const base = p.stats.damage;
 
     am.equip({ id: 'hex02' }, p, game);
-    am.active[0].paid = 100;
+    assert.equal(am.active.length, 0, '功能海克斯不占技能格');
+    assert.equal(am.functional.length, 1);
+    am.functional[0].paid = 100;
     assert.ok(Math.abs(p.stats.damage - base * 1.05) < 1e-9);
 
     const inst = am.unequip('hex02', p, game);
-    assert.equal(am.active.length, 0);
+    assert.equal(am.functional.length, 0);
     assert.equal(am.sellValue(inst), 75, '回收价 = 实付 × 75%');
     assert.ok(Math.abs(p.stats.damage - base) < 1e-9, '卖出后攻击加成回退');
 });

@@ -10,7 +10,7 @@ import { CHAPTERS } from '../data/WaveData';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
-    keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
+    isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
@@ -66,6 +66,7 @@ export class ScreenManager extends Component {
     private _focusedControl?: Node;
     private _activationHeld = false;
     private _shiftHeld = false;
+    private _canvasElement?: HTMLCanvasElement;
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
     // 面板结构只构建一次，内容（标题/立绘/属性/技能描述）随 showCharDetail 填充
@@ -135,11 +136,16 @@ export class ScreenManager extends Component {
         this._panels.forEach(p => p.active = false);
         input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
+        if (typeof document !== 'undefined') {
+            this._canvasElement = document.querySelector('canvas') ?? undefined;
+            this._canvasElement?.addEventListener('focus', this._onCanvasFocus);
+        }
     }
 
     onDestroy() {
         input.off(Input.EventType.KEY_DOWN, this._onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this._onKeyUp, this);
+        this._canvasElement?.removeEventListener('focus', this._onCanvasFocus);
     }
 
     /** 大厅传送门动画逐帧推进（ScreenManager 常驻，面板隐藏时 LobbyUI 自行跳过）。 */
@@ -206,13 +212,45 @@ export class ScreenManager extends Component {
         this._panels.forEach(p => p.active = false);
     }
 
-    /** 只在最上层可见页面循环焦点；隐藏页、锁定卡和空存档删除键均跳过。 */
+    /** 只在最上层可见页面或波间浮层循环焦点。 */
     private _keyboardPanel(): Node | undefined {
-        for (let i = this.node.children.length - 1; i >= 0; i--) {
-            const panel = this.node.children[i];
-            if (panel.active && this._panels.get(panel.name as ScreenName) === panel) return panel;
+        const layer = this.node.parent;
+        if (!layer) return undefined;
+        for (let i = layer.children.length - 1; i >= 0; i--) {
+            const surface = layer.children[i];
+            if (!surface.activeInHierarchy) continue;
+            if (surface === this.node) {
+                for (let j = this.node.children.length - 1; j >= 0; j--) {
+                    const panel = this.node.children[j];
+                    if (panel.active && this._panels.get(panel.name as ScreenName) === panel) return panel;
+                }
+            } else if (['AugSelect', 'Shop', 'Stats', 'TestRoom'].indexOf(surface.name) >= 0) {
+                const modal = this._activeKeyboardModal(surface);
+                if (modal) return modal;
+                if (this._keyboardControls(surface).length) return surface;
+            }
         }
         return undefined;
+    }
+
+    private _activeKeyboardModal(root: Node): Node | undefined {
+        for (let i = root.children.length - 1; i >= 0; i--) {
+            const child = root.children[i];
+            if (!child.activeInHierarchy) continue;
+            const nested = this._activeKeyboardModal(child);
+            if (nested) return nested;
+            if (isKeyboardModalScope(child)) return child;
+        }
+        return undefined;
+    }
+
+    private _isTestRoomScope(panel: Node): boolean {
+        const testRoom = this.node.parent?.getChildByName('TestRoom');
+        if (!testRoom) return false;
+        for (let current: Node | null = panel; current; current = current.parent) {
+            if (current === testRoom) return true;
+        }
+        return false;
     }
 
     private _keyboardControls(panel: Node): Node[] {
@@ -232,6 +270,12 @@ export class ScreenManager extends Component {
         this._focusedControl = undefined;
         this._activationHeld = false;
     }
+
+    /** 浏览器首次 Tab 聚焦画布时，直接显示页面内第一个可操作控件。 */
+    private _onCanvasFocus = () => {
+        const panel = this._keyboardPanel();
+        if (panel && !this._focusedControl) this._moveKeyboardFocus(panel, 1);
+    };
 
     private _moveKeyboardFocus(panel: Node, direction: -1 | 1): void {
         const controls = this._keyboardControls(panel);
@@ -255,6 +299,8 @@ export class ScreenManager extends Component {
         const key = event.keyCode;
         if (key === KeyCode.TAB || key === KeyCode.ARROW_UP || key === KeyCode.ARROW_DOWN
             || key === KeyCode.ARROW_LEFT || key === KeyCode.ARROW_RIGHT) {
+            // 测试房方向键仍负责移动角色；页面控件仅由 Tab 切换。
+            if (key !== KeyCode.TAB && this._isTestRoomScope(panel)) return;
             (event as any).preventDefault?.();
             const direction: -1 | 1 = key === KeyCode.ARROW_UP || key === KeyCode.ARROW_LEFT
                 || (key === KeyCode.TAB && this._shiftHeld) ? -1 : 1;

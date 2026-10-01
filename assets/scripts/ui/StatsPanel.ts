@@ -12,7 +12,8 @@ import { RARITY_COLOR } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
-import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin,
+    registerKeyboardFocus, registerKeyboardModalScope, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -226,6 +227,7 @@ export class StatsPanel extends Component {
             styleLabel(dl);
 
             row.on(Node.EventType.TOUCH_END, () => this._showAugDetail(i));
+            registerKeyboardFocus(row, 252, 64);
             row.active = false;
             this._augRows.push({ root: row, icon: iconSp, name: nl, desc: dl });
         }
@@ -317,6 +319,7 @@ export class StatsPanel extends Component {
 
     private _buildAugDetail(panel: Node): void {
         const detail = new Node('AugDetail'); detail.setParent(panel);
+        registerKeyboardModalScope(detail);
         detail.setPosition(new Vec3(265, -20, 0));
         detail.addComponent(UITransform).setContentSize(526, 465);
         const g = detail.addComponent(Graphics);

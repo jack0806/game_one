@@ -162,6 +162,8 @@ export class ShopUI extends Component {
             const row = this._mkItemRow(item, 0, startY - i * rowH);
             this._itemNodes.push(row);
         });
+        // Tab 顺序先经过商品，再到页面底部的离开按钮。
+        this._leaveBtn.setSiblingIndex(this.node.children.length - 1);
     }
 
     private _mkItemRow(item: ShopItem, x: number, y: number): Node {

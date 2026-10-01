@@ -16,15 +16,28 @@ export interface KeyboardFocusTarget {
 }
 
 const keyboardFocusTargets = new WeakMap<Node, KeyboardFocusTarget>();
+const keyboardModalScopes = new WeakSet<Node>();
 
 export function keyboardFocusTarget(node: Node): KeyboardFocusTarget | undefined {
     return keyboardFocusTargets.get(node);
 }
 
-/** 无共用皮肤的存档卡、任务卡和滑杆也使用同一种金色键盘焦点框。 */
+export function unregisterKeyboardFocus(node: Node): void {
+    keyboardFocusTargets.delete(node);
+}
+
+export function registerKeyboardModalScope(node: Node): void {
+    keyboardModalScopes.add(node);
+}
+
+export function isKeyboardModalScope(node: Node): boolean {
+    return keyboardModalScopes.has(node);
+}
+
+/** 无共用皮肤的卡片、任务节点和滑杆也使用同一种金色键盘焦点框。 */
 export function registerKeyboardFocus(
     node: Node, width: number, height: number,
-    options: Pick<KeyboardFocusTarget, 'activate' | 'onDirection'> = {},
+    options: Partial<KeyboardFocusTarget> = {},
 ): void {
     const ring = new Node('KeyboardFocusRing'); ring.setParent(node);
     const g = ring.addComponent(Graphics);

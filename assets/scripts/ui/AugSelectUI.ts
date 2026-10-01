@@ -6,7 +6,8 @@ import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, attachEnableRedraw, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, HexButtonSkin,
+    keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 
 const { ccclass } = _decorator;
@@ -232,6 +233,12 @@ export class AugSelectUI extends Component {
         // 悬停高亮：说明常显 + hover 放大提示可点
         root.on(Node.EventType.MOUSE_ENTER, () => { if (!this._bought.has(this._options[idx]?.id ?? '')) root.setScale(1.03, 1.03, 1); });
         root.on(Node.EventType.MOUSE_LEAVE, () => root.setScale(1, 1, 1));
+        registerKeyboardFocus(root, this.CARD_W, this.CARD_H, {
+            isDisabled: () => {
+                const aug = this._options[idx];
+                return !aug || this._bought.has(aug.id) || (this._ctx?.gold() ?? 0) < (aug._price ?? 0);
+            },
+        });
 
         return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel };
     }
@@ -301,6 +308,7 @@ export class AugSelectUI extends Component {
             label.color = new Color(228, 236, 244, 255);
             styleLabel(label);
             chip.on(Node.EventType.TOUCH_END, () => this._sell(i), this);
+            registerKeyboardFocus(chip, 188, 44);
             chip.active = false;
             this._chips.push({ root: chip, g, label, id: '' });
         }
@@ -448,6 +456,7 @@ export class AugSelectUI extends Component {
             this.onButtonSfx?.();
         }
         this._populate();
+        if (this._bought.has(aug.id)) keyboardFocusTarget(this._cards[idx].root)?.setFocused(false);
     }
 
     private _refresh() {
