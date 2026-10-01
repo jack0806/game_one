@@ -73,7 +73,7 @@ function edge(id: string, left: number, top: number, right: number, bottom: numb
 
 const COMMON_EDGES: readonly ArenaSolid[] = [
     edge('left-outer-wall', 0, 66, 58, 620),
-    edge('right-outer-wall', 1222, 66, 1280, 620),
+    edge('right-outer-wall', 1256, 66, 1280, 620),
     edge('bottom-outer-wall', 0, 620, 1280, 648),
 ];
 
@@ -159,7 +159,8 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('left-broken-frame-rubble', 165, 405, 205, 455),
         edge('left-core-rubble-transition', 205, 435, 245, 480),
         edge('lower-left-core', 0, 470, 220, 648),
-        edge('lower-left-core-front', 220, 500, 270, 620),
+        edge('lower-left-core-front-upper', 220, 530, 255, 570),
+        edge('lower-left-core-front-lower', 220, 570, 270, 620),
         edge('lower-right-core', 1090, 435, 1280, 648),
         edge('lower-right-core-front', 1010, 515, 1090, 620),
         edge('lower-right-core-rubble-tip', 975, 535, 1010, 620),

@@ -112,6 +112,23 @@ test('六章底图边缘的实体建筑挡住角色且保留中心通路', () =>
     }
 });
 
+test('六章右侧中段空地可贴近画布边缘，上下建筑仍挡住角色', () => {
+    for (const chapter of [1, 2, 3, 4, 5, 6]) {
+        for (const layout of arenasForChapter(chapter)) {
+            const edges = { ...layout, obstacles: [] };
+            const point = moveInArena(edges, 1000, 360, 300, 0, 16);
+            assert.ok(point.x >= 1235 && point.x <= 1241,
+                `${layout.id} 右侧地面没有被宽边界提前封住：${point.x}`);
+            assert.equal(isArenaFree(edges, 1236, 360, 16), true,
+                `${layout.id} 中段贴边的可见地面保持开放`);
+            assert.equal(isArenaFree(edges, 1236, 150, 16), false,
+                `${layout.id} 上方建筑仍封住右侧`);
+            assert.equal(isArenaFree(edges, 1236, 560, 16), false,
+                `${layout.id} 下方设备仍封住右侧`);
+        }
+    }
+});
+
 test('第二章管线与第六章反应堆的前侧底座挡住向上行走的角色', () => {
     for (const [chapter, bottom] of [[2, 285], [6, 325]]) {
         for (const layout of arenasForChapter(chapter)) {
@@ -258,6 +275,23 @@ test('第六章左侧断框与核心之间的碎石不让角色踩上去', () =>
         assert.ok(lower.x >= 255, `${layout.id} 核心上沿碎石：${lower.x}`);
         assert.equal(isArenaFree(edges, 300, 430, 18), true,
             `${layout.id} 碎石右侧仍可通行`);
+    }
+});
+
+test('第六章左下核心边界按碎石外形开放中段空地', () => {
+    for (const layout of arenasForChapter(6)) {
+        const edges = { ...layout, obstacles: [] };
+        const stops = [480, 520, 560].map(y => {
+            let point = { x: 400, y };
+            for (let i = 0; i < 180; i++) point = moveInArena(edges, point.x, point.y, -2, 0, 16);
+            return point.x;
+        });
+        assert.ok(stops[0] >= 255 && stops[0] <= 270,
+            `${layout.id} 上段仍挡住碎石：${stops[0]}`);
+        assert.ok(stops[1] >= 268 && stops[1] <= 280,
+            `${layout.id} 中段可走到碎石外沿：${stops[1]}`);
+        assert.ok(stops[2] >= 285 && stops[2] <= 295,
+            `${layout.id} 下段宽底座仍挡住角色：${stops[2]}`);
     }
 });
 

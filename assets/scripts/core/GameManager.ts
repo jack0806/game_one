@@ -18,7 +18,7 @@ import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS } from '../data/WaveData';
 import { ArenaLayout, arenasForChapter, EMPTY_ARENA } from '../data/ChapterArenaDB';
-import { arenaLineClear, arenaSteerTarget, firstArenaBulletHit, moveInArena, safeArenaPoint } from './ArenaGeometry';
+import { arenaLineClear, arenaSteerTarget, firstArenaBulletHit, isArenaFree, moveInArena, safeArenaPoint } from './ArenaGeometry';
 import { UNIT_CATALOG } from '../data/BossDB';
 import { PlayerController } from '../entities/PlayerController';
 import { EnemyBase }         from '../entities/EnemyBase';
@@ -723,6 +723,50 @@ export class GameManager extends Component {
             sprite.sizeMode = Sprite.SizeMode.CUSTOM;
             sprite.trim = true;
             applyArtSprite(sprite, prop.artKey);
+        }
+        this._drawRightBoundaryRail(g);
+    }
+
+    /** 宽屏镜像只作场外远景；用护栏标出右侧开放地面的真实碰撞边界。 */
+    private _drawRightBoundaryRail(g: Graphics): void {
+        const wall = this._arena.boundaries?.find(solid => solid.id === 'right-outer-wall');
+        if (!wall) return;
+        const railX = wall.x - wall.w / 2;
+        const x = railX - CANVAS_W / 2;
+        const edgesOnly: ArenaLayout = { ...this._arena, obstacles: [] };
+        const accents = [
+            new Color(152, 189, 198, 210), new Color(225, 151, 88, 210),
+            new Color(105, 207, 187, 210), new Color(173, 129, 217, 210),
+            new Color(120, 182, 195, 210), new Color(228, 148, 90, 210),
+        ];
+        const accent = accents[this._arena.chapter - 1] ?? accents[0];
+        const drawSegment = (top: number, bottom: number) => {
+            if (bottom - top < 40) return;
+            const localTop = CANVAS_H / 2 - top;
+            const localBottom = CANVAS_H / 2 - bottom;
+            g.strokeColor = new Color(9, 18, 29, 220);
+            g.lineWidth = 11;
+            g.moveTo(x, localTop); g.lineTo(x, localBottom); g.stroke();
+            g.strokeColor = accent;
+            g.lineWidth = 3;
+            g.moveTo(x, localTop); g.lineTo(x, localBottom); g.stroke();
+            for (let y = top; y <= bottom; y += 40) {
+                const localY = CANVAS_H / 2 - y;
+                g.fillColor = new Color(17, 31, 44, 235);
+                g.rect(x - 9, localY - 6, 18, 12); g.fill();
+                g.fillColor = accent;
+                g.rect(x - 6, localY - 3, 12, 3); g.fill();
+            }
+        };
+        let spanTop = -1;
+        for (let y = 80; y <= 604; y += 4) {
+            // 只给两侧实体建筑之间能站人的空档画护栏，避免线条穿过建筑。
+            const open = y <= 600 && isArenaFree(edgesOnly, railX - 20, y, 16);
+            if (open && spanTop < 0) spanTop = y;
+            else if (!open && spanTop >= 0) {
+                drawSegment(spanTop, y - 4);
+                spanTop = -1;
+            }
         }
     }
 
