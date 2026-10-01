@@ -449,9 +449,9 @@ export class ScreenManager extends Component {
             title.addComponent(UITransform).setContentSize(110, 18);
             const label = title.addComponent(Label);
             label.string = `${chapter.id < 10 ? `0${chapter.id}` : chapter.id} ${chapter.name}`;
-            label.fontSize = 12; label.lineHeight = 15;
+            label.fontSize = 14; label.lineHeight = 18;
             label.color = new Color(225, 241, 249, 255);
-            label.overflow = Label.Overflow.SHRINK;
+            label.overflow = Label.Overflow.CLAMP;
             label.enableWrapText = false;
             styleLabel(label);
         }

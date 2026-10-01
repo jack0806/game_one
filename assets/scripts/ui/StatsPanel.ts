@@ -12,7 +12,7 @@ import { RARITY_COLOR } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
-import { attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
 
 const { ccclass } = _decorator;
 
@@ -42,6 +42,15 @@ export class StatsPanel extends Component {
     private _progressLabel!: Label;
     private _augRows:      { root: Node; icon: Sprite; name: Label; desc: Label }[] = [];
     private _emptyAugLabel!: Label;
+    private _augments: AugDef[] = [];
+    private _augPage = 0;
+    private _augPager!: Node;
+    private _augPageLabel!: Label;
+    private _prevAugSkin!: HexButtonSkin;
+    private _nextAugSkin!: HexButtonSkin;
+    private _augDetail!: Node;
+    private _augDetailTitle!: Label;
+    private _augDetailDesc!: Label;
 
     // 与 AugmentManager 的词条上限对齐（六角特权可到10）。
     private readonly MAX_AUG_ROWS = 10;
@@ -100,7 +109,7 @@ export class StatsPanel extends Component {
         // 两栏表头
         const lh = this._mkHeader(panel, '角色属性', -265, 204);
         lh.color = new Color(150, 200, 255, 255);
-        const rh = this._mkHeader(panel, '海克斯强化（额外技能）', 265, 204);
+        const rh = this._mkHeader(panel, '海克斯强化（点按查看完整说明）', 265, 204);
         rh.color = new Color(255, 200, 120, 255);
 
         // 左栏 — 属性 2×6 网格，逐格独立Label便于对齐与统一字号
@@ -172,8 +181,7 @@ export class StatsPanel extends Component {
         this._progressLabel.color = new Color(160, 170, 190, 230);
         styleLabel(this._progressLabel);
 
-        // 右栏 — 2列×5行词条卡。单列10行只有18px描述高，长词条最终会被
-        // SHRINK 到约6px；双列卡片给每条说明两行空间，在1280×720仍可读。
+        // 右栏 — 每页 2列×5行词条卡；卡片只展示两行摘要，完整说明点按后阅读。
         const augColX = [132, 398];
         const y0 = 148, rowH = 72;
         for (let i = 0; i < this.MAX_AUG_ROWS; i++) {
@@ -208,15 +216,16 @@ export class StatsPanel extends Component {
             dn.setPosition(new Vec3(14, -10, 0));
             dn.addComponent(UITransform).setContentSize(190, 34);
             const dl = dn.addComponent(Label);
-            dl.fontSize = 12;
-            dl.lineHeight = 15;
+            dl.fontSize = 14;
+            dl.lineHeight = 17;
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
             dl.verticalAlign = VerticalTextAlignment.TOP;
-            dl.overflow = Label.Overflow.SHRINK;
+            dl.overflow = Label.Overflow.CLAMP;
             dl.enableWrapText = true;
-            dl.color = new Color(170, 180, 195, 235);
+            dl.color = new Color(190, 205, 220, 245);
             styleLabel(dl);
 
+            row.on(Node.EventType.TOUCH_END, () => this._showAugDetail(i));
             row.active = false;
             this._augRows.push({ root: row, icon: iconSp, name: nl, desc: dl });
         }
@@ -229,6 +238,9 @@ export class StatsPanel extends Component {
         this._emptyAugLabel.fontSize = 18;
         this._emptyAugLabel.color = UI_PALETTE.muted;
         styleLabel(this._emptyAugLabel);
+
+        this._buildAugPager(panel);
+        this._buildAugDetail(panel);
 
         const fn = new Node('Footer'); fn.setParent(panel);
         fn.setPosition(new Vec3(0, -284, 0));
@@ -271,6 +283,146 @@ export class StatsPanel extends Component {
         return l;
     }
 
+    private _buildAugPager(panel: Node): void {
+        const pager = new Node('AugPager'); pager.setParent(panel);
+        this._augPager = pager;
+        const makeButton = (name: string, title: string, x: number, direction: number): HexButtonSkin => {
+            const button = new Node(name); button.setParent(pager);
+            button.setPosition(new Vec3(x, -226, 0));
+            button.addComponent(UITransform).setContentSize(90, 34);
+            const skin = applyHexButtonSkin(button, 90, 34, UI_PALETTE.cyan);
+            const textNode = new Node('Label'); textNode.setParent(button);
+            textNode.addComponent(UITransform).setContentSize(82, 26);
+            const label = textNode.addComponent(Label);
+            label.string = title;
+            label.fontSize = 14;
+            label.lineHeight = 18;
+            label.color = UI_PALETTE.text;
+            styleLabel(label);
+            button.on(Node.EventType.TOUCH_END, () => this._changeAugPage(direction));
+            return skin;
+        };
+        this._prevAugSkin = makeButton('Prev', '上一页', 120, -1);
+        this._nextAugSkin = makeButton('Next', '下一页', 410, 1);
+        const pn = new Node('Page'); pn.setParent(pager);
+        pn.setPosition(new Vec3(265, -226, 0));
+        pn.addComponent(UITransform).setContentSize(170, 28);
+        this._augPageLabel = pn.addComponent(Label);
+        this._augPageLabel.fontSize = 15;
+        this._augPageLabel.lineHeight = 20;
+        this._augPageLabel.color = UI_PALETTE.text;
+        styleLabel(this._augPageLabel);
+        pager.active = false;
+    }
+
+    private _buildAugDetail(panel: Node): void {
+        const detail = new Node('AugDetail'); detail.setParent(panel);
+        detail.setPosition(new Vec3(265, -20, 0));
+        detail.addComponent(UITransform).setContentSize(526, 465);
+        const g = detail.addComponent(Graphics);
+        const draw = () => {
+            g.clear();
+            drawHexPanel(g, -263, -232.5, 526, 465, UI_PALETTE.cyan, 255);
+            g.strokeColor = new Color(105, 175, 200, 180);
+            g.lineWidth = 1;
+            g.moveTo(-222, 135); g.lineTo(222, 135); g.stroke();
+        };
+        draw();
+        attachEnableRedraw(detail, draw);
+
+        const titleNode = new Node('Title'); titleNode.setParent(detail);
+        titleNode.setPosition(new Vec3(0, 178, 0));
+        titleNode.addComponent(UITransform).setContentSize(440, 38);
+        this._augDetailTitle = titleNode.addComponent(Label);
+        this._augDetailTitle.fontSize = 22;
+        this._augDetailTitle.lineHeight = 28;
+        styleLabel(this._augDetailTitle);
+
+        const descNode = new Node('Desc'); descNode.setParent(detail);
+        descNode.setPosition(new Vec3(0, 105, 0));
+        const descSize = descNode.addComponent(UITransform);
+        descSize.setContentSize(440, 190);
+        descSize.setAnchorPoint(0.5, 1);
+        this._augDetailDesc = descNode.addComponent(Label);
+        this._augDetailDesc.fontSize = 16;
+        this._augDetailDesc.lineHeight = 24;
+        this._augDetailDesc.color = UI_PALETTE.text;
+        this._augDetailDesc.horizontalAlign = HorizontalTextAlignment.LEFT;
+        this._augDetailDesc.verticalAlign = VerticalTextAlignment.TOP;
+        this._augDetailDesc.overflow = Label.Overflow.RESIZE_HEIGHT;
+        this._augDetailDesc.enableWrapText = true;
+        styleLabel(this._augDetailDesc);
+
+        const close = new Node('Close'); close.setParent(detail);
+        close.setPosition(new Vec3(0, -190, 0));
+        close.addComponent(UITransform).setContentSize(190, 42);
+        applyHexButtonSkin(close, 190, 42, UI_PALETTE.cyan);
+        const closeText = new Node('Label'); closeText.setParent(close);
+        closeText.addComponent(UITransform).setContentSize(180, 30);
+        const cl = closeText.addComponent(Label);
+        cl.string = '返回词条列表';
+        cl.fontSize = 16;
+        cl.lineHeight = 22;
+        cl.color = UI_PALETTE.text;
+        styleLabel(cl);
+        close.on(Node.EventType.TOUCH_END, () => { detail.active = false; });
+        detail.active = false;
+        this._augDetail = detail;
+    }
+
+    /** 卡片摘要以字宽预算控制在两行以内，完整文字留在点按后的详情。 */
+    private _augPreview(desc: string): string {
+        let units = 0;
+        let preview = '';
+        for (const ch of desc) {
+            const width = ch.charCodeAt(0) < 128 ? 1 : 2;
+            if (units + width > 38) return `${preview.replace(/\s+$/, '')}…`;
+            preview += ch;
+            units += width;
+        }
+        return preview;
+    }
+
+    private _showAugDetail(slot: number): void {
+        const aug = this._augments[this._augPage * this.MAX_AUG_ROWS + slot];
+        if (!aug) return;
+        const tier = aug.tier ?? 1;
+        this._augDetailTitle.string = tier > 1 ? `${aug.name} · ${tier}级` : aug.name;
+        this._augDetailTitle.color = Color.fromHEX(new Color(), RARITY_COLOR[aug.rarity] ?? '#ffffff');
+        this._augDetailDesc.string = aug.desc ?? '';
+        this._augDetail.active = true;
+    }
+
+    private _changeAugPage(direction: number): void {
+        const lastPage = Math.max(0, Math.ceil(this._augments.length / this.MAX_AUG_ROWS) - 1);
+        const next = Math.max(0, Math.min(lastPage, this._augPage + direction));
+        if (next === this._augPage) return;
+        this._augPage = next;
+        this._augDetail.active = false;
+        this._renderAugPage();
+    }
+
+    private _renderAugPage(): void {
+        this._emptyAugLabel.node.active = this._augments.length === 0;
+        const pages = Math.max(1, Math.ceil(this._augments.length / this.MAX_AUG_ROWS));
+        this._augPager.active = pages > 1;
+        this._augPageLabel.string = `${this._augPage + 1} / ${pages}`;
+        this._prevAugSkin.setDisabled(this._augPage === 0);
+        this._nextAugSkin.setDisabled(this._augPage >= pages - 1);
+        for (let i = 0; i < this._augRows.length; i++) {
+            const row = this._augRows[i];
+            const aug = this._augments[this._augPage * this.MAX_AUG_ROWS + i];
+            if (!aug) { row.root.active = false; continue; }
+            row.root.active = true;
+            const col = Color.fromHEX(new Color(), RARITY_COLOR[aug.rarity] ?? '#888888');
+            const tier = aug.tier ?? 1;
+            row.name.string = tier > 1 ? `${aug.name} · ${tier}级` : aug.name;
+            row.name.color = new Color(col.r, col.g, col.b, 255);
+            row.desc.string = this._augPreview(aug.desc ?? '');
+            applyArtSprite(row.icon, `ui_icon_${aug.icon}`);
+        }
+    }
+
     // ── refresh ───────────────────────────────────────────────
 
     refresh(d: StatsPanelData) {
@@ -297,20 +449,9 @@ export class StatsPanel extends Component {
         }
 
         this._progressLabel.string = d.progress;
-        this._emptyAugLabel.node.active = d.augments.length === 0;
-
-        for (let i = 0; i < this._augRows.length; i++) {
-            const row = this._augRows[i];
-            const aug = d.augments[i];
-            if (!aug) { row.root.active = false; continue; }
-
-            row.root.active = true;
-            const col  = Color.fromHEX(new Color(), RARITY_COLOR[aug.rarity] ?? '#888888');
-            const tier = aug.tier ?? 1;
-            row.name.string = tier > 1 ? `${aug.name} · ${tier}级` : aug.name;
-            row.name.color  = new Color(col.r, col.g, col.b, 255);
-            row.desc.string = aug.desc;
-            applyArtSprite(row.icon, `ui_icon_${aug.icon}`);
-        }
+        this._augments = d.augments;
+        this._augPage = 0;
+        this._augDetail.active = false;
+        this._renderAugPage();
     }
 }

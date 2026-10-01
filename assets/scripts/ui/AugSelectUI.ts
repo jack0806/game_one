@@ -52,6 +52,11 @@ export class AugSelectUI extends Component {
     private _cards:    CardSlot[] = [];
     private _chips:    ChipSlot[] = [];
     private _chipRoot!: Node;
+    private _chipPager!: Node;
+    private _chipPageLabel!: Label;
+    private _chipPrevSkin!: HexButtonSkin;
+    private _chipNextSkin!: HexButtonSkin;
+    private _chipPage = 0;
     private _ownedLbl!: Label;
     private _goldLbl!: Label;
     private _oddsLbl!: Label;
@@ -66,7 +71,7 @@ export class AugSelectUI extends Component {
     onPickSfx?: () => void;
 
     private readonly CARD_W = 272;
-    private readonly CARD_H = 300;
+    private readonly CARD_H = 360;
     private readonly GAP    = 34;
 
     onLoad() {
@@ -84,6 +89,7 @@ export class AugSelectUI extends Component {
         this._options = options;
         this._ctx     = ctx;
         this._bought  = new Set();
+        this._chipPage = 0;
         // 三选一是模态弹窗，必须盖在商店等后创建的面板之上：每次显示都把本节点
         // 移到 UI 层末尾（绘制顺序最顶），否则会被商店商品压在下面。
         if (this.node.parent) this.node.setSiblingIndex(this.node.parent.children.length - 1);
@@ -174,7 +180,8 @@ export class AugSelectUI extends Component {
         rN.setPosition(new Vec3(0, this.CARD_H / 2 - 18, 0));
         rN.addComponent(UITransform).setContentSize(this.CARD_W - 16, 22);
         const rarityLabel = rN.addComponent(Label);
-        rarityLabel.fontSize = 12;
+        rarityLabel.fontSize = 14;
+        rarityLabel.lineHeight = 18;
         styleLabel(rarityLabel);
 
         // 档位（银/金/彩即 Lv.1/2/3）—— 纯文本与说明文字同字体，星形符号在部分字体下描边发虚
@@ -202,11 +209,11 @@ export class AugSelectUI extends Component {
 
         // desc (word-wrap)
         const dN = new Node('Desc'); dN.setParent(root);
-        dN.setPosition(new Vec3(0, -40, 0));
-        dN.addComponent(UITransform).setContentSize(this.CARD_W - 34, 96);
+        dN.setPosition(new Vec3(0, -70, 0));
+        dN.addComponent(UITransform).setContentSize(this.CARD_W - 34, 140);
         const descLabel = dN.addComponent(Label);
-        descLabel.fontSize = 15;
-        descLabel.lineHeight = 22;
+        descLabel.fontSize = 14;
+        descLabel.lineHeight = 18;
         descLabel.color = new Color(228, 232, 240, 255);
         descLabel.overflow = Label.Overflow.SHRINK;
         descLabel.enableWrapText = true;
@@ -214,7 +221,7 @@ export class AugSelectUI extends Component {
 
         // 售价
         const pN = new Node('Price'); pN.setParent(root);
-        pN.setPosition(new Vec3(0, -112, 0));
+        pN.setPosition(new Vec3(0, -160, 0));
         pN.addComponent(UITransform).setContentSize(this.CARD_W - 30, 30);
         const priceLabel = pN.addComponent(Label);
         priceLabel.fontSize = 18;
@@ -271,15 +278,16 @@ export class AugSelectUI extends Component {
         styleLabel(this._ownedLbl);
 
         const hint = new Node('Hint'); hint.setParent(this._chipRoot);
-        hint.setPosition(new Vec3(280, 58, 0));
-        hint.addComponent(UITransform).setContentSize(700, 26);
+        hint.setPosition(new Vec3(345, 58, 0));
+        hint.addComponent(UITransform).setContentSize(570, 26);
         const hl = hint.addComponent(Label);
-        hl.string = '点击持有标签可卖出（回收 75% 购买价）· 功能性海克斯不占技能格，可无限叠加';
-        hl.fontSize = 13;
-        hl.color = new Color(140, 158, 174, 220);
+        hl.string = '点击持有标签可卖出（回收 75% 购价）· 功能海克斯不占技能格';
+        hl.fontSize = 14;
+        hl.lineHeight = 18;
+        hl.color = new Color(174, 194, 211, 245);
         styleLabel(hl);
 
-        // 双行 × 5 = 10 格：技能格满 5 时功能海克斯仍全部可见
+        // 双行 × 5 = 10 格；功能性海克斯可无限叠加，超出一页时翻页查看。
         for (let i = 0; i < 10; i++) {
             const col = i % 5, row = Math.floor(i / 5);
             const chip = new Node(`Chip${i}`); chip.setParent(this._chipRoot);
@@ -296,6 +304,36 @@ export class AugSelectUI extends Component {
             chip.active = false;
             this._chips.push({ root: chip, g, label, id: '' });
         }
+
+        const pager = new Node('OwnedPager'); pager.setParent(this._chipRoot);
+        this._chipPager = pager;
+        const pageNode = new Node('Page'); pageNode.setParent(pager);
+        pageNode.setPosition(new Vec3(-110, 58, 0));
+        pageNode.addComponent(UITransform).setContentSize(150, 26);
+        this._chipPageLabel = pageNode.addComponent(Label);
+        this._chipPageLabel.fontSize = 14;
+        this._chipPageLabel.lineHeight = 18;
+        this._chipPageLabel.color = UI_PALETTE.text;
+        styleLabel(this._chipPageLabel);
+        const makePageButton = (name: string, labelText: string, x: number, step: number): HexButtonSkin => {
+            const button = new Node(name); button.setParent(pager);
+            button.setPosition(new Vec3(x, -14, 0));
+            button.addComponent(UITransform).setContentSize(72, 40);
+            const skin = applyHexButtonSkin(button, 72, 40, UI_PALETTE.cyan);
+            const textNode = new Node('Label'); textNode.setParent(button);
+            textNode.addComponent(UITransform).setContentSize(68, 30);
+            const label = textNode.addComponent(Label);
+            label.string = labelText;
+            label.fontSize = 14;
+            label.lineHeight = 18;
+            label.color = UI_PALETTE.text;
+            styleLabel(label);
+            button.on(Node.EventType.TOUCH_END, () => this._changeChipPage(step), this);
+            return skin;
+        };
+        this._chipPrevSkin = makePageButton('Prev', '上一页', -545, -1);
+        this._chipNextSkin = makePageButton('Next', '下一页', 545, 1);
+        pager.active = false;
     }
 
     // ── 交互 ──────────────────────────────────────────────────
@@ -366,9 +404,15 @@ export class AugSelectUI extends Component {
         // 功能性海克斯不占 5 个技能格：计数分开显示，卖出标签加 [功] 前缀区分
         const funcCount = owned.filter(o => o.category === '功能').length;
         this._ownedLbl.string = `技能 ${owned.length - funcCount}/5 格   ·   功能 ${funcCount}（不占格）`;
+        const pages = Math.max(1, Math.ceil(owned.length / this._chips.length));
+        this._chipPage = Math.min(this._chipPage, pages - 1);
+        this._chipPager.active = pages > 1;
+        this._chipPageLabel.string = `${this._chipPage + 1} / ${pages}`;
+        this._chipPrevSkin.setDisabled(this._chipPage === 0);
+        this._chipNextSkin.setDisabled(this._chipPage >= pages - 1);
         for (let i = 0; i < this._chips.length; i++) {
             const chip = this._chips[i];
-            const inst = owned[i];
+            const inst = owned[this._chipPage * this._chips.length + i];
             if (!inst) { chip.root.active = false; chip.id = ''; continue; }
             chip.root.active = true;
             chip.id = inst.id;
@@ -384,6 +428,14 @@ export class AugSelectUI extends Component {
             chip.g.rect(-92, -22, 188, 44);
             chip.g.stroke();
         }
+    }
+
+    private _changeChipPage(step: number): void {
+        const pages = Math.max(1, Math.ceil((this._ctx?.owned().length ?? 0) / this._chips.length));
+        const next = Math.max(0, Math.min(pages - 1, this._chipPage + step));
+        if (next === this._chipPage) return;
+        this._chipPage = next;
+        this._refreshChips();
     }
 
     private _buy(idx: number) {

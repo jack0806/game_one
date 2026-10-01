@@ -196,11 +196,11 @@ export class ShopUI extends Component {
         descN.setPosition(new Vec3(-110, -14, 0));
         descN.addComponent(UITransform).setContentSize(300, 26);
         const descLbl = descN.addComponent(Label);
-        descLbl.string = item.desc ?? ''; descLbl.fontSize = 13;
-        descLbl.lineHeight = 16;
+        descLbl.string = item.desc ?? ''; descLbl.fontSize = 16;
+        descLbl.lineHeight = 20;
         descLbl.horizontalAlign = HorizontalTextAlignment.LEFT;
-        descLbl.overflow = Label.Overflow.SHRINK;
-        descLbl.enableWrapText = true;
+        descLbl.overflow = Label.Overflow.CLAMP;
+        descLbl.enableWrapText = false;
         descLbl.color = UI_PALETTE.muted;
         styleLabel(descLbl, { outlineWidth: 1 });
 
@@ -215,13 +215,16 @@ export class ShopUI extends Component {
 
         // buy button
         const btn = new Node('Buy'); btn.setParent(row);
-        btn.setPosition(new Vec3(230, 0, 0));
-        btn.addComponent(UITransform).setContentSize(80, 36);
-        const btnSkin = applyHexButtonSkin(btn, 80, 36, new Color(55, 205, 105, 255));
+        btn.setPosition(new Vec3(220, 0, 0));
+        btn.addComponent(UITransform).setContentSize(100, 36);
+        const btnSkin = applyHexButtonSkin(btn, 100, 36, new Color(55, 205, 105, 255));
         const btnLN = new Node('L'); btnLN.setParent(btn);
-        btnLN.addComponent(UITransform).setContentSize(80, 36);
+        btnLN.addComponent(UITransform).setContentSize(100, 36);
         const btnLbl = btnLN.addComponent(Label);
         btnLbl.string = '购买'; btnLbl.fontSize = 14;
+        btnLbl.lineHeight = 20;
+        btnLbl.overflow = Label.Overflow.CLAMP;
+        btnLbl.enableWrapText = false;
         btnLbl.color = new Color(200, 255, 200, 255);
         styleLabel(btnLbl);
         const state = { item, skin: btnSkin, label: btnLbl, sold: false };
@@ -249,7 +252,7 @@ export class ShopUI extends Component {
             row.label.color = row.sold
                 ? new Color(155, 168, 180, 255)
                 : affordable ? new Color(215, 255, 226, 255) : UI_PALETTE.muted;
-            row.label.fontSize = affordable ? 14 : 12;
+            row.label.fontSize = 14;
         }
     }
 }

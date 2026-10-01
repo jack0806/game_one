@@ -45,8 +45,8 @@ export class HUD extends Component {
     private _testRoomMode = false;
 
     private readonly BAR_W   = 240;
-    private readonly BAR_H   = 16;
-    private readonly SHIELD_H = 12;
+    private readonly BAR_H   = 20;
+    private readonly SHIELD_H = 16;
     private readonly BOSS_W  = 460;
     private readonly BOSS_H  = 24;
     private readonly SKILL_R = 28;
@@ -63,40 +63,42 @@ export class HUD extends Component {
     // ── builders ──────────────────────────────────────────────
 
     private _buildHpBar() {
-        const panel = this._mkNode('VitalsPanel', -510, 310);
+        const panel = this._mkNode('VitalsPanel', -510, 302);
         const panelG = panel.addComponent(Graphics);
-        drawHexPanel(panelG, -8, -8, this.BAR_W + 28, 48);
+        drawHexPanel(panelG, -8, -8, this.BAR_W + 28, 58);
 
-        const bg = this._mkNode('HpBg', -500, 330);
+        const bg = this._mkNode('HpBg', -500, 326);
         const bgG = bg.addComponent(Graphics);
         bgG.fillColor = UI_PALETTE.deep;
         bgG.fillRect(0, 0, this.BAR_W, this.BAR_H);
         bgG.strokeColor = UI_PALETTE.danger;
         bgG.lineWidth = 1; bgG.rect(0, 0, this.BAR_W, this.BAR_H); bgG.stroke();
 
-        this._hpBarFg = this._mkNode('HpFg', -500, 330).addComponent(Graphics);
+        this._hpBarFg = this._mkNode('HpFg', -500, 326).addComponent(Graphics);
 
-        const shieldBg = this._mkNode('ShieldBg', -500, 320);
+        const shieldBg = this._mkNode('ShieldBg', -500, 304);
         const shieldBgG = shieldBg.addComponent(Graphics);
         shieldBgG.fillColor = new Color(18, 30, 44, 225);
         shieldBgG.fillRect(0, 0, this.BAR_W, this.SHIELD_H);
         shieldBgG.strokeColor = new Color(55, 90, 120, 230);
         shieldBgG.lineWidth = 1;
         shieldBgG.rect(0, 0, this.BAR_W, this.SHIELD_H); shieldBgG.stroke();
-        this._shieldBarFg = this._mkNode('ShieldFg', -500, 320).addComponent(Graphics);
+        this._shieldBarFg = this._mkNode('ShieldFg', -500, 304).addComponent(Graphics);
 
-        // 数值直接归属各自的条，不再另起一行挤出面板或覆盖外框。
-        const ln = this._mkNode('HpLbl', -380, 338);
+        // 两条状态条留出间距，让数值与边框各自清晰可读。
+        const ln = this._mkNode('HpLbl', -380, 336);
         ln.addComponent(UITransform).setContentSize(this.BAR_W - 12, this.BAR_H);
         this._hpLabel = ln.addComponent(Label);
-        this._hpLabel.fontSize = 12;
+        this._hpLabel.fontSize = 16;
+        this._hpLabel.lineHeight = 20;
         this._hpLabel.color = new Color(245, 250, 245, 255);
         styleLabel(this._hpLabel);
 
-        const sn = this._mkNode('ShieldLbl', -380, 326);
+        const sn = this._mkNode('ShieldLbl', -380, 312);
         sn.addComponent(UITransform).setContentSize(this.BAR_W - 12, this.SHIELD_H);
         this._shieldLabel = sn.addComponent(Label);
-        this._shieldLabel.fontSize = 10;
+        this._shieldLabel.fontSize = 14;
+        this._shieldLabel.lineHeight = 16;
         this._shieldLabel.color = new Color(225, 242, 255, 255);
         styleLabel(this._shieldLabel);
     }
@@ -159,19 +161,21 @@ export class HUD extends Component {
             iconSp.sizeMode = Sprite.SizeMode.CUSTOM;
 
             const ln = new Node('Key'); ln.setParent(n);
-            ln.setPosition(new Vec3(0, -this.SKILL_R - 12, 0));
+            ln.setPosition(new Vec3(0, -this.SKILL_R - 14, 0));
             ln.addComponent(UITransform).setContentSize(40, 40);
             const lbl = ln.addComponent(Label);
             lbl.string = keys[i];
-            lbl.fontSize = 13;
+            lbl.fontSize = 16;
+            lbl.lineHeight = 20;
             lbl.color = new Color(200, 200, 200, 255);
             styleLabel(lbl);
 
             const descN = new Node('Desc'); descN.setParent(n);
-            descN.setPosition(new Vec3(0, this.SKILL_R + 18, 0));
-            descN.addComponent(UITransform).setContentSize(66, 18);
+            descN.setPosition(new Vec3(0, this.SKILL_R + 20, 0));
+            descN.addComponent(UITransform).setContentSize(66, 20);
             const desc = descN.addComponent(Label);
-            desc.fontSize = 10;
+            desc.fontSize = 14;
+            desc.lineHeight = 18;
             desc.color = new Color(200, 220, 240, 220);
             desc.overflow = Label.Overflow.RESIZE_HEIGHT;
             styleLabel(desc);
@@ -197,7 +201,7 @@ export class HUD extends Component {
 
     private _layoutSkillRings(): void {
         for (let i = 0; i < this._skillRingNodes.length; i++) {
-            const y = this._testRoomMode ? (-170 + i * 38) : -310;
+            const y = this._testRoomMode ? (-170 + i * 38) : -280;
             this._skillRingNodes[i].setPosition(new Vec3(440 + i * 70, y, 0));
         }
     }

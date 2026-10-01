@@ -240,9 +240,11 @@ test('战斗角色关闭auto-trim，避免裁剪框被强塞为正方形后横�
 
 test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
     assert.match(hudSource, /Math\.min\(1, d\.shield \/ d\.maxShield\)/);
-    assert.match(hudSource, /ShieldFg', -500, 320/);
-    assert.match(hudSource, /HpLbl', -380, 338/);
-    assert.match(hudSource, /ShieldLbl', -380, 326/);
+    assert.match(hudSource, /ShieldFg', -500, 304/);
+    assert.match(hudSource, /HpLbl', -380, 336/);
+    assert.match(hudSource, /ShieldLbl', -380, 312/);
+    assert.match(hudSource, /this\._hpLabel\.fontSize = 16/);
+    assert.match(hudSource, /this\._shieldLabel\.fontSize = 14/);
     assert.match(hudSource, /生命  \$\{Math\.ceil\(d\.hp\)\} \/ \$\{Math\.round\(d\.maxHp\)\}/);
     assert.match(hudSource, /护盾  \$\{Math\.ceil\(d\.shield\)\} \/ \$\{Math\.round\(d\.maxShield\)\}/);
     assert.match(hudSource, /BossRoot', -this\.BOSS_W \/ 2, 282/);
