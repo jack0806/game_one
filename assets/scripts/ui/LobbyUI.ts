@@ -7,7 +7,7 @@
 
 import {
     Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite,
-    UITransform, Vec3, VerticalTextAlignment, tween,
+    UITransform, Vec3, VerticalTextAlignment, tween, sys,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
@@ -127,7 +127,8 @@ export class LobbyUI {
             new Color(CYAN.r, CYAN.g, CYAN.b, 220), HorizontalTextAlignment.LEFT);
         this._mkLabel(page, -272, 291, 560, 48, '作战大厅', 30, WHITE, HorizontalTextAlignment.LEFT);
 
-        const back = this._mkButton(page, '返回首页', 526, 306, 150, 42, new Color(78, 111, 135, 255));
+        const back = this._mkButton(page, '返回首页', 526, 306, 150,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         back.on(Node.EventType.TOUCH_END, this._callbacks.onBack);
 
         this._buildSummaryPanel(page);
@@ -163,7 +164,8 @@ export class LobbyUI {
             ['achievements', '成就档案', GOLD],
         ];
         entries.forEach(([name, label, accent], i) => {
-            const btn = this._mkButton(dock, label, 0, 74 - i * 68, 334, 54, accent);
+            const btn = this._mkButton(dock, label, 0, 74 - i * 68, 334,
+                sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 64 : 54, accent);
             btn.on(Node.EventType.TOUCH_END, () => this._callbacks.onMetaPage(name));
         });
     }

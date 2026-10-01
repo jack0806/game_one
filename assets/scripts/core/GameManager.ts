@@ -466,11 +466,13 @@ export class GameManager extends Component {
         // Wire screen callbacks
         // 新流程：首页开始游戏 → 存档选择 → 存档大厅（传送门/任务/成就）→ 难度选择 → 选人开战
         this._screenMgr.onPlayPressed     = () => this._setState('saveSelect');
+        this._screenMgr.onSaveSelectBack  = () => this._setState('menu');
         this._screenMgr.onSlotPicked      = (slot) => {
             SaveSystem.selectSlot(slot);
             this._setState('lobby');
         };
         this._screenMgr.onLobbyPortal     = () => this._setState('mapSelect');
+        this._screenMgr.onLobbyBack       = () => this._setState('menu');
         // 出击地图选择（2026-09-21）：废土=全部现有章节；深海为占位锁定。
         // 选定废土后进入难度选择，返回则回存档大厅。
         this._screenMgr.onMapPicked        = () => this._setState('difficultySelect');
@@ -728,6 +730,16 @@ export class GameManager extends Component {
             applyArtSprite(sprite, prop.artKey);
         }
         this._drawRightBoundaryRail(g);
+        this._drawTopBoundaryRail(g);
+    }
+
+    private _arenaRailAccent(): Color {
+        const accents = [
+            new Color(152, 189, 198, 210), new Color(225, 151, 88, 210),
+            new Color(105, 207, 187, 210), new Color(173, 129, 217, 210),
+            new Color(120, 182, 195, 210), new Color(228, 148, 90, 210),
+        ];
+        return accents[this._arena.chapter - 1] ?? accents[0];
     }
 
     /** 宽屏镜像只作场外远景；用护栏标出右侧开放地面的真实碰撞边界。 */
@@ -737,12 +749,7 @@ export class GameManager extends Component {
         const railX = wall.x - wall.w / 2;
         const x = railX - CANVAS_W / 2;
         const edgesOnly: ArenaLayout = { ...this._arena, obstacles: [] };
-        const accents = [
-            new Color(152, 189, 198, 210), new Color(225, 151, 88, 210),
-            new Color(105, 207, 187, 210), new Color(173, 129, 217, 210),
-            new Color(120, 182, 195, 210), new Color(228, 148, 90, 210),
-        ];
-        const accent = accents[this._arena.chapter - 1] ?? accents[0];
+        const accent = this._arenaRailAccent();
         const drawSegment = (top: number, bottom: number) => {
             if (bottom - top < 40) return;
             const localTop = CANVAS_H / 2 - top;
@@ -769,6 +776,43 @@ export class GameManager extends Component {
             else if (!open && spanTop >= 0) {
                 drawSegment(spanTop, y - 4);
                 spanTop = -1;
+            }
+        }
+    }
+
+    /** 顶部中央是开放路面；护栏与画面边缘的碰撞位置重合，避开两侧建筑。 */
+    private _drawTopBoundaryRail(g: Graphics): void {
+        const wall = this._arena.boundaries?.find(solid => solid.id.startsWith('top-'));
+        if (!wall) return;
+        const railY = wall.y + wall.h / 2;
+        const y = CANVAS_H / 2 - railY;
+        const edgesOnly: ArenaLayout = { ...this._arena, obstacles: [] };
+        const accent = this._arenaRailAccent();
+        const drawSegment = (left: number, right: number) => {
+            if (right - left < 40) return;
+            const localLeft = left - CANVAS_W / 2;
+            const localRight = right - CANVAS_W / 2;
+            g.strokeColor = new Color(9, 18, 29, 220);
+            g.lineWidth = 11;
+            g.moveTo(localLeft, y); g.lineTo(localRight, y); g.stroke();
+            g.strokeColor = accent;
+            g.lineWidth = 3;
+            g.moveTo(localLeft, y); g.lineTo(localRight, y); g.stroke();
+            for (let x = left; x <= right; x += 40) {
+                const localX = x - CANVAS_W / 2;
+                g.fillColor = new Color(17, 31, 44, 235);
+                g.rect(localX - 6, y - 9, 12, 18); g.fill();
+                g.fillColor = accent;
+                g.rect(localX - 3, y + 3, 6, 3); g.fill();
+            }
+        };
+        let spanLeft = -1;
+        for (let x = 80; x <= 1200; x += 4) {
+            const open = x < 1200 && isArenaFree(edgesOnly, x, railY + 20, 16);
+            if (open && spanLeft < 0) spanLeft = x;
+            else if (!open && spanLeft >= 0) {
+                drawSegment(spanLeft, x - 4);
+                spanLeft = -1;
             }
         }
     }

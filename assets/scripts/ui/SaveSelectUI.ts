@@ -7,7 +7,7 @@
 
 import {
     Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite,
-    UITransform, Vec3, VerticalTextAlignment,
+    UITransform, Vec3, VerticalTextAlignment, sys,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
@@ -123,7 +123,8 @@ export class SaveSelectUI {
         const title = this._mkLabel(page, -272, 291, 560, 48, '选择存档', 30, WHITE, HorizontalTextAlignment.LEFT);
         title.overflow = Label.Overflow.SHRINK;
 
-        const back = this._mkButton(page, '返回首页', 526, 306, 150, 42, new Color(78, 111, 135, 255));
+        const back = this._mkButton(page, '返回首页', 526, 306, 150,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         back.on(Node.EventType.TOUCH_END, this._callbacks.onBack);
 
         for (let i = 0; i < SaveSystem.SLOT_COUNT; i++) this._buildCard(page, i);

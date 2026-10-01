@@ -73,6 +73,10 @@ test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,
     assert.match(gameSource, /'menu' \| 'saveSelect' \| 'lobby' \| 'difficultySelect' \| 'charSelect' \| 'playing'/);
     assert.match(gameSource, /case 'saveSelect':[\s\S]*?this\._screenMgr\.show\('saveSelect'\)/);
     assert.match(gameSource, /case 'lobby':[\s\S]*?this\._screenMgr\.show\('lobby'\)/);
+    assert.match(gameSource, /onSaveSelectBack\s*= \(\) => this\._setState\('menu'\)/);
+    assert.match(gameSource, /onLobbyBack\s*= \(\) => this\._setState\('menu'\)/);
+    assert.match(screenSource, /onBack: \(\) => this\.onSaveSelectBack\?\.\(\)/);
+    assert.match(screenSource, /onBack: \(\) => this\.onLobbyBack\?\.\(\)/);
     assert.match(gameSource, /case 'difficultySelect':[\s\S]*?this\._screenMgr\.show\('difficultySelect'\)/);
     // 难度选择页由 DIFFICULTIES 数据驱动四张卡；测试房间不注入难度
     assert.match(screenSource, /DIFFICULTIES\.forEach/);
@@ -84,7 +88,7 @@ test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,
     // 启动时把旧单档案一次性迁移进 1 号槽
     assert.match(gameSource, /SaveSystem\.migrateLegacyProfile\(\)/);
     // 选人页新增返回大厅按钮
-    assert.match(screenSource, /'返回大厅', -540, 320, 160, 42/);
+    assert.match(screenSource, /'返回大厅', -540, 320, 160,\s*sys\.hasFeature\(sys\.Feature\.INPUT_TOUCH\) \? 72 : 42/);
     assert.match(screenSource, /onCharSelectBack\?\.\(\)/);
 });
 
@@ -156,7 +160,8 @@ test('角色介绍卡有圆整统一底板，底部为「选择出战/英雄介�
     assert.match(screenSource, /const corner = 18/);
     assert.match(screenSource, /frameN\.setPosition\(new Vec3\(0, 84, 0\)\)/);
     assert.match(screenSource, /this\._loadPortrait\(card, `char_\$\{charId\}`, 88, 84\)/);
-    assert.match(screenSource, /skN\.setPosition\(new Vec3\(0, -40, 0\)\)/);
+    assert.match(screenSource, /skN\.setPosition\(new Vec3\(0, touch \? -26 : -40, 0\)\)/);
+    assert.match(screenSource, /nameN\.setPosition\(new Vec3\(0, touch \? 26 : 12, 0\)\)/);
     assert.match(screenSource, /const cy = 100 - row \* 295/);
     assert.match(screenSource, /hintN\.setPosition\(new Vec3\(0, -110, 0\)\)/);
     // 选择出战按钮直接开战；整张卡不再绑定开局回调，看介绍时不会误触
@@ -173,9 +178,10 @@ test('选人页与英雄介绍文字保持可读字号：速览14px、锁定提�
     assert.match(screenSource, /skLbl\.lineHeight = 21/);
     assert.match(screenSource, /hintLbl\.fontSize = 16/);
     assert.match(screenSource, /lockLbl\.fontSize = 22/);
-    // 双按钮40px高（_mkBtn按0.36比例≈14px字），避免13px以下的按钮小字
-    assert.match(screenSource, /'选择出战', -85, -110, 150, 40/);
-    assert.match(screenSource, /'英雄介绍', 85, -110, 150, 40/);
+    // 桌面保留40px按钮，触屏扩至72px，保证手机上的文字和点击区域。
+    assert.match(screenSource, /'选择出战', -85, touch \? -104 : -110,\s*150, touch \? 72 : 40/);
+    assert.match(screenSource, /'英雄介绍', 85, touch \? -104 : -110,\s*150, touch \? 72 : 40/);
+    assert.match(screenSource, /sys\.hasFeature\(sys\.Feature\.INPUT_TOUCH\) \? 72 : 42/);
     assert.doesNotMatch(screenSource, /skLbl\.fontSize = 1[123]/);
 });
 
@@ -208,9 +214,9 @@ test('英雄介绍弹窗文字放大后保持可读：属性16px、技能标题1
     assert.match(screenSource, /hl\.fontSize = 19/);
     assert.match(screenSource, /dl\.fontSize = 16/);
     assert.match(screenSource, /dl\.lineHeight = 24/);
-    // 底部按钮52px高（≈19px字），返回/出战不再是小字按钮
-    assert.match(screenSource, /'选择出战', -130, -234, 260, 52/);
-    assert.match(screenSource, /'返回', 130, -234, 260, 52/);
+    // 桌面保持52px，触屏增至72px且左右留缝。
+    assert.match(screenSource, /'选择出战', touch \? -145 : -130, -234,\s*260, touch \? 72 : 52/);
+    assert.match(screenSource, /'返回', touch \? 145 : 130, -234,\s*260, touch \? 72 : 52/);
     // 只检查详情弹窗的说明 Label；地图页另有独立的 15px 描述。
     const detailSource = screenSource.slice(screenSource.indexOf('private _buildCharDetailPanel()'),
         screenSource.indexOf('private _buildGameoverPanel()'));

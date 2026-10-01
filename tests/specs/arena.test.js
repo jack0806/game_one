@@ -96,7 +96,14 @@ test('六章底图边缘的实体建筑挡住角色且保留中心通路', () =>
         assert.equal(isArenaFree(layout, 640, 30, 18), false);
         assert.equal(isArenaFree(layout, 640, 635, 18), false);
         assert.equal(isArenaFree(layout, 640, 360, 70), true);
-        assert.ok(moveInArena(layout, 640, 360, 0, -500, 18).y >= 80);
+        const edges = { ...layout, obstacles: [] };
+        const top = moveInArena(edges, 640, 360, 0, -500, 16);
+        assert.ok(top.y >= 60 && top.y <= 72,
+            `${layout.id} 顶部空地可走到护栏前：${top.y}`);
+        assert.equal(isArenaFree(edges, 640, 64, 16), true,
+            `${layout.id} 顶部空地不再被提前封住`);
+        assert.equal(isArenaFree(edges, 640, 56, 16), false,
+            `${layout.id} 护栏后方仍有实体边界`);
         assert.ok(moveInArena(layout, 640, 360, 0, 500, 18).y <= 602);
     }
     assert.ok(moveInArena(arena, 640, 150, -700, 0, 18).x >= 143);

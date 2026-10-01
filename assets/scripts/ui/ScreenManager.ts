@@ -85,8 +85,10 @@ export class ScreenManager extends Component {
 
     // callbacks set by GameManager
     onPlayPressed?:        BtnCallback;   // 进入游戏 → 存档选择
+    onSaveSelectBack?:     BtnCallback;   // 存档选择 → 首页，状态由 GameManager 同步
     onSlotPicked?:         (slot: number) => void;   // 存档选择 → 进入存档大厅
     onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 作战地图选择
+    onLobbyBack?:         BtnCallback;   // 存档大厅 → 首页，状态由 GameManager 同步
     onMapPicked?:          BtnCallback;   // 地图页选定（废土）→ 难度选择
     onMapBack?:            BtnCallback;   // 地图页返回 → 存档大厅
     onDifficultyPicked?:   (d: DifficultyDef) => void;   // 难度选择 → 角色选择
@@ -108,14 +110,14 @@ export class ScreenManager extends Component {
         this._buildMenuPanel();
         this._saveSelect = new SaveSelectUI(this.node, {
             onSlotPicked: (slot) => this.onSlotPicked?.(slot),
-            onBack: () => this.transition('saveSelect', 'menu'),
+            onBack: () => this.onSaveSelectBack?.(),
             onButtonSfx: () => this.onButtonSfx?.(),
         });
         for (const [name, panel] of this._saveSelect.entries()) this._panels.set(name as ScreenName, panel);
         this._lobby = new LobbyUI(this.node, {
             onPortalPressed: () => this.onLobbyPortal?.(),
             onMetaPage: (page) => this.transition('lobby', page),
-            onBack: () => this.transition('lobby', 'menu'),
+            onBack: () => this.onLobbyBack?.(),
             onButtonSfx: () => this.onButtonSfx?.(),
         });
         for (const [name, panel] of this._lobby.entries()) this._panels.set(name as ScreenName, panel);
@@ -500,7 +502,8 @@ export class ScreenManager extends Component {
         bg.fillRect(-1600, -360, 3200, 720);
         this._buildSelectionBackdrop(p);
 
-        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160, 42, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onMapBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);
@@ -639,7 +642,8 @@ export class ScreenManager extends Component {
         bg.fillRect(-1600, -360, 3200, 720);
         this._buildSelectionBackdrop(p);
 
-        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160, 42, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onDifficultyBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);
@@ -717,7 +721,8 @@ export class ScreenManager extends Component {
 
         // 选人页位于存档大厅之后：左上角提供返回大厅出口（卡片在 y≤240，
         // 按钮放 320 高度不与标题/卡片重叠）。
-        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160, 42, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onCharSelectBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);
@@ -759,6 +764,7 @@ export class ScreenManager extends Component {
             const def = CHARS[idx];
             const charId = def?.id;
             const locked = !!def && !def.unlocked;
+            const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
 
             // 整张卡提供低对比实体底板，把居中的头像、名牌和说明收束为一组；
             // 旧版只有头像框与名牌，四行左对齐文字像漂在页面背景上。
@@ -797,7 +803,7 @@ export class ScreenManager extends Component {
             // 名牌从按钮降为纯标签：整卡点击不再直接开战，出战入口收口到底部
             // 「选择出战」按钮，玩家想先看技能时不会误触开局。
             const nameN = new Node('Name'); nameN.setParent(card);
-            nameN.setPosition(new Vec3(0, 12, 0));
+            nameN.setPosition(new Vec3(0, touch ? 26 : 12, 0));
             nameN.addComponent(UITransform).setContentSize(320, 30);
             const nameLbl = nameN.addComponent(Label);
             nameLbl.string = names[i] ?? `Char${i}`;
@@ -825,7 +831,7 @@ export class ScreenManager extends Component {
                 dimG.fillRect(-180, -140, 360, 280);
 
                 const lockNameN = new Node('LockName'); lockNameN.setParent(card);
-                lockNameN.setPosition(new Vec3(0, 12, 0));
+                lockNameN.setPosition(new Vec3(0, touch ? 26 : 12, 0));
                 lockNameN.addComponent(UITransform).setContentSize(320, 30);
                 const lockName = lockNameN.addComponent(Label);
                 lockName.string = names[i] ?? `Char${i}`;
@@ -861,7 +867,7 @@ export class ScreenManager extends Component {
                 // 正文14px/行距21px：最长被动（狂战士31字符）换行后共3行，
                 // 68px文本框无需触发SHRINK缩字。
                 const skN = new Node('Skills'); skN.setParent(card);
-                skN.setPosition(new Vec3(0, -40, 0));
+                skN.setPosition(new Vec3(0, touch ? -26 : -40, 0));
                 skN.addComponent(UITransform).setContentSize(332, 68);
                 const skLbl = skN.addComponent(Label);
                 if (def) {
@@ -880,13 +886,15 @@ export class ScreenManager extends Component {
                 styleLabel(skLbl);
 
                 // 选择出战：点击后直接开始游戏
-                const selBtn = this._mkBtn(card, '选择出战', -85, -110, 150, 40,
+                const selBtn = this._mkBtn(card, '选择出战', -85, touch ? -104 : -110,
+                    150, touch ? 72 : 40,
                     colors[i] ?? new Color(80, 140, 180, 255));
                 selBtn.on(Node.EventType.TOUCH_END,
                     () => this.onCharSelected?.(CHARS[idx]!), this);
 
                 // 英雄介绍：弹出该角色的详细技能介绍，不直接开战
-                const introBtn = this._mkBtn(card, '英雄介绍', 85, -110, 150, 40,
+                const introBtn = this._mkBtn(card, '英雄介绍', 85, touch ? -104 : -110,
+                    150, touch ? 72 : 40,
                     new Color(62, 120, 200, 255));
                 introBtn.on(Node.EventType.TOUCH_END,
                     () => this.showCharDetail(CHARS[idx]!), this);
@@ -997,11 +1005,14 @@ export class ScreenManager extends Component {
         }
 
         // 底部：弹窗内可直接出战，或返回选人页
-        const selBtn = this._mkBtn(dlg, '选择出战', -130, -234, 260, 52, new Color(24, 170, 120, 255));
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const selBtn = this._mkBtn(dlg, '选择出战', touch ? -145 : -130, -234,
+            260, touch ? 72 : 52, new Color(24, 170, 120, 255));
         selBtn.on(Node.EventType.TOUCH_END, () => {
             if (this._detailDef) this.onCharSelected?.(this._detailDef);
         }, this);
-        const backBtn = this._mkBtn(dlg, '返回', 130, -234, 260, 52, new Color(70, 90, 130, 255));
+        const backBtn = this._mkBtn(dlg, '返回', touch ? 145 : 130, -234,
+            260, touch ? 72 : 52, new Color(70, 90, 130, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.hide('charDetail'), this);
     }
 
@@ -1152,9 +1163,13 @@ export class ScreenManager extends Component {
         }
 
         const primaryText = name === 'gameover' ? '重新开始' : '进入下一章';
-        const primaryBtn = this._mkBtn(p, primaryText, 0, -149, 230, 46,
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const primaryBtn = this._mkBtn(p, primaryText, touch ? -160 : 0,
+            touch ? -178 : -149, touch ? 260 : 230, touch ? 72 : 46,
             name === 'gameover' ? new Color(55, 145, 102, 255) : new Color(42, 158, 207, 255));
-        const backBtn = this._mkBtn(p, '返回大厅', 0, -208, 230, 46, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', touch ? 160 : 0,
+            touch ? -178 : -208, touch ? 260 : 230, touch ? 72 : 46,
+            new Color(78, 111, 135, 255));
         primaryBtn.on(Node.EventType.TOUCH_END, () => {
             if (name === 'gameover') this.onRestartPressed?.();
             else this.onContinuePressed?.();

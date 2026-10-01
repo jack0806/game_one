@@ -81,7 +81,7 @@ const COMMON_EDGES: readonly ArenaSolid[] = [
 const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
     1: [
         ...COMMON_EDGES,
-        edge('top-structure', 0, 0, 1280, 66),
+        edge('top-structure', 0, 0, 1280, 44),
         edge('upper-left-building', 0, 0, 125, 195),
         edge('upper-right-building', 1135, 0, 1280, 225),
         edge('left-guardrail', 0, 270, 165, 440),
@@ -92,7 +92,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
     ],
     2: [
         ...COMMON_EDGES,
-        edge('top-foundry', 0, 0, 1280, 72),
+        edge('top-foundry', 0, 0, 1280, 44),
         edge('upper-left-furnace', 0, 0, 165, 190),
         edge('upper-left-furnace-front', 165, 70, 190, 175),
         edge('upper-right-furnace', 1090, 0, 1280, 215),
@@ -110,7 +110,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
     ],
     3: [
         ...COMMON_EDGES,
-        edge('top-lab', 0, 0, 1280, 68),
+        edge('top-lab', 0, 0, 1280, 44),
         edge('upper-left-vats', 0, 0, 180, 205),
         edge('upper-left-vats-front', 180, 80, 195, 180),
         edge('upper-right-vats', 1110, 0, 1280, 260),
@@ -122,7 +122,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
     ],
     4: [
         ...COMMON_EDGES,
-        edge('top-rift-wall', 0, 0, 1280, 66),
+        edge('top-rift-wall', 0, 0, 1280, 44),
         edge('upper-left-ruin', 0, 0, 165, 190),
         edge('upper-right-portal', 1085, 0, 1280, 210),
         edge('upper-right-portal-front', 1015, 90, 1085, 210),
@@ -136,7 +136,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
     ],
     5: [
         ...COMMON_EDGES,
-        edge('top-mech-wall', 0, 0, 1280, 70),
+        edge('top-mech-wall', 0, 0, 1280, 44),
         edge('upper-left-mech', 0, 0, 175, 230),
         edge('upper-right-mech', 1080, 0, 1280, 245),
         edge('left-armored-wall', 0, 225, 140, 455),
@@ -148,7 +148,7 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
     ],
     6: [
         ...COMMON_EDGES,
-        edge('top-core-wall', 0, 0, 1280, 70),
+        edge('top-core-wall', 0, 0, 1280, 44),
         edge('upper-left-frame', 0, 0, 175, 225),
         edge('upper-left-frame-rubble', 175, 75, 210, 185),
         edge('upper-right-reactor', 1080, 0, 1280, 255),
