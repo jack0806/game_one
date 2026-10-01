@@ -51,6 +51,13 @@ export const ARENA_ART_SOLID_TOP: Readonly<Record<string, number>> = {
     arena_wreck_ch1: 112 / 961,
 };
 
+/** 第一章残骸的角色脚底与实体像素之间额外留白，避免缩放取整后看似踩入。 */
+export const ARENA_ART_FOOT_CLEARANCE: Readonly<Record<string, number>> = {
+    arena_wall_ch1: 4,
+    arena_wreck_ch1: 4,
+    arena_barrier_ch1: 4,
+};
+
 /** 圆形残骸侧角的可见实体起点；比例按 Cocos 裁切后的 SpriteFrame 可见高度计算。 */
 export const ARENA_ART_SIDE_TOP: Readonly<Record<string, { left?: number; right?: number }>> = {
     arena_mech_ch5: { left: 0.60, right: 0.60 },
@@ -92,8 +99,10 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-right-furnace-front', 970, 72, 1090, 205),
         edge('upper-right-pipe-base', 1160, 215, 1280, 285),
         edge('left-pipes', 0, 235, 130, 435),
-        edge('lower-left-furnace', 0, 450, 175, 648),
-        edge('lower-left-furnace-front', 175, 490, 245, 620),
+        edge('lower-left-furnace-upper', 0, 450, 155, 530),
+        edge('lower-left-furnace-lower', 0, 530, 175, 648),
+        edge('lower-left-furnace-slope', 175, 520, 215, 570),
+        edge('lower-left-furnace-front', 175, 570, 245, 620),
         edge('lower-right-pipes-slope-upper', 1215, 405, 1280, 465),
         edge('lower-right-pipes-slope-front', 1175, 465, 1280, 490),
         edge('lower-right-pipes', 1110, 490, 1280, 648),
@@ -119,8 +128,9 @@ const CHAPTER_EDGES: Record<number, readonly ArenaSolid[]> = {
         edge('upper-right-portal-front', 1015, 90, 1085, 210),
         edge('left-rift-pillar', 0, 220, 95, 395),
         edge('left-rift-rubble-transition', 0, 430, 145, 470),
-        edge('lower-left-ruin', 0, 470, 225, 648),
-        edge('lower-left-ruin-front', 225, 490, 255, 620),
+        edge('lower-left-ruin-upper', 0, 470, 190, 530),
+        edge('lower-left-ruin-lower', 0, 530, 225, 648),
+        edge('lower-left-ruin-front', 225, 550, 255, 620),
         edge('lower-right-ruin', 1110, 435, 1280, 648),
         edge('lower-right-ruin-front', 1015, 550, 1110, 620),
     ],

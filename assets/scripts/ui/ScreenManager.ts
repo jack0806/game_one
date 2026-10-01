@@ -499,7 +499,7 @@ export class ScreenManager extends Component {
         bg.fillRect(-1600, -360, 3200, 720);
         this._buildSelectionBackdrop(p);
 
-        const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160, 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onMapBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);
@@ -519,14 +519,14 @@ export class ScreenManager extends Component {
         styleLabel(sl);
 
         // 地图1 废土（可选）：全部章节所在地图
-        const maps: { x: number; name: string; desc: string; accent: Color; locked: boolean }[] = [
-            { x: -240, name: '地图 1 · 废土', desc: '六章连续战场 · 从废土街道出发', accent: new Color(40, 224, 218, 255), locked: false },
-            { x: 240,  name: '地图 2 · 深海', desc: '全新深海战场 · 敬请期待', accent: new Color(90, 90, 110, 255), locked: true },
+        const maps: { x: number; width: number; name: string; desc: string; accent: Color; locked: boolean }[] = [
+            { x: -250, width: 600, name: '地图 1 · 废土', desc: '六章连续战场 · 从废土街道出发', accent: new Color(40, 224, 218, 255), locked: false },
+            { x: 290, width: 420, name: '地图 2 · 深海', desc: '全新深海战场 · 敬请期待', accent: new Color(90, 90, 110, 255), locked: true },
         ];
         for (const m of maps) {
             const card = new Node(`Map_${m.name}`); card.setParent(p);
             card.setPosition(new Vec3(m.x, -20, 0));
-            card.addComponent(UITransform).setContentSize(420, 360);
+            card.addComponent(UITransform).setContentSize(m.width, 360);
 
             if (m.locked) this._buildLockedMapPreview(card);
             else this._buildChapterMapPreview(card);
@@ -552,7 +552,7 @@ export class ScreenManager extends Component {
             dl.enableWrapText = true;
             styleLabel(dl);
 
-            applyHexCardSkin(card, 420, 360, m.accent, m.locked);
+            applyHexCardSkin(card, m.width, 360, m.accent, m.locked);
 
             if (!m.locked) {
                 card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(), this);
@@ -566,33 +566,33 @@ export class ScreenManager extends Component {
         grid.setPosition(new Vec3(0, 46, 0));
         for (const [i, chapter] of CHAPTERS.slice(0, 6).entries()) {
             const tile = new Node(`Chapter_${chapter.id}`); tile.setParent(grid);
-            tile.setPosition(new Vec3(-128 + i % 3 * 128, 38 - Math.floor(i / 3) * 76, 0));
-            tile.addComponent(UITransform).setContentSize(120, 68);
+            tile.setPosition(new Vec3(-180 + i % 3 * 180, 44 - Math.floor(i / 3) * 88, 0));
+            tile.addComponent(UITransform).setContentSize(170, 82);
             const frame = tile.addComponent(Graphics);
             frame.fillColor = new Color(8, 20, 32, 255);
-            frame.roundRect(-60, -34, 120, 68, 6); frame.fill();
+            frame.roundRect(-85, -41, 170, 82, 6); frame.fill();
             frame.strokeColor = new Color(105, 150, 174, 160);
             frame.lineWidth = 1;
-            frame.roundRect(-60, -34, 120, 68, 6); frame.stroke();
+            frame.roundRect(-85, -41, 170, 82, 6); frame.stroke();
 
             const artNode = new Node('Art'); artNode.setParent(tile);
-            artNode.addComponent(UITransform).setContentSize(116, 64);
+            artNode.addComponent(UITransform).setContentSize(166, 78);
             const art = artNode.addComponent(Sprite);
             art.sizeMode = Sprite.SizeMode.CUSTOM;
             art.color = new Color(235, 245, 252, 235);
             applyArtSprite(art, chapter.bgKey);
 
             const caption = new Node('ChapterCaption'); caption.setParent(tile);
-            caption.setPosition(new Vec3(0, -22, 0));
-            caption.addComponent(UITransform).setContentSize(116, 20);
+            caption.setPosition(new Vec3(0, -29, 0));
+            caption.addComponent(UITransform).setContentSize(166, 24);
             const captionBg = caption.addComponent(Graphics);
             captionBg.fillColor = new Color(8, 20, 32, 225);
-            captionBg.fillRect(-58, -10, 116, 20);
+            captionBg.fillRect(-83, -12, 166, 24);
             const title = new Node('Title'); title.setParent(caption);
-            title.addComponent(UITransform).setContentSize(110, 18);
+            title.addComponent(UITransform).setContentSize(160, 22);
             const label = title.addComponent(Label);
             label.string = `${chapter.id < 10 ? `0${chapter.id}` : chapter.id} ${chapter.name}`;
-            label.fontSize = 14; label.lineHeight = 18;
+            label.fontSize = 18; label.lineHeight = 22;
             label.color = new Color(225, 241, 249, 255);
             label.overflow = Label.Overflow.CLAMP;
             label.enableWrapText = false;
@@ -638,7 +638,7 @@ export class ScreenManager extends Component {
         bg.fillRect(-1600, -360, 3200, 720);
         this._buildSelectionBackdrop(p);
 
-        const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160, 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onDifficultyBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);
@@ -716,7 +716,7 @@ export class ScreenManager extends Component {
 
         // 选人页位于存档大厅之后：左上角提供返回大厅出口（卡片在 y≤240，
         // 按钮放 320 高度不与标题/卡片重叠）。
-        const backBtn = this._mkBtn(p, '返回大厅', -560, 320, 160, 42, new Color(78, 111, 135, 255));
+        const backBtn = this._mkBtn(p, '返回大厅', -540, 320, 160, 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onCharSelectBack?.(), this);
 
         const tn = new Node('T'); tn.setParent(p);

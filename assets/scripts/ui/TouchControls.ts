@@ -172,8 +172,9 @@ export class TouchControls extends Component {
         const right = visibleDesignWidth() / 2;
         // 右上角系统按钮贴可见右缘
         if (this._topRightBtns.length >= 2) {
-            this._topRightBtns[0].setPosition(new Vec3(right - 88, 322, 0));
-            this._topRightBtns[1].setPosition(new Vec3(right - 32, 322, 0));
+            const topY = this._touchMode ? 320 : 322;
+            this._topRightBtns[0].setPosition(new Vec3(right - (this._touchMode ? 132 : 88), topY, 0));
+            this._topRightBtns[1].setPosition(new Vec3(right - (this._touchMode ? 45 : 32), topY, 0));
         }
         if (!this._touchMode) return;
         // 左半屏触摸区：从可见左缘延伸到中线右侧80px处
@@ -203,16 +204,18 @@ export class TouchControls extends Component {
 
     /** 右上角「暂停 / 属性」：触屏替代 Esc/M，PC 端也可点击。位置贴可见右缘。 */
     private _buildTopRightButtons() {
+        const width = this._touchMode ? 76 : 48;
+        const height = this._touchMode ? 64 : 38;
         const mk = (text: string, accent: Color, cb: () => void) => {
             const n = new Node(`Btn_${text}`); n.setParent(this.node);
             n.setPosition(new Vec3(552, 322, 0));
-            n.addComponent(UITransform).setContentSize(48, 38);
-            applyHexButtonSkin(n, 48, 38, accent);
+            n.addComponent(UITransform).setContentSize(width, height);
+            applyHexButtonSkin(n, width, height, accent);
             const ln = new Node('L'); ln.setParent(n);
-            ln.addComponent(UITransform).setContentSize(44, 38);
+            ln.addComponent(UITransform).setContentSize(width - 4, height);
             const lbl = ln.addComponent(Label);
             lbl.string = text;
-            lbl.fontSize = 14;
+            lbl.fontSize = this._touchMode ? 18 : 14;
             lbl.color = new Color(235, 246, 250, 255);
             styleLabel(lbl);
             n.on(Node.EventType.TOUCH_END, () => { this.onButtonSfx?.(); cb(); }, this);
@@ -426,7 +429,7 @@ export class TouchControls extends Component {
     /** UI 触点坐标（左下原点、y向上）→ 根节点本地坐标（中心原点）。 */
     private _toLocal(ev: any): { x: number; y: number } {
         const loc = ev.getUILocation ? ev.getUILocation() : ev.getLocation();
-        return { x: loc.x - CANVAS_W / 2, y: loc.y - CANVAS_H / 2 };
+        return { x: loc.x - visibleDesignWidth() / 2, y: loc.y - CANVAS_H / 2 };
     }
 
     private _onStickStart(ev: any) {

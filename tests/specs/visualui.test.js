@@ -53,7 +53,7 @@ test('任务树/图鉴/成就档案入口迁入存档大厅,首页不再展示',
     assert.doesNotMatch(metaSource, /'返回首页'/);
 });
 
-test('进入游戏先选存档再进大厅:传送门进选人,对局退出回大厅', () => {
+test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,对局退出回大厅', () => {
     // 开始游戏 → 存档选择
     assert.match(gameSource, /onPlayPressed     = \(\) => this\._setState\('saveSelect'\)/);
     // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
@@ -84,7 +84,7 @@ test('进入游戏先选存档再进大厅:传送门进选人,对局退出回大
     // 启动时把旧单档案一次性迁移进 1 号槽
     assert.match(gameSource, /SaveSystem\.migrateLegacyProfile\(\)/);
     // 选人页新增返回大厅按钮
-    assert.match(screenSource, /'返回大厅', -560, 320, 160, 42/);
+    assert.match(screenSource, /'返回大厅', -540, 320, 160, 42/);
     assert.match(screenSource, /onCharSelectBack\?\.\(\)/);
 });
 
@@ -361,7 +361,10 @@ test('全面屏横屏铺满：宽于16:9用FIXED_HEIGHT横向延展,边缘控件
     assert.match(touchSource, /private _layoutByVisible\(\)/);
     assert.match(touchSource, /this\._joyHomeX = -right \+ 190;/);
     assert.match(touchSource, /right \+ a\.fromRight,[\s\S]*a\.y \+ \(this\._testRoomMode \? 110 : 0\)/);
-    assert.match(touchSource, /this\._topRightBtns\[0\]\.setPosition\(new Vec3\(right - 88, 322, 0\)\);/);
+    assert.match(touchSource, /right - \(this\._touchMode \? 132 : 88\)/);
+    assert.match(touchSource, /const width = this\._touchMode \? 76 : 48;/);
+    // 全面屏的触点坐标按实际可见宽度居中，否则动态摇杆会向右错位。
+    assert.match(touchSource, /loc\.x - visibleDesignWidth\(\) \/ 2/);
     // 主菜单立绘按可见宽度铺满，页面底板超宽绘制避免黑边
     assert.match(screenSource, /const menuW = Math\.max\(1280, visibleDesignWidth\(\)\);/);
     assert.match(screenSource, /bg\.fillRect\(-1600, -360, 3200, 720\)/);

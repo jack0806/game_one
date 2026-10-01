@@ -2,7 +2,7 @@
 //  ArenaGeometry.ts — 无引擎依赖的角色、弹体、出生几何规则
 // ============================================================
 import { CANVAS_W, PLAYFIELD_BOTTOM } from './Constants';
-import { ARENA_ART_SIDE_TOP, ARENA_ART_SOLID_TOP, ArenaLayout, ArenaObstacle, ArenaSolid } from '../data/ChapterArenaDB';
+import { ARENA_ART_FOOT_CLEARANCE, ARENA_ART_SIDE_TOP, ARENA_ART_SOLID_TOP, ArenaLayout, ArenaObstacle, ArenaSolid } from '../data/ChapterArenaDB';
 
 export interface ArenaPoint { x: number; y: number }
 
@@ -56,7 +56,7 @@ function topOf(solid: ArenaSolid, actor: boolean): number {
     const fraction = ARENA_ART_SOLID_TOP[prop.artKey];
     if (fraction === undefined) return physicalTop - 22;
     const visualTop = solid.y - prop.visualH / 2 + fraction * prop.visualH;
-    return Math.min(physicalTop, visualTop - PLAYER_FOOT_OVERHANG);
+    return Math.min(physicalTop, visualTop - PLAYER_FOOT_OVERHANG - (ARENA_ART_FOOT_CLEARANCE[prop.artKey] ?? 0));
 }
 
 function clampValue(value: number, min: number, max: number): number {
