@@ -156,7 +156,8 @@ export class TestRoomUI extends Component {
         capN.setPosition(new Vec3(-600, 20, 0));
         capN.addComponent(UITransform).setContentSize(48, 26);
         const capLbl = capN.addComponent(Label);
-        capLbl.string = '数量'; capLbl.fontSize = 13;
+        capLbl.string = '数量'; capLbl.fontSize = 14;
+        capLbl.lineHeight = 18;
         capLbl.color = new Color(170, 180, 200, 255);
         styleLabel(capLbl);
 
@@ -335,7 +336,8 @@ export class TestRoomUI extends Component {
             const ln = new Node('L'); ln.setParent(card);
             ln.addComponent(UITransform).setContentSize(112, 30);
             const lbl = ln.addComponent(Label);
-            lbl.string = entry.label; lbl.fontSize = 13;
+            lbl.string = entry.label; lbl.fontSize = 14;
+            lbl.lineHeight = 20;
             lbl.color = new Color(235, 246, 250, 255);
             lbl.horizontalAlign = HorizontalTextAlignment.CENTER;
             lbl.verticalAlign = VerticalTextAlignment.CENTER;
@@ -709,7 +711,8 @@ export class TestRoomUI extends Component {
         const ln = new Node('L'); ln.setParent(btn);
         ln.addComponent(UITransform).setContentSize(w - 12, h);
         const lbl = ln.addComponent(Label);
-        lbl.string = text; lbl.fontSize = Math.round(h * 0.36);
+        lbl.string = text; lbl.fontSize = 14;
+        lbl.lineHeight = 20;
         lbl.color = new Color(235, 246, 250, 255);
         lbl.horizontalAlign = HorizontalTextAlignment.CENTER;
         lbl.verticalAlign = VerticalTextAlignment.CENTER;

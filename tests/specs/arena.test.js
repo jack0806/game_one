@@ -311,17 +311,18 @@ test('六章全部独立残骸的实体像素上沿挡住玩家脚底', () => {
 });
 
 test('传送门、机械和反应堆的落地侧角不让玩家从上方踩入', () => {
-    // 这些列在主矩形外，旧碰撞只与玩家圆形相切，角色会沿可见侧角穿过去。
+    // 这些列在主矩形外；上下限按实机贴图侧角的实体像素带留几像素余量。
     const cases = [
-        ['ch4-rift', 'west-gate', 353, 282.8],
-        ['ch5-magnetic-rail', 'west-mech', 203, 294.1],
-        ['ch5-magnetic-rail', 'west-mech', 377, 289.9],
-        ['ch5-magnetic-rail', 'east-mech', 771, 376.8],
-        ['ch5-armored-islands', 'north-mech', 753, 274.1],
-        ['ch5-armored-islands', 'north-mech', 927, 269.9],
-        ['ch6-final-core', 'west-reactor', 349, 278.7],
+        ['ch4-rift', 'west-gate', 353, 263, 270],
+        ['ch5-magnetic-rail', 'west-mech', 203, 275, 284],
+        ['ch5-magnetic-rail', 'west-mech', 377, 275, 284],
+        ['ch5-magnetic-rail', 'east-mech', 771, 360, 372],
+        ['ch5-armored-islands', 'north-mech', 753, 255, 266],
+        ['ch5-armored-islands', 'north-mech', 927, 255, 266],
+        ['ch5-magnetic-rail', 'south-rail', 423, 508, 518],
+        ['ch6-final-core', 'west-reactor', 349, 271, 279],
     ];
-    for (const [layoutId, propId, x, artTop] of cases) {
+    for (const [layoutId, propId, x, minFoot, maxFoot] of cases) {
         const layout = CHAPTER_ARENAS.find(a => a.id === layoutId);
         const prop = layout.obstacles.find(o => o.id === propId);
         const startY = Math.max(110, prop.y - prop.visualH / 2 - 60);
@@ -334,8 +335,38 @@ test('传送门、机械和反应堆的落地侧角不让玩家从上方踩入',
         }
         const foot = y + 36;
         assert.ok(foot > startY + 40, `${layoutId}/${propId} 走到了侧角前`);
-        assert.ok(foot >= artTop - 8 && foot <= artTop + 1,
-            `${layoutId}/${propId} 脚底 ${foot} 与贴图侧角上沿 ${artTop} 对齐`);
+        assert.ok(foot >= minFoot && foot <= maxFoot,
+            `${layoutId}/${propId} 脚底 ${foot} 停在贴图侧角前 ${minFoot}–${maxFoot}`);
+    }
+});
+
+test('机械、门环和磁轨的斜向贴边停在实体像素前', () => {
+    const cases = [
+        ['ch4-rift', 'west-gate', -45, 20, 353, 270],
+        ['ch5-armored-islands', 'north-mech', -165, 0, 755, 266],
+        ['ch5-magnetic-rail', 'south-rail', -165, 20, 423, 518],
+    ];
+    for (const [layoutId, propId, degrees, offset, edgeX, maxFoot] of cases) {
+        const layout = CHAPTER_ARENAS.find(a => a.id === layoutId);
+        const prop = layout.obstacles.find(o => o.id === propId);
+        const angle = degrees * Math.PI / 180;
+        const vx = Math.cos(angle), vy = Math.sin(angle);
+        const distance = Math.max(prop.visualW, prop.visualH) / 2 + 75;
+        let x = prop.x + vx * distance - vy * offset;
+        let y = prop.y + vy * distance + vx * offset;
+        assert.equal(isArenaFree(layout, x, y, 16), true, `${layoutId}/${propId} 从合法地面起步`);
+        let nearest = Infinity, footAtEdge = -Infinity;
+        for (let i = 0; i < 180; i++) {
+            const next = moveInArena(layout, x, y, -vx * 2, -vy * 2, 16);
+            x = next.x; y = next.y;
+            const separation = Math.abs(x - edgeX);
+            if (separation <= 3) {
+                nearest = Math.min(nearest, separation);
+                footAtEdge = Math.max(footAtEdge, y + 36);
+            }
+        }
+        assert.ok(nearest <= 3, `${layoutId}/${propId} 确实到达侧角`);
+        assert.ok(footAtEdge <= maxFoot, `${layoutId}/${propId} 斜向脚底 ${footAtEdge} 不压入实体`);
     }
 });
 

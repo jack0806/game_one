@@ -11,7 +11,7 @@ import {
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { loadArtSprite, applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import {
     CodexCategory, CodexEntry, CODEX_ENTRIES, codexByCategory,
     QuestBranch, QuestDef, questsByBranch,
@@ -166,7 +166,7 @@ export class MetaPageUI {
         const veilN = new Node('Veil'); veilN.setParent(page);
         veilN.addComponent(Graphics);
 
-        this._mkLabel(page, -467, 326, 240, 20, eyebrow, 12,
+        this._mkLabel(page, -427, 326, 320, 22, eyebrow, 14,
             new Color(accent.r, accent.g, accent.b, 220), HorizontalTextAlignment.LEFT);
         const titleLbl = this._mkLabel(page, -272, 291, 560, 48, title, 30, WHITE, HorizontalTextAlignment.LEFT);
         titleLbl.overflow = Label.Overflow.SHRINK;
@@ -223,6 +223,7 @@ export class MetaPageUI {
             defs.slice(0, 4).forEach((def, i) => {
                 const n = new Node(`Quest_${def.id}`); n.setParent(root); n.setPosition(pos[i]);
                 n.addComponent(UITransform).setContentSize(170, 104);
+                registerKeyboardFocus(n, 170, 104);
                 const g = n.addComponent(Graphics);
                 const title = this._mkLabel(n, 0, 15, 144, 30, def.name, 16, WHITE);
                 const status = this._mkLabel(n, 0, -24, 144, 22, '', 14, MUTED);
@@ -310,12 +311,12 @@ export class MetaPageUI {
         const heroTab = this._mkButton(page, '英雄档案', -337, 221, 154, 42, new Color(69, 204, 255, 255));
         monsterTab.on(Node.EventType.TOUCH_END, () => this._showCodexCategory('monster'));
         heroTab.on(Node.EventType.TOUCH_END, () => this._showCodexCategory('hero'));
-        this._codexStats = this._mkLabel(page, 38, 222, 380, 26, '', 13, MUTED, HorizontalTextAlignment.RIGHT);
+        this._codexStats = this._mkLabel(page, 38, 222, 380, 26, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
 
         const gridPanel = new Node('CodexGridPanel'); gridPanel.setParent(page);
         gridPanel.setPosition(new Vec3(-178, -35, 0));
         const gridG = gridPanel.addComponent(Graphics); drawPanel(gridG, 856, 478, new Color(69, 204, 255, 255));
-        this._mkLabel(gridPanel, -212, 208, 360, 24, '已收录样本 / 选择卡片读取完整档案', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._mkLabel(gridPanel, -212, 208, 360, 24, '已收录样本 / 选择卡片读取完整档案', 14, MUTED, HorizontalTextAlignment.LEFT);
 
         for (const category of ['monster', 'hero'] as CodexCategory[]) {
             const root = new Node(`${category}_grid`); root.setParent(gridPanel);
@@ -326,6 +327,7 @@ export class MetaPageUI {
                 const card = new Node(`Codex_${def.id}`); card.setParent(root);
                 card.setPosition(new Vec3(-312 + col * 208, 80 - row * 196, 0));
                 card.addComponent(UITransform).setContentSize(184, 172);
+                registerKeyboardFocus(card, 184, 172);
                 const g = card.addComponent(Graphics);
                 this._drawCodexCard(g, def, 184, 172);
 
@@ -341,7 +343,7 @@ export class MetaPageUI {
 
                 this._mkLabel(card, 0, -47, 164, 26, def.unlocked ? def.name : '未知样本', 16,
                     def.unlocked ? WHITE : new Color(126, 139, 151, 255));
-                this._mkLabel(card, 0, -70, 164, 20, def.unlocked ? def.rarity : '未解锁', 13,
+                this._mkLabel(card, 0, -70, 164, 20, def.unlocked ? def.rarity : '未解锁', 14,
                     def.unlocked ? hexColor(def.color) : new Color(91, 105, 118, 255));
                 card.on(Node.EventType.TOUCH_END, () => this._selectCodex(def));
             });
@@ -369,7 +371,7 @@ export class MetaPageUI {
         this._mkDivider(detail, 0, -53, 268, new Color(69, 204, 255, 255));
         this._codexDetailDesc = this._mkLabel(detail, 0, -111, 268, 94, '', 16, new Color(194, 211, 224, 255), HorizontalTextAlignment.LEFT, true);
         this._codexDetailTraits = this._mkLabel(detail, 0, -174, 268, 28, '', 14, GOLD, HorizontalTextAlignment.LEFT);
-        this._codexLockHint = this._mkLabel(detail, 0, -205, 268, 22, '', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._codexLockHint = this._mkLabel(detail, 0, -205, 300, 22, '', 14, MUTED, HorizontalTextAlignment.LEFT);
 
         this._showCodexCategory('monster');
     }
@@ -430,7 +432,7 @@ export class MetaPageUI {
             const c = hexColor(r[1]);
             const dot = new Node(`Dot_${r[0]}`); dot.setParent(legend); dot.setPosition(new Vec3(-164 + i * 103, 0, 0));
             const dg = dot.addComponent(Graphics); dg.fillColor = c; dg.circle(-22, 0, 4); dg.fill();
-            this._mkLabel(dot, 12, 0, 62, 22, r[0], 13, c);
+            this._mkLabel(dot, 12, 0, 62, 22, r[0], 14, c);
         });
         this._mkLabel(page, 387, 226, 360, 24, '稀有度代表达成条件的特殊性  ·  奖励为预览', 14, MUTED, HorizontalTextAlignment.RIGHT);
 
@@ -446,7 +448,7 @@ export class MetaPageUI {
             const rarity = this._mkLabel(card, 146, 31, 62, 24, def.rarity, 14, GOLD, HorizontalTextAlignment.RIGHT);
             this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
             this._mkLabel(card, -38, -24, 200, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
-            const progress = this._mkLabel(card, 145, -45, 70, 18, '', 12, MUTED, HorizontalTextAlignment.RIGHT);
+            const progress = this._mkLabel(card, 145, -45, 70, 22, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
             const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-28, -47, 0));
             const pg = bar.addComponent(Graphics);
             this._achievementCards.push({ def, graphics: g, name, rarity, progress, progressGraphics: pg });

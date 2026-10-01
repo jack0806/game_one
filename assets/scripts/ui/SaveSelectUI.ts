@@ -12,7 +12,7 @@ import {
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSlotSummary, SaveSystem } from '../systems/SaveSystem';
 
 export interface SaveSelectCallbacks {
@@ -118,7 +118,7 @@ export class SaveSelectUI {
         veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
 
-        this._mkLabel(page, -467, 326, 240, 20, 'SAVE TERMINAL / 选择作战档案', 12,
+        this._mkLabel(page, -427, 326, 320, 22, 'SAVE TERMINAL / 选择作战档案', 14,
             new Color(CYAN.r, CYAN.g, CYAN.b, 220), HorizontalTextAlignment.LEFT);
         const title = this._mkLabel(page, -272, 291, 560, 48, '选择存档', 30, WHITE, HorizontalTextAlignment.LEFT);
         title.overflow = Label.Overflow.SHRINK;
@@ -138,6 +138,7 @@ export class SaveSelectUI {
         const g = card.addComponent(Graphics);
         const body = new Node('Body'); body.setParent(card);
         body.addComponent(UITransform).setContentSize(300, 400);
+        registerKeyboardFocus(body, 300, 400);
         body.on(Node.EventType.TOUCH_END, () => {
             this._disarmDelete();
             this._callbacks.onButtonSfx();

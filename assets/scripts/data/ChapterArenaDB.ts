@@ -51,10 +51,11 @@ export const ARENA_ART_SOLID_TOP: Readonly<Record<string, number>> = {
     arena_wreck_ch1: 112 / 961,
 };
 
-/** 圆形残骸侧角的可见实体起点；窄边碰撞只覆盖贴图真正落地的下半段。 */
+/** 圆形残骸侧角的可见实体起点；比例按 Cocos 裁切后的 SpriteFrame 可见高度计算。 */
 export const ARENA_ART_SIDE_TOP: Readonly<Record<string, { left?: number; right?: number }>> = {
-    arena_mech_ch5: { left: 0.69, right: 0.65 },
-    arena_portal_ch4: { right: 0.58 },
+    arena_mech_ch5: { left: 0.60, right: 0.60 },
+    arena_portal_ch4: { right: 0.47 },
+    arena_rail_ch5: { left: 0.58 },
     arena_reactor_ch6: { right: 0.55 },
 };
 

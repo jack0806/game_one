@@ -1,6 +1,7 @@
 import {
     _decorator, Component, Node, Label, Graphics, Sprite,
-    Color, Vec3, UITransform, BlockInputEvents, HorizontalTextAlignment, VerticalTextAlignment, game,
+    Color, Vec3, UITransform, BlockInputEvents, HorizontalTextAlignment, VerticalTextAlignment,
+    Input, input, KeyCode, EventKeyboard, game,
 } from 'cc';
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
@@ -8,7 +9,8 @@ import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
 import { CHAPTERS } from '../data/WaveData';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
+    keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
@@ -61,6 +63,9 @@ export class ScreenManager extends Component {
     private _drawCharDetailDim?: () => void;
     private _selectionBackdrops = new Map<ScreenName, { art: Node; redraw: () => void }>();
     private _runReports = new Map<ReportName, RunReportView>();
+    private _focusedControl?: Node;
+    private _activationHeld = false;
+    private _shiftHeld = false;
 
     // ── 英雄介绍弹窗（charDetail）的复用视图 ─────────────────
     // 面板结构只构建一次，内容（标题/立绘/属性/技能描述）随 showCharDetail 填充
@@ -128,6 +133,13 @@ export class ScreenManager extends Component {
         this._buildSettingsPanel();
         // start with everything hidden
         this._panels.forEach(p => p.active = false);
+        input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
+        input.on(Input.EventType.KEY_UP, this._onKeyUp, this);
+    }
+
+    onDestroy() {
+        input.off(Input.EventType.KEY_DOWN, this._onKeyDown, this);
+        input.off(Input.EventType.KEY_UP, this._onKeyUp, this);
     }
 
     /** 大厅传送门动画逐帧推进（ScreenManager 常驻，面板隐藏时 LobbyUI 自行跳过）。 */
@@ -163,6 +175,7 @@ export class ScreenManager extends Component {
     // ── public API ────────────────────────────────────────────
 
     show(name: ScreenName) {
+        this._clearKeyboardFocus();
         const p = this._panels.get(name);
         if (p) p.active = true;
         if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings'
@@ -183,13 +196,97 @@ export class ScreenManager extends Component {
     }
 
     hide(name: ScreenName) {
+        this._clearKeyboardFocus();
         const p = this._panels.get(name);
         if (p) p.active = false;
     }
 
     hideAll() {
+        this._clearKeyboardFocus();
         this._panels.forEach(p => p.active = false);
     }
+
+    /** 只在最上层可见页面循环焦点；隐藏页、锁定卡和空存档删除键均跳过。 */
+    private _keyboardPanel(): Node | undefined {
+        for (let i = this.node.children.length - 1; i >= 0; i--) {
+            const panel = this.node.children[i];
+            if (panel.active && this._panels.get(panel.name as ScreenName) === panel) return panel;
+        }
+        return undefined;
+    }
+
+    private _keyboardControls(panel: Node): Node[] {
+        const controls: Node[] = [];
+        const visit = (node: Node) => {
+            if (!node.activeInHierarchy) return;
+            const focus = keyboardFocusTarget(node);
+            if (focus && !focus.isDisabled()) controls.push(node);
+            for (const child of node.children) visit(child);
+        };
+        visit(panel);
+        return controls;
+    }
+
+    private _clearKeyboardFocus(): void {
+        if (this._focusedControl?.isValid) keyboardFocusTarget(this._focusedControl)?.setFocused(false);
+        this._focusedControl = undefined;
+        this._activationHeld = false;
+    }
+
+    private _moveKeyboardFocus(panel: Node, direction: -1 | 1): void {
+        const controls = this._keyboardControls(panel);
+        if (!controls.length) return;
+        const current = controls.indexOf(this._focusedControl!);
+        const next = current < 0
+            ? (direction > 0 ? 0 : controls.length - 1)
+            : (current + direction + controls.length) % controls.length;
+        this._clearKeyboardFocus();
+        this._focusedControl = controls[next];
+        keyboardFocusTarget(controls[next])?.setFocused(true);
+    }
+
+    private _onKeyDown = (event: EventKeyboard) => {
+        if (event.keyCode === KeyCode.SHIFT_LEFT || event.keyCode === KeyCode.SHIFT_RIGHT) {
+            this._shiftHeld = true;
+            return;
+        }
+        const panel = this._keyboardPanel();
+        if (!panel) return;
+        const key = event.keyCode;
+        if (key === KeyCode.TAB || key === KeyCode.ARROW_UP || key === KeyCode.ARROW_DOWN
+            || key === KeyCode.ARROW_LEFT || key === KeyCode.ARROW_RIGHT) {
+            (event as any).preventDefault?.();
+            const direction: -1 | 1 = key === KeyCode.ARROW_UP || key === KeyCode.ARROW_LEFT
+                || (key === KeyCode.TAB && this._shiftHeld) ? -1 : 1;
+            if ((key === KeyCode.ARROW_LEFT || key === KeyCode.ARROW_RIGHT) && this._focusedControl) {
+                const focus = keyboardFocusTarget(this._focusedControl);
+                if (focus?.onDirection?.(direction)) return;
+            }
+            this._moveKeyboardFocus(panel, direction);
+            return;
+        }
+        if (key !== KeyCode.ENTER && key !== KeyCode.SPACE) return;
+        (event as any).preventDefault?.();
+        if (this._activationHeld) return;
+        this._activationHeld = true;
+        const controls = this._keyboardControls(panel);
+        if (!this._focusedControl || controls.indexOf(this._focusedControl) < 0) {
+            this._moveKeyboardFocus(panel, 1);
+            return;
+        }
+        const node = this._focusedControl;
+        const focus = keyboardFocusTarget(node);
+        if (focus?.activate) focus.activate();
+        else node.emit(Node.EventType.TOUCH_END, { propagationStopped: false });
+        if (!node.isValid || !node.activeInHierarchy || this._keyboardPanel() !== panel) {
+            this._clearKeyboardFocus();
+        }
+    };
+
+    private _onKeyUp = (event: EventKeyboard) => {
+        if (event.keyCode === KeyCode.SHIFT_LEFT || event.keyCode === KeyCode.SHIFT_RIGHT) this._shiftHeld = false;
+        if (event.keyCode === KeyCode.ENTER || event.keyCode === KeyCode.SPACE) this._activationHeld = false;
+    };
 
     /** 失败与章节通关共用行动报告，仅数据和局部状态色不同。 */
     setRunReport(name: ReportName, data: RunReportData): void {
@@ -1132,7 +1229,8 @@ export class ScreenManager extends Component {
         hint.addComponent(UITransform).setContentSize(440, 22);
         const hl = hint.addComponent(Label);
         hl.string = '拖动滑杆实时调节，设置自动保存';
-        hl.fontSize = 13; hl.color = new Color(140, 158, 174, 220);
+        hl.fontSize = 14; hl.lineHeight = 20;
+        hl.color = new Color(140, 158, 174, 220);
         styleLabel(hl);
 
         const close = this._mkBtn(p, '关闭', 0, -150, 200, 44, new Color(60, 100, 80, 235));
@@ -1204,6 +1302,17 @@ export class ScreenManager extends Component {
             draw(clamped);
         };
         slider.setRatio = setRatio;
+
+        const nudge = (direction: -1 | 1) => {
+            const ratio = clamp((this._ratios.get(slider) ?? initRatio) + direction * 0.05, 0, 1);
+            setRatio(ratio);
+            onChange(ratio);
+            return true;
+        };
+        registerKeyboardFocus(track, WIDTH, 34, {
+            activate: () => { nudge(1); },
+            onDirection: nudge,
+        });
 
         const applyFromEvent = (ev: any) => {
             const ui = ev.getUILocation ? ev.getUILocation() : ev.getLocation();

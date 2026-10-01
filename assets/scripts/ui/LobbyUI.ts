@@ -12,7 +12,7 @@ import {
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, drawHexPanel, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSystem } from '../systems/SaveSystem';
 import { MetaPageName } from './MetaPageUI';
 
@@ -123,7 +123,7 @@ export class LobbyUI {
         veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
         veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
 
-        this._mkLabel(page, -467, 326, 240, 20, 'OPERATION LOBBY / 存档大厅', 12,
+        this._mkLabel(page, -427, 326, 320, 22, 'OPERATION LOBBY / 存档大厅', 14,
             new Color(CYAN.r, CYAN.g, CYAN.b, 220), HorizontalTextAlignment.LEFT);
         this._mkLabel(page, -272, 291, 560, 48, '作战大厅', 30, WHITE, HorizontalTextAlignment.LEFT);
 
@@ -173,6 +173,7 @@ export class LobbyUI {
         const portal = new Node('Portal'); portal.setParent(page);
         portal.setPosition(new Vec3(430, -20, 0));
         portal.addComponent(UITransform).setContentSize(360, 460);
+        registerKeyboardFocus(portal, 360, 460);
 
         const coreNode = new Node('PortalCore'); coreNode.setParent(portal);
         coreNode.addComponent(UITransform).setContentSize(340, 340);

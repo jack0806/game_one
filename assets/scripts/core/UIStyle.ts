@@ -8,6 +8,40 @@ export interface HexButtonSkin {
 }
 type ButtonVisualState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
+export interface KeyboardFocusTarget {
+    isDisabled(): boolean;
+    setFocused(focused: boolean): void;
+    activate?(): void;
+    onDirection?(direction: -1 | 1): boolean;
+}
+
+const keyboardFocusTargets = new WeakMap<Node, KeyboardFocusTarget>();
+
+export function keyboardFocusTarget(node: Node): KeyboardFocusTarget | undefined {
+    return keyboardFocusTargets.get(node);
+}
+
+/** 无共用皮肤的存档卡、任务卡和滑杆也使用同一种金色键盘焦点框。 */
+export function registerKeyboardFocus(
+    node: Node, width: number, height: number,
+    options: Pick<KeyboardFocusTarget, 'activate' | 'onDirection'> = {},
+): void {
+    const ring = new Node('KeyboardFocusRing'); ring.setParent(node);
+    const g = ring.addComponent(Graphics);
+    keyboardFocusTargets.set(node, {
+        isDisabled: () => false,
+        setFocused(focused: boolean) {
+            g.clear();
+            if (!focused) return;
+            g.strokeColor = new Color(255, 214, 90, 255);
+            g.lineWidth = 3;
+            g.roundRect(-width / 2 - 3, -height / 2 - 3, width + 6, height + 6, 10);
+            g.stroke();
+        },
+        ...options,
+    });
+}
+
 /** A 的圆整控件造型、B 的文字/主体明度。页面与 HUD 共用。 */
 export const UI_PALETTE = {
     deep: new Color(20, 34, 53, 255),
@@ -77,6 +111,7 @@ export function applyHexButtonSkin(
     const g = node.getComponent(Graphics) ?? node.addComponent(Graphics);
     let disabled = initiallyDisabled;
     let state: ButtonVisualState = disabled ? 'disabled' : 'normal';
+    let focused = false;
     const cut = Math.max(6, Math.min(10, height * 0.18));
 
     const draw = () => {
@@ -116,6 +151,11 @@ export function applyHexButtonSkin(
         g.lineWidth = 3;
         g.moveTo(l + 5, -height * 0.18); g.lineTo(l + 5, height * 0.18); g.stroke();
         g.moveTo(r - 5, -height * 0.18); g.lineTo(r - 5, height * 0.18); g.stroke();
+        if (focused && !disabled) {
+            g.strokeColor = new Color(255, 214, 90, 255);
+            g.lineWidth = 3;
+            clippedRect(g, width + 6, height + 6, cut + 2); g.stroke();
+        }
     };
 
     const setState = (next: ButtonVisualState, scale: number) => {
@@ -135,12 +175,18 @@ export function applyHexButtonSkin(
     // 页面激活时皮肤可能因"隐藏状态下绘制丢失"而不可见，onEnable 强制重绘兜底
     attachEnableRedraw(node, () => {
         state = disabled ? 'disabled' : 'normal';
+        focused = false;
         node.setScale(new Vec3(1, 1, 1));
         draw();
+    });
+    keyboardFocusTargets.set(node, {
+        isDisabled: () => disabled,
+        setFocused(value: boolean) { focused = value && !disabled; draw(); },
     });
     return {
         setDisabled(value: boolean) {
             disabled = value;
+            if (disabled) focused = false;
             setState(value ? 'disabled' : 'normal', 1);
         },
     };
@@ -156,18 +202,27 @@ export function applyHexCardSkin(
     hitArea.addComponent(UITransform).setContentSize(width, height);
     let disabled = initiallyDisabled;
     let state: ButtonVisualState = disabled ? 'disabled' : 'normal';
+    let focused = false;
     const radius = Math.max(8, Math.min(18, height * 0.16));
     const draw = () => {
         g.clear();
         drawHexPanel(g, -width / 2, -height / 2, width, height, accent, disabled ? 205 : 246);
-        if (disabled || state === 'normal') return;
-        g.fillColor = new Color(accent.r, accent.g, accent.b, state === 'pressed' ? 30 : 16);
-        g.roundRect(-width / 2 + 4, -height / 2 + 4, width - 8, height - 8, radius - 2);
-        g.fill();
-        g.strokeColor = new Color(accent.r, accent.g, accent.b, 245);
-        g.lineWidth = state === 'pressed' ? 2 : 3;
-        g.roundRect(-width / 2, -height / 2, width, height, radius);
-        g.stroke();
+        if (disabled) return;
+        if (state !== 'normal') {
+            g.fillColor = new Color(accent.r, accent.g, accent.b, state === 'pressed' ? 30 : 16);
+            g.roundRect(-width / 2 + 4, -height / 2 + 4, width - 8, height - 8, radius - 2);
+            g.fill();
+            g.strokeColor = new Color(accent.r, accent.g, accent.b, 245);
+            g.lineWidth = state === 'pressed' ? 2 : 3;
+            g.roundRect(-width / 2, -height / 2, width, height, radius);
+            g.stroke();
+        }
+        if (focused) {
+            g.strokeColor = new Color(255, 214, 90, 255);
+            g.lineWidth = 3;
+            g.roundRect(-width / 2 - 3, -height / 2 - 3, width + 6, height + 6, radius + 3);
+            g.stroke();
+        }
     };
     const setState = (next: ButtonVisualState, scale: number) => {
         if (disabled && next !== 'disabled') return;
@@ -185,12 +240,18 @@ export function applyHexCardSkin(
     draw();
     attachEnableRedraw(node, () => {
         state = disabled ? 'disabled' : 'normal';
+        focused = false;
         node.setScale(new Vec3(1, 1, 1));
         draw();
+    });
+    keyboardFocusTargets.set(node, {
+        isDisabled: () => disabled,
+        setFocused(value: boolean) { focused = value && !disabled; draw(); },
     });
     return {
         setDisabled(value: boolean) {
             disabled = value;
+            if (disabled) focused = false;
             setState(value ? 'disabled' : 'normal', 1);
         },
     };
