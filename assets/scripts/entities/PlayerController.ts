@@ -40,7 +40,10 @@ export interface PlayerStats extends CharStats {
     _coreOverflow: boolean;
     _coreUsed: boolean;
     _reikPassive: boolean;
-    chaosBonus: boolean;
+    /** 格雷夫被动·洞察：周期标记周围怪物，命中被标记目标追加20%穿甲伤害 */
+    insightMark: boolean;
+    /** 格雷夫被动·荆棘刺鞭：普攻造成2段各75%伤害 */
+    thornWhip: boolean;
     explosionMult: number;
     turretBonus: number;
     freezeBonus: number;
@@ -85,6 +88,8 @@ export class PlayerController extends Component {
     private _iframeTimer = 0;
     private _invincible  = 0;
     private _cosmosCd    = 0;
+    /** 格雷夫被动·洞察：标记周期计时（每2.5秒刷新一次周围标记）。 */
+    private _insightTimer = 0;
     _rCharge             = 0;
     ultReady             = false;
 
@@ -96,6 +101,8 @@ export class PlayerController extends Component {
     sprite?: Sprite;
     /** 临时护盾份额（时空行者）：到期自动回收未被消耗的部分。 */
     private _tempShields: { amount: number; timer: number }[] = [];
+    /** 格雷夫被动·荆棘刺鞭：待落下的普攻二段（0.5秒后结算）。 */
+    private _thornPending: { enemy: any; game: any; dmg: number; timer: number }[] = [];
     /** 雷克双斧左右手交替计数，只影响表现，不参与伤害与攻速结算。 */
     private _reikSwingSide = 0;
     /**
@@ -180,7 +187,7 @@ export class PlayerController extends Component {
             goldPickupRange: 60, cdReduction: 0, ultChargeRate: 1,
             eliteBonus: 0, maxAugments: 6, previewAugments: false,
             _bloodAwakening: false, _coreOverflow: false, _coreUsed: false,
-            _reikPassive: false, chaosBonus: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
+            _reikPassive: false, insightMark: false, thornWhip: false, explosionMult: 1, turretBonus: 1, freezeBonus: 0,
             lifestealRate: 0, maxShield: 0,
             // 海克斯词条字段（data/AugmentDB.ts）：射程/近战多段/弱点标记/不灭协议
             rangeBonus: 0, meleeExtraHits: 0, weakspotArmed: false,
@@ -194,6 +201,7 @@ export class PlayerController extends Component {
         this.alive  = true;
         this._buffs = [];
         this._rCharge = 0;
+        this._thornPending = [];
         // 方向动画状态重置（六帧矩阵由渲染层按朝向/步态切换）
         resetLocomotion(this.locomotion, this.x, this.y);
         resetDirectionalFacing(this.directionalFacing, 'side');
@@ -205,6 +213,8 @@ export class PlayerController extends Component {
     getDamage(game?: any): number {
         // damageMulti：商店/词条的攻击力乘区（此前只写不读，是死数据）
         let d = this.stats.damage * this.damageMulti;
+        // 化气为剑(海克斯26)：攻速按 1:0.75 动态转化为攻击力（随 buff/词条实时联动）
+        if (this.stats.swordMode) d += this.getAtkSpd() * 0.75;
         // 形态加成（时空行者攻击形态等）：附加到所有技能与普攻
         d *= this.formDamageMult;
         if (this.stats._reikPassive) {
@@ -415,7 +425,8 @@ export class PlayerController extends Component {
         // 强爆发20s/功能型18s/依赖词条15s)。ultChargeRate(储能核心等词条)沿用
         // "充能速度"语义，等比缩短恢复时间。
         const ultCd = this._charDef?.ultCd || 20;
-        this._rCharge     = Math.min(1, this._rCharge + dt / ultCd * (this.stats.ultChargeRate || 1));
+        // 加速(海克斯31)：cdReduction 同时作用于大招充能（技能与强化冷却统一缩减）
+        this._rCharge     = Math.min(1, this._rCharge + dt / ultCd * (this.stats.ultChargeRate || 1) * (1 + (this.stats.cdReduction || 0)));
 
         // Buff 更新
         for (let i = this._buffs.length - 1; i >= 0; i--) {
@@ -434,6 +445,26 @@ export class PlayerController extends Component {
                 this._tempShields.splice(i, 1);
             }
         }
+
+        // 格雷夫被动·洞察：每2.5秒标记周围500码内可攻击的怪物
+        // （与索敌规则一致：跳过隐身/飞空机制单位）。标记留在怪物身上直到
+        // 被普攻/技能命中消耗；怪物复活重置见 EnemyBase.spawn。
+        if (this.stats?.insightMark && game?.enemies) {
+            this._insightTimer -= dt;
+            if (this._insightTimer <= 0) {
+                this._insightTimer = 2.5;
+                for (const e of game.enemies) {
+                    if (!e.alive || e.dead || e.invisible || ((e.mechSkyT ?? 0) > 0)) continue;
+                    if (Vec.dist(e.x, e.y, this.x, this.y) <= 500) {
+                        if (!e._insightMark) game.particles?.insightMark?.(e.x, e.y);
+                        e._insightMark = true;
+                    }
+                }
+            }
+        }
+
+        // 格雷夫被动·荆棘刺鞭：0.5秒后落下的普攻二段伤害
+        this.tickThornPending(dt);
 
         // 移动
         this.tickMovement(dt, input, game);
@@ -536,6 +567,9 @@ export class PlayerController extends Component {
         } else if (this.charId === 'olia' && game.particles?.timeBlade) {
             const [bladeX, bladeY] = this.getMuzzlePosition();
             game.particles.timeBlade(bladeX, bladeY, angle);
+        } else if (this.charId === 'graf' && game.particles?.grafWhipStrike) {
+            // 混沌傀儡：鞭击特效沿攻击方向抽出鞭长裂光
+            game.particles.grafWhipStrike(this.x, this.y, angle, totalRange);
         } else {
             game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, totalRange, 1);
         }
@@ -543,10 +577,13 @@ export class PlayerController extends Component {
         const dot = (enemy.x - this.x) * Math.cos(angle) + (enemy.y - this.y) * Math.sin(angle);
         if (inRange && dot >= 0) {
             game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
-            this.applyAttackDamage(enemy, game);
+            const firstDmg = this.applyAttackDamage(enemy, game);
             // 海克斯5 幻影特效（近战形态）：额外多段伤害
             const extraHits = this.stats.meleeExtraHits || 0;
             for (let i = 0; i < extraHits && enemy.alive; i++) this.applyAttackDamage(enemy, game);
+            // 格雷夫被动·荆棘刺鞭：普攻二段按首段当前伤害的75%追加
+            // （远程普攻在 BulletController 命中链路里结算二段）
+            this.thornSecondStage(enemy, game, firstDmg);
         }
     }
 
@@ -563,6 +600,12 @@ export class PlayerController extends Component {
             dmg *= 3;
             game.floatingText?.spawn(enemy.x, enemy.y - 34, '弱点·三倍暴击！', '#ffe066', 17, true);
         }
+        // 实习刺客(海克斯27)：隐身后的下一次攻击造成 200% 伤害
+        if (this.stats.assassinStrike) {
+            this.stats.assassinStrike = false;
+            dmg *= 2;
+            game.floatingText?.spawn(enemy.x, enemy.y - 34, '刺客突袭 ×2！', '#7dff9e', 17, true);
+        }
         const isCrit = Rng.chance(this.stats.critRate || 0);
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
@@ -570,6 +613,8 @@ export class PlayerController extends Component {
         }
         if ((enemy.isElite || enemy.isBoss) && this.stats.eliteBonus) dmg *= 1 + this.stats.eliteBonus;
         if (enemy.frozen > 0 && this.stats.freezeBonus) dmg *= this.stats.freezeBonus;
+        // 格雷夫被动·洞察：命中被标记怪物时消耗标记，追加20%穿甲伤害
+        this.consumeInsightMark(enemy, game, dmg);
         const actual = enemy.takeDamage(dmg, this, game);
         const actualDamage = actual === undefined ? dmg : actual;
         this.applyAttackLifesteal(actualDamage, game);
@@ -610,9 +655,58 @@ export class PlayerController extends Component {
         if (healed > 0) game.floatingText?.spawn(this.x + 14, this.y - 34, `+${Math.round(healed)}`, '#5fff5f', 12, false);
     }
 
+    /**
+     * 格雷夫被动·洞察：普攻/技能命中被标记的怪物时消耗标记，追加一段
+     * 20%穿甲伤害（穿甲 = 按护甲减免公式反向补足，减免后恰好等于
+     * 当前伤害的20%；仍受护盾/无敌正常阻挡，不触发暴击与词条命中分发）。
+     * 子弹命中链路(BulletController)与 applyAttackDamage 共用本入口。
+     * 返回穿甲段实际扣血量（无标记/未开启被动返回0）。
+     */
+    consumeInsightMark(enemy: any, game: any, curDmg: number): number {
+        if (!this.stats?.insightMark || !enemy?.alive || !enemy._insightMark) return 0;
+        enemy._insightMark = false;
+        const bonus = Math.max(1, curDmg * 0.2);
+        const armor = enemy.armor ?? 0;
+        const mitigation = armor / (armor + 100);
+        const raw = mitigation < 1 ? bonus / (1 - mitigation) : bonus;
+        const actual = enemy.takeDamage(raw, this, game);
+        const dealt = actual === undefined ? bonus : actual;
+        game?.floatingText?.spawn?.(enemy.x, enemy.y - 30, `洞察穿透 ${Math.ceil(dealt)}`, '#cc44ff', 13, false);
+        game?.particles?.hit?.(enemy.x, enemy.y, '#cc44ff');
+        return dealt;
+    }
+
+    /**
+     * 格雷夫被动·荆棘刺鞭：普攻追加第二段伤害（当前伤害的75%），
+     * 在 **0.5秒后** 落下（tick 驱动的待结算队列，见 tickThornPending）。
+     * 二段不重新暴击、不重复触发词条命中分发，只按当前伤害直接结算。
+     * 远程普攻在子弹命中链路调用；近战普攻在 _meleeAttack 调用。
+     */
+    thornSecondStage(enemy: any, game: any, curDmg: number): void {
+        if (!this.stats?.thornWhip || !enemy?.alive) return;
+        this._thornPending.push({ enemy, game, dmg: Math.max(1, curDmg * 0.75), timer: 0.5 });
+    }
+
+    /** 荆棘刺鞭二段结算：0.5秒计时到点后按挂载时的伤害对原目标直接扣血；
+     *  目标提前死亡则二段落空（不转移目标、不退还）。 */
+    tickThornPending(dt: number): void {
+        for (let i = this._thornPending.length - 1; i >= 0; i--) {
+            const t = this._thornPending[i];
+            t.timer -= dt;
+            if (t.timer > 0) continue;
+            this._thornPending.splice(i, 1);
+            if (!t.enemy?.alive || t.enemy.dead) continue;
+            t.enemy.takeDamage(t.dmg, this, t.game);
+            t.game?.floatingText?.spawn?.(t.enemy.x, t.enemy.y - 24, `刺鞭 ${Math.ceil(t.dmg)}`, '#d687ff', 12, false);
+            t.game?.particles?.hit?.(t.enemy.x, t.enemy.y, '#cc44ff');
+        }
+    }
+
     // ── 发射子弹 ─────────────────────────────────────────
     private _shoot(input: any, game: any): boolean {
         if (!this.alive || this._pendingFire) return false;
+        // 化气为剑(海克斯26)：无法普攻（技能不受影响），输出交给环绕飞剑
+        if (this.stats?.swordMode) return false;
         if (this.actorAnimation.locked && this.actorAnimation.action !== 'attack' && this.actorAnimation.action !== 'attackMelee') return false;
         // 形态切换（时空行者E）：attackForm 优先于角色默认攻击方式
         const form = this.attackForm || this._charDef.attackType;

@@ -228,6 +228,8 @@ export class GameManager extends Component {
 
     /** 本波海克斯商店已刷新次数（定价：前3次5金币，之后每次溢价75%）。 */
     private _augRefreshCount = 0;
+    /** 当前货架是否来自付费刷新（出现率标注按刷新权重显示）。 */
+    private _augOfferRefreshed = false;
 
     /** 元素爆炸连爆反馈节流窗口剩余（只节流视觉/音效，不影响伤害结算）。 */
     private _elemFxT = 0;
@@ -665,6 +667,7 @@ export class GameManager extends Component {
         this._mutations = [];
         this._enemies   = [];
         this._turrets    = [];
+        this._lifeClone = null;
         this._deathZones = [];
         this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
         this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
@@ -673,6 +676,7 @@ export class GameManager extends Component {
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
         this._mutationMods = {};
         this._augRefreshCount = 0;
+        this._augOfferRefreshed = false;
         this._economy.reset();
         this._augMgr.reset();
         this._waveMgr.reset();
@@ -885,6 +889,7 @@ export class GameManager extends Component {
         this._mutations = [];
         this._enemies   = [];
         this._turrets    = [];
+        this._lifeClone = null;
         this._deathZones = [];
         this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
         this._docBossMechanics = []; this._docBossTargets = []; this._docPlayerTrail = [];
@@ -943,6 +948,7 @@ export class GameManager extends Component {
         this._char = def;
         // 场上召唤物/分身持有旧玩家引用，切换后一律清空
         this._turrets = [];
+        this._lifeClone = null;
         this._particles.hexActivate(CANVAS_W / 2, CANVAS_H / 2, def.color);
         this._floatText.spawn(CANVAS_W / 2, 200, `已切换英雄：${def.name}`, '#9adcff', 20, true);
         this._audio.playSfx('augment_pick');
@@ -984,6 +990,7 @@ export class GameManager extends Component {
         this._invGrid = undefined;
         this._missileZones = [];
         this._turrets = [];
+        this._lifeClone = null;
         this._bullets?.reset();
         this._particles?.clear();
         this._economy?.clearDrops();
@@ -2076,6 +2083,7 @@ export class GameManager extends Component {
         this._enemies = [];
         this._boss = undefined;
         this._turrets = [];
+        this._lifeClone = null;
         this._deathZones = [];
         this._iceZones = [];
         this._enemyHazards = []; this._priestWalls = []; this._triuneNetworks = []; this._railSaws = [];
@@ -2141,7 +2149,11 @@ export class GameManager extends Component {
         this._setState('augSelect');
         this._audio.playSfx('levelup');
         this._augRefreshCount = 0;
-        const options = this._augMgr.rollOptions(3, this._waveMgr.wave);
+        this._augOfferRefreshed = false;
+        // 再来一次·强化版(hex29)：每次遇到强化选择重置5次免费刷新
+        this._augMgr.freeRefreshes = this._augMgr.ownedOf('hex29') ? 5 : 0;
+        // 第一章第一轮（wave===1 只会发生在第一章）：商店必定全部刷功能性海克斯
+        const options = this._augMgr.rollOptions(3, this._waveMgr.wave, { firstWave: this._waveMgr.wave === 1 });
         const nextWave = this._waveMgr.wave + 1;
         this._augUI.show(options, this._buildAugShopCtx(() => {
             // 第五章 Boss 波开始前提供一次商店（海克斯.docx）
@@ -2172,12 +2184,21 @@ export class GameManager extends Component {
                 // 卖出按各实例总额 75% 回收
                 return true;
             },
-            refreshCost: () => this._nextAugRefreshCost(),
+            refreshCost: () => this._augMgr.freeRefreshes > 0 ? 0 : this._nextAugRefreshCost(),
             refresh: () => {
+                // 再来一次·强化版(hex29)：每次强化选择页附带5次免费刷新，先用完再付费
+                if (this._augMgr.freeRefreshes > 0) {
+                    this._augMgr.freeRefreshes--;
+                    this._augOfferRefreshed = true;
+                    // 免费刷新同样走降权概率：金色只概率出、彩色极小概率
+                    return this._augMgr.rollOptions(3, this._waveMgr.wave, { refresh: true });
+                }
                 const cost = this._nextAugRefreshCost();
                 if (!this._economy.spend(cost)) return null;
                 this._augRefreshCount++;
-                return this._augMgr.rollOptions(3, this._waveMgr.wave);
+                this._augOfferRefreshed = true;
+                // 刷新走降权概率：金色只概率出、彩色极小概率
+                return this._augMgr.rollOptions(3, this._waveMgr.wave, { refresh: true });
             },
             owned: () => this._augMgr.all(),
             sell: (cardLike) => {
@@ -2194,9 +2215,16 @@ export class GameManager extends Component {
         };
     }
 
-    /** 三档稀有度出现概率（与 rollOptions 权重同源，页面"出现率"标注用）。 */
+    /**
+     * 三档稀有度出现概率（与 rollOptions 权重同源，页面"出现率"标注用）；
+     * 刷新后按刷新权重显示。第一章第一轮的初始货架全是功能性海克斯（银档），
+     * 出现率按实际显示为银 100%。
+     */
     private _augRarityOdds(): { silver: number; gold: number; prismatic: number } {
-        const w = this._augMgr.rarityWeights(this._waveMgr.wave);
+        if (this._waveMgr.wave === 1 && !this._augOfferRefreshed) return { silver: 100, gold: 0, prismatic: 0 };
+        const w = this._augOfferRefreshed
+            ? this._augMgr.refreshRarityWeights(this._waveMgr.wave)
+            : this._augMgr.rarityWeights(this._waveMgr.wave);
         const total = w.silver + w.gold + w.prismatic;
         if (total <= 0) return { silver: 0, gold: 0, prismatic: 0 };
         const silver = Math.round(w.silver / total * 100);
@@ -2206,7 +2234,8 @@ export class GameManager extends Component {
 
     /** 刷新定价：前 3 次 5 金币，之后每次较基准溢价 75%（海克斯.docx）。 */
     private _nextAugRefreshCost(): number {
-        return nextAugRefreshCost(this._augRefreshCount);
+        // 合理避税(hex30)：refreshCostMult 乘区（0.5 = 费用减半，至少1金币）
+        return Math.max(1, Math.round(nextAugRefreshCost(this._augRefreshCount) * this._augMgr.refreshCostMult));
     }
 
     /** 通用商店（章节结算 / 第五章 Boss 战前共用）。 */
@@ -2917,6 +2946,78 @@ export class GameManager extends Component {
             if (!t.alive) continue;
             // 时空切割突刺序列：无实体渲染，玩家本体的位移就是表现
             if (t.kind === 'alphaStrike') continue;
+            // 化气为剑：淡金轨迹环 + 每把飞剑一把短刃（非实体，不画炮台底座）
+            if (t.kind === 'qiSwords') {
+                const [cx, cy] = this._toLocal(t.x, t.y);
+                g.strokeColor = new Color(255, 226, 150, 60);
+                g.lineWidth = 1.5;
+                g.circle(cx, cy, 90); g.stroke();
+                for (const [sx, sy] of (t._pts || [])) {
+                    const [px, py] = this._toLocal(sx, sy);
+                    g.strokeColor = new Color(255, 240, 190, 230);
+                    g.lineWidth = 3;
+                    g.moveTo(px - 5, py + 5); g.lineTo(px + 5, py - 5); g.stroke();
+                    g.fillColor = new Color(255, 226, 150, 160);
+                    g.circle(px, py, 3); g.fill();
+                }
+                continue;
+            }
+            // 保命分身：紫色半透明虚影 + 脉动外环，随剩余时间淡出
+            if (t.kind === 'lifeClone') {
+                const [lx, ly] = this._toLocal(t.x, t.y);
+                const fade = Math.max(0, Math.min(1, t._t / 1.5));
+                g.fillColor = new Color(120, 70, 200, Math.floor(110 * fade));
+                g.circle(lx, ly, 18); g.fill();
+                g.strokeColor = new Color(190, 130, 255, Math.floor(200 * fade));
+                g.lineWidth = 2.5;
+                g.circle(lx, ly, 18 + Math.sin(this._visualTime * 6) * 3); g.stroke();
+                continue;
+            }
+            // 混沌傀儡·格雷夫：混沌脉冲间隙（长200/宽100裂隙带）与混沌爆发
+            // 震荡波（扩散圆环）都是非实体区域效果，不画炮台底座投影。
+            if (t.kind === 'chaosGap' || t.kind === 'chaosBurst') {
+                const [gx, gy] = this._toLocal(t.x, t.y);
+                if (t.kind === 'chaosGap') {
+                    const fade = Math.max(0, Math.min(1, t._t / 0.8));
+                    const nx = t.dirX, ny = t.dirY;
+                    const px = -ny, py = nx;
+                    const corner = (along: number, side: number): [number, number] => {
+                        const [cx, cy] = this._toLocal(t.x + nx * along + px * side, t.y + ny * along + py * side);
+                        return [cx, cy];
+                    };
+                    const [x0, y0] = corner(0, t.halfW);
+                    const [x1, y1] = corner(t.len, t.halfW);
+                    const [x2, y2] = corner(t.len, -t.halfW);
+                    const [x3, y3] = corner(0, -t.halfW);
+                    g.fillColor = new Color(30, 4, 48, Math.floor(150 * fade));
+                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x0, y0); g.fill();
+                    g.strokeColor = new Color(204, 68, 255, Math.floor(200 * fade));
+                    g.lineWidth = 2.5;
+                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x0, y0); g.stroke();
+                    // 中脊混沌裂光：沿鞭向的主缝 + 随时间闪烁的横向裂纹
+                    const [sx, sy] = corner(0, 0);
+                    const [ex, ey] = corner(t.len, 0);
+                    g.strokeColor = new Color(244, 170, 255, Math.floor(160 + 70 * Math.sin(this._visualTime * 9)) * fade | 0);
+                    g.lineWidth = 3;
+                    g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
+                    g.lineWidth = 1.5;
+                    for (const f of [0.33, 0.66]) {
+                        const [c1x, c1y] = corner(t.len * f, t.halfW * 0.8);
+                        const [c2x, c2y] = corner(t.len * f, -t.halfW * 0.8);
+                        g.strokeColor = new Color(204, 68, 255, Math.floor(120 * fade));
+                        g.moveTo(c1x, c1y); g.lineTo(c2x, c2y); g.stroke();
+                    }
+                } else {
+                    const fade = Math.max(0, 1 - t.r / t._maxR);
+                    g.strokeColor = new Color(204, 68, 255, Math.floor(230 * fade));
+                    g.lineWidth = 6;
+                    g.circle(gx, gy, t.r); g.stroke();
+                    g.strokeColor = new Color(255, 130, 245, Math.floor(150 * fade));
+                    g.lineWidth = 2;
+                    g.circle(gx, gy, Math.max(4, t.r - 16)); g.stroke();
+                }
+                continue;
+            }
             const [tx, ty] = this._toLocal(t.x, t.y);
             const r = t.r ?? 10;
             g.fillColor = new Color(0, 0, 0, 100);
@@ -4092,6 +4193,11 @@ export class GameManager extends Component {
             boss.sprite = eSprite;
             if (typeof bossKey === 'string') boss.initBossKind(bossKey, this);
             else boss.initBoss(typeof bossKey === 'number' ? bossKey : this._chapter, this);
+            // boss精英(海克斯28)：持有期间 Boss 入场生命上限 -10%
+            if (this._augMgr.ownedOf('hex28')) {
+                boss.maxHp = Math.max(1, Math.round(boss.maxHp * 0.9));
+                boss.hp = Math.min(boss.hp, boss.maxHp);
+            }
             this._boss = boss;
             enemy = boss;
             this._audio.playBgm('boss');
@@ -4682,6 +4788,104 @@ export class GameManager extends Component {
     }
 
     /**
+     * boss精英(海克斯28)：立即削减当前 Boss 的生命上限百分比
+     * （装备时调 0.10 = 切掉 10% 最大生命；场上没有 Boss 时静默跳过，
+     * 后续入场的 Boss 由 spawnEnemy 处按持有状态压低 maxHp）。
+     */
+    cutBossHp(frac: number, player: any): void {
+        const b = this._boss;
+        if (!b?.alive || b.dead) return;
+        b.takeDamage(b.maxHp * frac, player, this);
+        this._floatText.spawn(b.x, b.y - 60, `生命上限 -${Math.round(frac * 100)}%`, '#ff5ad8', 18, true);
+    }
+
+    /**
+     * 化气为剑(海克斯26)：召唤环绕飞剑。剑数 = 攻击力/10（四舍五入，1~16 把）
+     * 并每帧按当前攻击力重算——攻速转化、商店攻击加成都会实时改变剑数。
+     * 飞剑环绕主角旋转，碰撞到的敌人按 1.5×攻击力走完整命中链结算
+     * （可暴击/可消耗洞察标记），对同一目标内置 0.5 秒命中冷却。
+     */
+    spawnQiSwords(player: any): void {
+        if (this._turrets.some(t => t.kind === 'qiSwords' && t.alive)) return;
+        const sw: any = {
+            x: player.x, y: player.y, r: 10, alive: true, kind: 'qiSwords',
+            _angle: 0, _cds: new Map<any, number>(), _pts: [] as [number, number][], owner: player,
+        };
+        sw.update = (dt: number, g: GameManager) => {
+            // 卖出词条/主角死亡时自毁（stats.swordMode 由 onLevel 维护）
+            if (!player.alive || !player.stats?.swordMode) { sw.alive = false; return; }
+            const dmg = player.getDamage?.(g) ?? player.stats.damage ?? 0;
+            const count = Math.max(1, Math.min(16, Math.round(dmg / 10)));
+            sw._angle = (sw._angle + dt * 2.6) % (Math.PI * 2);
+            sw._pts.length = 0;
+            const orbitR = 90;
+            for (let i = 0; i < count; i++) {
+                const a = sw._angle + (i / count) * Math.PI * 2;
+                sw._pts.push([player.x + Math.cos(a) * orbitR, player.y + Math.sin(a) * orbitR]);
+            }
+            // 命中冷却衰减（目标死亡/到点即清除）
+            for (const [k, v] of sw._cds) {
+                const nv = v - dt;
+                if (nv <= 0 || !k.alive || k.dead) sw._cds.delete(k);
+                else sw._cds.set(k, nv);
+            }
+            for (const [sx, sy] of sw._pts) {
+                for (const e of (g.enemies || [])) {
+                    if (!e.alive || e.dead || e.invisible || (((e as any).mechSkyT ?? 0) > 0) || sw._cds.has(e)) continue;
+                    if (Vec.dist(e.x, e.y, sx, sy) > 14 + (e.radius ?? 12)) continue;
+                    sw._cds.set(e, 0.5);
+                    const hit = dmg * 1.5;
+                    if (player.applyAttackDamage) player.applyAttackDamage(e, g, hit);
+                    else e.takeDamage(hit, player, g);
+                }
+            }
+            sw.x = player.x; sw.y = player.y;
+        };
+        this._turrets.push(sw);
+        this._particles.hexActivate?.(player.x, player.y, '#ffe296');
+    }
+
+    despawnQiSwords(): void {
+        for (const t of this._turrets) if (t.kind === 'qiSwords') t.alive = false;
+    }
+
+    /**
+     * 保命分身(海克斯32)：血量低于10%时在离主角最远的场地角落生成分身，
+     * 存续期间小怪 AI 改追分身（见 EnemyBase 的仇恨牵引），为主角解围。
+     * 持续 6 秒；同一时间最多一个。冷却（30秒）由词条 onUpdate 维护。
+     */
+    spawnLifeClone(player: any): void {
+        if (this._lifeClone?.alive) return;
+        const corners: [number, number][] = [
+            [40, 40], [CANVAS_W - 40, 40],
+            [40, PLAYFIELD_BOTTOM - 40], [CANVAS_W - 40, PLAYFIELD_BOTTOM - 40],
+        ];
+        let best = corners[0], bd = -1;
+        for (const c of corners) {
+            const d = Vec.dist(c[0], c[1], player.x, player.y);
+            if (d > bd) { bd = d; best = c; }
+        }
+        const clone: any = {
+            x: best[0], y: best[1], r: 18, alive: true, kind: 'lifeClone', _t: 6, owner: player,
+        };
+        clone.update = (dt: number, g: GameManager) => {
+            clone._t -= dt;
+            if (clone._t <= 0 || !player.alive) {
+                clone.alive = false;
+                if (g._lifeClone === clone) g._lifeClone = null;
+            }
+        };
+        this._lifeClone = clone;
+        this._turrets.push(clone);
+        this._floatText.spawn(clone.x, clone.y - 46, '保命分身！', '#b18cff', 16, true);
+        this._particles.hexActivate?.(clone.x, clone.y, '#b18cff');
+    }
+
+    despawnLifeClone(): void {
+        if (this._lifeClone) { this._lifeClone.alive = false; this._lifeClone = null; }
+    }
+
+    /**
      * 宇宙法则(cosmos_law)：激活后5s内所有敌人变色（标记为"友方"），
      * 5s后统一对全场造成各自最大HP×60%的AoE伤害并还原颜色。
      * "互相攻击"部分在 hexblast-py 原版同样未实现互攻AI逻辑（仅变色+延迟AOE），
@@ -4712,6 +4916,8 @@ export class GameManager extends Component {
         }, 5000);
     }
     private _cosmosActive = false;
+    /** 保命分身(海克斯32)：当前存活的分身引用（清场/到期/卖出时置空）。 */
+    private _lifeClone: any = null;
 
     laserSweep(player: any): void {
         const dmg = player.getDamage(this) * 3;

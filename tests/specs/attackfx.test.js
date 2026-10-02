@@ -139,16 +139,29 @@ test('超杀伤害的冲击粒子倍率钳制为1,避免千像素光环', () => 
 
 test('格雷夫Q/E/R使用三套不同轮廓的专属混沌特效', () => {
     const q = new ParticleManager();
-    q.grafChaosPulse(100, 100, 'lightning');
+    q.grafWhipLash(100, 100, 1, 0);
     const e = new ParticleManager();
-    e.grafReforge(100, 100);
+    e.grafChaosStun(100, 100);
     const r = new ParticleManager();
     r.grafCataclysm(100, 100);
-    assert.equal(q.spriteFx.length, 1, 'Q是单核不稳定脉冲');
-    assert.equal(e.spriteFx.length, 2, 'E必须展开左右两枚新符文');
+    assert.equal(q.spriteFx.length, 1, 'Q鞭击为单核脉冲');
+    assert.equal(e.spriteFx.length, 1, 'E眩晕波为单核震环');
     assert.equal(r.spriteFx.length, 3, 'R必须是三层灾变法阵');
-    assert.ok(r.particles.length > e.particles.length);
-    assert.ok(e.particles.length > q.spriteFx.length);
+    // Q主缝沿鞭向延伸200码（混沌间隙长度）
+    const lash = q.particles.find(p => p.type === 'line' && p.x2 - p.x === 200);
+    assert.ok(lash, 'Q应有沿鞭向200码的主缝裂光线');
+    // E震环扩散需覆盖450眩晕半径
+    const stunRings = e.particles.filter(p => p.type === 'ring');
+    assert.ok(stunRings.some(p => p.maxRadius >= 450), 'E震环扩散应覆盖450码眩晕半径');
+    assert.ok(r.particles.length > e.particles.length, 'R规模必须高于Q/E');
+});
+
+test('格雷夫被动·洞察的怪物标记闪光为克制的小型紫环', () => {
+    const m = new ParticleManager();
+    m.insightMark(100, 100);
+    const rings = m.particles.filter(p => p.type === 'ring');
+    assert.equal(rings.length, 1);
+    assert.ok(rings[0].maxRadius <= 40, '标记闪光半径必须克制,不遮挡怪物本体');
 });
 
 // ---- 剑气 ----------------------------------------------------

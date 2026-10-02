@@ -35,20 +35,20 @@ test('同一海克斯重复装备升档：Lv1→Lv2→Lv3，攻速按档位精�
     const p = makeStatsPlayer();
     const base = p.stats.attackSpeed;
 
-    am.equip({ id: 'hex01' }, p, game);   // Lv1 +10%
+    am.equip({ id: 'hex01' }, p, game);   // Lv1 +1%
     assert.equal(am.functional.length, 1, '功能性海克斯入 functional 列表');
     assert.equal(am.active.length, 0, '功能性海克斯不占技能格');
     assert.equal(am.functional[0].level, 1);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.10) < 1e-9);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.01) < 1e-9);
 
-    am.equip({ id: 'hex01' }, p, game);   // Lv2 +20%
+    am.equip({ id: 'hex01' }, p, game);   // Lv2 +2%
     assert.equal(am.functional.length, 1, '升档不占新格子');
     assert.equal(am.functional[0].level, 2);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.20) < 1e-9);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.02) < 1e-9);
 
-    am.equip({ id: 'hex01' }, p, game);   // Lv3 +30%
+    am.equip({ id: 'hex01' }, p, game);   // Lv3 +5%
     assert.equal(am.functional[0].level, 3);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.05) < 1e-9);
 });
 
 test('功能性海克斯可无限叠加购买：满档后再买=叠加新实例，效果独立叠乘', () => {
@@ -57,28 +57,28 @@ test('功能性海克斯可无限叠加购买：满档后再买=叠加新实例�
     const p = makeStatsPlayer();
     const base = p.stats.attackSpeed;
 
-    // 前3次购买把第一份升到 Lv3（×1.30）
+    // 前3次购买把第一份升到 Lv3（×1.05）
     for (let i = 0; i < 3; i++) am.equip({ id: 'hex01' }, p, game);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.05) < 1e-9);
 
-    // 第4次购买：满档后叠加 Lv1 新实例（×1.30 ×1.10）
+    // 第4次购买：满档后叠加 Lv1 新实例（×1.05 ×1.01）
     assert.equal(am.equip({ id: 'hex01' }, p, game), true, '满档后仍可购买');
     assert.equal(am.functional.length, 2, '叠加新实例');
     assert.equal(am.functional[1].level, 1);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.43) < 1e-9, '效果独立叠乘');
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.0605) < 1e-9, '效果独立叠乘');
 
-    // 第5-6次购买把第二份升到 Lv3（×1.30 ×1.30）
+    // 第5-6次购买把第二份升到 Lv3（×1.05 ×1.05）
     am.equip({ id: 'hex01' }, p, game);
     am.equip({ id: 'hex01' }, p, game);
     assert.equal(am.functional.length, 2, '升级不新增实例');
     assert.equal(am.functional[1].level, 3);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.69) < 1e-9);
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.1025) < 1e-9);
 
     // 技能格始终不受影响；卖出叠加实例只回退该实例的贡献
     assert.equal(am.active.length, 0);
     am.unequip('hex01', p, game);
     assert.equal(am.functional.length, 1);
-    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.30) < 1e-9, '卖出一份后另一份仍生效');
+    assert.ok(Math.abs(p.stats.attackSpeed - base * 1.05) < 1e-9, '卖出一份后另一份仍生效');
 
     // 满档持有后商店卡池仍持续刷出该功能海克斯（可继续无限购买）
     let offered = false;
@@ -151,13 +151,13 @@ test('满格后新海克斯装备失败，升档不受格子限制', () => {
 
 test('定价溢价：银/金每购1次+10%，彩每购1次+100%（按档位稀有度计价）', () => {
     const am = new AugmentManager();
-    const speed = byId('hex01');       // prices [15, 100, 500]
+    const speed = byId('hex01');       // prices [10, 40, 150]（2026-09-21 数值下调后）
     const blueprint = byId('hex15');   // 单档彩 500
-    assert.equal(am.priceOf(speed, 1), 15);
-    assert.equal(am.priceOf(speed, 2), 100);
-    assert.equal(am.priceOf(speed, 3), 500);
-    am.recordPurchase('silver', 15);
-    assert.equal(am.priceOf(speed, 1), 17);   // 15 × 1.1 → 16.5 取整
+    assert.equal(am.priceOf(speed, 1), 10);
+    assert.equal(am.priceOf(speed, 2), 40);
+    assert.equal(am.priceOf(speed, 3), 150);
+    am.recordPurchase('silver', 10);
+    assert.equal(am.priceOf(speed, 1), 11);   // 10 × 1.1
 
     assert.equal(am.priceOf(blueprint, 1), 500);
     am.recordPurchase('prismatic', 500);
@@ -173,8 +173,8 @@ test('卖出回退加成并回收75%实付价', () => {
     am.equip({ id: 'hex02' }, p, game);
     assert.equal(am.active.length, 0, '功能海克斯不占技能格');
     assert.equal(am.functional.length, 1);
-    am.functional[0].paid = 100;
-    assert.ok(Math.abs(p.stats.damage - base * 1.05) < 1e-9);
+    am.functional[0].paid = 100;   // hex02 是功能海克斯，入 functional 列表
+    assert.ok(Math.abs(p.stats.damage - base * 1.01) < 1e-9);
 
     const inst = am.unequip('hex02', p, game);
     assert.equal(am.functional.length, 0);
@@ -293,6 +293,42 @@ test('卡池权重:功能海克斯出现率提升;技能格满后新技能卡明
     // 满格时银档池里未持有技能只剩 ×0.3 权重;金/彩档的升级卡(应保留正常频率)
     // 也计入技能类,故总体占比以 25% 为界(未加权时约 39%)
     assert.ok(newSkill / total2 <= 0.25, `满格后技能卡占比应≤25%,实际 ${(newSkill / total2 * 100).toFixed(1)}%`);
+});
+
+test('第一章第一轮：firstWave 模式三张卡必定全部为功能性海克斯（银档 Lv.1）', () => {
+    const am = new AugmentManager();
+    for (let i = 0; i < 20; i++) {
+        const opts = am.rollOptions(3, 1, { firstWave: true });
+        assert.equal(opts.length, 3, '三张卡都要出（功能海克斯共5个，足够不重复）');
+        for (const card of opts) {
+            assert.equal(card.category, '功能', `${card.id} 应为功能性海克斯`);
+            assert.equal(card.level, 1, '首波只出银档 Lv.1');
+            assert.equal(card.rarity, 'silver');
+        }
+    }
+});
+
+test('刷新降权：金色显著低于基础货架且≤20%，彩色极小概率≤2%', () => {
+    const am = new AugmentManager();
+    const sample = (mode) => {
+        let gold = 0, prism = 0, total = 0;
+        for (let i = 0; i < 400; i++) {
+            for (const c of am.rollOptions(3, 20, mode)) {
+                total++;
+                if (c.rarity === 'gold') gold++;
+                if (c.rarity === 'prismatic') prism++;
+            }
+        }
+        return { gold: gold / total, prism: prism / total };
+    };
+    const base = sample(undefined);
+    const ref = sample({ refresh: true });
+    // 第20波基础权重：银60/金38/彩4 → 金≈37%；刷新：金×0.4≈15%、彩≤1%
+    assert.ok(ref.gold < base.gold,
+        `刷新后金色占比应低于基础（${(ref.gold * 100).toFixed(1)}% < ${(base.gold * 100).toFixed(1)}%）`);
+    assert.ok(ref.gold <= 0.20, `刷新后金色占比应≤20%，实际 ${(ref.gold * 100).toFixed(1)}%`);
+    assert.ok(ref.prism <= 0.02, `刷新后彩色占比应≤2%，实际 ${(ref.prism * 100).toFixed(1)}%`);
+    assert.ok(base.prism <= 0.06, `基础货架彩色也应极小概率（≤6%），实际 ${(base.prism * 100).toFixed(1)}%`);
 });
 
 test('前期金币倍率上调:第一/二章 0.9/1.3(买得起强化)', () => {

@@ -5,38 +5,39 @@ const { BOSSES, getBossDef, TEST_BOSSES, MINI_BOSSES, TEST_GRUNTS, UNIT_CATALOG 
 const { BossController } = require('../dist/entities/BossController');
 const { makeMockGame } = require('./mockGame');
 
-test('BOSSES包含5章首领,章节号1~5连续且字段完整', () => {
-    assert.equal(BOSSES.length, 5, '应有5个Boss');
+test('BOSSES包含6章首领,章节号1~6连续且字段完整', () => {
+    assert.equal(BOSSES.length, 6, '六章应有6个Boss');
     BOSSES.forEach((b, i) => {
         assert.equal(b.chapter, i + 1, '章节号应1-based且连续');
         assert.ok(b.maxHp > 0 && b.damage > 0 && b.speed > 0, '基础数值应为正');
         assert.ok(b.label.length > 0, '应有显示名');
-        // 第1~4章独立贴图；第5章暂无新美术，复用 enemy_boss 素体+染色
-        assert.equal(b.spriteKey, i + 1 <= 4 ? `enemy_boss_ch${i + 1}` : 'enemy_boss', '贴图key应对应章节号');
+        // 第1~4章独立贴图；第5章机械高达专属立绘；第6章暂无新美术，复用 enemy_boss 素体+染色
+        const expectedSprite = i + 1 <= 4 ? `enemy_boss_ch${i + 1}` : (i + 1 === 5 ? 'enemy_boss_mech' : 'enemy_boss');
+        assert.equal(b.spriteKey, expectedSprite, '贴图key应对应章节号');
         assert.ok(b.radius > 0 && b.visualScale > 1 && b.attackWindupMax > 0, '碰撞/视觉/前摇字段应合法');
     });
 });
 
-test('Boss数值表与抽取前内联表逐字一致(第5章为新增灭世机神)', () => {
-    assert.deepEqual(BOSSES.map(b => b.maxHp),     [3000, 5500, 9000, 14000, 20000]);
-    assert.deepEqual(BOSSES.map(b => b.damage),    [42, 66, 94, 132, 160]);
-    assert.deepEqual(BOSSES.map(b => b.speed),     [62, 68, 74, 80, 65]);
-    assert.deepEqual(BOSSES.map(b => b.armor),     [10, 20, 30, 40, 50]);
-    assert.deepEqual(BOSSES.map(b => b.goldValue), [200, 400, 600, 800, 1000]);
-    assert.deepEqual(BOSSES.map(b => b.radius),    [45, 45, 45, 45, 45]);
+test('Boss数值表与六章档位一致(第5章机械高达/第6章灭世机神)', () => {
+    assert.deepEqual(BOSSES.map(b => b.maxHp),     [3000, 5500, 9000, 14000, 20000, 24000]);
+    assert.deepEqual(BOSSES.map(b => b.damage),    [42, 66, 94, 132, 160, 170]);
+    assert.deepEqual(BOSSES.map(b => b.speed),     [62, 68, 74, 80, 68, 65]);
+    assert.deepEqual(BOSSES.map(b => b.armor),     [10, 20, 30, 40, 50, 55]);
+    assert.deepEqual(BOSSES.map(b => b.goldValue), [200, 400, 600, 800, 1000, 1200]);
+    assert.deepEqual(BOSSES.map(b => b.radius),    [45, 45, 45, 45, 45, 45]);
 });
 
 test('getBossDef越界时回落到首/末章', () => {
     assert.equal(getBossDef(0).label, BOSSES[0].label);
     assert.equal(getBossDef(3).label, BOSSES[3].label);
-    assert.equal(getBossDef(4).label, BOSSES[4].label, '第5章Boss可正常取到');
-    assert.equal(getBossDef(99).label, BOSSES[4].label, '过大章节回落最后一章');
+    assert.equal(getBossDef(5).label, BOSSES[5].label, '第6章Boss可正常取到');
+    assert.equal(getBossDef(99).label, BOSSES[5].label, '过大章节回落最后一章');
     assert.equal(getBossDef(-5).label, BOSSES[0].label, '负章节回落第一章');
 });
 
 test('initBoss按0-based章节读到对应BossDB行', () => {
     const game = makeMockGame();
-    for (let ch = 0; ch < 5; ch++) {
+    for (let ch = 0; ch < 6; ch++) {
         const boss = new BossController();
         boss.initBoss(ch, game);
         const def = BOSSES[ch];

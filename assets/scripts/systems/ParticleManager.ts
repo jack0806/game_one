@@ -365,36 +365,59 @@ export class ParticleManager {
     }
 
     // ── 混沌傀儡·格雷夫专属技能视觉 ─────────────────────────
-    /** Q：核心使用独立绘制的脉冲序列，随机结果仍由辅色与六向裂光区分。 */
-    grafChaosPulse(x: number, y: number, effect: string): void {
-        const accent = effect === 'explode' ? '#ff5a3c'
-            : effect === 'lightning' ? '#63e7ff'
-            : effect === 'attract' ? '#ffcf58' : '#d16dff';
-        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.52, 1.75);
-        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.44, maxLife: 0.44, size: 2, color: accent,
-            fade: true, gravity: false, glow: true, type: 'ring', radius: 12, maxRadius: 92, alpha: 1, lineWidth: 5 });
-        for (let i = 0; i < 6; i++) {
-            const a = i * Math.PI / 3 + Math.PI / 6;
-            this.particles.push({ x: x + Math.cos(a) * 15, y: y + Math.sin(a) * 15, vx: 0, vy: 0,
-                life: 0.34, maxLife: 0.34, size: 2, color: i % 2 ? accent : '#f2c6ff',
-                fade: true, gravity: false, glow: true, type: 'line',
-                x2: x + Math.cos(a) * 108, y2: y + Math.sin(a) * 108, alpha: 1, lineWidth: 3 });
-        }
-        this.emit({ x, y, count: 22, color: accent, speedMin: 100, speedMax: 310, lifeMin: 0.18, lifeMax: 0.5, sizeMin: 2, sizeMax: 6, glow: true });
+    /** 普攻：轻量鞭击——沿攻击方向抽出一条鞭长裂光，鞭梢小爆点。 */
+    grafWhipStrike(x: number, y: number, angle: number, range: number): void {
+        const nx = Math.cos(angle), ny = Math.sin(angle);
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.22, maxLife: 0.22, size: 2, color: '#e88aff',
+            fade: true, gravity: false, glow: true, type: 'line',
+            x2: x + nx * range, y2: y + ny * range, alpha: 1, lineWidth: 3.5 });
+        this.emit({ x: x + nx * range, y: y + ny * range, count: 5, color: '#cc44ff',
+            speedMin: 40, speedMax: 130, lifeMin: 0.12, lifeMax: 0.28, sizeMin: 1, sizeMax: 3, glow: true });
     }
 
-    /** E：中心旧符文破碎，左右两枚新符文展开，直观表达“一拆二”的词条重组。 */
-    grafReforge(x: number, y: number): void {
-        this.spawnSpriteFx(x - 42, y, 'fx_hex_ring', 0.72, 1.05, '#7ee8ff', { motion: 'burst', rotationDeg: -28 });
-        this.spawnSpriteFx(x + 42, y, 'fx_hex_ring', 0.72, 1.05, '#ff75dc', { motion: 'burst', rotationDeg: 28 });
-        for (let i = 0; i < 8; i++) {
-            const a = i * Math.PI / 4;
-            this.particles.push({ x, y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, size: 2,
-                color: i % 2 ? '#7ee8ff' : '#ff75dc', fade: true, gravity: false, glow: true,
-                type: 'line', x2: x + Math.cos(a) * 76, y2: y + Math.sin(a) * 54,
-                alpha: 1, lineWidth: 3.5 });
+    /** Q：混沌长鞭鞭击——沿鞭向抽出一道主缝裂光与鞭梢碎裂粒子。 */
+    grafWhipLash(x: number, y: number, nx: number, ny: number): void {
+        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.45, 1.4);
+        const px = -ny, py = nx;
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, size: 2, color: '#e88aff',
+            fade: true, gravity: false, glow: true, type: 'line',
+            x2: x + nx * 200, y2: y + ny * 200, alpha: 1, lineWidth: 5 });
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, size: 2, color: '#d16dff',
+            fade: true, gravity: false, glow: true, type: 'ring', radius: 10, maxRadius: 64, alpha: 1, lineWidth: 4 });
+        // 鞭身三道弧形残影 + 鞭梢碎裂
+        for (let i = 1; i <= 3; i++) {
+            const mid = i * 50;
+            this.particles.push({ x: x + nx * mid + px * 8, y: y + ny * mid + py * 8, vx: 0, vy: 0,
+                life: 0.32, maxLife: 0.32, size: 2, color: i % 2 ? '#cc44ff' : '#f2c6ff',
+                fade: true, gravity: false, glow: true, type: 'line',
+                x2: x + nx * (mid + 46) - px * 8, y2: y + ny * (mid + 46) - py * 8, alpha: 0.8, lineWidth: 2.5 });
         }
-        this.emit({ x, y, count: 26, color: '#d687ff', speedMin: 70, speedMax: 250, lifeMin: 0.25, lifeMax: 0.62, sizeMin: 2, sizeMax: 5, glow: true });
+        this.emit({ x: x + nx * 200, y: y + ny * 200, count: 18, color: '#cc44ff',
+            speedMin: 90, speedMax: 260, lifeMin: 0.18, lifeMax: 0.45, sizeMin: 2, sizeMax: 5, glow: true });
+    }
+
+    /** E：混沌冲击眩晕波——由中心向外炸开的双层震环与放射裂线。 */
+    grafChaosStun(x: number, y: number): void {
+        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.55, 2.1);
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.55, maxLife: 0.55, size: 2, color: '#cc44ff',
+            fade: true, gravity: false, glow: true, type: 'ring', radius: 20, maxRadius: 460, alpha: 1, lineWidth: 6 });
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.42, maxLife: 0.42, size: 2, color: '#f2c6ff',
+            fade: true, gravity: false, glow: true, type: 'ring', radius: 10, maxRadius: 320, alpha: 0.85, lineWidth: 3 });
+        for (let i = 0; i < 10; i++) {
+            const a = i * Math.PI / 5;
+            this.particles.push({ x: x + Math.cos(a) * 24, y: y + Math.sin(a) * 24, vx: 0, vy: 0,
+                life: 0.4, maxLife: 0.4, size: 2, color: i % 2 ? '#d687ff' : '#8f32ff',
+                fade: true, gravity: false, glow: true, type: 'line',
+                x2: x + Math.cos(a) * 210, y2: y + Math.sin(a) * 210, alpha: 1, lineWidth: 3 });
+        }
+        this.emit({ x, y, count: 30, color: '#cc44ff', speedMin: 120, speedMax: 340, lifeMin: 0.2, lifeMax: 0.55, sizeMin: 2, sizeMax: 6, glow: true });
+    }
+
+    /** 被动·洞察：怪物身上的标记闪光（小型紫环，克制到不抢怪物本体视觉）。 */
+    insightMark(x: number, y: number): void {
+        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.35, maxLife: 0.35, size: 2, color: '#cc44ff',
+            fade: true, gravity: false, glow: true, type: 'ring', radius: 4, maxRadius: 30, alpha: 0.9, lineWidth: 2 });
+        this.emit({ x, y, count: 6, color: '#d687ff', speedMin: 40, speedMax: 110, lifeMin: 0.15, lifeMax: 0.35, sizeMin: 1, sizeMax: 3, glow: true });
     }
 
     /** R：三层反向错位法阵和十二向裂缝，规模必须一眼高于Q/E。 */

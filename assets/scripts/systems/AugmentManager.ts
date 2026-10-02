@@ -29,8 +29,10 @@ export class AugmentManager {
     boughtPerRarity: Record<string, number> = { silver: 0, gold: 0, prismatic: 0 };
     /** 本局已选用过的一次性海克斯 id（只能选择一次，商店不再刷出）。 */
     private _oneShotUsed: Set<string> = new Set();
-    /** 格雷夫被动递归防护：免费追加装备期间不再触发二次追加。 */
-    private _inChaosBonus = false;
+    /** 再来一次·强化版(hex29)：本次强化选择页剩余的免费刷新次数（每次开启重置为5）。 */
+    freeRefreshes = 0;
+    /** 合理避税(hex30)：刷新费用乘区（0.5 = 费用减半）。 */
+    refreshCostMult = 1;
 
     /** 全部持有（技能 + 功能），展示/统计/事件分发用。 */
     all(): AugmentDef[] {
@@ -72,12 +74,30 @@ export class AugmentManager {
 
     // ── 生成选项 ──────────────────────────────────────────
 
-    /** 当前波次的三档稀有度权重（商店页"出现率"标注与 rollOptions 共用）。 */
+    /**
+     * 当前波次的三档稀有度权重（商店页"出现率"标注与 rollOptions 共用）。
+     * 2026-09-21 玩家调整：金色只以概率出现（永不过半）、彩色全程极小概率
+     * （第 5 波起才有，封顶约 4%）。
+     */
     rarityWeights(wave: number): Record<HexRarity, number> {
         return {
-            silver:    Math.max(12, 55 - wave * 2),
-            gold:      Math.min(55, 25 + wave * 2.5),
-            prismatic: Math.min(28, Math.max(0, (wave - 3) * 2)),
+            silver:    Math.max(50, 80 - wave),
+            gold:      Math.min(40, 18 + wave),
+            prismatic: Math.min(4, Math.max(0, wave - 4) * 0.25),
+        };
+    }
+
+    /**
+     * 刷新后的三档稀有度权重：金色再砍到基础的 40%，彩色压到 ≤1%
+     * （被砍掉的部分回填银色）——刷新只能概率出金色，极小概率出彩色。
+     */
+    refreshRarityWeights(wave: number): Record<HexRarity, number> {
+        const base = this.rarityWeights(wave);
+        const gold = base.gold * 0.4;
+        const prismatic = Math.min(1, base.prismatic * 0.25);
+        return {
+            silver: base.silver + (base.gold - gold) + (base.prismatic - prismatic),
+            gold, prismatic,
         };
     }
 
@@ -89,23 +109,34 @@ export class AugmentManager {
      * 卡池权重（2026-09-21 玩家调整）：
      *  · 功能性海克斯出现概率提升（权重 ×3，前期也买得起、后期可叠加）；
      *  · 技能格买满后，未持有的技能海克斯明显降频（×0.3）——装不上的卡
-     *    少刷，把位置让给功能/升级卡；已持有技能的升级卡不受影响。
+     *    少刷，把位置让给功能/升级卡；已持有技能的升级卡不受影响；
+     *  · opts.firstWave（第一章第一轮）：三张卡必定全部是功能性海克斯
+     *    （银档 Lv.1，数值小但可无限叠购）；
+     *  · opts.refresh（付费刷新）：稀有度改走 refreshRarityWeights，
+     *    金色只概率出现、彩色极小概率。
      */
-    rollOptions(n = 3, wave = 1): AugmentDef[] {
-        const weights = this.rarityWeights(wave);
+    rollOptions(n = 3, wave = 1, opts?: { firstWave?: boolean; refresh?: boolean }): AugmentDef[] {
+        const weights = opts?.refresh ? this.refreshRarityWeights(wave) : this.rarityWeights(wave);
         const results: AugmentDef[] = [];
         const slotsFull = this.active.length >= this.maxSlots;
 
         for (let i = 0; i < n; i++) {
-            const rarity = this._rollRarity(weights);
+            const rarity = opts?.firstWave ? 'silver' : this._rollRarity(weights);
             if (!rarity) continue;
             const level = rarity === 'silver' ? 1 : rarity === 'gold' ? 2 : 3;
             const pool: AugmentDef[] = [];
             const poolWeights: number[] = [];
             for (const a of AUGMENT_DB) {
-                if (a.prices.length < level) continue;      // 该海克斯没有这一档
+                // 该海克斯没有这一档；单档海克斯（蓝图/壁垒/元素暴击）只进
+                // 自身稀有度的卡池（彩单档进彩档池、银单档进银档池）——否则
+                // 彩色卡会从银档池漏出，破坏"彩色极小概率"的档位概率
+                if (a.prices.length <= 1
+                    ? rarityForLevel(a, 1) !== rarity
+                    : a.prices.length < level) continue;
                 if (results.find(r => r.id === a.id)) continue;
                 if (a.oneShot && this._oneShotUsed.has(a.id)) continue;
+                // 第一章第一轮：只刷功能性海克斯
+                if (opts?.firstWave && a.category !== '功能') continue;
                 // 元素暴击：未集齐四种元素海克斯时不进卡池（购买条件未解锁）
                 if (a.id === 'hex19' && !this.elementSetComplete()) continue;
                 const owned = this.ownedOf(a.id);
@@ -240,20 +271,6 @@ export class AugmentManager {
         };
         list.push(inst);
         inst.onLevel?.(player, game, 0, level);
-        // 格雷夫被动(chaosBonus)：获得海克斯时额外随机获得一个（1 档，不占格子溢出）
-        if (player?.stats?.chaosBonus && !this._inChaosBonus && this.active.length < this.maxSlots) {
-            this._inChaosBonus = true;
-            try {
-                const pool = AUGMENT_DB.filter(a =>
-                    !this.ownedOf(a.id) && !a.oneShot);
-                if (pool.length) {
-                    const bonus = Rng.pick(pool);
-                    this.equip(this._makeCard(bonus, 1, false), player, game);
-                }
-            } finally {
-                this._inChaosBonus = false;
-            }
-        }
         return true;
     }
 
@@ -287,8 +304,14 @@ export class AugmentManager {
     dispatchKill(player: any, enemy: any, dmg: number, game: any): void {
         for (const a of this.all()) if (a.onKill) a.onKill(player, enemy, dmg, game);
     }
+    /**
+     * 每帧分发 onUpdate。加速(海克斯31)的 cdReduction 在此统一缩放：
+     * 词条内置计时器（天雷/无人机/黑洞引擎等冷却）按 (1+cdReduction) 加速
+     * 走表，即"强化的冷却时间缩减"——无需每个词条单独适配。
+     */
     dispatchUpdate(player: any, dt: number, game: any): void {
-        for (const a of this.all()) if (a.onUpdate) a.onUpdate(player, dt, game);
+        const scale = 1 + (player?.stats?.cdReduction || 0);
+        for (const a of this.all()) if (a.onUpdate) a.onUpdate(player, dt * scale, game);
     }
     dispatchWaveStart(player: any, game: any): void {
         for (const a of this.all()) if (a.onWaveStart) a.onWaveStart(player, game);
@@ -304,5 +327,7 @@ export class AugmentManager {
         this.nextLevelBonus = 0;
         this.boughtPerRarity = { silver: 0, gold: 0, prismatic: 0 };
         this._oneShotUsed = new Set();
+        this.freeRefreshes = 0;
+        this.refreshCostMult = 1;
     }
 }

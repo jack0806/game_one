@@ -101,6 +101,7 @@ export class BossController extends EnemyBase {
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
         this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
+        this.bossKind = undefined;   // initBossKind 会在 init 之后再写入
         // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
         // 进场约6秒才有第一发追踪弹，网格激光/导弹依次排开；循环冷却保持原值
         this._invLaserCd = 8; this._invMissileCd = 14; this._invHomingCd = 6;
@@ -424,7 +425,10 @@ export class BossController extends EnemyBase {
                     game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * this.buffDmgMult * 0.7, radius: 11, color: '#ffe066', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos' });
                 }
                 break;
-            case 'mech':  this._mechBladeStormFire(player, game); break;
+            case 'mech':
+            // 正式第五章 Boss（机械高达X-剑）无 bossKind，kind 串是 'ch5'——
+            // 剑气风暴蓄力走同一发射函数，否则蓄力文案后剑气哑火
+            case 'ch5':  this._mechBladeStormFire(player, game); break;
             case 'abyss': this._abyssWaterSpikes(player, game); break;
         }
     }
@@ -617,7 +621,7 @@ export class BossController extends EnemyBase {
         game.audio?.playSfx?.('freeze', 0.7);
     }
 
-    // ── 灭世机神·天罚（第五章正式Boss / 测试房 'invader'，用户设计稿） ──────
+    // ── 灭世机神·天罚（第六章正式Boss / 测试房 'invader'，用户设计稿） ──────
 
     /** 第六章正式 Boss（灭世机神）与测试房 'invader' 共用同一套技能状态机。 */
     private _usesInvaderSkills(): boolean {
@@ -626,7 +630,9 @@ export class BossController extends EnemyBase {
 
     /** 第五章正式 Boss（机械高达X-剑）与测试房 'mech' 共用同一套技能状态机。 */
     private _usesMechSkills(): boolean {
-        return this.bossKind === 'mech' || this.chapter === 5;
+        // 测试房 Boss 一律按 bossKind 判定：invader 的基准章也是 5（TEST_BOSSES），
+        // 若按 chapter===5 认领会误吃机械高达技能机（横劈/格挡等），必须先看 kind
+        return this.bossKind ? this.bossKind === 'mech' : this.chapter === 5;
     }
 
     /**

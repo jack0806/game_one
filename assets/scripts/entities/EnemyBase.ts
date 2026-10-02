@@ -69,6 +69,8 @@ export class EnemyBase {
     /** 困难模式兽潮：向屏幕中心收拢，进入中心区后自动恢复常规AI。 */
     tideConverge = false;
     stunned     = 0;
+    /** 格雷夫被动·洞察标记：被普攻/技能命中时消耗并追加20%穿甲伤害。 */
+    _insightMark = false;
     goldValue   = 10;
     xpValue     = 5;
     knockbackX  = 0;
@@ -188,7 +190,7 @@ export class EnemyBase {
         this.type    = type;
         this.chapter = Math.ceil(wave / 10);
         const scale  = 1 + (wave - 1) * 0.08;
-        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false;
+        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0; this.actionRecoil = 0;
         this.rangedAimWindup = 0; this.rangedAimTargetX = 0; this.rangedAimTargetY = 0;
@@ -938,6 +940,10 @@ export class EnemyBase {
                 aiTarget = { x: CANVAS_W / 2, y: PLAYFIELD_BOTTOM / 2, alive: true };
             }
         }
+        // 保命分身(海克斯32)：分身存在时小怪改追分身（仇恨牵引，近战会围堵
+        // 分身而够不到主角；远程单位整体跳过走位/开火逻辑，同样追堵分身）。
+        const lifeClone = (game as any)?._lifeClone;
+        if (lifeClone?.alive) aiTarget = lifeClone;
         const routeTarget = game.arenaSteerTarget?.(this.x, this.y, aiTarget.x, aiTarget.y, this.radius) ?? aiTarget;
         const [dx, dy] = Vec.normalize(routeTarget.x - this.x, routeTarget.y - this.y);
         this.combatFacingX = dx; this.combatFacingY = dy;
@@ -949,7 +955,7 @@ export class EnemyBase {
         let frostShot = false;
         let arcShot = false;
         let acidShot: [number, number] | undefined;
-        if (this.rangedRange > 0) {
+        if (this.rangedRange > 0 && !lifeClone?.alive) {
             const dist = game.arenaLineClear?.(this.x, this.y, player.x, player.y) === false
                 ? Infinity : Math.hypot(player.x - this.x, player.y - this.y);
             if (dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }      // 太近 → 后撤

@@ -208,7 +208,8 @@ test('暴击分发:dispatchCrit 触发元素暴击齐射', () => {
     game.enemies = makeElemEnemies(6);
     game.augmentManager = am;
     const p = makePlayer();
-    am.equip({ id: 'hex19' }, p, game);
+    // force 绕过"集齐四元素才解锁"门槛：本用例只验证暴击分发接线
+    am.equip({ id: 'hex19' }, p, game, { force: true });
     am.dispatchCrit(p, game.enemies[0], 10, game);
     assert.ok(spawned.length >= 10, '暴击触发元素齐射');
     assert.ok(AUGMENT_DB.find(a => a.id === 'hex19').onCrit, '数据库带 onCrit 钩子');
@@ -318,10 +319,12 @@ test('元素暴击解锁门槛:未集齐四元素时卡池不刷出且装备被�
     assert.equal(am.elementSetComplete(), false, '还差水元素');
     am.equip({ id: 'hex23' }, p, game);
     assert.equal(am.elementSetComplete(), true, '四元素集齐');
-    // 卡池验证须在装备前：单档海克斯购入后不会再刷出
+    // 卡池验证须在装备前：单档海克斯购入后不会再刷出。
+    // 2026-09-21 概率调整后彩色只极小概率出现（第20波≈4%，再乘卡池1/30），
+    // 采样规模放大到 3000 轮避免随机漏采
     let offered = false;
-    for (let i = 0; i < 200 && !offered; i++) {
-        offered = am.rollOptions(3, 10).some(c => c.id === 'hex19');
+    for (let i = 0; i < 3000 && !offered; i++) {
+        offered = am.rollOptions(3, 20).some(c => c.id === 'hex19');
     }
     assert.ok(offered, '集齐后卡池可刷出元素暴击(彩色)');
     assert.equal(am.equip({ id: 'hex19' }, p, game), true, '解锁后可装备');

@@ -51,8 +51,9 @@ export function getBossDef(chapter0Based: number): BossDef {
 // 5500/66/68/20，abyss 取第三章 9000/94/74/30）。两者使用专属俯视立绘，
 // 不再借用章节 Boss 后依赖程序线框补轮廓。
 // 《怪物设计与数值》5.2~5.4：维斯帕/坩埚/万相（独立贴图，逐字使用文档数值）。
-// 用户设计稿：第五章「灭世机神·天罚」（invader，复用 enemy_boss 素体+染色，
-// 数值取第五章档位 20000/160/65/50）。
+// 用户设计稿：「灭世机神·天罚」（invader，复用 enemy_boss 素体+染色，
+// 数值取第五章档位 20000/160/65/50）。已转正为第六章正式 Boss（BOSSES 表），
+// 测试房条目的基准章仍为 5，技能集按 bossKind='invader' 判定。
 
 export interface TestBossDef extends BossDef {
     /** 技能集标识：BossController._useSkill 按此分支。 */

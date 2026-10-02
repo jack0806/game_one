@@ -406,41 +406,114 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'graf',
         name: '混沌傀儡·格雷夫', icon: '🌀', color: '#cc44ff', unlocked: false,
         unlockHint: '无尽模式撑过第50波',
-        attackType: 'ranged', attackRange: 550, ultCd: 15,
-        desc: '获得词条时额外随机一个，混沌本质',
-        skills: { q: '混沌脉冲 — 随机触发爆炸/传送/吸引/闪电之一', e: '词条重组 — 移除最后词条并随机获得2个新词条', r: '混沌爆发 — 同时触发所有词条的击杀效果' },
-        skillIcons: { q: 'chaos', e: 'chaos', r: 'chaos' },
-        stats: { maxHp: 150, speed: 310, damage: 28, attackSpeed: 1.8, armor: 15, critRate: 0.1, critDmg: 0.5, pierce: 0 },
-        passive(p: any) { p.stats.chaosBonus = true; },
+        // 持鞭近战：攻击距离=鞭长170（狂战士斧70 / 延展力场词条可继续加宽）
+        attackType: 'melee', attackRange: 170, ultCd: 15,
+        desc: '近战鞭击：普攻二段(75%伤害)在0.5秒后落下；洞察：每2.5秒标记周围500码怪物，命中消耗标记追加20%穿甲伤害',
+        skills: {
+            q: '混沌脉冲 — 朝鼠标位置甩出混沌长鞭，形成长200/宽100码的混沌间隙，存在3秒，每秒造成20点伤害',
+            e: '混沌冲击 — 眩晕周围450码的所有怪物2秒',
+            r: '混沌爆发 — 向四周发射震荡波造成30点伤害，并同时触发所有已装备词条的击杀效果；携带死神之瞳时小怪直接秒杀、Boss受600点固定伤害',
+        },
+        skillIcons: { q: 'chaos', e: 'lightning', r: 'explosion' },
+        stats: { maxHp: 150, speed: 310, damage: 30, attackSpeed: 0.8, armor: 15, critRate: 0.1, critDmg: 0.5, pierce: 0 },
+        passive(p: any) {
+            // 洞察：标记计时在 PlayerController.tick 驱动，命中消耗见 consumeInsightMark
+            p.stats.insightMark = true;
+            // 荆棘刺鞭：普攻二段在子弹命中链路(BulletController)/近战命中(_meleeAttack)结算
+            p.stats.thornWhip = true;
+        },
         qSkill(p: any, game: any) {
-            const effects = ['explode', 'lightning', 'attract', 'teleport'];
-            const ef = Rng.pick(effects);
-            if (ef === 'explode') game.spawnExplosion(p, p.x, p.y, p.stats.damage * 3, 120);
-            else if (ef === 'teleport') {
-                // 传送沿角色朝向闪现260距离（不再跳鼠标位置）
-                p.x = clamp(p.x + (p.facingX ?? 1) * 260, 16, CANVAS_W - 16);
-                p.y = clamp(p.y + (p.facingY ?? 0) * 260, 16, PLAYFIELD_BOTTOM - 16);
+            // 朝鼠标目标位置甩出长鞭：沿鞭向形成长200/宽100码的混沌间隙（锚定
+            // 施放时的鞭根位置，不随玩家移动），存在3秒，每秒对间隙内怪物造成
+            // 20点伤害（鞭子落地瞬间结算第一跳）。走 applyAttackDamage 让
+            // 洞察标记在间隙持续伤害中同样可被消耗。
+            const mouse = game.input?.mouse;
+            let nx: number, ny: number;
+            if (mouse?.active) {
+                [nx, ny] = Vec.normalize(mouse.x - p.x, mouse.y - p.y);
+                if (!nx && !ny) nx = 1;
+            } else {
+                [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             }
-            else if (ef === 'attract') game.attractEnemies(p.x, p.y, 200);
-            else if (ef === 'lightning') game.laserSweep(p);
-            if (game.particles.grafChaosPulse) game.particles.grafChaosPulse(p.x, p.y, ef);
+            const gap: any = {
+                x: p.x, y: p.y, r: 26, alive: true, kind: 'chaosGap',
+                dirX: nx, dirY: ny, len: 200, halfW: 50,
+                _t: 3, _tick: 0, owner: p,
+            };
+            gap.update = (dt: number, g: any) => {
+                gap._t -= dt;
+                if (gap._t <= 0) { gap.alive = false; return; }   // 3秒寿命内恰好3跳(0/1/2秒)
+                gap._tick -= dt;
+                if (gap._tick <= 0) {
+                    gap._tick = 1;
+                    const px = -gap.dirY, py = gap.dirX;
+                    for (const e of (g.enemies || [])) {
+                        if (!e.alive || e.dead) continue;
+                        const dx = e.x - gap.x, dy = e.y - gap.y;
+                        const along = dx * gap.dirX + dy * gap.dirY;
+                        if (along < -e.radius || along > gap.len + e.radius) continue;
+                        if (Math.abs(dx * px + dy * py) > gap.halfW + e.radius) continue;
+                        if (p.applyAttackDamage) p.applyAttackDamage(e, g, 20);
+                        else e.takeDamage(20, p, g);
+                    }
+                }
+            };
+            if (game.turrets) game.turrets.push(gap);
+            else game.turrets = [gap];
+            if (game.particles.grafWhipLash) game.particles.grafWhipLash(p.x, p.y, nx, ny);
             else game.particles.hexActivate(p.x, p.y, '#cc44ff');
         },
         eSkill(p: any, game: any) {
-            // 对齐 hexblast-py data/characters.py 的 _graf_e：移除最后一个词条后，
-            // 立即随机重新装备2个新词条（之前只做了pop，缺了补词条这一半，是移植漏掉的逻辑）。
-            const am = game.augmentManager;
-            if (am && am.active && am.active.length > 0) {
-                am.active.pop();
-                const opts = am.rollOptions(2, game.wave, p.charId);
-                for (const o of opts) am.equip(o, p, game);
+            // 混沌冲击：眩晕周围450码的所有怪物2秒（Boss自有机动不受 stunned 影响）
+            let stunned = 0;
+            for (const e of (game.enemies || [])) {
+                if (!e.alive || e.dead) continue;
+                if (Vec.dist(e.x, e.y, p.x, p.y) <= 450) {
+                    e.stunned = Math.max(e.stunned || 0, 2);
+                    stunned++;
+                }
             }
-            if (game.particles.grafReforge) game.particles.grafReforge(p.x, p.y);
+            if (game.particles.grafChaosStun) game.particles.grafChaosStun(p.x, p.y);
             else game.particles.hexActivate(p.x, p.y, '#cc44ff');
+            game.screenShake?.shake?.(10, 0.35);
+            if (stunned > 0) game.floatingText?.spawn?.(p.x, p.y - 50, `眩晕×${stunned}`, '#cc44ff', 16, true);
         },
         ultimate(p: any, game: any) {
-            const am = game.augmentManager;
-            if (am) am.active.forEach((a: any) => { if (a.onKill) a.onKill(p, { x: p.x, y: p.y, alive: false }, p.stats.damage * 5, game); });
+            // 混沌爆发：以自身为中心向四周发射震荡波（波前扩散、逐个命中，
+            // 造成30点伤害），同时触发所有已装备词条的击杀效果（统一走
+            // dispatchKill 分发，与怪物死亡路径共用同一入口）。
+            // 死神之瞳(hex06)联动：震荡波转化为处决——小怪直接秒杀，
+            // Boss受600点固定伤害（结算方式对齐词条本体 onHit 的 takeDamage）。
+            const reaperEye = !!game.augmentManager?.ownedOf?.('hex06');
+            const wave: any = {
+                x: p.x, y: p.y, r: 10, alive: true, kind: 'chaosBurst',
+                _speed: 900, _maxR: 500, _hit: new Set(), owner: p,
+            };
+            wave.update = (dt: number, g: any) => {
+                // 波前半径钳制在上限内：单帧大步长不会越过500误伤波及圈外目标
+                wave.r = Math.min(wave._maxR, wave.r + wave._speed * dt);
+                for (const e of (g.enemies || [])) {
+                    if (!e.alive || e.dead || wave._hit.has(e)) continue;
+                    if (Math.hypot(e.x - wave.x, e.y - wave.y) <= wave.r + e.radius) {
+                        wave._hit.add(e);
+                        if (reaperEye) {
+                            if (e.isBoss) {
+                                e.takeDamage(600, p, g);
+                                g.floatingText?.spawn?.(e.x, e.y - 30, '死神·600', '#ff5ad8', 16, true);
+                            } else {
+                                e.takeDamage(1e9, p, g);
+                                g.floatingText?.spawn?.(e.x, e.y - 30, '死神·秒杀！', '#ff5ad8', 18, true);
+                            }
+                            g.particles?.hexActivate?.(e.x, e.y, '#ff5ad8');
+                        } else if (p.applyAttackDamage) p.applyAttackDamage(e, g, 30);
+                        else e.takeDamage(30, p, g);
+                    }
+                }
+                if (wave.r >= wave._maxR) wave.alive = false;
+            };
+            if (game.turrets) game.turrets.push(wave);
+            else game.turrets = [wave];
+            game.augmentManager?.dispatchKill?.(p, { x: p.x, y: p.y, alive: false }, p.stats.damage * 5, game);
             if (game.particles.grafCataclysm) game.particles.grafCataclysm(p.x, p.y);
             else game.particles.hexActivate(p.x, p.y, '#cc44ff');
             game.screenShake.shake(20, 0.8);

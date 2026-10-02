@@ -270,6 +270,12 @@ export class BulletPool {
                         game.floatingText?.spawn(e.x, e.y - 20, '暴击！', '#ffd700', 14, true);
                     }
                     if ((e.isElite || e.isBoss) && player.stats.eliteBonus) dmg *= (1 + player.stats.eliteBonus);
+                    // 实习刺客(海克斯27)：隐身后的下一次攻击造成 200% 伤害
+                    if (player.stats?.assassinStrike) {
+                        player.stats.assassinStrike = false;
+                        dmg *= 2;
+                        game.floatingText?.spawn(e.x, e.y - 34, '刺客突袭 ×2！', '#7dff9e', 17, true);
+                    }
                     // 被动：冻结要害×freezeBonus（对齐 CharacterDB.ts liana 的 desc 描述）
                     if (e.frozen > 0 && player.stats.freezeBonus) dmg *= player.stats.freezeBonus;
                     const actualDamage = e.takeDamage(dmg, player, game);
@@ -283,6 +289,9 @@ export class BulletPool {
                     if (player.stats?.trueDamageRate && e.takeTrueDamage) {
                         e.takeTrueDamage(dmg * player.stats.trueDamageRate, player, game);
                     }
+                    // 格雷夫被动：洞察标记命中消耗（追加20%穿甲）+ 荆棘刺鞭二段（当前伤害75%）
+                    player.consumeInsightMark?.(e, game, dmg);
+                    player.thornSecondStage?.(e, game, dmg);
                     if (actualDamage > 0) {
                         game.floatingText?.spawn(e.x + Rng.float(-10, 10), e.y - 10, Math.ceil(dmg).toString(), b.isCrit ? '#ffd700' : '#fff', b.isCrit ? 16 : 13, b.isCrit);
                         game.particles?.hit(b.x, b.y, b.color);

@@ -9,6 +9,9 @@
 // 稀有度与定价按文档：银 15-50 / 金 100-250 / 彩 500-1000，
 // 购买后同稀有度溢价 10%（彩 100%），卖出回收购买价 75%（见
 // AugmentManager / AugSelectUI / GameManager 的商店接线）。
+// 2026-09-21 玩家调整：功能性海克斯数值改为小步叠加档
+// （攻速/攻击/暴击 1%/2%/5%，血量 1%/5%/10%，射程 +10/15/30 码），
+// 定价随之下调（银 10-18 / 金 40-60 / 彩 150-220），不再受文档区间约束。
 import { Rng, Vec } from '../core/MathUtils';
 
 export type HexRarity = 'silver' | 'gold' | 'prismatic';
@@ -222,32 +225,34 @@ function swapFlat(obj: any, key: string, fromVal: number, toVal: number): void {
 // ── 海克斯数据库（编号与数值逐条对应《海克斯.docx》） ──────
 export const AUGMENT_DB: AugmentDef[] = [
     // ─── 功能性海克斯（银） ───────────────────────────────
+    // 2026-09-21 玩家调整：数值全部改为小步叠加档（可无限叠购），
+    // 攻速/攻击/暴击 1%/2%/5%，血量 1%/5%/10%，射程 +10/15/30 码。
     { id: 'hex01', index: 1, rarity: 'silver', icon: 'speed', name: '加速齿轮', category: '功能',
-      prices: [15, 100, 500], values: [0.10, 0.20, 0.30],
-      descAt: (l) => `攻速 +${[10, 20, 30][l - 1]}%`,
+      prices: [10, 40, 150], values: [0.01, 0.02, 0.05],
+      descAt: (l) => `攻速 +${[1, 2, 5][l - 1]}%`,
       onLevel(p, _g, from, to) { swapFactor(p.stats, 'attackSpeed', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
     { id: 'hex02', index: 2, rarity: 'silver', icon: 'pierce', name: '力量核心', category: '功能',
-      prices: [16, 110, 520], values: [0.05, 0.10, 0.15],
-      descAt: (l) => `攻击 +${[5, 10, 15][l - 1]}%`,
+      prices: [12, 45, 160], values: [0.01, 0.02, 0.05],
+      descAt: (l) => `攻击 +${[1, 2, 5][l - 1]}%`,
       onLevel(p, _g, from, to) { swapFactor(p.stats, 'damage', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
     { id: 'hex03', index: 3, rarity: 'silver', icon: 'heart', name: '生命涌泉', category: '功能',
-      prices: [18, 120, 550], values: [0.10, 0.15, 0.30],
-      descAt: (l) => `血量 +${[10, 15, 30][l - 1]}%`,
+      prices: [15, 50, 180], values: [0.01, 0.05, 0.10],
+      descAt: (l) => `血量 +${[1, 5, 10][l - 1]}%`,
       onLevel(p, _g, from, to) {
           swapFactor(p.stats, 'maxHp', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
           p.hp = Math.min(p.hp, p.stats.maxHp);
       } },
 
     { id: 'hex07', index: 7, rarity: 'silver', icon: 'crit', name: '精准仪轨', category: '功能',
-      prices: [20, 130, 580], values: [0.05, 0.10, 0.20],
-      descAt: (l) => `暴击几率 +${[5, 10, 20][l - 1]}%`,
+      prices: [15, 55, 200], values: [0.01, 0.02, 0.05],
+      descAt: (l) => `暴击几率 +${[1, 2, 5][l - 1]}%`,
       onLevel(p, _g, from, to) { swapFlat(p.stats, 'critRate', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
     { id: 'hex11', index: 11, rarity: 'silver', icon: 'pierce', name: '延展力场', category: '功能',
-      prices: [25, 150, 620], values: [20, 30, 50],
-      descAt: (l) => `攻击距离 +${[20, 30, 50][l - 1]} 码`,
+      prices: [18, 60, 220], values: [10, 15, 30],
+      descAt: (l) => `攻击距离 +${[10, 15, 30][l - 1]} 码`,
       onLevel(p, _g, from, to) { swapFlat(p.stats, 'rangeBonus', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
     // ─── 技能海克斯（金） ─────────────────────────────────
@@ -484,6 +489,117 @@ export const AUGMENT_DB: AugmentDef[] = [
           // 与冰冻/其他减速共存：只在没有更强减速时覆盖，_slowTimer 到期自动恢复
           enemy.slowMult = Math.min(enemy.slowMult ?? 1, 1 - pct);
           enemy._slowTimer = Math.max(enemy._slowTimer ?? 0, 2);
+      } },
+
+    // ─── 自定义强化包（2026-09-21 用户设计稿，单档） ─────────
+    { id: 'hex24', index: 24, rarity: 'gold', icon: 'lightning', name: '闪电网链', category: '技能',
+      prices: [120], values: [1],
+      descAt: () => '攻击命中时连接附近 4-5 个敌人，各受本次伤害 50% 的额外闪电伤害',
+      onHit(p, enemy, dmg, game) {
+          if (!enemy?.alive || dmg <= 0) return;
+          // 闪电链以被命中者为锚点：附近(220码)随机连 4-5 个，直接 takeDamage
+          // 结算（不走 dispatchHit，避免链式再触发 onHit 无限循环）
+          const near = ((game?.enemies || []) as any[]).filter(e =>
+              e.alive && !e.dead && !e.invisible && e !== enemy
+              && !((e.mechSkyT ?? 0) > 0)
+              && Vec.dist(e.x, e.y, enemy.x, enemy.y) <= 220);
+          if (!near.length) return;
+          const n = Math.min(near.length, Rng.int(4, 5));
+          const chainDmg = dmg * 0.5;
+          for (let i = 0; i < n; i++) {
+              const t = near.splice(Rng.int(0, near.length - 1), 1)[0];
+              t.takeDamage(chainDmg, p, game);
+              game?.particles?.lightning?.(enemy.x, enemy.y, t.x, t.y, '#9fe8ff');
+          }
+          game?.audio?.playSfx?.('skill_e', 0.35);
+      } },
+
+    { id: 'hex25', index: 25, rarity: 'gold', icon: 'explosion', name: '天雷', category: '技能',
+      prices: [110], values: [1],
+      descAt: () => '每 5 秒降下天雷，对雷击点 150 码圆形区域造成 80 点伤害',
+      _t: 5,
+      onLevel(_p, _g, _from, to) { this._t = to ? 5 : 0; },
+      onUpdate(p, dt, game) {
+          if (!this._t) return;
+          this._t -= dt;
+          if (this._t > 0) return;
+          this._t = 5;
+          const alive = (game?.enemies || []).filter((e: any) => e.alive && !e.dead);
+          if (!alive.length) { this._t = 0.5; return; }
+          const target: any = Rng.pick(alive);
+          game?.particles?.lightning?.(target.x, target.y - 320, target.x, target.y, '#9fe8ff');
+          spawnExplosion(p, target.x, target.y, 80, 150, game);
+          game?.floatingText?.spawn?.(target.x, target.y - 46, '天雷！', '#9fe8ff', 16, true);
+      } },
+
+    { id: 'hex26', index: 26, rarity: 'prismatic', icon: 'summon', name: '化气为剑', category: '技能',
+      prices: [600], values: [1],
+      descAt: () => '无法进行普攻；攻速按 1:0.75 转化为攻击力，并召唤 攻击力/10（四舍五入）把飞剑环绕自身，每把飞剑命中造成 1.5 倍攻击力伤害',
+      onLevel(p, game, _from, to) {
+          p.stats.swordMode = to > 0;
+          if (to > 0) game?.spawnQiSwords?.(p);
+          else game?.despawnQiSwords?.();
+      } },
+
+    { id: 'hex27', index: 27, rarity: 'gold', icon: 'poison', name: '实习刺客', category: '技能',
+      prices: [150], values: [1],
+      descAt: () => '每 15 秒进入 2 秒不可选中的隐身状态，隐身期间的下一次攻击造成 200% 伤害',
+      _t: 15,
+      onLevel(_p, _g, _from, to) { this._t = to ? 15 : 0; },
+      onUpdate(p, dt, game) {
+          if (!this._t) return;
+          this._t -= dt;
+          if (this._t > 0) return;
+          this._t = 15;
+          p.applyBuff?.('intern_stealth', 2, { invincible: true });
+          p.stats.assassinStrike = true;
+          game?.floatingText?.spawn?.(p.x, p.y - 50, '隐身！下次攻击×2', '#7dff9e', 15, true);
+          game?.particles?.hexActivate?.(p.x, p.y, '#7dff9e');
+      } },
+
+    { id: 'hex28', index: 28, rarity: 'prismatic', icon: 'crit', name: 'boss精英', category: '技能',
+      prices: [550], values: [1],
+      descAt: () => '对精英（首领）与 Boss 增伤 150%；装备时立即削减当前 Boss 10% 生命上限，之后 Boss 入场时生命上限 -10%',
+      onLevel(p, game, from, to) {
+          swapFlat(p.stats, 'eliteBonus', from ? 1.5 : 0, to ? 1.5 : 0);
+          if (to > 0) game?.cutBossHp?.(0.10, p);
+      } },
+
+    { id: 'hex29', index: 29, rarity: 'prismatic', icon: 'combo', name: '再来一次（强化版）', category: '一次性',
+      prices: [500], values: [1],
+      descAt: () => '接下来每次遇到强化选择，都可免费刷新 5 次',
+      onLevel(_p, game, _from, to) {
+          const am = game?.augmentManager;
+          if (!am) return;
+          if (to > 0) am.freeRefreshes = Math.max(am.freeRefreshes || 0, 5);
+          else am.freeRefreshes = 0;
+      } },
+
+    { id: 'hex30', index: 30, rarity: 'silver', icon: 'gold', name: '合理避税', category: '一次性',
+      prices: [40], values: [1],
+      descAt: () => '强化选择页的刷新费用减少 50%',
+      onLevel(_p, game, _from, to) {
+          const am = game?.augmentManager;
+          if (am) am.refreshCostMult = to > 0 ? 0.5 : 1;
+      } },
+
+    { id: 'hex31', index: 31, rarity: 'gold', icon: 'speed', name: '加速', category: '一次性',
+      prices: [160], values: [1],
+      descAt: () => '所有技能与强化的冷却时间缩减 20%',
+      onLevel(p, _g, from, to) { swapFlat(p.stats, 'cdReduction', from ? 0.2 : 0, to ? 0.2 : 0); } },
+
+    { id: 'hex32', index: 32, rarity: 'gold', icon: 'shield', name: '保命分身', category: '技能',
+      prices: [140], values: [1],
+      descAt: () => '血量低于 10% 时，在离玩家最远处生成分身吸引怪物仇恨（持续 6 秒，内置 30 秒冷却）',
+      _cloneCd: 0,
+      onLevel(_p, game, _from, to) { this._cloneCd = 0; if (!to) game?.despawnLifeClone?.(); },
+      onUpdate(p, dt, game) {
+          this._cloneCd = Math.max(0, (this._cloneCd || 0) - dt);
+          if (this._cloneCd > 0) return;
+          const maxHp = p.stats?.maxHp ?? 0;
+          if (maxHp <= 0 || p.hp / maxHp >= 0.10) return;
+          this._cloneCd = 30;
+          game?.spawnLifeClone?.(p);
       } },
 ];
 

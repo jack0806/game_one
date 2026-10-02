@@ -70,8 +70,8 @@ test('爆炸沿用密集爆点限流，爆炸与六角法阵均播放真实序�
     assert.equal(particles.spriteFx[1].animation.sheet, 'anim_fx_runic_reik');
 });
 
-test('混沌掌击和时间枪口使用各自序列，时间刃只在挥刃帧从武器位置展开', () => {
-    for (const [id, key] of [['graf', 'fx_weapon_chaos'], ['olia', 'fx_weapon_time']]) {
+test('时间枪口使用专属序列，时间刃只在挥刃帧从武器位置展开(格雷夫已改近战鞭击,无枪焰序列)', () => {
+    for (const [id, key] of [['olia', 'fx_weapon_time']]) {
         const p = new PlayerController(), particles = new ParticleManager(), bullets = [];
         p.charId = id; p.spriteKey = 'char_token_' + id; p._charDef = CHARACTERS[id];
         p.stats = { ...CHARACTERS[id].stats, critRate: 0 };
@@ -81,7 +81,6 @@ test('混沌掌击和时间枪口使用各自序列，时间刃只在挥刃帧�
         p.updateVisualAnimation(0.05); p.updateVisualAnimation(0.02);
         assert.equal(particles.spriteFx[0].key, key);
         assert.deepEqual([particles.spriteFx[0].x, particles.spriteFx[0].y], [bullets[0].x, bullets[0].y]);
-        if (id !== 'olia') continue;
         for (let i = 0; i < 12; i++) p.updateVisualAnimation(0.05);
         CHARACTERS.olia.eSkill(p, game);
         particles.clear();

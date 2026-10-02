@@ -234,12 +234,12 @@ test('薇薇安三方向与左右镜像从无人机开火帧发射，双炮外�
     }
 });
 
-test('格雷夫与奥莉亚不同画布和尺度的动作从实际施法掌或枪口瞄准发弹', () => {
-    for (const id of ['graf', 'olia']) for (const [dx, dy, view, mirror] of [
+test('奥莉亚不同画布和尺度的动作从实际施法掌瞄准发弹(格雷夫已改为近战鞭击,无发弹口)', () => {
+    for (const [dx, dy, view, mirror] of [
         [300, 0, 'side', 1], [-300, 0, 'side', -1], [0, 250, 'front', 1], [0, -250, 'back', 1]]) {
         const p = makeAnimatedPlayer();
-        p.charId = id; p.spriteKey = 'char_token_' + id; p._charDef = CHARACTERS[id];
-        p.stats = { ...CHARACTERS[id].stats, attackSpeed: 3, critRate: 0 };
+        p.charId = 'olia'; p.spriteKey = 'char_token_olia'; p._charDef = CHARACTERS.olia;
+        p.stats = { ...CHARACTERS.olia.stats, attackSpeed: 3, critRate: 0 };
         const target = { x: p.x + dx, y: p.y + dy, alive: true }, bullets = [];
         const game = makeMockGame({ getNearestEnemy: () => target, bulletPool: { spawn: b => bullets.push(b) } });
         p._shoot(noKeys, game);

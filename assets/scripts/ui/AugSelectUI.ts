@@ -362,9 +362,12 @@ export class AugSelectUI extends Component {
             this._paintCard(c, aug, gold, false);
         }
 
+        // 再来一次·强化版(hex29)：refreshCost() 返回 0 表示免费刷新次数未用完
         const refreshCost = this._ctx?.refreshCost() ?? 5;
-        const canRefresh = gold >= refreshCost;
-        this._refreshLbl.string = canRefresh ? `刷新 ${refreshCost} 金币` : `刷新需 ${refreshCost} 金币`;
+        const freeRefresh = refreshCost <= 0;
+        const canRefresh = freeRefresh || gold >= refreshCost;
+        this._refreshLbl.string = freeRefresh ? '免费刷新'
+            : canRefresh ? `刷新 ${refreshCost} 金币` : `刷新需 ${refreshCost} 金币`;
         this._refreshSkin.setDisabled(!canRefresh);
         this._refreshLbl.color = canRefresh ? UI_PALETTE.text : UI_PALETTE.muted;
         const odds = this._ctx?.odds();

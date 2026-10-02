@@ -83,13 +83,13 @@ test('6个角色的skillIcons(q/e/r)全部落在合法的ui_icon_*共享图标集合内', () => {
     }
 });
 
-test('23个海克斯的icon字段全部落在合法的ui_icon_*共享图标集合内', () => {
+test('32个海克斯的icon字段全部落在合法的ui_icon_*共享图标集合内', () => {
     const validIcons = fs.readdirSync(ART_DIR)
         .filter(f => f.startsWith('ui_icon_') && f.endsWith('.png'))
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
 
-    // 2026-09-14 《海克斯.docx》重做：旧 49 词条整体替换为 23 个海克斯
-    assert.equal(AUGMENT_DB.length, 23, '海克斯数量应为23');
+    // 2026-09-14 《海克斯.docx》重做：旧 49 词条整体替换，后续追加元素体系与自定义包至 32 个
+    assert.equal(AUGMENT_DB.length, 32, '海克斯数量应为32');
     for (const a of AUGMENT_DB) {
         assert.ok(validIcons.includes(a.icon), `海克斯${a.id}的icon '${a.icon}' 不在合法图标集合内`);
     }
