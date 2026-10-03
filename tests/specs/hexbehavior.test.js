@@ -89,11 +89,11 @@ test('刷新定价：前3次5金币，之后每次溢价75%', () => {
     assert.equal(nextAugRefreshCost(5), 27);   // 5 × 1.75³
 });
 
-test('章节金币倍率单调递增且第五章最高（越到后面爆率越高）', () => {
+test('章节金币倍率单调递增且第6章封顶1.75（v4：六章各一值）', () => {
     for (let i = 1; i < GOLD_STAGE_MULT.length; i++) {
         assert.ok(GOLD_STAGE_MULT[i] > GOLD_STAGE_MULT[i - 1], `第${i + 1}章应高于第${i}章`);
     }
-    assert.equal(GOLD_STAGE_MULT.length, 5);
+    assert.equal(GOLD_STAGE_MULT.length, 6);
 });
 
 test('点金手乘区作用于 Economy.addGold', () => {

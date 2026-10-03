@@ -16,7 +16,8 @@ import { styleLabel, refreshAllLabels, loadUIFont } from './LabelUtils';
 import { CharDef, CHARS } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
-import { CHAPTERS, MUTATIONS } from '../data/WaveData';
+import { CHAPTERS, MUTATIONS, starterPack } from '../data/WaveData';
+import { rollEquipmentDrop, equipmentLabel, equipmentSellValue, applyEquipmentToStats } from '../data/EquipmentDB';
 import { ArenaLayout, arenasForChapter, EMPTY_ARENA } from '../data/ChapterArenaDB';
 import { arenaLineClear, arenaSteerTarget, firstArenaBulletHit, isArenaFree, moveInArena, safeArenaPoint } from './ArenaGeometry';
 import { UNIT_CATALOG } from '../data/BossDB';
@@ -26,7 +27,7 @@ import { BossController }    from '../entities/BossController';
 import { BulletPool }        from '../entities/BulletController';
 import { AugmentManager }    from '../systems/AugmentManager';
 import { WaveManager }       from '../systems/WaveManager';
-import { Economy, ShopItem, GOLD_STAGE_MULT, nextAugRefreshCost } from '../systems/Economy';
+import { Economy, ShopItem, GOLD_STAGE_MULT, nextAugRefreshCost, difficultyGoldMult } from '../systems/Economy';
 import { SaveSystem }        from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
@@ -150,9 +151,9 @@ export class GameManager extends Component {
     private _testUI!:     TestRoomUI;
 
     // ── game state ────────────────────────────────────────────
+    // v4：波次唯一权威是 WaveManager.wave（原 _wave 双份计数已删，防 W1 瞬间 0 值漂移）
     state:             GameState = 'menu';
     private _char?:    CharDef;
-    private _wave      = 0;
     private _chapter   = 0;
     private _mutations: string[] = [];
     private _runId = 0;
@@ -263,6 +264,15 @@ export class GameManager extends Component {
      * 测试房间不注入（undefined = 表内原值），简单难度另带 Boss 技能削减。
      */
     _difficulty?: DifficultyDef;
+
+    /** v4：所选章（1~6，章节选择页注入；0 = 无尽·天罚循环）。默认第 1 章。 */
+    private _selectedChapter = 1;
+    /** v4：无尽模式标志（选中"无尽"卡即进入：沿用第 6 章池，W15 后不结算）。 */
+    private _selectedEndless = false;
+    /** v4：通关结算折算的核心币（20% 封顶 80，chapterClear 面板显示用）。 */
+    private _coinsEarned = 0;
+    /** v4：本局已掉过装备的波次（镜像军队 ×2 Boss 同波只掉一件；无尽换波再掉）。 */
+    private _bossEquipDropWave = -1;
 
     // ── lifecycle ─────────────────────────────────────────────
 
@@ -475,10 +485,15 @@ export class GameManager extends Component {
         };
         this._screenMgr.onLobbyPortal     = () => this._setState('mapSelect');
         this._screenMgr.onLobbyBack       = () => this._setState('menu');
-        // 出击地图选择（2026-09-21）：废土=全部现有章节；深海为占位锁定。
-        // 选定废土后进入难度选择，返回则回存档大厅。
-        this._screenMgr.onMapPicked        = () => this._setState('difficultySelect');
+        // v4：章节选择（6 章 + 无尽）→ 难度选择 → 英雄选择 → 开战。
+        // 传 0 = 无尽·天罚循环（沿用第 6 章池，W15 后不结算）。
+        this._screenMgr.onMapPicked        = (chapterId) => {
+            this._selectedChapter = chapterId;
+            this._selectedEndless = chapterId === 0;
+            this._setState('difficultySelect');
+        };
         this._screenMgr.onMapBack          = () => this._setState('lobby');
+        this._screenMgr.onQueryChapterUnlock = () => SaveSystem.unlockedChapterCount();
         this._screenMgr.onDifficultyPicked = (d) => {
             this._difficulty = d;
             this._screenMgr.setRunDifficulty(d);
@@ -602,25 +617,28 @@ export class GameManager extends Component {
             case 'gameover':
                 this._screenMgr.setRunReport('gameover', {
                     chapter: Math.min(CHAPTERS.length, this._chapter + 1),
-                    wave: this._waveMgr.wave,
+                    wave: this._waveMgr.templateWave(),
                     kills: this.kills,
                     maxCombo: this.maxCombo,
                     goldEarned: this._economy.earnedThisRun,
                     score: this.score,
                     finalChapter: this._chapter + 1 >= CHAPTERS.length,
+                    coinsEarned: 0,
                 });
                 this._screenMgr.show('gameover');
                 this._audio.playBgm('title');
                 break;
             case 'chapterClear':
+                // v4：通关结算（一局一章）——显示用时/击杀/金币折算核心币
                 this._screenMgr.setRunReport('chapterClear', {
                     chapter: Math.min(CHAPTERS.length, this._chapter + 1),
-                    wave: this._waveMgr.wave,
+                    wave: this._waveMgr.templateWave(),
                     kills: this.kills,
                     maxCombo: this.maxCombo,
                     goldEarned: this._economy.earnedThisRun,
                     score: this.score,
                     finalChapter: this._chapter + 1 >= CHAPTERS.length,
+                    coinsEarned: this._coinsEarned,
                 });
                 this._screenMgr.show('chapterClear');
                 break;
@@ -662,8 +680,10 @@ export class GameManager extends Component {
         // 开局即固定，避免沿用上一场测试房遗留的 'testRoom' 值。
         this._pauseReturn = 'playing';
         this._char    = char;
-        this._wave    = 0;
-        this._chapter = 0;
+        // v4：一局一章——注入所选章（章节选择页设置，默认第 1 章）；无尽沿用第 6 章池
+        this._selectedEndless = this._selectedChapter === 0 ? true : this._selectedEndless;
+        this._chapter = this._selectedChapter === 0 ? CHAPTERS.length - 1
+            : Math.max(0, Math.min(CHAPTERS.length - 1, this._selectedChapter - 1));
         this._mutations = [];
         this._enemies   = [];
         this._turrets    = [];
@@ -677,9 +697,15 @@ export class GameManager extends Component {
         this._mutationMods = {};
         this._augRefreshCount = 0;
         this._augOfferRefreshed = false;
+        this._coinsEarned = 0;
         this._economy.reset();
+        // v4 9.6 层1：击杀掉落产出硬上限（预算×1.25，防崩塌保险丝；
+        // 测试房走 reset 后的 Infinity，不受限）
+        this._economy.killGoldCap = Math.round(
+            2000 * GOLD_STAGE_MULT[this._chapter] * difficultyGoldMult(this._difficulty?.id));
         this._augMgr.reset();
         this._waveMgr.reset();
+        this._waveMgr.endless = this._selectedEndless;
         this._bullets.reset();
         this._particles.clear();
         this._arena = EMPTY_ARENA;
@@ -690,11 +716,35 @@ export class GameManager extends Component {
         pNode.setParent(this._gameLayer);
         this._player = pNode.addComponent(PlayerController);
         this._player.init(char.id, this);
+        // v4 第 10 节：出战装备属性注入（跨局成长；数值上限控制在词条总成长 ~20%）
+        const equips = SaveSystem.equippedItems();
+        for (const eq of equips) applyEquipmentToStats(eq, this._player.stats);
+        if (equips.some(e => e.affix === 'hp')) this._player.hp = this._player.stats.maxHp;
         this._setState('playing');
-        // Sync WaveManager state before it increments internally
-        this._waveMgr.wave    = this._wave;
-        this._waveMgr.chapter = this._chapter + 1;   // WaveManager is 1-based
-        this._waveMgr.startWave(this);
+        // WaveManager.reset() 已把 wave 归零，这里只需注入所选章（1-based）
+        this._waveMgr.chapter = this._chapter + 1;
+        this._bossEquipDropWave = -1;
+        // v4 2.3：开局战备包（第 2 章起）——起始金币直接入账，
+        // N 次三选一连抽（复用 augSelect，不进战斗）抽完才开 W1
+        const pack = starterPack(this._chapter + 1);
+        if (pack.gold > 0) this._economy.addGold(pack.gold);
+        if (pack.draws > 0) {
+            this._openStarterPacks(pack.draws);
+        } else {
+            this._waveMgr.startWave(this);
+        }
+    }
+
+    /** v4 2.3：战备包三选一连抽（选完次数才开 W1，不进战斗）。 */
+    private _openStarterPacks(left: number): void {
+        if (left <= 0) { this._waveMgr.startWave(this); return; }
+        this._setState('augSelect');
+        this._augRefreshCount = 0;
+        this._augOfferRefreshed = false;
+        this._augMgr.freeRefreshes = 0;
+        this._floatText.spawn(CANVAS_W / 2, 240, `开局战备 ×${left}`, '#ffd655', 20, true);
+        const options = this._augMgr.rollOptions(3, 1, {});
+        this._augUI.show(options, this._buildAugShopCtx(() => this._openStarterPacks(left - 1)));
     }
 
     /** Load & apply CHAPTERS[this._chapter].bgKey onto _bgSprite (art already resolved through ArtRemap). */
@@ -884,7 +934,6 @@ export class GameManager extends Component {
         this._runId++;
         this._pauseReturn = 'testRoom';
         this._char    = this._char ?? CHARS[0];
-        this._wave    = 0;
         this._chapter = 0;
         this._mutations = [];
         this._enemies   = [];
@@ -2101,45 +2150,27 @@ export class GameManager extends Component {
         this._floatText?.clear();
     }
 
+    /**
+     * v4：通关结算后的"返回大厅"。核心币入账与章节解锁已在 _onWaveCleared
+     * 进入结算面板时写档（两个按钮共用本回调，不做二次写档）。
+     */
     private _continueAfterChapter() {
-        // 通关最终章（0-based: 最后一章 clear 后再无下一章）→ 记录胜利局档案
-        if (this._chapter + 1 >= CHAPTERS.length) this._recordRun(true);
-        this._chapter++;
-        this._updateBgForChapter();
-        const safe = safeArenaPoint(this._arena, this._player.x, this._player.y, this._player.radius);
-        this._player.x = safe.x;
-        this._player.y = safe.y;
-        // _setState hides chapterClear panel (and everything else) before the
-        // shop UI takes over — avoids the old bug where chapterClear stayed
-        // active underneath the shop and its CONTINUE button kept firing.
-        this._setState('shop');
-        const items = this._economy.generateShopItems(this._chapter);
-        this._shopUI.show(
-            items,
-            this._economy.gold,
-            (cost, item) => {
-                if (this._economy.spend(cost)) {
-                    this._applyShopItem(item);
-                    this._shopUI.refreshGold(this._economy.gold);
-                    return true;
-                }
-                return false;
-            },
-            () => {
-                this._setState('playing');
-                this._waveMgr.startWave(this);
-            }
-        );
+        this._setState('lobby');
     }
 
     private _onWaveCleared() {
-        this._wave++;
+        // 波次权威在 WaveManager.wave（_wave 双份计数已删）
 
-        // Every 5 waves = boss wave -> chapter clear check
-        const wavesPerChapter = CHAPTERS[this._chapter]?.waves ?? 5;
-        if (this._wave % wavesPerChapter === 0) {
-            // 最终章完成即记入胜利档案，返回大厅也不会丢失通关结果。
-            if (this._chapter + 1 >= CHAPTERS.length) this._recordRun(true);
+        // v4：W15 = 大 Boss 波清空（含 Boss 击杀）→ 本局通关结算。
+        // 无尽模式例外：Boss 击杀不结算，继续无限打（WaveManager 内部轮换 Boss）。
+        if (this._waveMgr.isBossWave() && !this._waveMgr.endless) {
+            this._recordRun(true);
+            // 通关结算：金币按 20% 折算核心币，封顶 80（v4 9.6 层3，防元进度通胀）。
+            // 解锁与核心币在进入结算面板时就写档——玩家点"领取奖励"或"返回大厅"
+            // 任意按钮都不能漏记（旧实现只在领取按钮回调里记，点返回会丢解锁）。
+            this._coinsEarned = Math.min(80, Math.round(this._economy.gold * 0.2));
+            SaveSystem.addCoreCoins(this._coinsEarned);
+            SaveSystem.recordChapterCleared(this._chapter + 1);
             this._setState('chapterClear');
             return;
         }
@@ -2152,12 +2183,13 @@ export class GameManager extends Component {
         this._augOfferRefreshed = false;
         // 再来一次·强化版(hex29)：每次遇到强化选择重置5次免费刷新
         this._augMgr.freeRefreshes = this._augMgr.ownedOf('hex29') ? 5 : 0;
-        // 第一章第一轮（wave===1 只会发生在第一章）：商店必定全部刷功能性海克斯
-        const options = this._augMgr.rollOptions(3, this._waveMgr.wave, { firstWave: this._waveMgr.wave === 1 });
-        const nextWave = this._waveMgr.wave + 1;
+        // 每章 W1 开局送三张功能性银卡（一局一章后每局的 W1 都触发；
+        // 10~50 银档=开局送卡，文档 9.4 检查点）
+        const options = this._augMgr.rollOptions(3, this._waveMgr.templateWave(),
+            { firstWave: this._waveMgr.wave === 1 });
         this._augUI.show(options, this._buildAugShopCtx(() => {
-            // 第五章 Boss 波开始前提供一次商店（海克斯.docx）
-            if (nextWave === CHAPTERS[CHAPTERS.length - 1].bossWave) {
+            // v4：W8 清空后开一次关中商店（顺序：三选一 → 商店 → 开下一波）
+            if (this._waveMgr.templateWave() === 8) {
                 this._openShop(() => { this._setState('playing'); this._waveMgr.startWave(this); });
             } else {
                 this._setState('playing');
@@ -4101,6 +4133,7 @@ export class GameManager extends Component {
             gold: this._economy.gold,
             wave: this._waveMgr.wave, chapter: this._chapter,
             difficultyName: this._difficulty?.name,
+            endless: this._waveMgr.endless,
             augments: this._augMgr.all(),
             skills: p.getSkillStates(),
             initialPassive: this._char ? { name: this._char.name, desc: this._char.desc } : undefined,
@@ -4192,7 +4225,23 @@ export class GameManager extends Component {
             boss.node = eNode;
             boss.sprite = eSprite;
             if (typeof bossKey === 'string') boss.initBossKind(bossKey, this);
-            else boss.initBoss(typeof bossKey === 'number' ? bossKey : this._chapter, this);
+            else {
+                // 显式章号优先（测试房 boss_chN 点卡）；无显式章号时：
+                // v4 2.4 无尽模式每 +15 波由下一个章节 Boss 压轴（本章→ch1→…循环），
+                // Boss 血量按无尽轮次 +25%/轮小幅递增
+                let ch = typeof bossKey === 'number' ? bossKey : this._chapter;
+                if (typeof bossKey !== 'number' && this._waveMgr.endless && this._waveMgr.wave >= 15) {
+                    const round = Math.floor(this._waveMgr.wave / 15);
+                    ch = (this._chapter + round - 1) % CHAPTERS.length;
+                }
+                boss.initBoss(ch, this);
+                if (typeof bossKey !== 'number' && this._waveMgr.endless && this._waveMgr.wave >= 30) {
+                    const round = Math.floor(this._waveMgr.wave / 15);
+                    const mult = 1 + 0.25 * (round - 1);
+                    boss.maxHp = Math.round(boss.maxHp * mult);
+                    boss.hp = boss.maxHp;
+                }
+            }
             // boss精英(海克斯28)：持有期间 Boss 入场生命上限 -10%
             if (this._augMgr.ownedOf('hex28')) {
                 boss.maxHp = Math.max(1, Math.round(boss.maxHp * 0.9));
@@ -4206,7 +4255,10 @@ export class GameManager extends Component {
             enemy = new EnemyBase();
             enemy.node = eNode;
             enemy.sprite = eSprite;
-            enemy.init(type, this._wave, this);
+            // 波内成长以 WaveManager 的关内波次为准：W1 战斗期间 GameManager._wave
+            // 尚为 0（_onWaveCleared 才自增），测试房 wm.wave 也为 0——统一钳到
+            // 1，避免首波小兵/测试房数值被 (1-1×0.03) 悄悄打折。
+            enemy.init(type, Math.max(1, this._waveMgr.wave), this);
         }
 
         let ex: number, ey: number;
@@ -4372,9 +4424,12 @@ export class GameManager extends Component {
     private _recordRun(won: boolean) {
         if (this._runRecorded) return; // 一局只记一次（先通关后死亡不重复计）
         this._runRecorded = true;
+        // "到达第 N 章"防刷：开局送死不算到达——至少打到 W5（首个小高潮）
+        // 或通关才记所选章，否则按第 1 章计。
+        const reached = (won || this._waveMgr.wave >= 5) ? this._chapter + 1 : 1;
         const unlocked = SaveSystem.recordRun({
             charId:        this._player?.charId ?? '',
-            chapter:       this._chapter + 1,
+            chapter:       reached,
             wave:          this._waveMgr.wave,
             kills:         this.kills,
             bossKills:     this.bossKills,
@@ -4957,9 +5012,35 @@ export class GameManager extends Component {
     /** Alias — some call sites use game.augmentManager instead of game.augManager. */
     get augmentManager()  { return this._augMgr; }
 
-    /** 章节金币爆率倍率（《海克斯.docx》：越到后面阶段掉落越多）。 */
+    /**
+     * v4 第 10 节：章节 Boss 击杀必掉 1 件装备（拾取即入仓库永久保留）。
+     * 防刷去重：未拥有的 affix×品质组合优先；全拥有后改掉核心币包（40 币）。
+     * 仅正式局生效：测试房杀 Boss 不写正式存档（沙盒原则）。
+     */
+    dropBossEquipment(boss: EnemyBase): void {
+        if (this.state !== 'playing') return;
+        // 镜像军队 ×2 Boss 同波双杀只掉一件（无尽换波后恢复掉落）
+        if (this._bossEquipDropWave === this._waveMgr.wave) return;
+        this._bossEquipDropWave = this._waveMgr.wave;
+        const chapterId = Math.max(1, Math.min(CHAPTERS.length, (boss.chapter ?? this._chapter + 1)));
+        const owned = SaveSystem.ownedEquipmentKeys();
+        const equip = rollEquipmentDrop(chapterId, owned);
+        if (equip) {
+            SaveSystem.addEquipment(equip);
+            this._floatText.spawn(CANVAS_W / 2, 240,
+                `战利品入仓：${equipmentLabel(equip)}（卖出可得 ${equipmentSellValue(equip.quality)} 金）`,
+                '#ffd655', 18, true);
+        } else {
+            SaveSystem.addCoreCoins(40);
+            this._floatText.spawn(CANVAS_W / 2, 240, '装备图鉴集齐 → 核心币 ×40', '#ffd655', 18, true);
+        }
+        this._audio.playSfx('augment_pick');
+    }
+
+    /** 章节金币乘率（v4 9.3 新表 1.0~1.75）× 难度金币系数（金币不再吃 statMult）。 */
     get goldDropMult(): number {
-        return GOLD_STAGE_MULT[Math.min(Math.max(0, this._chapter), GOLD_STAGE_MULT.length - 1)];
+        return GOLD_STAGE_MULT[Math.min(Math.max(0, this._chapter), GOLD_STAGE_MULT.length - 1)]
+            * difficultyGoldMult(this._difficulty?.id);
     }
 
     // ── 测试房：海克斯授予面板支持 ─────────────────────────
@@ -5018,7 +5099,7 @@ export class GameManager extends Component {
     get enemies()      { return this._enemies as readonly EnemyBase[]; }
     get player()       { return this._player; }
     get runId()        { return this._runId; }
-    get wave()         { return this._wave; }
+    get wave()         { return this._waveMgr.wave; }
     get chapter()      { return this._chapter; }
 
     // ── shop item applicator ──────────────────────────────────
@@ -5032,7 +5113,7 @@ export class GameManager extends Component {
             case 'speed':  p.moveSpeed *= 1 + (item.value ?? 0.1); break;
             case 'damage': p.damageMulti *= 1 + (item.value ?? 0.15); break;
             case 'augment':
-                const opts = this._augMgr.rollOptions(3, this._waveMgr.wave);
+                const opts = this._augMgr.rollOptions(3, Math.max(1, this._waveMgr.templateWave()));
                 // 商店与强化选择都是全屏模态层。两者同时 active 时，创建顺序较早
                 // 的强化卡会透过商店半透明底板显示，形成“售罄后商店突然透明”的
                 // 视觉穿帮。购买神秘强化时暂停商店，选完再原样恢复售罄状态。

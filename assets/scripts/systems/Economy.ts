@@ -17,11 +17,24 @@ const DROP_FLOOR = PLAYFIELD_BOTTOM;
 const DROP_SIDE_MARGIN = 12;
 
 /**
- * 各章节金币爆率倍率（《海克斯.docx》：越到后面阶段掉落越多）。
- * 2026-09-21 玩家反馈"前几章金币太少买不到强化"：一/二章 0.25/0.6 →
- * 0.9/1.3——第一章 5 波下来足以买下 1-2 张银档强化，不再整局攒不出钱。
+ * 各章节金币乘数（2026-10-03 v4《关卡设计-15波.md》9.3）：
+ * 一局一章 × 数量随章翻倍后，金币乘数只温和上调（原 0.9~5.5 是六章连打
+ * 时代"越打越多"的设计，实测一局 6~7 万金严重通胀）。
  */
-export const GOLD_STAGE_MULT = [0.9, 1.3, 1.6, 2.4, 5.5];
+export const GOLD_STAGE_MULT = [1.0, 1.15, 1.3, 1.45, 1.6, 1.75];
+
+/**
+ * 难度金币系数（v4 9.3）：金币脱离难度 statMult（原 easy 0.25/hell 1.5 连
+ * 金币一起乘，金币量不可控），改走本表；简单档微降、地狱档小幅上浮。
+ */
+export function difficultyGoldMult(difficultyId?: string): number {
+    switch (difficultyId) {
+        case 'easy':   return 0.9;
+        case 'hard':   return 1.15;
+        case 'hell':   return 1.3;
+        default:       return 1;
+    }
+}
 
 /**
  * 海克斯商店刷新定价（海克斯.docx）：第一次刷新 5 金币，3 次之后
@@ -40,7 +53,24 @@ export class Economy {
     earnedThisRun = 0;
     /** 海克斯16 点金手：所有获得的金币 ×gainMult（默认 1）。 */
     gainMult = 1;
+    /**
+     * 击杀掉落产出硬上限（v4 9.6 防崩塌层1）：单局击杀掉落累计 ≤ cap。
+     * 超出部分线性衰减到 1 金（掉落照掉、拾取仍有爽感，但总量封死）。
+     * 默认 Infinity（测试房/mock 不设限）；GameManager 开局按预算×1.25 注入。
+     */
+    killGoldCap = Infinity;
+    /** 本局击杀掉落已计入上限的累计值（不含卖出/退款）。 */
+    private _killGoldEarned = 0;
     private _drops: GoldDrop[] = [];
+
+    /** 击杀掉落通道的上限门：帽内给剩余额度，超帽只给 1 金（保底拾取手感）。 */
+    private _capGate(amount: number): number {
+        if (amount <= 0) return 0;
+        if (this._killGoldEarned >= this.killGoldCap) return 1;
+        const give = Math.min(amount, this.killGoldCap - this._killGoldEarned);
+        this._killGoldEarned += give;
+        return give;
+    }
 
     addGold(amount: number): void  {
         const gain = Math.round(amount * this.gainMult);
@@ -89,7 +119,7 @@ export class Economy {
             d.life -= dt;
             if (d.life <= 0 || d.collected) { this._drops.splice(i, 1); continue; }
             if (Vec.dist(d.x, d.y, player.x, player.y) < pickupR) {
-                this.addGold(d.amount);
+                this.addGold(this._capGate(d.amount));
                 d.collected = true;
                 game?.audio?.playSfx?.('gold');
                 game?.particles?.hit?.(d.x, d.y, '#ffd85a');
@@ -103,20 +133,25 @@ export class Economy {
     /** 测试房清场只移除场上掉落，不改测试角色当前金币。 */
     clearDrops(): void { this._drops = []; }
 
-    reset(): void { this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this.gainMult = 1; this._drops = []; }
+    reset(): void {
+        this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this.gainMult = 1;
+        this.killGoldCap = Infinity; this._killGoldEarned = 0; this._drops = [];
+    }
 
     /** Alias used by GameManager / ShopUI. */
     spend(amount: number): boolean { return this.spendGold(amount); }
 
     /** Generate shop items appropriate for the current chapter. */
     generateShopItems(chapter: number): ShopItem[] {
+        // v4 9.4 重定价：单局金币预算 ≈1600，原 30~90 相当于白送；
+        // 章节递增系数沿用 ×0.3/章。
         const items: ShopItem[] = [
-            { id: 'heal',     name: '急救包',     desc: '恢复 40 HP',          cost: 30,  effect: 'heal',    value: 40  },
-            { id: 'maxhp',    name: '生命强化',   desc: '永久增加 20 最大 HP', cost: 60,  effect: 'maxhp',   value: 20  },
-            { id: 'shield',   name: '护盾强化',   desc: '增加 20 护盾上限',    cost: 50,  effect: 'shield',  value: 20  },
-            { id: 'speed',    name: '移速芯片',   desc: '移速 +10%',           cost: 45,  effect: 'speed',   value: 0.1 },
-            { id: 'damage',   name: '伤害晶核',   desc: '伤害 +15%',           cost: 70,  effect: 'damage',  value: 0.15},
-            { id: 'augment',  name: '神秘强化',   desc: '随机选一张强化卡',    cost: 90,  effect: 'augment', value: 0   },
+            { id: 'heal',     name: '急救包',     desc: '恢复 40 HP',          cost: 80,  effect: 'heal',    value: 40  },
+            { id: 'maxhp',    name: '生命强化',   desc: '永久增加 20 最大 HP', cost: 150, effect: 'maxhp',   value: 20  },
+            { id: 'shield',   name: '护盾强化',   desc: '增加 20 护盾上限',    cost: 120, effect: 'shield',  value: 20  },
+            { id: 'speed',    name: '移速芯片',   desc: '移速 +10%',           cost: 100, effect: 'speed',   value: 0.1 },
+            { id: 'damage',   name: '伤害晶核',   desc: '伤害 +15%',           cost: 160, effect: 'damage',  value: 0.15},
+            { id: 'augment',  name: '神秘强化',   desc: '随机选一张强化卡',    cost: 250, effect: 'augment', value: 0   },
         ];
         // Scale costs with chapter
         const mult = 1 + (chapter - 1) * 0.3;

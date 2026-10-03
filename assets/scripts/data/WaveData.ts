@@ -1,14 +1,20 @@
 // ============================================================
 //  WaveData.ts — 章节/波次/变异定义（纯数据）
 // ============================================================
+// 2026-10-03 v4《关卡设计-15波.md》：一局一章 × 15 波。
+// - 章节解耦：一局只打选定的章，Boss 波恒为关内 W15；
+//   全局波次号 / chapterForWave / bossWave 全部退役。
+// - 数量与数值分离：countScale 管每波小兵量，statScale 管血量/伤害。
 
 export interface ChapterDef {
     id: number;
     name: string;
     bgKey: string;
     waves: number;
-    bossWave: number;
-    enemyScale: number;
+    /** 章节血量/伤害系数（小兵与小首领共用；Boss 沿用 BossDB 现表不吃此项）。 */
+    statScale: number;
+    /** 章节数量系数（每波小兵总量）。 */
+    countScale: number;
     desc: string;
 }
 
@@ -20,30 +26,97 @@ export interface MutationDef {
     apply: (game: any) => void;
 }
 
-// 每章改为 5 波小怪 + 1 波 Boss（2026-08-26 玩家要求：boss 波会跟小怪关一样正常刷小怪，
-// 全章节节奏统一为 5 波）。bossWave 是全局波次号：5/10/15/20/25/30。
+/** 每章固定 15 波（关内波次 1~15，HUD 显示 X/15）。 */
+export const WAVES_PER_CHAPTER = 15;
+
 export const CHAPTERS: ChapterDef[] = [
-    { id: 1, name: '废土街道',   bgKey: 'bg_chapter1', waves: 5, bossWave: 5,  enemyScale: 1.0, desc: '废弃的城市废墟，腐肉横行' },
-    { id: 2, name: '钢铁工厂',   bgKey: 'bg_chapter2', waves: 5, bossWave: 10, enemyScale: 1.3, desc: '轰鸣的熔炉，钢铁巨兽苏醒' },
-    { id: 3, name: '海克斯实验室', bgKey: 'bg_chapter3', waves: 5, bossWave: 15, enemyScale: 1.7, desc: '高能辐射区域，异变体涌现' },
-    { id: 4, name: '混沌位面',   bgKey: 'bg_chapter4', waves: 5, bossWave: 20, enemyScale: 2.2, desc: '现实崩塌，终焉之门大开' },
+    { id: 1, name: '废土街道',   bgKey: 'bg_chapter1', waves: 15, statScale: 1.0,  countScale: 1.0, desc: '废弃的城市废墟，腐肉横行' },
+    { id: 2, name: '钢铁工厂',   bgKey: 'bg_chapter2', waves: 15, statScale: 1.2,  countScale: 1.2, desc: '轰鸣的熔炉，钢铁巨兽苏醒' },
+    { id: 3, name: '海克斯实验室', bgKey: 'bg_chapter3', waves: 15, statScale: 1.45, countScale: 1.4, desc: '高能辐射区域，异变体涌现' },
+    { id: 4, name: '混沌位面',   bgKey: 'bg_chapter4', waves: 15, statScale: 1.7,  countScale: 1.6, desc: '现实崩塌，终焉之门大开' },
     // 第5章使用独立的天罚领域背景；第5章 Boss=机械高达X-剑（BossDB）。
-    { id: 5, name: '天罚领域',   bgKey: 'bg_chapter5', waves: 5, bossWave: 25, enemyScale: 2.8, desc: '钢铁巨神镇守天罚之门' },
-    // 第6章（2026-09-21 新增）：灭世机神·天罚的最终领域
-    { id: 6, name: '终焉天罚',   bgKey: 'bg_chapter6', waves: 5, bossWave: 30, enemyScale: 3.2, desc: '天空撕裂，灭世机神降临' },
+    { id: 5, name: '天罚领域',   bgKey: 'bg_chapter5', waves: 15, statScale: 2.0,  countScale: 1.8, desc: '钢铁巨神镇守天罚之门' },
+    // 第6章：灭世机神·天罚的最终领域（无尽模式沿用本章敌池与数值档）。
+    { id: 6, name: '终焉天罚',   bgKey: 'bg_chapter6', waves: 15, statScale: 2.3,  countScale: 2.0, desc: '天空撕裂，灭世机神降临' },
 ];
 
+export function chapterDef(id: number): ChapterDef {
+    return CHAPTERS[Math.max(0, Math.min(CHAPTERS.length - 1, id - 1))];
+}
+
+// ── 波型槽位（15 波节奏模板，所有章节共用） ──────────────────
+
+export type WaveKind = 'normal' | 'breather' | 'beast' | 'miniGuard' | 'guard' | 'boss';
+
 /**
- * 按全局波次反推 1-based 章节号（波次超出最后一章时钳到最后章节，
- * 无尽模式沿用最后一章敌群与章节显示）。
+ * 关内波次 → 波型：
+ * W1~4 普通爬升；W5 小首领①试炼；W6/W11 呼吸波；W8 精英群（波后商店）；
+ * W9/W13 兽潮（密度峰）；W10 小首领②关中战；W12 混编高压；W14 守卫波；W15 大 Boss。
  */
-export function chapterForWave(wave: number): number {
-    let acc = 0;
-    for (const c of CHAPTERS) {
-        acc += c.waves;
-        if (wave <= acc) return c.id;
-    }
-    return CHAPTERS[CHAPTERS.length - 1].id;
+export function waveKind(wave: number): WaveKind {
+    if (wave === 15) return 'boss';
+    if (wave === 9 || wave === 13) return 'beast';
+    if (wave === 6 || wave === 11) return 'breather';
+    if (wave === 5 || wave === 10) return 'miniGuard';
+    if (wave === 14) return 'guard';
+    return 'normal';
+}
+
+/** 波型数量系数：普通 1.0；兽潮 ×1.45；呼吸 ×0.7；小首领护卫/守卫 ×0.85；Boss 波小兵 ×0.8。 */
+export const WAVE_KIND_MULT: Record<WaveKind, number> = {
+    normal: 1.0,
+    breather: 0.7,
+    beast: 1.45,
+    miniGuard: 0.85,
+    guard: 0.85,
+    boss: 0.8,
+};
+
+/** 同屏/单波小兵总量封顶（v4：96→128，第 6 章 W13 ≈ 120 只需要）。 */
+export const ENEMY_COUNT_CAP = 128;
+
+/**
+ * 关内某波的小兵总量（v4 4.1 公式）：
+ * round((10 + 2.4×波次) × 波型 × 章节数量 × 难度)，封顶 128。
+ * wave 为关内波次 1~15；chapterId 1~6；difficulty 数量倍率（正常游戏恒 normal，
+ * 内部模式可传 nightmare/chaos ×1.5/×2）。
+ */
+export function enemyCountForWave(
+    wave: number,
+    chapterId: number,
+    difficulty: 'normal' | 'nightmare' | 'chaos' = 'normal',
+): number {
+    const base = 10 + 2.4 * wave;
+    const kind = WAVE_KIND_MULT[waveKind(wave)];
+    const chapter = chapterDef(chapterId).countScale;
+    const diff = { normal: 1, nightmare: 1.5, chaos: 2 }[difficulty] || 1;
+    return Math.min(Math.round(base * kind * chapter * diff), ENEMY_COUNT_CAP);
+}
+
+// ── 开局战备包（第 2 章起的成长补偿，v4 2.3） ─────────────────
+
+/** 各章开局三选一连抽次数（第 1 章 0 次）。 */
+export const STARTER_PACK_DRAWS = [0, 2, 4, 6, 8, 10];
+/** 各章开局起始金币。 */
+export const STARTER_PACK_GOLD  = [0, 100, 220, 360, 520, 700];
+
+export function starterPack(chapterId: number): { draws: number; gold: number } {
+    const i = Math.max(0, Math.min(STARTER_PACK_DRAWS.length - 1, chapterId - 1));
+    return { draws: STARTER_PACK_DRAWS[i], gold: STARTER_PACK_GOLD[i] };
+}
+
+// ── 精英固定槽（v4 7.1：W4/W8/W14，随章爬升） ─────────────────
+
+export function eliteSlots(wave: number, chapterId: number): number {
+    const slot = wave === 4 ? 0 : wave === 8 ? 1 : wave === 14 ? 2 : -1;
+    if (slot < 0) return 0;
+    const tiers = [
+        [2, 3, 3],   // 第 1~2 章：W4=2 / W8=3 / W14=3，合计 8
+        [3, 4, 4],   // 第 3~4 章：合计 11
+        [4, 5, 5],   // 第 5~6 章：合计 14
+    ];
+    const tier = chapterId >= 5 ? 2 : chapterId >= 3 ? 1 : 0;
+    return tiers[tier][slot];
 }
 
 export const MUTATIONS: MutationDef[] = [
@@ -81,14 +154,3 @@ export const MUTATIONS: MutationDef[] = [
           game._mutationMods.cloneWar  = true;
       } },
 ];
-
-// 2026-09-07 玩家反馈"怪的密度还是太低"：总量曲线整体上调——
-// 起点 4+2/wave/封顶28 → 6+3/wave/封顶48（后期同屏约为旧版两倍）。
-// 2026-09-14 玩家要求：从第三章开始（全局波次11起，含无尽沿用章节）怪物数量×2，
-// 封顶同步翻倍到 96。
-export const ENEMY_COUNT_BY_WAVE = (wave: number, difficulty: 'normal' | 'nightmare' | 'chaos'): number => {
-    const base = Math.min(6 + wave * 3, 48);
-    const mult = { normal: 1, nightmare: 1.5, chaos: 2 }[difficulty] || 1;
-    const chapterMult = chapterForWave(wave) >= 3 ? 2 : 1;
-    return Math.floor(base * mult * chapterMult);
-};

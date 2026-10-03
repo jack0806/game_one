@@ -6,7 +6,7 @@ const { CHARACTERS, CHARS, SKILL_Q_CD, SKILL_E_CD, splitSkillText } = require('.
 const { makeMockGame, makePlayer } = require('./mockGame');
 const { PlayerController } = require('../dist/entities/PlayerController');
 
-test('炮击手Q弹头放大50%(radius 18),R弹头全部自动追踪', () => {
+test('炮击手Q为高爆弹(命中或落点半径90爆炸),R直飞2秒后加速并全场爆炸', () => {
     const kai = CHARACTERS.kai;
     const game = makeMockGame();
     const pool = [];
@@ -15,12 +15,15 @@ test('炮击手Q弹头放大50%(radius 18),R弹头全部自动追踪', () => {
 
     kai.qSkill(p, game);
     assert.equal(pool[0].radius, 18, 'Q弹头应为原12的1.5倍');
-    assert.equal(pool[0].pierceLeft, 999, 'Q仍为超大穿透弹');
+    assert.equal(pool[0].pierceLeft, 0, 'Q高爆弹不穿透,命中第一个目标即爆炸');
+    assert.equal(pool[0].explodeOnExpire, true, 'Q命中或到达射程终点都会爆炸');
+    assert.equal(pool[0].explodeRadius, 90, 'Q爆炸半径90');
 
     pool.length = 0;
     kai.ultimate(p, game);
     assert.equal(pool.length, 30, 'R应发射30发');
-    assert.ok(pool.every(b => b.homing === true), 'R弹头全部自动追踪敌人');
+    // 2026-09-21 玩家调整：R炮弹沿弹道直飞不追踪（旧版360°散射+追踪转向跟不上弹速）
+    assert.ok(pool.every(b => !b.homing), 'R弹头不追踪,沿发射弹道直飞');
     // 2026-08-26：R炮弹打不着怪不再消失——2秒后加速，命中/脱靶最终半径50爆炸
     assert.ok(pool.every(b => b.speedUpAfter === 2 && b.speedUpMult === 2), 'R弹头2秒后弹速翻倍');
     assert.ok(pool.every(b => b.explodeOnExpire === true && b.explodeRadius === 50), 'R弹头最终半径50爆炸');

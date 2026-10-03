@@ -5,6 +5,7 @@ import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getMiniBossDef, getTestGruntDef } from '../data/BossDB';
+import { chapterDef } from '../data/WaveData';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import { createDirectionalFacingState, resetDirectionalFacing, resolveFacingView } from '../core/DirectionalFacing';
 import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
@@ -188,8 +189,11 @@ export class EnemyBase {
 
     init(type: string, wave: number, game: any): void {
         this.type    = type;
-        this.chapter = Math.ceil(wave / 10);
-        const scale  = 1 + (wave - 1) * 0.08;
+        // v4：wave 为关内波次（1~15），章节取所选章而非全局波次反推；
+        // 成长 = 章节血量系数 × 波内成长（W15 ≈ ×1.42）。
+        this.chapter = Math.max(1, (game?._chapter ?? 0) + 1);
+        const statScale = chapterDef(this.chapter).statScale;
+        const scale  = statScale * (1 + (wave - 1) * 0.03);
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0; this.actionRecoil = 0;
@@ -219,16 +223,17 @@ export class EnemyBase {
         this._visualMiniSkillState = '';
         resetLocomotion(this.locomotion);
         resetDirectionalFacing(this.directionalFacing, 'front');
-        this._applyTypeDef(type, scale, game);
+        this._applyTypeDef(type, scale, game, wave);
         this._applyDifficulty(game);
         this._applyMutations(game);
-        // 精英增强
-        if (this.isElite) { this.maxHp *= 3; this.hp = this.maxHp; this.damage *= 1.5; this.goldValue *= 3; }
+        // 精英增强（v4 5.3：金币倍率 ×3→×1.5，金币预算受控）
+        if (this.isElite) { this.maxHp *= 3; this.hp = this.maxHp; this.damage *= 1.5; this.goldValue *= 1.5; }
     }
 
     /**
      * 难度乘区（easy 0.25 / normal 0.5 / hard 1 / hell 1.5）：
-     * 只缩放非移速数值（血量/护盾/伤害/护甲/赏金），移速与攻击节奏保持表值。
+     * 只缩放非移速数值（血量/护盾/伤害/护甲），移速与攻击节奏保持表值。
+     * 金币不在此乘区（v4 9.3：金币走独立难度系数，见 Economy.difficultyGoldMult）。
      * game._difficulty 由 GameManager 在开局注入；测试房间不注入 = 原值。
      */
     _applyDifficulty(game: any): void {
@@ -238,10 +243,10 @@ export class EnemyBase {
         if (this.maxShieldHp > 0) { this.maxShieldHp *= mult; this.shieldHp = this.maxShieldHp; }
         this.damage  *= mult;
         this.armor   *= mult;
-        this.goldValue *= mult;
     }
 
-    private _applyTypeDef(type: string, scale: number, _game: any): void {
+    /** wave：关内波次（小首领守卫波加压用，缺省 1）。 */
+    private _applyTypeDef(type: string, scale: number, _game: any, wave = 1): void {
         // 维斯帕活卵孵化物：仅由Boss技能生成，不进入测试房目录，也不套波次成长。
         if (type === 'vespa_hatchling') {
             this.color = '#315928'; this.glowColor = '#78ff45';
@@ -303,9 +308,17 @@ export class EnemyBase {
         if (miniDef) {
             this.isMiniBoss = true;
             this.color = miniDef.color; this.glowColor = miniDef.glow;
-            this.maxHp = miniDef.maxHp; this.speed = miniDef.speed;
-            this.damage = miniDef.damage; this.armor = miniDef.armor;
-            this.radius = miniDef.radius; this.goldValue = miniDef.goldValue;
+            // v4 6.3：小首领套章节血量/伤害/护甲系数（否则 1200 血的水母在第 6 章会被秒）；
+            // 金币改档位值（普通 40 / 史诗 60 / 地狱 80，v4 9.2）。
+            // W14 守卫波小首领单独 +10%：小首领不吃波内成长，同章内 W5/W14 等强，
+            // 守卫波压轴需要比试炼波更硬（文档 6.3 调整）。
+            const ss = chapterDef(this.chapter).statScale;
+            this.maxHp = Math.floor(miniDef.maxHp * ss * (wave === 14 ? 1.1 : 1));
+            this.damage = miniDef.damage * ss * (wave === 14 ? 1.1 : 1);
+            this.armor = miniDef.armor * ss;
+            this.goldValue = miniDef.tier === '地狱' ? 80 : miniDef.tier === '史诗' ? 60 : 40;
+            this.speed = miniDef.speed;
+            this.radius = miniDef.radius;
             this.label = miniDef.label; this.attackWindupMax = miniDef.attackWindupMax;
             this.visualScale = miniDef.visualScale;
             this.spriteKey = miniDef.spriteKey; this.tintColor = miniDef.tintColor;
@@ -346,41 +359,41 @@ export class EnemyBase {
             case 'grunt':
                 this.color = '#ff4444'; this.glowColor = '#ff0000';
                 this.maxHp = Math.floor(80 * scale); this.speed = 65; this.damage = 8; this.radius = 18;
-                this.goldValue = 8; this.label = ''; this.attackWindupMax = 0.28;
+                this.goldValue = 2; this.label = ''; this.attackWindupMax = 0.28;
                 this.visualScale = 1.22;
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ffffff'; break;
             case 'shield':
                 this.color = '#4488ff'; this.glowColor = '#0044cc';
                 this.maxHp = Math.floor(60 * scale); this.speed = 45; this.damage = 10; this.radius = 20;
                 this.maxShieldHp = Math.floor(80 * scale); this.shieldHp = this.maxShieldHp; this.shieldActive = true;
-                this.goldValue = 12; this.label = '护盾兵'; this.attackWindupMax = 0.38;
+                this.goldValue = 4; this.label = '护盾兵'; this.attackWindupMax = 0.38;
                 this.visualScale = 1.18;
                 this.spriteKey = 'enemy_shield'; this.tintColor = '#ffffff'; break;
             case 'exploder':
                 this.color = '#ff8800'; this.glowColor = '#ff4400';
                 this.maxHp = Math.floor(50 * scale); this.speed = 85; this.damage = 40; this.radius = 20;
-                this.deathExplode = true; this.goldValue = 10; this.label = ''; this.attackWindupMax = 0.52;
+                this.deathExplode = true; this.goldValue = 2; this.label = ''; this.attackWindupMax = 0.52;
                 this.visualScale = 1.20;
                 // 素材错位：enemy_exploder key 实际内容(经ArtRemap重定向)对应"爆炸怪"语义。
                 this.spriteKey = 'enemy_exploder'; this.tintColor = '#ffffff'; break;
             case 'golem':
                 this.color = '#888888'; this.glowColor = '#aaaaaa';
                 this.maxHp = Math.floor(300 * scale); this.speed = 35; this.damage = 20; this.radius = 26;
-                this.armor = 25; this.goldValue = 20; this.label = '石像鬼'; this.attackWindupMax = 0.56;
+                this.armor = 25; this.goldValue = 6; this.label = '石像鬼'; this.attackWindupMax = 0.56;
                 this.visualScale = 1.15;
                 this.spriteKey = 'enemy_golem'; this.tintColor = '#ffffff'; break;
             case 'elite_grunt':
                 this.isElite = true;
                 this.color = '#ff44ff'; this.glowColor = '#cc00cc';
                 this.maxHp = Math.floor(200 * scale); this.speed = 75; this.damage = 18; this.radius = 22;
-                this.goldValue = 30; this.label = '精英'; this.attackWindupMax = 0.30;
+                this.goldValue = 12; this.label = '精英'; this.attackWindupMax = 0.30;
                 this.visualScale = 1.25;
                 this.spriteKey = 'enemy_elite'; this.tintColor = '#ffffff';
                 this.directionalFrames = false; break;
             case 'archer':
                 this.color = '#88ff44'; this.glowColor = '#44cc00';
                 this.maxHp = Math.floor(70 * scale); this.speed = 60; this.damage = 12; this.radius = 18;
-                this.goldValue = 12; this.label = '毒射手'; this.attackWindupMax = 0.4;
+                this.goldValue = 3; this.label = '毒射手'; this.attackWindupMax = 0.4;
                 this.meleeRange = 0;
                 this.rangedRange = 460; this.rangedKeepDist = 300;
                 this._rangedCd = Rng.float(0.8, 1.6);
@@ -392,7 +405,7 @@ export class EnemyBase {
                 this.isMiniBoss = true;
                 this.color = '#aa44ff'; this.glowColor = '#6600cc';
                 this.maxHp = Math.floor(800 * scale); this.speed = 55; this.damage = 25; this.radius = 30;
-                this.goldValue = 60; this.label = '暗影猎手'; this.attackWindupMax = 0.46;
+                this.goldValue = 35; this.label = '暗影猎手'; this.attackWindupMax = 0.46;
                 this.visualScale = 1.60;
                 this.spriteKey = 'enemy_shadow_hunter'; this.tintColor = '#ffffff';
                 this.directionalFrames = false; break;
@@ -533,6 +546,8 @@ export class EnemyBase {
         game.score    = (game.score || 0) + (this.isBoss ? 500 : this.isElite ? 50 : 10);
         game.kills    = (game.kills || 0) + 1;
         game.comboCount = (game.comboCount || 0) + 1;
+        // v4 第 10 节：章节 Boss 击杀必掉 1 件装备（GameManager 负责入仓与提示）
+        if (this.isBoss) game.dropBossEquipment?.(this);
         // 成就存档统计：Boss 击杀数、单局最高连击（GameManager 局末读取）
         if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
         if (game.comboCount > (game.maxCombo || 0)) game.maxCombo = game.comboCount;

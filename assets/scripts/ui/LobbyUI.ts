@@ -15,6 +15,9 @@ import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSystem } from '../systems/SaveSystem';
 import { MetaPageName } from './MetaPageUI';
+import {
+    EQUIP_AFFIXES, equipmentLabel, equipmentSellValue, equipmentValue,
+} from '../data/EquipmentDB';
 
 export interface LobbyCallbacks {
     /** 点击右侧出击传送门（进入角色选择）。 */
@@ -53,6 +56,11 @@ export class LobbyUI {
     private _portalT = 0;
     private _summaryTitle!: Label;
     private _summaryLines: Label[] = [];
+    /** v4 装备库浮层（查看仓库 / 3 格配装 / 卖出换核心币）。 */
+    private _armory!: Node;
+    private _armorySlots: Label[] = [];
+    private _armoryGrid!: Node;
+    private _armoryCoins!: Label;
 
     constructor(private readonly _root: Node, private readonly _callbacks: LobbyCallbacks) {
         this._panel = this._buildPage();
@@ -134,6 +142,7 @@ export class LobbyUI {
         this._buildSummaryPanel(page);
         this._buildMetaDock(page);
         this._buildPortal(page);
+        this._armory = this._buildArmory();
         return page;
     }
 
@@ -151,7 +160,7 @@ export class LobbyUI {
         }
     }
 
-    /** 左下：任务树/图鉴/成就档案入口（自首页 MetaDock 迁入大厅）。 */
+    /** 左下：任务树/图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。 */
     private _buildMetaDock(page: Node): void {
         const dock = new Node('MetaDock'); dock.setParent(page);
         dock.setPosition(new Vec3(-431, -160, 0));
@@ -167,6 +176,155 @@ export class LobbyUI {
             const btn = this._mkButton(dock, label, 0, 74 - i * 68, 334,
                 sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 64 : 54, accent);
             btn.on(Node.EventType.TOUCH_END, () => this._callbacks.onMetaPage(name));
+        });
+        // v4：装备库入口（本页浮层，不走路由）；按钮位置在三个元进度入口下方
+        const armoryBtn = this._mkButton(dock, '装备库', 0, -128 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 56 : 46, new Color(150, 108, 220, 255));
+        armoryBtn.on(Node.EventType.TOUCH_END, () => {
+            this._callbacks.onButtonSfx();
+            this._openArmory();
+        });
+    }
+
+    // ── v4 装备库浮层 ─────────────────────────────────────────
+
+    /** 打开装备库：刷新 3 个出战格与仓库网格。 */
+    private _openArmory(): void {
+        this._refreshArmory();
+        this._armory.active = true;
+    }
+
+    private _closeArmory(): void {
+        this._armory.active = false;
+    }
+
+    private _buildArmory(): Node {
+        const layer = new Node('Armory'); layer.setParent(this._panel);
+        layer.addComponent(UITransform).setContentSize(1280, 720);
+        layer.active = false;
+
+        // 半透明遮罩：点遮罩不关闭（防误触），仅按钮关闭
+        const dim = new Node('Dim'); dim.setParent(layer);
+        dim.addComponent(UITransform).setContentSize(1280, 720);
+        const dg = dim.addComponent(Graphics);
+        dg.fillColor = new Color(4, 8, 16, 225); dg.fillRect(-640, -360, 1280, 720);
+
+        const panel = new Node('Panel'); panel.setParent(layer);
+        panel.addComponent(UITransform).setContentSize(980, 620);
+        const pg = panel.addComponent(Graphics); drawPanel(pg, 980, 620, new Color(150, 108, 220, 255));
+
+        this._mkLabel(panel, 0, 272, 600, 36, '— 装备库 —', 26, GOLD);
+        this._mkLabel(panel, 0, 234, 820, 22,
+            '跨局战利品 · 3 个出战格 · 卖出换核心币（等价局内卖金折算）', 14, MUTED);
+        this._armoryCoins = this._mkLabel(panel, 430, 234, 220, 22, '', 15, GOLD);
+
+        // 顶部：3 个出战装备格（点击卸下）
+        for (let i = 0; i < 3; i++) {
+            const slot = new Node(`Slot${i}`); slot.setParent(panel);
+            slot.setPosition(new Vec3(-260 + i * 260, 168, 0));
+            slot.addComponent(UITransform).setContentSize(240, 64);
+            const sg = slot.addComponent(Graphics);
+            const drawSlot = () => drawPanel(sg, 240, 64, CYAN);
+            drawSlot();
+            const lbl = this._mkLabel(slot, 0, 0, 226, 44, '空', 16, MUTED);
+            this._armorySlots.push(lbl);
+            slot.on(Node.EventType.TOUCH_END, () => {
+                const p = SaveSystem.load();
+                const uid = (p.equipLoadout ?? [])[i];
+                if (!uid) return;
+                this._callbacks.onButtonSfx();
+                SaveSystem.setEquipSlot(i, null);
+                this._refreshArmory();
+            });
+        }
+
+        // 中部：仓库网格容器（_refreshArmory 重建内容）
+        this._armoryGrid = new Node('Grid'); this._armoryGrid.setParent(panel);
+        this._armoryGrid.setPosition(new Vec3(0, -110, 0));
+
+        const close = this._mkButton(panel, '关闭', 420, 272, 120, 44, new Color(78, 111, 135, 255));
+        close.on(Node.EventType.TOUCH_END, () => {
+            this._callbacks.onButtonSfx();
+            this._closeArmory();
+        });
+        return layer;
+    }
+
+    /** 刷新出战格与仓库网格（每次打开/装卸/卖出后调用）。 */
+    private _refreshArmory(): void {
+        const p = SaveSystem.load();
+        this._armoryCoins.string = `核心币 ${p.coreCoins ?? 0}`;
+        const byUid = new Map((p.equipments ?? []).map(e => [e.uid, e]));
+        const loadout = p.equipLoadout ?? [null, null, null];
+
+        // 出战格标签
+        for (let i = 0; i < 3; i++) {
+            const eq = loadout[i] != null ? byUid.get(loadout[i]) : undefined;
+            this._armorySlots[i].string = eq ? equipmentLabel(eq) : '空';
+            this._armorySlots[i].color = eq ? WHITE : MUTED;
+        }
+
+        // 仓库网格：每行 5 张卡（最多 5 词缀×3品质=15 件）
+        for (const child of [...this._armoryGrid.children]) {
+            child.off(Node.EventType.TOUCH_END);
+            child.removeFromParent();
+            child.destroy();
+        }
+        const items = p.equipments ?? [];
+        if (!items.length) {
+            this._mkLabel(this._armoryGrid, 0, 60, 700, 30,
+                '仓库空空如也 —— 击杀章节 Boss 必掉装备（通关第 15 波）', 16, MUTED);
+            return;
+        }
+        const equippedUids = new Set(loadout.filter(u => u != null));
+        items.forEach((eq, i) => {
+            const col = i % 5, row = Math.floor(i / 5);
+            const card = new Node(`Eq_${eq.uid}`); card.setParent(this._armoryGrid);
+            card.setPosition(new Vec3(-392 + col * 196, 150 - row * 118, 0));
+            card.addComponent(UITransform).setContentSize(186, 108);
+            const g = card.addComponent(Graphics);
+            const equipped = equippedUids.has(eq.uid);
+            drawPanel(g, 186, 108, equipped ? CYAN : new Color(96, 116, 138, 255), equipped ? 248 : 235);
+
+            const affix = EQUIP_AFFIXES.find(a => a.id === eq.affix);
+            const isFlat = eq.affix === 'crit' || eq.affix === 'greed';
+            const value = equipmentValue(eq);
+            this._mkLabel(card, 0, 36, 176, 22, equipmentLabel(eq), 15, equipped ? GOLD : WHITE);
+            this._mkLabel(card, 0, 12, 176, 20,
+                `${affix?.label ?? eq.affix}  ${isFlat ? '+' + value : '+' + Math.round(value * 100) + '%'}`, 13,
+                new Color(197, 214, 226, 255));
+
+            const equipBtn = this._mkButton(card, equipped ? '已出战' : '装备', -40, -34, 88, 30,
+                equipped ? new Color(70, 84, 96, 255) : new Color(60, 130, 105, 255));
+            equipBtn.on(Node.EventType.TOUCH_END, () => {
+                if (equippedUids.has(eq.uid)) return;
+                const slot = (SaveSystem.load().equipLoadout ?? [null, null, null]).findIndex(s => s == null);
+                if (slot < 0) {
+                    this._callbacks.onButtonSfx();
+                    return;   // 满格：先在上方格子点击卸下
+                }
+                SaveSystem.setEquipSlot(slot, eq.uid);
+                this._callbacks.onButtonSfx();
+                this._refreshArmory();
+            });
+
+            // 卖出两段确认（装备永久失去，防误触）
+            const state = { confirming: false };
+            const sellBtn = this._mkButton(card, `卖 ${equipmentSellValue(eq.quality)}`, 48, -34, 92, 30,
+                new Color(140, 70, 60, 255));
+            sellBtn.on(Node.EventType.TOUCH_END, () => {
+                if (!state.confirming) {
+                    state.confirming = true;
+                    const l = sellBtn.children[0]?.getComponent(Label);
+                    if (l) l.string = '确认?';
+                    return;
+                }
+                const coins = Math.max(1, Math.round(equipmentSellValue(eq.quality) * 0.2));
+                SaveSystem.removeEquipment(eq.uid);
+                SaveSystem.addCoreCoins(coins);
+                this._callbacks.onButtonSfx();
+                this._refreshArmory();
+            });
         });
     }
 

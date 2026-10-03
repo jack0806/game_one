@@ -26,16 +26,17 @@ export interface BossDef {
 }
 
 export const BOSSES: BossDef[] = [
-    { chapter: 1, maxHp: 3000,  damage: 42,  speed: 62, armor: 10, goldValue: 200, radius: 45, color: '#cc3300', glow: '#ff0000', label: '废土领主·腐肉',       spriteKey: 'enemy_boss_ch1', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ chapter: 1, maxHp: 3000,  damage: 42,  speed: 62, armor: 10, goldValue: 150, radius: 45, color: '#cc3300', glow: '#ff0000', label: '废土领主·腐肉',       spriteKey: 'enemy_boss_ch1', visualScale: 2.0, attackWindupMax: 0.42 },
+
     // 熔炉橙：钢蓝工厂背景下蓝色 Boss 几乎隐形（视觉评审 2026-08-18），改互补暖色
-    { chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 400, radius: 45, color: '#cc7a33', glow: '#ffaa44', label: '钢铁之王·熔炉',       spriteKey: 'enemy_boss_ch2', visualScale: 2.0, attackWindupMax: 0.42 },
-    { chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 600, radius: 45, color: '#00cc88', glow: '#00ffcc', label: '海克斯异变体·无限核', spriteKey: 'enemy_boss_ch3', visualScale: 2.0, attackWindupMax: 0.42 },
-    { chapter: 4, maxHp: 14000, damage: 132, speed: 80, armor: 40, goldValue: 800, radius: 45, color: '#8800cc', glow: '#cc44ff', label: '混沌深渊·终焉之门',   spriteKey: 'enemy_boss_ch4', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 280, radius: 45, color: '#cc7a33', glow: '#ffaa44', label: '钢铁之王·熔炉',       spriteKey: 'enemy_boss_ch2', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 360, radius: 45, color: '#00cc88', glow: '#00ffcc', label: '海克斯异变体·无限核', spriteKey: 'enemy_boss_ch3', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ chapter: 4, maxHp: 14000, damage: 132, speed: 80, armor: 40, goldValue: 450, radius: 45, color: '#8800cc', glow: '#cc44ff', label: '混沌深渊·终焉之门',   spriteKey: 'enemy_boss_ch4', visualScale: 2.0, attackWindupMax: 0.42 },
     // 第5章机械高达X-剑（2026-09-21 玩家调整：由测试房转正，数值取第五章档位，
     // 复用测试房专属俯视立绘 enemy_boss_mech）
-    { chapter: 5, maxHp: 20000, damage: 160, speed: 68, armor: 50, goldValue: 1000, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ chapter: 5, maxHp: 20000, damage: 160, speed: 68, armor: 50, goldValue: 550, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
     // 第6章灭世机神·天罚：暂无独立贴图，复用 enemy_boss 素体+橙红染色。
-    { chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 1200, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 650, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
 /** 按 0-based 章节号取 Boss 定义，越界回落到最后一章。 */
@@ -139,61 +140,63 @@ export interface TestGruntDef {
 }
 
 /**
- * 新怪先只进入测试房，数值逐字对应 docs/怪物设计与数值.md。
+ * 新怪先只进入测试房，战斗数值逐字对应 docs/怪物设计与数值.md。
  * 每一项都必须有独立轮廓与攻击行为，禁止再复用石狮子临时贴图。
+ * 2026-10-03 v4：金币值按《关卡设计-15波.md》9.2 经济体系重标（原 7~24 为
+ * 旧经济摆设值）；血/伤/速/甲仍逐字对应设计文档。测试房炮灰已转正进正式波次。
  */
 export const TEST_GRUNTS: TestGruntDef[] = [
     {
         id: 'rust_biter', label: '锈齿扑兵', maxHp: 75, damage: 7, speed: 82,
-        armor: 0, attackInterval: 0.95, goldValue: 7, radius: 21,
+        armor: 0, attackInterval: 0.95, goldValue: 2, radius: 21,
         color: '#a83d2f', glow: '#ff4935', spriteKey: 'enemy_rust_biter',
         visualScale: 1.55, attackWindupMax: 0.28,
     },
     {
         id: 'needle_gunner', label: '断针射手', maxHp: 58, damage: 6, speed: 58,
-        armor: 0, attackInterval: 1.65, goldValue: 9, radius: 20,
+        armor: 0, attackInterval: 1.65, goldValue: 3, radius: 20,
         color: '#305f96', glow: '#fff06a', spriteKey: 'enemy_needle_gunner',
         visualScale: 1.60, attackWindupMax: 0.55,
     },
     {
         id: 'ember_acolyte', label: '焚芯咒仆', maxHp: 68, damage: 5, speed: 50,
-        armor: 2, attackInterval: 2.40, goldValue: 11, radius: 21,
+        armor: 2, attackInterval: 2.40, goldValue: 3, radius: 21,
         color: '#542e20', glow: '#ff7a24', spriteKey: 'enemy_ember_acolyte',
         visualScale: 1.58, attackWindupMax: 0.85,
     },
     {
         id: 'frost_acolyte', label: '冻脉咒仆', maxHp: 74, damage: 5, speed: 48,
-        armor: 2, attackInterval: 2.60, goldValue: 11, radius: 22,
+        armor: 2, attackInterval: 2.60, goldValue: 3, radius: 22,
         color: '#314a5c', glow: '#85e7ff', spriteKey: 'enemy_frost_acolyte',
         visualScale: 1.58, attackWindupMax: 0.75,
     },
     {
         id: 'acid_sac', label: '酸囊投手', maxHp: 62, damage: 4, speed: 55,
-        armor: 0, attackInterval: 2.20, goldValue: 10, radius: 22,
+        armor: 0, attackInterval: 2.20, goldValue: 3, radius: 22,
         color: '#547230', glow: '#72ff38', spriteKey: 'enemy_acid_sac',
         visualScale: 1.58, attackWindupMax: 0.70,
     },
     {
         id: 'rivet_beast', label: '铆甲兽', maxHp: 230, damage: 9, speed: 34,
-        armor: 18, attackInterval: 1.35, goldValue: 14, radius: 29,
+        armor: 18, attackInterval: 1.35, goldValue: 5, radius: 29,
         color: '#46505b', glow: '#a9e5ff', spriteKey: 'enemy_rivet_beast',
         visualScale: 1.30, attackWindupMax: 0.55,
     },
     {
         id: 'arc_leech', label: '闪弧寄生体', maxHp: 82, damage: 5, speed: 68,
-        armor: 4, attackInterval: 2.00, goldValue: 12, radius: 22,
+        armor: 4, attackInterval: 2.00, goldValue: 3, radius: 22,
         color: '#354853', glow: '#7df4ff', spriteKey: 'enemy_arc_leech',
         visualScale: 1.60, attackWindupMax: 0.45,
     },
     {
         id: 'gold_scavenger', label: '掠金虫', maxHp: 46, damage: 0, speed: 105,
-        armor: 0, attackInterval: 999, goldValue: 24, radius: 20,
+        armor: 0, attackInterval: 999, goldValue: 20, radius: 20,
         color: '#78502f', glow: '#ffd75a', spriteKey: 'enemy_gold_scavenger',
         visualScale: 1.62, attackWindupMax: 0,
     },
     {
         id: 'blast_tick', label: '熔爆蜱', maxHp: 44, damage: 28, speed: 92,
-        armor: 0, attackInterval: 999, goldValue: 10, radius: 20,
+        armor: 0, attackInterval: 999, goldValue: 2, radius: 20,
         color: '#66311f', glow: '#ff6b1f', spriteKey: 'enemy_blast_tick',
         visualScale: 1.56, attackWindupMax: 0.80,
     },

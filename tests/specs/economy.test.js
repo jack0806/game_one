@@ -56,14 +56,34 @@ test('掉落物超过life后自动消失(未被拾取)', () => {
     assert.equal(eco.gold, 0, '未被拾取不应加金币');
 });
 
-test('generateShopItems按章节数放大价格(mult = 1+(chapter-1)*0.3)', () => {
+test('generateShopItems按章节数放大价格(mult = 1+(chapter-1)*0.3；v4基价重标)', () => {
     const eco = new Economy();
     const ch1 = eco.generateShopItems(1);
     const ch3 = eco.generateShopItems(3);
     const heal1 = ch1.find(i => i.id === 'heal');
     const heal3 = ch3.find(i => i.id === 'heal');
-    assert.equal(heal1.cost, 30); // mult=1
-    assert.equal(heal3.cost, Math.round(30 * 1.6)); // mult=1+2*0.3=1.6
+    assert.equal(heal1.cost, 80); // mult=1（v4：急救包 30→80，预算≈1600 下不再白送）
+    assert.equal(heal3.cost, Math.round(80 * 1.6)); // mult=1+2*0.3=1.6
+});
+
+test('v4产出硬上限:击杀掉落累计超killGoldCap后金额衰减到1金(防崩塌保险丝)', () => {
+    const eco = new Economy();
+    eco.killGoldCap = 100;
+    const player = makePlayer({ x: 0, y: 0, stats: { goldPickupRange: 60 } });
+    eco.spawnDrop(0, 0, 60);
+    eco.spawnDrop(0, 0, 60);   // 帽内只剩 40，第二笔线性衰减
+    for (let i = 0; i < 200 && eco.drops.length; i++) eco.update(0.05, player);
+    assert.equal(eco.gold, 100, '帽内全额+超帽衰减后合计恰好到 100');
+    // 已超帽：后续掉落只值 1 金
+    eco.spawnDrop(0, 0, 50);
+    for (let i = 0; i < 200 && eco.drops.length; i++) eco.update(0.05, player);
+    assert.equal(eco.gold, 101, '超帽后掉落只拾取 1 金');
+    // 卖出/退款不受帽限制（走 refund 通道）
+    eco.refund(30);
+    assert.equal(eco.gold, 131);
+    // reset 恢复无限制
+    eco.reset();
+    assert.equal(eco.killGoldCap, Infinity, 'reset 后恢复不限（GameManager 每局重注入）');
 });
 
 test('spend()是spendGold的别名', () => {

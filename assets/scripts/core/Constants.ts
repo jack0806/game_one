@@ -29,9 +29,3 @@ export const RARITY_LABEL: Record<string, string> = {
     silver:    '银色',
     prismatic: '彩色',
 };
-
-/** 章节 Boss 波次偏移（每章5波，第5波为Boss；BOSS_WAVE_OFFSET 已被 WaveData 的 bossWave 取代，保留兼容） */
-export const BOSS_WAVE_OFFSET = 5;
-
-/** 无尽模式起始波次（主线共 5 章 × 5 波 = 25 波，通关后第 26 波起叠加变异） */
-export const ENDLESS_START_WAVE = 26;

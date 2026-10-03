@@ -58,14 +58,15 @@ test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,
     assert.match(gameSource, /onPlayPressed     = \(\) => this\._setState\('saveSelect'\)/);
     // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
     assert.match(gameSource, /onSlotPicked      = \(slot\) => \{[\s\S]*?SaveSystem\.selectSlot\(slot\);[\s\S]*?this\._setState\('lobby'\);/);
-    // 大厅传送门 → 难度选择 → 选人页；难度页/选人页都可返回大厅
-    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('mapSelect'\)/, '传送门先进地图选择');
-    assert.match(gameSource, /onMapPicked        = \(\) => this\._setState\('difficultySelect'\)/, '选废土后进难度选择');
-    assert.match(gameSource, /onMapBack          = \(\) => this\._setState\('lobby'\)/, '地图页返回大厅');
-    assert.match(screenSource, /_buildMapSelectPanel\(\);/, '地图选择页构建');
-    assert.match(screenSource, /'地图 1 · 废土'/, '废土地图卡');
-    assert.match(screenSource, /'地图 2 · 深海'/, '深海地图卡(占位)');
-    assert.match(screenSource, /即将开放/, '深海锁定提示');
+    // 大厅传送门 → 章节选择 → 难度选择 → 选人页；难度页/选人页都可返回大厅
+    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('mapSelect'\)/, '传送门先进章节选择');
+    assert.match(gameSource, /onMapPicked        = \(chapterId\) => \{[\s\S]*?this\._selectedChapter = chapterId;[\s\S]*?this\._setState\('difficultySelect'\)/, '选章节后进难度选择');
+    assert.match(gameSource, /onMapBack          = \(\) => this\._setState\('lobby'\)/, '章节页返回大厅');
+    assert.match(gameSource, /onQueryChapterUnlock = \(\) => SaveSystem\.unlockedChapterCount\(\)/, '章节解锁链查询');
+    assert.match(screenSource, /_buildMapSelectPanel\(\);/, '章节选择页构建');
+    assert.match(screenSource, /'选择作战章节'/, 'v4 章节选择标题');
+    assert.match(screenSource, /'无尽 · 天罚循环'/, '无尽入口卡');
+    assert.match(screenSource, /一局一章 × 15 波/, '一局一章副标题');
     assert.match(gameSource, /onDifficultyPicked = \(d\) => \{[\s\S]*?this\._difficulty = d;[\s\S]*?this\._setState\('charSelect'\);/);
     assert.match(gameSource, /onDifficultyBack  = \(\) => this\._setState\('lobby'\)/);
     assert.match(gameSource, /onCharSelectBack  = \(\) => this\._setState\('lobby'\)/);

@@ -407,13 +407,13 @@ test('掠金虫不攻击,受击加速0.8秒,12秒逃脱且5秒内击杀额外掉
     e.update(0.5, player, game);
     assert.ok(Math.abs(e.y - y0 - 63) < 0.001, '受击后0.8秒内应按105×120%速度沿边逃跑');
     e.takeDamage(999, player, game);
-    assert.deepEqual(drops, [24, 6], '5秒内截获应掉固定24金并追加6金');
+    assert.deepEqual(drops, [20, 6], '5秒内截获应掉固定20金(v4重标)并追加6金');
 
     const escaped = new EnemyBase(); escaped.init('gold_scavenger', 1, game);
     escaped.x = 28; escaped.y = 300;
     escaped.update(12, player, game);
     assert.equal(escaped.alive, false, '存活12秒后应逃脱');
-    assert.deepEqual(drops, [24, 6], '逃脱不得结算击杀掉落');
+    assert.deepEqual(drops, [20, 6], '逃脱不得结算击杀掉落');
 });
 
 test('烬火侍从锁定玩家脚下火圈并按2.4秒间隔施法', () => {

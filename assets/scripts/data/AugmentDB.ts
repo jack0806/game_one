@@ -389,8 +389,8 @@ export const AUGMENT_DB: AugmentDef[] = [
       onLevel(_p, game) { const am = game?.augmentManager; if (am) am.nextLevelBonus = (am.nextLevelBonus || 0) + 1; } },
 
     { id: 'hex16', index: 16, rarity: 'silver', icon: 'gold', name: '点金手', category: '一次性',
-      prices: [40, 200, 800], values: [0.5, 1, 1.5],
-      descAt: (l) => `获得的金币增加 ${[0.5, 1, 1.5][l - 1]} 倍`,
+      prices: [40, 200, 800], values: [0.25, 0.5, 1.0],
+      descAt: (l) => `获得的金币增加 ${[0.25, 0.5, 1.0][l - 1] * 100}%`,
       onLevel(_p, game, from, to) {
           const eco = game?.economy;
           if (!eco) return;
@@ -398,8 +398,10 @@ export const AUGMENT_DB: AugmentDef[] = [
       } },
 
     { id: 'hex17', index: 17, rarity: 'silver', icon: 'gold', name: '战争红利', category: '一次性',
-      prices: [35, 180, 750], values: [500, 1000, 2000], oneShot: true,
-      descAt: (l) => `立刻获得 ${[500, 1000, 2000][l - 1]} 金币`,
+      // v4 9.6 重标定：原 500/1000/2000（花 750 回 2000 净赚再造一局，最大
+      // 印钞单点）→ 80/250/900，变"应急取款"，净赚 45~150。
+      prices: [35, 180, 750], values: [80, 250, 900], oneShot: true,
+      descAt: (l) => `立刻获得 ${[80, 250, 900][l - 1]} 金币`,
       onLevel(_p, game, _from, to) { game?.economy?.addGold(this.values[to - 1]); } },
 
     { id: 'hex18', index: 18, rarity: 'silver', icon: 'heart', name: '应急壁垒', category: '一次性',

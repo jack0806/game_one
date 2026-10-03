@@ -101,9 +101,11 @@ test('功能性海克斯小步叠加档（2026-09-21 玩家调整）：攻速/�
     assert.deepEqual(byIndex(11).prices, [18, 60, 220]);
 });
 
-test('文档数值抽查：技能/一次性海克斯档位与《海克斯.docx》一致', () => {
+test('数值抽查：hex17 战争红利/hex16 点金手按 v4 金币预算重标定（《关卡设计-15波.md》9.6）', () => {
     const byIndex = (i) => AUGMENT_DB.find(a => a.index === i);
     assert.deepEqual(byIndex(4).values, [1, 2, 5]);           // 海克斯4 范围伤害个数
-    assert.deepEqual(byIndex(17).values, [500, 1000, 2000]);  // 海克斯17 立得金币
-    assert.deepEqual(byIndex(16).values, [0.5, 1, 1.5]);      // 海克斯16 金币倍率
+    // v4：战争红利原 500/1000/2000（花750回2000 净赚再造一局）压成应急取款档
+    assert.deepEqual(byIndex(17).values, [80, 250, 900]);
+    // v4：点金手上限 ×1.5 → ×1.0（买满需剩余产出>1040 才回本）
+    assert.deepEqual(byIndex(16).values, [0.25, 0.5, 1.0]);
 });

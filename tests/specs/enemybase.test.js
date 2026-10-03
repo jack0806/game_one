@@ -19,22 +19,22 @@ test('grunt初始化数值符合类型表(基础血量*成长系数)', () => {
     assert.equal(e.damage, 8);
 });
 
-test('精英类型(elite_grunt)在_applyTypeDef后再叠加3倍血量/1.5倍伤害/3倍金币', () => {
+test('精英类型(elite_grunt)在_applyTypeDef后再叠加3倍血量/1.5倍伤害/1.5倍金币(v4)', () => {
     const game = makeMockGame();
     const e = makeEnemy('elite_grunt', 1, game);
     // 基础 200 * scale(1) = 200，再 ×3 精英加成
     assert.equal(e.maxHp, 600);
     assert.equal(e.hp, 600);
     assert.equal(e.damage, 27); // 18 * 1.5
-    assert.equal(e.goldValue, 90); // 30 * 3
+    assert.equal(e.goldValue, 18); // 12 × 1.5（v4：金币倍率 ×3→×1.5）
     assert.equal(e.isElite, true);
 });
 
-test('波次成长系数随wave增加(scale = 1+(wave-1)*0.08)', () => {
+test('波内成长系数随关内波次增加(v4: scale = statScale×(1+0.03×(wave-1)))', () => {
     const game = makeMockGame();
     const e10 = makeEnemy('grunt', 10, game);
-    // scale = 1 + 9*0.08 = 1.72 → floor(80*1.72) = 137
-    assert.equal(e10.maxHp, 137);
+    // 第1章 statScale=1：scale = 1 + 9*0.03 = 1.27 → floor(80*1.27) = 101
+    assert.equal(e10.maxHp, 101);
 });
 
 test('近战攻击:进入范围先显示前摇,前摇结束且玩家仍在范围内才造成伤害', () => {
@@ -160,7 +160,7 @@ test('变异:armor/speedMult/hpMult/goldMult 在init时正确叠加到敌人属�
     assert.equal(e.armor, 100); // 0 + 100
     assert.equal(e.speed, Math.floor(65 * 1.5) === 97.5 ? e.speed : 65 * 1.5); // 65*1.5=97.5
     assert.equal(e.maxHp, 240); // 80*3
-    assert.equal(e.goldValue, 40); // 8*5
+    assert.equal(e.goldValue, 10); // 2*5（v4：grunt 金币表值 2）
 });
 
 test('变异:timeCrack 使攻速+50%/移速+30%', () => {

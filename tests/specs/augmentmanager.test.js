@@ -117,11 +117,11 @@ test('一次性海克斯（17 立得金币）立即生效不占格子，且每�
     const ok = am.equip({ id: 'hex17', level: 2 }, p, game);
     assert.equal(ok, true);
     assert.equal(am.active.length, 0, '一次性海克斯不入列');
-    assert.equal(game.economy.gold, 1000, 'Lv2 立得 1000 金币');
+    assert.equal(game.economy.gold, 250, 'Lv2 立得 250 金币（v4 重标）');
 
     // 同一局内第二次选择同一一次性海克斯被拒绝（金币不再重复发放）
     assert.equal(am.equip({ id: 'hex17', level: 3 }, p, game), false, '每局只能选择一次');
-    assert.equal(game.economy.gold, 1000);
+    assert.equal(game.economy.gold, 250);
 
     // 商店卡池不再刷出已消耗的一次性海克斯（15/17）
     for (let i = 0; i < 40; i++) {
@@ -131,7 +131,7 @@ test('一次性海克斯（17 立得金币）立即生效不占格子，且每�
     }
     // force 供测试房沙盒绕过限制重复授予
     assert.equal(am.equip({ id: 'hex17', level: 1 }, p, game, { force: true }), true);
-    assert.equal(game.economy.gold, 1500);
+    assert.equal(game.economy.gold, 330);
 });
 
 test('满格后新海克斯装备失败，升档不受格子限制', () => {
@@ -245,9 +245,9 @@ test('海克斯16 点金手：金币获得乘区按档位换算', () => {
     const p = makeStatsPlayer();
 
     am.equip({ id: 'hex16' }, p, game);
-    assert.equal(game.economy.gainMult, 1.5);
+    assert.equal(game.economy.gainMult, 1.25);
     am.equip({ id: 'hex16' }, p, game);
-    assert.equal(game.economy.gainMult, 2);
+    assert.equal(game.economy.gainMult, 1.5);
     am.unequip('hex16', p, game);
     assert.equal(game.economy.gainMult, 1);
 });
@@ -331,8 +331,9 @@ test('刷新降权：金色显著低于基础货架且≤20%，彩色极小概�
     assert.ok(base.prism <= 0.06, `基础货架彩色也应极小概率（≤6%），实际 ${(base.prism * 100).toFixed(1)}%`);
 });
 
-test('前期金币倍率上调:第一/二章 0.9/1.3(买得起强化)', () => {
+test('v4章节金币乘数:一局一章温和上调 1.0~1.75（原5.5倍通胀已压平）', () => {
     const { GOLD_STAGE_MULT } = require('../dist/systems/Economy');
-    assert.equal(GOLD_STAGE_MULT[0], 0.9, '第一章爆率 0.9(原 0.25)');
-    assert.equal(GOLD_STAGE_MULT[1], 1.3, '第二章爆率 1.3(原 0.6)');
+    assert.equal(GOLD_STAGE_MULT[0], 1.0, '第一章基准 1.0');
+    assert.equal(GOLD_STAGE_MULT[1], 1.15, '第二章 1.15');
+    assert.equal(GOLD_STAGE_MULT[GOLD_STAGE_MULT.length - 1], 1.75, '第6章封顶 1.75');
 });

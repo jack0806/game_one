@@ -408,6 +408,13 @@ test('keepLock(凯尔E弱点弹):锁定目标死亡后不重锁,直飞耗尽—�
     const enemies = [];
     const player = makePlayer();
     const pool = new BulletPool(8);
+    const mkEnemy = (x, y) => {
+        const e = new EnemyBase();
+        e.init('grunt', 1, game);
+        e.x = x; e.y = y;
+        enemies.push(e);
+        return e;
+    };
     const locked = mkEnemy(300, 100);
     const other = mkEnemy(320, 100);
     enemies.push(locked, other);

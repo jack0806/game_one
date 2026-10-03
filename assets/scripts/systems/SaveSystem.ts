@@ -6,6 +6,7 @@
 // 本地文件，API 一致)。提供 3 个独立存档槽：首页「进入游戏」先选槽，
 // 之后大厅/成就墙/局末统计都读写当前选中槽。
 import { sys } from 'cc';
+import { equipmentKey } from '../data/EquipmentDB';
 
 /** 一局结束时的汇总数据（由 GameManager 在死亡/通关时填写）。 */
 export interface RunSummary {
@@ -39,6 +40,16 @@ export interface PlayerProfile {
     bestKillsInRun: number;    // 单局最多击杀
     charsPlayed: string[];     // 使用过的角色id
     achievements: string[];    // 已解锁成就id
+    /** v4：核心币余额（通关结算金币折算 20% 封顶 80；元进度货币）。 */
+    coreCoins: number;
+    /** v4：已通关的最高章号（1~6；章节解锁链=chaptersCleared+1，第 1 章恒解锁）。 */
+    chaptersCleared: number;
+    /** v4：装备仓库（跨局永久；uid/affix/quality，见 data/EquipmentDB.ts）。 */
+    equipments: any[];
+    /** v4：出战装备格（3 格，存装备 uid；空位为 null）。 */
+    equipLoadout: (string | null)[];
+    /** v4：旧档一次性迁移标记（六章连打时代的 bestWave → 章节解锁链）。 */
+    migratedV4?: boolean;
 }
 
 /** 存档槽概览（存档选择页渲染用；exists=false 即空槽）。 */
@@ -102,6 +113,9 @@ function freshProfile(): PlayerProfile {
         bestChapter: 0, bestWave: 0, totalGoldEarned: 0,
         bestCombo: 0, bestAugmentCount: 0, bestKillsInRun: 0,
         charsPlayed: [], achievements: [],
+        coreCoins: 0, chaptersCleared: 0,
+        equipments: [], equipLoadout: [null, null, null],
+        migratedV4: false,
     };
 }
 
@@ -186,6 +200,15 @@ export class SaveSystem {
         try {
             p = parseProfileRaw(sys.localStorage.getItem(this.slotKey(this._slot))) ?? freshProfile();
         } catch (_e) { p = freshProfile(); }
+        // v4 一次性迁移：六章连打时代（全局波次 5/章）的老档按 bestWave 折算
+        // 章节解锁链，避免老玩家进度清零。新档 bestWave=0 折算结果为 0，
+        // 迁移后置标记不再重复执行（新制通关走 recordChapterCleared）。
+        if (!p.migratedV4) {
+            p.migratedV4 = true;
+            const legacyCleared = Math.min(6, Math.floor((p.bestWave ?? 0) / 5));
+            if (legacyCleared > (p.chaptersCleared ?? 0)) p.chaptersCleared = legacyCleared;
+            try { sys.localStorage.setItem(this.slotKey(this._slot), JSON.stringify(p)); } catch (_e) { /* 存储失败下次再迁 */ }
+        }
         this._cache = p;
         return p;
     }
@@ -229,6 +252,80 @@ export class SaveSystem {
             }
         }
         return fresh;
+    }
+
+    // ── v4：核心币与章节解锁链（《关卡设计-15波.md》2.2 / 9.1） ──
+
+    /** 核心币入账（通关结算折算，20% 封顶 80/局）。 */
+    static addCoreCoins(amount: number): void {
+        if (amount <= 0) return;
+        const p = this.load();
+        p.coreCoins += Math.round(amount);
+        this.save();
+    }
+
+    /** 当前核心币余额。 */
+    static coreCoins(): number {
+        return this.load().coreCoins ?? 0;
+    }
+
+    /** 记录通关章号（解锁链：通关第 N 章解锁第 N+1 章）。 */
+    static recordChapterCleared(chapterId: number): void {
+        const p = this.load();
+        if (chapterId > (p.chaptersCleared ?? 0)) {
+            p.chaptersCleared = chapterId;
+            this.save();
+        }
+    }
+
+    /** 已解锁的章节数（第 1 章恒解锁；通关 6 章后无尽入口解锁）。 */
+    static unlockedChapterCount(): number {
+        return Math.min(6, (this.load().chaptersCleared ?? 0) + 1);
+    }
+
+    // ── v4：装备仓库（《关卡设计-15波.md》第 10 节） ──
+
+    /** 装备入仓（拾取即永久保留）；自动填入第一个空装备格。 */
+    static addEquipment(equip: any): void {
+        const p = this.load();
+        p.equipments.push(equip);
+        const slot = p.equipLoadout.findIndex(s => s === null || s === undefined);
+        if (slot >= 0) p.equipLoadout[slot] = equip.uid;
+        this.save();
+    }
+
+    /** 设置出战装备格（uid 为 null 即卸下该格）。 */
+    static setEquipSlot(slot: number, uid: string | null): void {
+        const p = this.load();
+        if (!p.equipLoadout || p.equipLoadout.length < 3) p.equipLoadout = [null, null, null];
+        const i = Math.max(0, Math.min(2, Math.floor(slot)));
+        // 卸下/换装时清掉其他格里的同 uid（一件装备只占一格）
+        if (uid != null) p.equipLoadout = p.equipLoadout.map(s => (s === uid ? null : s));
+        p.equipLoadout[i] = uid;
+        this.save();
+    }
+
+    /** 当前出战装备（按 3 格配置解析；未配置时自动取仓库前 3 件兜底）。 */
+    static equippedItems(): any[] {
+        const p = this.load();
+        const byUid = new Map((p.equipments ?? []).map(e => [e.uid, e]));
+        const loadout = (p.equipLoadout ?? [null, null, null]);
+        let picked = loadout.map(uid => (uid != null ? byUid.get(uid) : undefined)).filter(Boolean);
+        if (!picked.length) picked = (p.equipments ?? []).slice(0, 3);
+        return picked;
+    }
+
+    /** 局内卖出：从仓库与装备格移除（永久失去）。 */
+    static removeEquipment(uid: string): void {
+        const p = this.load();
+        p.equipments = (p.equipments ?? []).filter(e => e.uid !== uid);
+        p.equipLoadout = (p.equipLoadout ?? [null, null, null]).map(s => (s === uid ? null : s));
+        this.save();
+    }
+
+    /** 已拥有装备的去重键集合（掉落表"未拥有优先"用）。 */
+    static ownedEquipmentKeys(): Set<string> {
+        return new Set((this.load().equipments ?? []).map(e => equipmentKey(e)));
     }
 
     /** 已解锁成就的进度/解锁状态视图（成就墙渲染用）。 */

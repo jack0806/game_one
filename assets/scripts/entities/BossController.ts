@@ -5,7 +5,6 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { EnemyBase } from './EnemyBase';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getBossDef, TEST_BOSSES } from '../data/BossDB';
-import { CHAPTERS, chapterForWave } from '../data/WaveData';
 import { resetLocomotion } from '../core/Locomotion';
 import { resetDirectionalFacing } from '../core/DirectionalFacing';
 
@@ -85,7 +84,8 @@ export class BossController extends EnemyBase {
     override init(type: string, wave: number, game: any): void {
         this.isBoss = true;
         this.type   = 'boss';
-        this.chapter = chapterForWave(wave);
+        // v4：一局一章，章号取所选章（0-based _chapter + 1）；wave 仅作名义参数保留
+        this.chapter = Math.max(1, (game?._chapter ?? 0) + 1);
         this.alive  = true;
         this.dots   = [];
         this.frozen = 0; this.slowMult = 1;
@@ -115,8 +115,14 @@ export class BossController extends EnemyBase {
 
     /** Called by GameManager.spawnEnemy('boss') — chapter is 0-based。 */
     initBoss(chapter: number, game: any): void {
-        // 用章节表里的全局 Boss 波次反推章节，避免硬编码每章波数
-        this.init('boss', CHAPTERS[chapter].bossWave, game);
+        // v4：Boss 波恒为关内 W15（wave 仅名义）；章号以显式入参为准，
+        // 与 game._chapter 不一致时（测试房跨章点卡 / 无尽 Boss 轮换）重套章节配置。
+        this.init('boss', 15, game);
+        if (this.chapter !== chapter + 1) {
+            this.chapter = chapter + 1;
+            this._setupForChapter(this.chapter);
+            this._applyDifficulty(game);
+        }
     }
 
     /** 测试房间专属 Boss：按 kind 套 TEST_BOSSES 数值与技能集（chapter 取自表内基准章）。 */

@@ -23,7 +23,7 @@ test('Boss数值表与六章档位一致(第5章机械高达/第6章灭世机神
     assert.deepEqual(BOSSES.map(b => b.damage),    [42, 66, 94, 132, 160, 170]);
     assert.deepEqual(BOSSES.map(b => b.speed),     [62, 68, 74, 80, 68, 65]);
     assert.deepEqual(BOSSES.map(b => b.armor),     [10, 20, 30, 40, 50, 55]);
-    assert.deepEqual(BOSSES.map(b => b.goldValue), [200, 400, 600, 800, 1000, 1200]);
+    assert.deepEqual(BOSSES.map(b => b.goldValue), [150, 280, 360, 450, 550, 650]);
     assert.deepEqual(BOSSES.map(b => b.radius),    [45, 45, 45, 45, 45, 45]);
 });
 
@@ -146,12 +146,14 @@ test('MINI_BOSSES保留6个既有样例并纳入5个新设计小boss', () => {
 
 // ── 工具条单位目录 ──
 
+// 金币值按 v4《关卡设计-15波.md》9.2 经济体系重标（原 7~24 为旧经济摆设值）：
+// 战斗数值（血/伤/速/甲/攻击间隔）仍逐字对应《怪物设计与数值》文档。
 test('TEST_GRUNTS首批锈齿扑兵严格使用设计文档数值与独立贴图', () => {
     const rust = TEST_GRUNTS.find(m => m.id === 'rust_biter');
     assert.ok(rust, '首批应包含锈齿扑兵');
     assert.deepEqual(
         [rust.maxHp, rust.damage, rust.speed, rust.armor, rust.attackInterval, rust.goldValue],
-        [75, 7, 82, 0, 0.95, 7],
+        [75, 7, 82, 0, 0.95, 2],
     );
     assert.equal(rust.spriteKey, 'enemy_rust_biter', '不得复用石狮子/旧grunt占位图');
 });
@@ -161,7 +163,7 @@ test('断针射手严格使用设计文档数值与独立磁轨虫贴图', () =>
     assert.ok(needle, '首批远程生态应包含断针射手');
     assert.deepEqual(
         [needle.maxHp, needle.damage, needle.speed, needle.armor, needle.attackInterval, needle.goldValue],
-        [58, 6, 58, 0, 1.65, 9],
+        [58, 6, 58, 0, 1.65, 3],
     );
     assert.equal(needle.spriteKey, 'enemy_needle_gunner');
 });
@@ -171,7 +173,7 @@ test('酸囊投手严格使用设计文档数值与独立酸囊贴图', () => {
     assert.ok(acid);
     assert.deepEqual(
         [acid.maxHp, acid.damage, acid.speed, acid.armor, acid.attackInterval, acid.goldValue],
-        [62, 4, 55, 0, 2.2, 10],
+        [62, 4, 55, 0, 2.2, 3],
     );
     assert.equal(acid.spriteKey, 'enemy_acid_sac');
 });
@@ -181,23 +183,23 @@ test('铆甲兽与掠金虫严格使用设计文档数值和独立贴图', () =>
     const gold = TEST_GRUNTS.find(m => m.id === 'gold_scavenger');
     assert.deepEqual(
         [rivet.maxHp, rivet.damage, rivet.speed, rivet.armor, rivet.attackInterval, rivet.goldValue],
-        [230, 9, 34, 18, 1.35, 14],
+        [230, 9, 34, 18, 1.35, 5],
     );
     assert.equal(rivet.spriteKey, 'enemy_rivet_beast');
     assert.equal(rivet.visualScale, 1.30, '铆甲兽贴图应收进护盾与正面装甲提示范围');
     assert.deepEqual(
         [gold.maxHp, gold.damage, gold.speed, gold.armor, gold.attackInterval, gold.goldValue],
-        [46, 0, 105, 0, 999, 24],
+        [46, 0, 105, 0, 999, 20],
     );
     assert.equal(gold.spriteKey, 'enemy_gold_scavenger');
 });
 
 test('余下四种炮灰严格使用设计文档数值与独立贴图', () => {
     const expected = {
-        ember_acolyte: [68, 5, 50, 2, 2.4, 11, 'enemy_ember_acolyte'],
-        frost_acolyte: [74, 5, 48, 2, 2.6, 11, 'enemy_frost_acolyte'],
-        arc_leech: [82, 5, 68, 4, 2.0, 12, 'enemy_arc_leech'],
-        blast_tick: [44, 28, 92, 0, 999, 10, 'enemy_blast_tick'],
+        ember_acolyte: [68, 5, 50, 2, 2.4, 3, 'enemy_ember_acolyte'],
+        frost_acolyte: [74, 5, 48, 2, 2.6, 3, 'enemy_frost_acolyte'],
+        arc_leech: [82, 5, 68, 4, 2.0, 3, 'enemy_arc_leech'],
+        blast_tick: [44, 28, 92, 0, 999, 2, 'enemy_blast_tick'],
     };
     for (const [id, row] of Object.entries(expected)) {
         const unit = TEST_GRUNTS.find(m => m.id === id);

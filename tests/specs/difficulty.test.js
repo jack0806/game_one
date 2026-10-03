@@ -26,14 +26,14 @@ test('难度表：四档 easy→hell，倍率 0.25/0.5/1/1.5，仅简单削减 B
     }
 });
 
-test('地狱难度：怪物血/攻/甲/赏金×1.5，移速与攻速不变（grunt 波1基准 80/8/0/8/65）', () => {
+test('地狱难度：怪物血/攻/甲×1.5 且移速与攻速不变；金币不吃难度乘区（v4 9.3，grunt 表值 2）', () => {
     const game = makeMockGame({ _difficulty: byId('hell') });
     const e = new EnemyBase();
     e.init('grunt', 1, game);
     assert.equal(e.maxHp, 120);
     assert.equal(e.hp, 120);
     assert.equal(e.damage, 12);
-    assert.equal(e.goldValue, 12);
+    assert.equal(e.goldValue, 2, '金币走独立难度系数，不再吃 statMult');
     assert.equal(e.speed, 65, '移速不吃难度乘区');
     assert.equal(e.attackSpeed, 1, '攻速节奏不吃难度乘区');
 });
@@ -67,11 +67,11 @@ test('无难度注入（测试房/旧流程）：数值精确等于表值', () =
 test('Boss 数值吃难度乘区且移速不变；简单难度带技能削减标记', () => {
     const easy = makeMockGame({ _difficulty: byId('easy') });
     const b = makeBoss(easy);
-    // 第1章 Boss 表值 3000/42/62/10/200
+    // 第1章 Boss 表值 3000/42/62/10/150（金币 v4 重标且不吃难度乘区）
     assert.equal(b.maxHp, 750);  assert.equal(b.hp, 750);
     assert.equal(b.damage, 10.5);
     assert.equal(b.armor, 2.5);
-    assert.equal(b.goldValue, 50);
+    assert.equal(b.goldValue, 150);
     assert.equal(b.speed, 62, 'Boss 移速不吃难度乘区');
     assert.equal(b.bossSkillCut, 3);
 
