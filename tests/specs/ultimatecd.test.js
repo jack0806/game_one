@@ -51,11 +51,15 @@ test('ultChargeRate(储能核心)等比缩短大招恢复时间', () => {
     assert.equal(p.getUltChargeRatio(), 1, '×2充能速度下一半时间即应充满');
 });
 
-test('六个角色ultCd全部落在15-20秒强度分档内', () => {
-    for (const key of Object.keys(CHARACTERS)) {
+test('基础六角色ultCd落在15-20秒强度分档内(新增角色按各自设计稿)', () => {
+    const BASE = ['kai', 'vivian', 'reik', 'olia', 'graf', 'liana'];
+    for (const key of BASE) {
         const cd = CHARACTERS[key].ultCd;
         assert.ok(cd >= 15 && cd <= 20, `${key}的ultCd(${cd})应在15-20区间`);
     }
+    // 自定义英雄：薇娅掠夺领域35s / 莫提斯亡者天灾30s（设计稿指定）
+    assert.equal(CHARACTERS.via.ultCd, 35);
+    assert.equal(CHARACTERS.mortis.ultCd, 30);
 });
 
 test('击杀敌人不再给大招充能(旧版每杀+12%)', () => {

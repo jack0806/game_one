@@ -13,7 +13,7 @@ import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
 import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 import { animationAlphaTop } from '../data/AnimationBoundsDB';
 import { styleLabel, refreshAllLabels, loadUIFont } from './LabelUtils';
-import { CharDef, CHARS } from '../data/CharacterDB';
+import { CharDef, CHARS, spawnSkeletonServant } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS, starterPack } from '../data/WaveData';
@@ -126,6 +126,11 @@ export class GameManager extends Component {
     private _fxPool!:        SpriteNodePool;
     /** 持续敌方弹体/区域机制材质层；容量按后期弹幕密度预分配。 */
     private _enemyArtPool!:  SpriteNodePool;
+    /** 亡灵法师·莫提斯头顶灵魂层数标签：懒创建挂在 GameLayer（不在玩家节点下，
+     *  避免被身体朝向的镜像缩放连带翻转），非战斗/非莫提斯/死亡时隐藏。 */
+    private _soulLabelNode?: Node;
+    private _soulLabel?:     Label;
+    private _soulLabelValue = -1;
 
     // ── systems ───────────────────────────────────────────────
     private _input!:      InputManager;
@@ -2699,6 +2704,8 @@ export class GameManager extends Component {
     private _drawEntities() {
         const g = this._gameGfx;
         g.clear();
+        // 放在 !inCombat 早退之前：离开战斗（暂停/结算/选人）时也要把头顶层数收起。
+        this._syncSoulHeadLabel();
         this._turretBasePool.releaseAll();
         this._turretBarrelPool.releaseAll();
         this._summonArtPool.releaseAll();
@@ -3003,6 +3010,63 @@ export class GameManager extends Component {
                 g.strokeColor = new Color(190, 130, 255, Math.floor(200 * fade));
                 g.lineWidth = 2.5;
                 g.circle(lx, ly, 18 + Math.sin(this._visualTime * 6) * 3); g.stroke();
+                continue;
+            }
+            // 亡灵法师·骸骨仆从：骨白小圆 + 血圈 + 顶部骨头标识
+            if (t.kind === 'skeleton') {
+                const [kx, ky] = this._toLocal(t.x, t.y);
+                const fade = Math.max(0, Math.min(1, t._t / 2));
+                g.fillColor = new Color(232, 226, 208, Math.floor(235 * fade));
+                g.circle(kx, ky, 12); g.fill();
+                g.strokeColor = new Color(90, 84, 70, Math.floor(220 * fade));
+                g.lineWidth = 2; g.circle(kx, ky, 12); g.stroke();
+                g.fillColor = new Color(40, 40, 36, Math.floor(255 * fade));
+                g.circle(kx - 4, ky - 2, 2); g.fill();
+                g.circle(kx + 4, ky - 2, 2); g.fill();
+                // 生命圈：剩余血量比例
+                g.strokeColor = new Color(168, 224, 110, Math.floor(220 * fade));
+                g.lineWidth = 2.5;
+                g.arc(kx, ky, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, t.hp / t.maxHp), false); g.stroke();
+                continue;
+            }
+            // 腐雾领域：瘟绿半透明雾圈 + 内旋纹理
+            if (t.kind === 'rotFog') {
+                const [fx2, fy2] = this._toLocal(t.x, t.y);
+                const fade = Math.max(0, Math.min(1, t._t / 1.2));
+                g.fillColor = new Color(96, 160, 70, Math.floor(52 * fade));
+                g.circle(fx2, fy2, t.r); g.fill();
+                g.strokeColor = new Color(168, 224, 110, Math.floor(150 * fade));
+                g.lineWidth = 2.5; g.circle(fx2, fy2, t.r); g.stroke();
+                g.strokeColor = new Color(140, 200, 96, Math.floor(70 * fade));
+                g.lineWidth = 1.5;
+                g.circle(fx2, fy2, t.r * 0.66 + Math.sin(this._visualTime * 2.2) * 14); g.stroke();
+                continue;
+            }
+            // 掠夺领域：金色掠夺法阵（边缘刻度 + 呼吸内环）
+            if (t.kind === 'plunderDomain') {
+                const [px2, py2] = this._toLocal(t.x, t.y);
+                const fade = Math.max(0, Math.min(1, t._t / 1.2));
+                g.strokeColor = new Color(240, 192, 74, Math.floor(190 * fade));
+                g.lineWidth = 3.5; g.circle(px2, py2, t._maxR); g.stroke();
+                g.strokeColor = new Color(240, 192, 74, Math.floor(60 * fade));
+                g.lineWidth = 1.5;
+                g.circle(px2, py2, t._maxR * 0.7 + Math.sin(this._visualTime * 2.6) * 18); g.stroke();
+                for (let k = 0; k < 12; k++) {
+                    const a = k * Math.PI / 6 + this._visualTime * 0.35;
+                    g.strokeColor = new Color(240, 192, 74, Math.floor(120 * fade));
+                    g.moveTo(px2 + Math.cos(a) * (t._maxR - 14), py2 + Math.sin(a) * (t._maxR - 14));
+                    g.lineTo(px2 + Math.cos(a) * t._maxR, py2 + Math.sin(a) * t._maxR); g.stroke();
+                }
+                continue;
+            }
+            // 收账冲击：金色扩散双环
+            if (t.kind === 'debtWave') {
+                const [dx2, dy2] = this._toLocal(t.x, t.y);
+                const fade = Math.max(0, 1 - t.r / t._maxR);
+                g.strokeColor = new Color(240, 192, 74, Math.floor(230 * fade));
+                g.lineWidth = 6; g.circle(dx2, dy2, t.r); g.stroke();
+                g.strokeColor = new Color(255, 226, 150, Math.floor(150 * fade));
+                g.lineWidth = 2; g.circle(dx2, dy2, Math.max(4, t.r - 16)); g.stroke();
                 continue;
             }
             // 混沌傀儡·格雷夫：混沌脉冲间隙（长200/宽100裂隙带）与混沌爆发
@@ -4938,6 +5002,85 @@ export class GameManager extends Component {
 
     despawnLifeClone(): void {
         if (this._lifeClone) { this._lifeClone.alive = false; this._lifeClone = null; }
+    }
+
+    // ── 亡灵法师·莫提斯（mortis）：骸骨军团 + 灵魂收割 ──────
+
+    /** 怪物死亡钩子（EnemyBase._die 调用）：骸骨军团复苏判定。 */
+    tryRaiseSkeleton(e: any): void {
+        const p = this._player;
+        if (!p?.stats?.skeletonRaiser || !e || e.x === undefined) return;
+        if (Vec.dist(e.x, e.y, p.x, p.y) > 600) return;
+        const count = this._turrets.filter(t => t.kind === 'skeleton' && t.alive && !t._noCap).length;
+        if (count >= 8) return;
+        if (!Rng.chance(0.25)) return;
+        spawnSkeletonServant(this, p, e.x, e.y, 25);
+        this._particles.hexActivate?.(e.x, e.y, '#a8e06e');
+    }
+
+    /** 怪物死亡钩子：灵魂收割吸取1个灵魂（含仆从击杀）。
+     *  （与既有 onEnemyKilled——经济掉落+词条分发——是两条独立钩子。） */
+    onEnemySlain(_e: any): void {
+        const p = this._player;
+        if (!p?.stats?.soulHarvest) return;
+        this.grantSoul(p);
+    }
+
+    /** 吸取1层灵魂（上限60），并按每满20层折算E冷却扁平缩减（-1秒/档）。 */
+    grantSoul(p: any): void {
+        const s = p.stats;
+        if ((s._souls || 0) >= 60) return;
+        s._souls = (s._souls || 0) + 1;
+        s.eCdFlatReduction = Math.floor(Math.min(60, s._souls) / 20);
+        if (s._souls % 10 === 0) {
+            this._floatText.spawn?.(p.x, p.y - 40, `灵魂 ×${s._souls}`, '#a8e06e', 13, false);
+        }
+    }
+
+    /** 头顶灵魂层数显示（_drawEntities 每帧调用）：跟随玩家逻辑根，只同步变化值。 */
+    private _syncSoulHeadLabel(): void {
+        const p = this._player;
+        const show = this._inCombat() && !!p?.alive && !!p?.stats?.soulHarvest;
+        if (!show) {
+            if (this._soulLabelNode?.active) this._soulLabelNode.active = false;
+            return;
+        }
+        if (!this._soulLabelNode) {
+            this._soulLabelNode = new Node('SoulCount');
+            this._soulLabelNode.setParent(this._gameLayer);
+            const lbl = this._soulLabelNode.addComponent(Label);
+            lbl.fontSize = 13;
+            lbl.lineHeight = 18;
+            lbl.color = new Color(168, 224, 110, 255);   // 与灵魂浮字同色 #a8e06e
+            styleLabel(lbl);
+            this._soulLabel = lbl;
+        }
+        this._soulLabelNode.active = true;
+        const souls = Math.min(60, p.stats._souls || 0);
+        if (souls !== this._soulLabelValue) {
+            this._soulLabelValue = souls;
+            this._soulLabel!.string = `灵魂 ${souls}/60`;
+        }
+        const [px, py] = this._toLocal(p.x, p.y);
+        this._soulLabelNode.setPosition(Math.round(px), Math.round(py + 52), 0);
+    }
+
+    /** 骸骨仇恨牵引：500码内最近的骸骨仆从（无则返回 null，敌人照常追主角）。 */
+    nearestSkeleton(x: number, y: number): any {
+        let best: any = null, bd = 500;
+        for (const t of this._turrets) {
+            if (t.kind === 'skeleton' && t.alive) {
+                const d = Math.hypot(t.x - x, t.y - y);
+                if (d < bd) { bd = d; best = t; }
+            }
+        }
+        return best;
+    }
+
+    /** 盗神·薇娅：窃取结果/赃技释放的反馈文案（技能名仍由 PlayerController 统一显示）。 */
+    announceSteal(msg: string): void {
+        this._floatText.spawn?.(this._player.x, this._player.y - 56, msg, '#f0c04a', 15, true);
+        this._audio?.playSfx?.('skill_q', 0.6);
     }
 
     /**

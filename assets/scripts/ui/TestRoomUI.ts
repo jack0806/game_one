@@ -451,10 +451,10 @@ export class TestRoomUI extends Component {
 
         const bg = this._heroBoxG;
         bg.clear();
-        drawHexPanel(bg, -450, -160, 900, 320, UI_PALETTE.cyan, 250);
+        drawHexPanel(bg, -575, -160, 1150, 320, UI_PALETTE.cyan, 250);
     }
 
-    /** 英雄选择浮层：全屏半透明遮罩 + 3×2 角色卡，点卡即切换并关闭。 */
+    /** 英雄选择浮层：全屏半透明遮罩 + 4×2 角色卡（8名英雄），点卡即切换并关闭。 */
     private _buildHeroPanel() {
         const panel = this._heroPanel = new Node('HeroPanel'); panel.setParent(this.node);
         registerKeyboardModalScope(panel);
@@ -471,7 +471,7 @@ export class TestRoomUI extends Component {
         // 面板全局居中（工具条局部 y=312）
         const box = new Node('Box'); box.setParent(panel);
         box.setPosition(new Vec3(0, 312, 0));
-        box.addComponent(UITransform).setContentSize(900, 320);
+        box.addComponent(UITransform).setContentSize(1150, 320);
         // 面板必须截断输入，避免点击英雄卡时事件穿透到底层 Dim，出现
         // “浮层关闭但没有换人”的假成功。子卡仍会先收到 TOUCH_END。
         box.addComponent(BlockInputEvents);
@@ -489,12 +489,13 @@ export class TestRoomUI extends Component {
         tl.fontSize = 22; tl.color = new Color(255, 215, 90, 255);
         styleLabel(tl);
 
-        const xs = [-300, 0, 300];
+        // 8名英雄 4×2 网格（面板同步加宽到1150）；列数取自 xs 长度，超出 xs/ys 的英雄数需同步扩表
+        const xs = [-435, -145, 145, 435];
         const ys = [48, -72];
         for (let i = 0; i < CHARS.length; i++) {
             const def = CHARS[i];
             const card = new Node(`HeroCard_${i}`); card.setParent(box);
-            card.setPosition(new Vec3(xs[i % 3], ys[Math.floor(i / 3)], 0));
+            card.setPosition(new Vec3(xs[i % xs.length], ys[Math.floor(i / xs.length)], 0));
             card.addComponent(UITransform).setContentSize(150, 108);
             const g = card.addComponent(Graphics);
 

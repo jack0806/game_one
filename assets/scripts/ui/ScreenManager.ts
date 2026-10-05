@@ -733,7 +733,8 @@ export class ScreenManager extends Component {
             });
         };
         const roles = ['贯穿射击 / 爆发输出', '炮台部署 / 火力支援', '近身作战 / 吸血续航',
-            '时空切换 / 灵活突袭', '混沌法术 / 范围压制', '远程狙击 / 冰霜控制'];
+            '时空切换 / 灵活突袭', '混沌法术 / 范围压制', '远程狙击 / 冰霜控制',
+            '技能窃取 / 灵活诡诈', '召唤军团 / 灵魂滚雪球'];
         CHARS.forEach((def, i) => {
             const accent = Color.fromHEX(new Color(), def.color);
             const focus = new Node(`HeroFocus_${i}`); focus.setParent(p); focus.setPosition(0, 45);
@@ -773,7 +774,7 @@ export class ScreenManager extends Component {
                 detail.on(Node.EventType.TOUCH_END, () => this.showCharDetail(def), this);
             }
             focusPanels.push(focus);
-            const tile = this._mkBtn(p, def.name.split('·').pop()!.trim(), -500 + i * 200, -254,
+            const tile = this._mkBtn(p, def.name.split('·').pop()!.trim(), -560 + i * 160, -254,
                 180, 120, new Color(83, 114, 137));
             tile.name = `HeroTile_${i}`;
             const name = tile.getChildByName('L')!;

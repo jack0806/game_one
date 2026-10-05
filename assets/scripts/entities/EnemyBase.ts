@@ -10,6 +10,7 @@ import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/
 import { createDirectionalFacingState, resetDirectionalFacing, resolveFacingView } from '../core/DirectionalFacing';
 import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
 import { actorClip, ActorAction, ActorView } from '../data/ActorAnimationDB';
+import { kleptoStagger, kleptoCaptureAttack } from '../data/CharacterDB';
 
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
@@ -72,6 +73,8 @@ export class EnemyBase {
     stunned     = 0;
     /** 格雷夫被动·洞察标记：被普攻/技能命中时消耗并追加20%穿甲伤害。 */
     _insightMark = false;
+    /** 盗神·薇娅：被盗技能标记——下次施法只空放动作并陷入2秒失措。 */
+    _skillStolen = false;
     goldValue   = 10;
     xpValue     = 5;
     knockbackX  = 0;
@@ -194,7 +197,7 @@ export class EnemyBase {
         this.chapter = Math.max(1, (game?._chapter ?? 0) + 1);
         const statScale = chapterDef(this.chapter).statScale;
         const scale  = statScale * (1 + (wave - 1) * 0.03);
-        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false;
+        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false; this._skillStolen = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0; this.actionRecoil = 0;
         this.rangedAimWindup = 0; this.rangedAimTargetX = 0; this.rangedAimTargetY = 0;
@@ -531,6 +534,10 @@ export class EnemyBase {
     protected _die(attacker: any, game: any): void {
         // 幂等保护：同帧多段伤害（多子弹/DoT+直伤）抢杀时只结算一次掉落与击杀数
         if (!this.alive) return;
+        // 亡灵法师·莫提斯：骸骨军团复苏判定 + 灵魂收割（含仆从击杀——仆从伤害
+        // 走 takeDamage 正常死亡结算，同样到达这里）
+        game?.tryRaiseSkeleton?.(this);
+        game?.onEnemySlain?.(this);
         if (this.type === 'arc_leech') {
             for (const linked of this.arcLinks) if (linked.alive) linked.stunned = Math.max(linked.stunned, 0.6);
             this.arcLinks = [];
@@ -847,6 +854,9 @@ export class EnemyBase {
         if (this.attackWindup > 0) {
             this.attackWindup = Math.max(0, this.attackWindup - dt * (this.arcBoostTimer > 0 ? 1.15 : 1));
             if (this.attackWindup <= 0 && player.alive) {
+                // 盗神·薇娅被动·失主还没发现：被盗技能的怪物施法动作照常做完，
+                // 但无法释放——陷入2秒失措（stunned 跳过AI，无法移动和攻击）
+                if (this._skillStolen && kleptoStagger(this, game)) return;
                 const atkDist = this.radius + (player.radius ?? 16) + this.meleeRange;
                 const dist = Math.hypot(player.x - this.x, player.y - this.y);
                 this.actionRecoil = this.isMiniBoss ? 0.24 : 0.17;
@@ -959,6 +969,9 @@ export class EnemyBase {
         // 分身而够不到主角；远程单位整体跳过走位/开火逻辑，同样追堵分身）。
         const lifeClone = (game as any)?._lifeClone;
         if (lifeClone?.alive) aiTarget = lifeClone;
+        // 亡灵法师·骸骨军团：仆从优先吸引仇恨（500码内小怪改追仆从挡刀）
+        const skeleton = (game as any).nearestSkeleton?.(this.x, this.y);
+        if (skeleton) aiTarget = skeleton;
         const routeTarget = game.arenaSteerTarget?.(this.x, this.y, aiTarget.x, aiTarget.y, this.radius) ?? aiTarget;
         const [dx, dy] = Vec.normalize(routeTarget.x - this.x, routeTarget.y - this.y);
         this.combatFacingX = dx; this.combatFacingY = dy;
@@ -971,6 +984,13 @@ export class EnemyBase {
         let arcShot = false;
         let acidShot: [number, number] | undefined;
         if (this.rangedRange > 0 && !lifeClone?.alive) {
+            // 盗神·薇娅：被盗技能的远程出手空放并失措2秒；冷却就绪的普攻出手前被截取
+            if (this._skillStolen && kleptoStagger(this, game)) return;
+            if (this._atkCd <= 0 && player.stats?.klepto
+                && kleptoCaptureAttack(this, player, game, 'ranged')) {
+                this._atkCd = 0.5;
+                return;
+            }
             const dist = game.arenaLineClear?.(this.x, this.y, player.x, player.y) === false
                 ? Infinity : Math.hypot(player.x - this.x, player.y - this.y);
             if (dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }      // 太近 → 后撤
@@ -1212,10 +1232,15 @@ export class EnemyBase {
             const atkDist = this.radius + (player.radius ?? 16) + this.meleeRange;
             const dist = Math.hypot(player.x - this.x, player.y - this.y);
             if (dist <= atkDist) {
-                this._atkCd = 1 / Math.max(0.01, this.attackSpeed);
-                this.attackWindup = this.attackWindupMax;
-                this.attackTargetX = player.x;
-                this.attackTargetY = player.y;
+                // 盗神·薇娅：E截取/R掠夺——近战出手前被收走（失措在结算帧判定）
+                if (player.stats?.klepto && kleptoCaptureAttack(this, player, game, 'melee')) {
+                    this._atkCd = 0.5;
+                } else {
+                    this._atkCd = 1 / Math.max(0.01, this.attackSpeed);
+                    this.attackWindup = this.attackWindupMax;
+                    this.attackTargetX = player.x;
+                    this.attackTargetY = player.y;
+                }
             }
         }
     }

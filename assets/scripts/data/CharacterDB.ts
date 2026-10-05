@@ -560,6 +560,259 @@ export const CHARACTERS: Record<string, CharDef> = {
             game.floatingText.spawn(640, 200, '绝对零度', '#00ccff', 28, true);
         },
     },
+    via: {
+        id: 'via',
+        name: '盗神·薇娅', icon: '🎭', color: '#f0c04a', unlocked: true,
+        attackType: 'ranged', attackRange: 550, ultCd: 35, qCd: 15, eCd: 10,
+        desc: '失主还没发现：被盗技能的怪物下次施法只空放动作，并失措2秒（无法移动和攻击）',
+        skills: {
+            q: '窃神之手 — 盗取鼠标选中500码内怪物的技能（一/二/三技能概率30%/30%/10%），得一次性赃技；再按Q释放赃技后Q才开始冷却；失败恢复5点生命并立即冷却',
+            e: '这招我收下了 — 截取周围150码敌方普攻至多5份（弹幕保留特征/近战化斩击/范围化爆核），再按E向怪群释放；超过6秒自动释放，全部释放后才开始冷却',
+            r: '此刻，归我所有 — 展开450码掠夺领域5秒：夺取敌方子弹/陷阱/召唤物与近战攻击（化为残影反击），结束时释放收账冲击，造成30+夺取次数×10点伤害（上限150）',
+        },
+        skillIcons: { q: 'gold', e: 'bounce', r: 'chaos' },
+        stats: { maxHp: 110, speed: 330, damage: 20, attackSpeed: 1.2, armor: 5, critRate: 0.1, critDmg: 0.5, pierce: 0 },
+        passive(p: any) { p.stats.klepto = true; },
+        qSkill(p: any, game: any) {
+            // 双模式：持有赃技→释放（一次性，之后Q才开始冷却）；否则→窃取
+            const loaded = p.stats._stolenSkill;
+            if (loaded) {
+                const pool = game.bulletPool ?? game.bullets;
+                if (loaded.kind === 'volley') {
+                    // 一技能：三发追踪弹，各带赃技伤害
+                    const targets = (game.enemies || []).filter((e: any) => e.alive && !e.dead && !e.invisible)
+                        .sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y))
+                        .slice(0, 3);
+                    for (const t of targets) {
+                        const a = Math.atan2(t.y - p.y, t.x - p.x);
+                        pool?.spawn?.({ x: p.x, y: p.y, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420,
+                            damage: loaded.dmg, radius: 8, color: loaded.color, owner: 'player',
+                            lifeTime: 2.5, charKey: 'via', homing: true, _homingTarget: t, pierceLeft: 0 });
+                    }
+                } else if (loaded.kind === 'nova') {
+                    // 二技能：八向弹幕
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2;
+                        pool?.spawn?.({ x: p.x, y: p.y, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380,
+                            damage: loaded.dmg, radius: 7, color: loaded.color, owner: 'player',
+                            lifeTime: 2, charKey: 'via', pierceLeft: 0 });
+                    }
+                } else {
+                    // 三技能（杀招）：在敌群中心引爆
+                    const c = game.getEnemyClusterPoint?.() ?? game.getNearestEnemy?.(p.x, p.y);
+                    if (c) game.spawnExplosion?.(p, c.x, c.y, loaded.dmg, 130, game);
+                }
+                game.announceSteal?.(`赃技·${loaded.name}！`);
+                game.particles.hexActivate(p.x, p.y, '#f0c04a');
+                p.stats._stolenSkill = undefined;
+                p.stats.deferQcd = false;
+                // 使用赃技后 Q 才开始冷却
+                p._qCd = (p._charDef?.qCd ?? 15) * (1 - (p.stats.cdReduction || 0));
+                return;
+            }
+            // 窃取模式：鼠标选中（距鼠标最近且在玩家500码内）的怪物
+            const mouse = game.input?.mouse;
+            const mx = mouse?.x ?? p.x, my = mouse?.y ?? p.y;
+            const cands = (game.enemies || []).filter((e: any) =>
+                e.alive && !e.dead && !e.invisible && Vec.dist(e.x, e.y, p.x, p.y) <= 500);
+            if (!cands.length) {
+                p.heal(5, false);
+                game.announceSteal?.('窃取失败：500码内无可窃目标，恢复5点生命');
+                p.stats.deferQcd = false;
+                return;   // PlayerController 按常规启动 Q 冷却
+            }
+            cands.sort((a: any, b: any) =>
+                Vec.dist(a.x, a.y, mx, my) - Vec.dist(b.x, b.y, mx, my));
+            const target = cands[0];
+            const slots = target.isBoss || target.isElite ? 3 : 2;
+            const roll = Rng.float(0, 1);
+            const slot = roll < 0.3 ? 1 : roll < 0.6 ? 2 : roll < 0.7 ? 3 : 0;   // 30/30/10，其余失败
+            if (!slot || slot > slots) {
+                p.heal(5, false);
+                game.announceSteal?.('窃取失败：对方捂紧了技能，恢复5点生命');
+                game.particles.hexActivate(target.x, target.y, '#8a8f9a');
+                p.stats.deferQcd = false;
+                return;
+            }
+            // 成功：怪物标记失措被动 + 获得一次性赃技（Q 挂起冷却直到赃技被使用）
+            target._skillStolen = true;
+            p.stats._stolenSkill = {
+                name: `${target.label || target.type || '怪物'}·${['普攻', '特技', '杀招'][slot - 1]}`,
+                kind: (['volley', 'nova', 'nuke'] as const)[slot - 1],
+                dmg: slot === 3
+                    ? Math.max(60, Math.round((target.maxHp || 100) * (target.isBoss ? 0.02 : 0.06)))
+                    : Math.max(15, Math.round((target.damage || 10) * (slot === 1 ? 2 : 1.2))),
+                color: target.glowColor || target.color || '#ff9d5c',
+            };
+            p.stats.deferQcd = true;
+            game.announceSteal?.(`窃取成功：${p.stats._stolenSkill.name}（再按Q释放）`);
+            game.particles.hexActivate(target.x, target.y, '#f0c04a');
+        },
+        eSkill(p: any, game: any) {
+            // 双模式：无截取状态→进入截取（E冷却挂起）；有→立即释放全部
+            if (!p.stats._intercept) {
+                p.stats._intercept = { stored: [], t: 6 };
+                p.stats.deferEcd = true;
+                game.particles.hexActivate(p.x, p.y, '#f0c04a');
+            } else {
+                fireStoredAttacks(p, game);
+            }
+        },
+        ultimate(p: any, game: any) {
+            // 掠夺领域：锚定施放位置（450码/5秒）。子弹与近战的截取在
+            // BulletController/EnemyBase 挂点读取 _plunderDomain；陷阱/召唤物
+            // 由领域自身周期性没收（计入夺取次数）。结束时释放收账冲击。
+            const domain: any = {
+                x: p.x, y: p.y, r: 26, alive: true, kind: 'plunderDomain',
+                _t: 5, _captures: 0, _confiscT: 0, _maxR: 450, owner: p,
+            };
+            domain.update = (dt: number, g: any) => {
+                domain._t -= dt;
+                if (domain._t <= 0) {
+                    domain.alive = false;
+                    if ((g as any)._plunderDomain === domain) (g as any)._plunderDomain = null;
+                    // 收账冲击：30 + 夺取次数×10（上限150），扩散波前逐个结算
+                    const dmg = Math.min(150, 30 + domain._captures * 10);
+                    const wave: any = {
+                        x: domain.x, y: domain.y, r: 10, alive: true, kind: 'debtWave',
+                        _speed: 900, _maxR: 450, _hit: new Set(), _dmg: dmg, owner: p,
+                    };
+                    wave.update = (wdt: number, wg: any) => {
+                        wave.r = Math.min(wave._maxR, wave.r + wave._speed * wdt);
+                        for (const e of (wg.enemies || [])) {
+                            if (!e.alive || e.dead || wave._hit.has(e)) continue;
+                            if (Math.hypot(e.x - wave.x, e.y - wave.y) <= wave.r + e.radius) {
+                                wave._hit.add(e);
+                                if (p.applyAttackDamage) p.applyAttackDamage(e, wg, wave._dmg);
+                                else e.takeDamage(wave._dmg, p, wg);
+                            }
+                        }
+                        if (wave.r >= wave._maxR) wave.alive = false;
+                    };
+                    if (g.turrets) g.turrets.push(wave); else g.turrets = [wave];
+                    game.floatingText.spawn(640, 200, `收账冲击 ${dmg}`, '#f0c04a', 26, true);
+                    game.screenShake.shake(15, 0.5);
+                    return;
+                }
+                // 没收领域内的敌方陷阱/召唤物（0.4秒节流，计入夺取次数）
+                domain._confiscT -= dt;
+                if (domain._confiscT > 0) return;
+                domain._confiscT = 0.4;
+                for (const t of (g.turrets || [])) {
+                    if (!t.alive || t === domain) continue;
+                    if (t.owner && (t.owner.isBoss || t.owner.isElite)
+                        && Vec.dist(t.x, t.y, domain.x, domain.y) <= domain._maxR) {
+                        t.alive = false;
+                        domain._captures++;
+                        g.particles?.hexActivate?.(t.x, t.y, '#f0c04a');
+                    }
+                }
+                for (const arrName of ['_railSaws', '_pillars']) {
+                    const arr = (g as any)[arrName];
+                    for (let i = (arr || []).length - 1; i >= 0; i--) {
+                        const o = arr[i];
+                        if (Vec.dist(o.x ?? domain.x, o.y ?? domain.y, domain.x, domain.y) <= domain._maxR) {
+                            arr.splice(i, 1);
+                            domain._captures++;
+                            g.particles?.hexActivate?.(o.x ?? domain.x, o.y ?? domain.y, '#f0c04a');
+                        }
+                    }
+                }
+            };
+            if (game.turrets) game.turrets.push(domain); else game.turrets = [domain];
+            (game as any)._plunderDomain = domain;
+            game.particles.hexActivate(p.x, p.y, '#f0c04a');
+            game.screenShake.shake(10, 0.4);
+        },
+    },
+    mortis: {
+        id: 'mortis',
+        name: '亡灵法师·莫提斯', icon: '💀', color: '#a8e06e', unlocked: true,
+        attackType: 'ranged', attackRange: 550, ultCd: 30, qCd: 3, eCd: 10,
+        desc: '骸骨军团：600码内死亡的怪物25%化为仆从(至多8具)挡刀；灵魂收割：击杀吸1层灵魂，每层技能伤害+1%(上限60层)，每满20层E冷却-1秒，被怪物命中损失2层',
+        skills: {
+            q: '白骨之矛 — 向鼠标方向刺出白骨长矛，穿透700码直线上所有怪物，造成45点伤害并减速30%持续1.5秒；每命中1个怪物吸取1个灵魂',
+            e: '腐雾领域 — 在鼠标位置生成半径350码的死亡腐雾，存在5秒：雾内怪物每秒受12点伤害并减速20%；骸骨仆从在雾内攻速+50%且每秒回复5点生命',
+            r: '亡者天灾 — 引爆场上所有骸骨仆从，每具造成一次半径300码的尸爆(60点伤害，可叠加)，随后立即从周围复苏8具仆从(可超上限，持续15秒)，并触发所有已装备词条的击杀效果',
+        },
+        skillIcons: { q: 'pierce', e: 'poison', r: 'summon' },
+        stats: { maxHp: 100, speed: 300, damage: 45, attackSpeed: 0.6, armor: 5, critRate: 0.15, critDmg: 0.6, pierce: 0 },
+        passive(p: any) {
+            p.stats.skeletonRaiser = true;
+            p.stats.soulHarvest = true;
+            p.stats._souls = 0;
+            p.stats.eCdFlatReduction = 0;
+        },
+        qSkill(p: any, game: any) {
+            // 白骨之矛：鼠标/朝向方向的穿透长矛，命中减速30%并各吸1个灵魂
+            const mouse = game.input?.mouse;
+            let nx: number, ny: number;
+            if (mouse?.active) {
+                [nx, ny] = Vec.normalize(mouse.x - p.x, mouse.y - p.y);
+                if (!nx && !ny) nx = 1;
+            } else {
+                [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            }
+            const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
+            const b = game.bulletPool.spawn({
+                x: mx, y: my, vx: nx * 800, vy: ny * 800,
+                damage: 45 * soulMult(p), radius: 9, color: '#e8e2d0',
+                pierceLeft: 999, lifeTime: 0.9, owner: 'player', charKey: p.charId,
+                isCrit: Rng.chance(p.stats.critRate || 0),
+            });
+            b.onHitCb = (_bullet: any, enemy: any) => {
+                enemy.slowMult = Math.min(enemy.slowMult ?? 1, 0.7);
+                enemy._slowTimer = Math.max(enemy._slowTimer ?? 0, 1.5);
+                game.grantSoul?.(p);
+            };
+            game.particles.hexActivate(mx, my, '#e8e2d0');
+        },
+        eSkill(p: any, game: any) {
+            // 腐雾领域：鼠标位置（无鼠标回落敌群中心），雾内怪物持续掉血减速
+            const mouse = game.input?.mouse;
+            const cluster = game.getEnemyClusterPoint?.();
+            const fx = mouse?.active ? mouse.x : (cluster?.x ?? p.x);
+            const fy = mouse?.active ? mouse.y : (cluster?.y ?? p.y);
+            const fog: any = {
+                x: fx, y: fy, r: 350, alive: true, kind: 'rotFog', _t: 5, _tick: 0, owner: p,
+            };
+            fog.update = (dt: number, g: any) => {
+                fog._t -= dt;
+                if (fog._t <= 0) { fog.alive = false; return; }
+                fog._tick -= dt;
+                if (fog._tick > 0) return;
+                fog._tick = 1;
+                const dmg = 12 * soulMult(p);
+                for (const e of (g.enemies || [])) {
+                    if (!e.alive || e.dead) continue;
+                    if (Vec.dist(e.x, e.y, fog.x, fog.y) > fog.r) continue;
+                    if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmg);
+                    else e.takeDamage(dmg, p, g);
+                    e.slowMult = Math.min(e.slowMult ?? 1, 0.8);
+                    e._slowTimer = Math.max(e._slowTimer ?? 0, 1.2);
+                }
+            };
+            if (game.turrets) game.turrets.push(fog); else game.turrets = [fog];
+            game.particles.hexActivate(fx, fy, '#a8e06e');
+        },
+        ultimate(p: any, game: any) {
+            // 亡者天灾：引爆所有骸骨仆从（每具300码尸爆60点，可叠加），
+            // 随后立即复苏8具（可超上限，持续15秒），并触发全部词条击杀效果
+            const bones = (game.turrets || []).filter((t: any) => t.kind === 'skeleton' && t.alive);
+            for (const sk of bones) {
+                sk.alive = false;
+                game.spawnExplosion?.(p, sk.x, sk.y, 60 * soulMult(p), 300, game);
+            }
+            for (let i = 0; i < 8; i++) {
+                const a = (i / 8) * Math.PI * 2;
+                spawnSkeletonServant(game, p, p.x + Math.cos(a) * 60, p.y + Math.sin(a) * 60, 15, true);
+            }
+            game.augmentManager?.dispatchKill?.(p, { x: p.x, y: p.y, alive: false }, p.stats.damage * 3, game);
+            game.particles.hexActivate(p.x, p.y, '#a8e06e');
+            game.screenShake.shake(18, 0.7);
+            game.floatingText.spawn(640, 200, '亡者天灾！', '#a8e06e', 28, true);
+        },
+    },
 };
 
 /** Ordered array of all characters — use for UI iteration. */
@@ -577,4 +830,191 @@ export function splitSkillText(text: string): [string, string] {
     const idx = text.indexOf('—');
     if (idx < 0) return [text.trim(), ''];
     return [text.slice(0, idx).trim(), text.slice(idx + 1).trim()];
+}
+
+// ── 亡灵法师·莫提斯（mortis）共享辅助 ──────────────────────
+
+/** 灵魂层数的技能伤害乘区：1 + min(60,层数)×1%。 */
+export function soulMult(p: any): number {
+    return 1 + Math.min(60, p?.stats?._souls || 0) * 0.01;
+}
+
+/**
+ * 骸骨仆从：HP50/移速350/伤害15/攻速1.0，存在 duration 秒。
+ * 追击最近怪物（伤害走 takeDamage 正常结算→击杀计灵魂/词条）；
+ * 围堵它的敌人每秒造成接触磨损（让 HP 有意义）；身处腐雾内攻速+50%、
+ * 每秒回5血。noCap=true（亡者天灾复苏的）不计入8具上限。
+ */
+export function spawnSkeletonServant(game: any, player: any, x: number, y: number,
+                                     duration = 25, noCap = false): any {
+    const sk: any = {
+        x, y, r: 12, alive: true, kind: 'skeleton',
+        hp: 50, maxHp: 50, _t: duration, _atkCd: 0, _frenzyT: 0, _noCap: noCap, owner: player,
+    };
+    sk.update = (dt: number, g: any) => {
+        sk._t -= dt;
+        if (sk._t <= 0 || sk.hp <= 0 || !player.alive) { sk.alive = false; return; }
+        sk._atkCd = Math.max(0, sk._atkCd - dt);
+        sk._frenzyT = Math.max(0, sk._frenzyT - dt);
+        // 腐雾领域加成：攻速+50% + 每秒回5点
+        for (const t of (g.turrets || [])) {
+            if (t.kind === 'rotFog' && t.alive && Vec.dist(sk.x, sk.y, t.x, t.y) <= t.r) {
+                sk._frenzyT = Math.max(sk._frenzyT, 0.5);
+                sk.hp = Math.min(sk.maxHp, sk.hp + 5 * dt);
+                break;
+            }
+        }
+        // 围堵磨损：邻接敌人按攻击力累计接触伤害（系数0.35，围3只约3秒磨掉一具）
+        let wear = 0;
+        for (const e of (g.enemies || [])) {
+            if (e.alive && !e.dead && Vec.dist(e.x, e.y, sk.x, sk.y) <= (e.radius ?? 12) + sk.r + 6) {
+                wear += e.damage || 10;
+            }
+        }
+        if (wear > 0) sk.hp -= wear * 0.35 * dt;
+        // 追击最近怪物并攻击
+        let best: any = null, bd = 1e9;
+        for (const e of (g.enemies || [])) {
+            if (!e.alive || e.dead || e.invisible) continue;
+            const d = Vec.dist(e.x, e.y, sk.x, sk.y);
+            if (d < bd) { bd = d; best = e; }
+        }
+        if (best) {
+            if (bd > (best.radius ?? 12) + sk.r + 14) {
+                const [nx, ny] = Vec.normalize(best.x - sk.x, best.y - sk.y);
+                sk.x = clamp(sk.x + nx * 350 * dt, 16, CANVAS_W - 16);
+                sk.y = clamp(sk.y + ny * 350 * dt, 16, PLAYFIELD_BOTTOM - 16);
+            } else if (sk._atkCd <= 0) {
+                sk._atkCd = 1 / (1.0 * (sk._frenzyT > 0 ? 1.5 : 1));
+                best.takeDamage(15, player, g);
+                g.particles?.hit?.(best.x, best.y, '#a8e06e');
+            }
+        }
+    };
+    (game.turrets || (game.turrets = [])).push(sk);
+    return sk;
+}
+
+// ── 盗神·薇娅（via）共享辅助 ───────────────────────────────
+
+/**
+ * 被动·失主还没发现：被盗技能的怪物下次施法只空放动作——消耗标记并
+ * 陷入2秒失措（stunned 跳过整个AI：无法移动和攻击）。
+ * 返回 true 表示本次施法被失措取代（调用方跳过原有攻击结算）。
+ */
+export function kleptoStagger(e: any, game: any): boolean {
+    if (!e?._skillStolen) return false;
+    e._skillStolen = false;
+    e.stunned = Math.max(e.stunned || 0, 2);
+    game?.particles?.hexActivate?.(e.x, e.y, '#f0c04a');
+    game?.floatingText?.spawn?.(e.x, e.y - 30, '失措！', '#f0c04a', 13, false);
+    return true;
+}
+
+/** 腐雾/范围型敌人的攻击在截取时转化为爆炸核心，其余近战化为斩击。 */
+const KLEPTO_AOE_TYPES = ['acid_sac', 'ember_acolyte', 'blast_tick'];
+
+/**
+ * E 这招我收下了 / R 此刻归我所有：在敌人出手前截获其攻击。
+ *  · melee：R掠夺领域内化为残影反击附近怪物（计入夺取次数）；
+ *  · ranged/melee：E截取状态150码内收入囊中（近战→斩击，范围→爆核）。
+ * 返回 true 表示攻击已被收走（调用方跳过本次出手）。
+ */
+export function kleptoCaptureAttack(e: any, player: any, game: any, kind: 'ranged' | 'melee'): boolean {
+    // R 掠夺领域：近战攻击转化为残影，反击附近怪物
+    const domain = (game as any)?._plunderDomain;
+    if (domain?.alive && kind === 'melee' && Vec.dist(e.x, e.y, domain.x, domain.y) <= domain._maxR) {
+        domain._captures++;
+        game?.particles?.meleeSlash?.(e.x, e.y, Rng.float(0, Math.PI * 2), '#f0c04a', 60, 1.1);
+        const victims = (game?.enemies || []).filter((t: any) =>
+            t !== e && t.alive && !t.dead && Vec.dist(t.x, t.y, e.x, e.y) <= 140);
+        if (victims.length) (Rng.pick(victims) as any).takeDamage(e.damage || 10, player, game);
+        return true;
+    }
+    // E 截取状态：150码内普攻收入囊中（至多5份）
+    const icpt = player?.stats?._intercept;
+    if (icpt && icpt.stored.length < 5 && Vec.dist(e.x, e.y, player.x, player.y) <= 150) {
+        const aoe = KLEPTO_AOE_TYPES.indexOf(e.type) >= 0;
+        icpt.stored.push({
+            kind: kind === 'melee' ? (aoe ? 'core' : 'slash') : (aoe ? 'core' : 'bullet'),
+            dmg: e.damage || 10,
+            color: e.glowColor || e.color || '#ff9d5c',
+        });
+        game?.particles?.hexActivate?.(e.x, e.y, '#f0c04a');
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 敌方子弹的截取/掠夺（BulletController 敌弹循环逐发调用）：
+ *  · E截取状态150码内：收入囊中（保留伤害/颜色特征）→ 'captured'（子弹销毁）；
+ *  · R掠夺领域内：夺取控制权——就地折转为射向最近怪物的玩家弹
+ *    （保留伤害/速度/半径等原有特征）→ 'plundered'（原敌弹销毁）。
+ * 返回 'pass' 表示不处理。
+ */
+export function kleptoCaptureBullet(b: any, player: any, game: any): 'pass' | 'captured' | 'plundered' {
+    const icpt = player?.stats?._intercept;
+    if (icpt && icpt.stored.length < 5 && Vec.dist(b.x, b.y, player.x, player.y) <= 150) {
+        icpt.stored.push({ kind: 'bullet', dmg: b.damage || 10, color: b.color || '#ff9d5c' });
+        game?.particles?.hexActivate?.(b.x, b.y, '#f0c04a');
+        return 'captured';
+    }
+    const domain = (game as any)?._plunderDomain;
+    if (domain?.alive && Vec.dist(b.x, b.y, domain.x, domain.y) <= domain._maxR) {
+        domain._captures++;
+        let best: any = null, bd = 1e9;
+        for (const e of (game?.enemies || [])) {
+            if (!e.alive || e.dead) continue;
+            const d = Vec.dist(e.x, e.y, b.x, b.y);
+            if (d < bd) { bd = d; best = e; }
+        }
+        const spd = Math.max(120, Math.hypot(b.vx, b.vy));
+        const a = best ? Math.atan2(best.y - b.y, best.x - b.x) : Rng.float(0, Math.PI * 2);
+        const pool = game.bulletPool ?? game.bullets;
+        pool?.spawn?.({
+            x: b.x, y: b.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+            damage: b.damage || 10, radius: b.radius || 6, color: '#f0c04a',
+            owner: 'player', lifeTime: 2.5, pierceLeft: 0, charKey: 'via',
+        });
+        game?.particles?.hexActivate?.(b.x, b.y, '#f0c04a');
+        return 'plundered';
+    }
+    return 'pass';
+}
+
+/**
+ * 释放截取的全部攻击（E再按 / 6秒超时共用）：
+ * 子弹保留特征射向最近怪物；斩击对近身怪结算；爆核在敌群中心引爆。
+ * 释放完成后才启动 E 冷却（deferEcd 解除）。
+ */
+export function fireStoredAttacks(p: any, game: any): void {
+    const icpt = p.stats?._intercept;
+    if (!icpt) return;
+    const pool = game.bulletPool ?? game.bullets;
+    const target = game.getNearestEnemy?.(p.x, p.y);
+    for (const s of icpt.stored) {
+        if (s.kind === 'bullet') {
+            const a = target ? Math.atan2(target.y - p.y, target.x - p.x)
+                : Math.atan2(p.facingY ?? 0, p.facingX ?? 1);
+            pool?.spawn?.({ x: p.x, y: p.y, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420,
+                damage: s.dmg, radius: 6, color: s.color, owner: 'player', lifeTime: 2.2,
+                pierceLeft: 0, charKey: 'via' });
+        } else if (s.kind === 'slash') {
+            const v = target && Vec.dist(target.x, target.y, p.x, p.y) <= 180 ? target : null;
+            if (v) {
+                v.takeDamage(s.dmg, p, game);
+                game.particles?.meleeSlash?.(v.x, v.y, Rng.float(0, Math.PI * 2), '#f0c04a', 70, 1.2);
+            }
+        } else {   // core：范围攻击转化为爆炸核心，在敌群中心引爆
+            const c = game.getEnemyClusterPoint?.() ?? target;
+            if (c) game.spawnExplosion?.(p, c.x, c.y, s.dmg, 110, game);
+        }
+    }
+    icpt.stored.length = 0;
+    p.stats._intercept = undefined;
+    p.stats.deferEcd = false;
+    // 全部释放后才开始冷却
+    p._eCd = Math.max(1, ((p._charDef?.eCd ?? SKILL_E_CD) - (p.stats.eCdFlatReduction || 0))
+        * (1 - (p.stats.cdReduction || 0)));
 }

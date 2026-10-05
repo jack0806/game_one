@@ -6,6 +6,7 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { applyElementMark } from '../data/AugmentDB';
+import { kleptoCaptureBullet } from '../data/CharacterDB';
 
 export interface BulletData {
     active:       boolean;
@@ -325,6 +326,11 @@ export class BulletPool {
         for (let i = this._active.length - 1; i >= 0; i--) {
             const b = this._active[i];
             if (!b.isEnemyBullet && b.owner !== 'enemy') continue;
+            // 盗神·薇娅：E截取(150码收入囊中→销毁敌弹) / R掠夺(领域内折转为射向怪物的玩家弹)
+            if (player.stats?.klepto) {
+                const verdict = kleptoCaptureBullet(b, player, game);
+                if (verdict !== 'pass') { this._release(b); continue; }
+            }
             if (b.homing && player.alive) {
                 const [dx, dy] = Vec.normalize(player.x - b.x, player.y - b.y);
                 const speed = Math.max(1, Math.hypot(b.vx, b.vy));

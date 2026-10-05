@@ -35,11 +35,11 @@ test('挑战任务系列：每条都有独立目标与前置链，状态覆盖�
     }
 });
 
-test('图鉴提供8个怪物和6个英雄，并保留未解锁问号状态所需数据', () => {
+test('图鉴提供8个怪物和8个英雄，并保留未解锁问号状态所需数据', () => {
     const monsters = codexByCategory('monster');
     const heroes = codexByCategory('hero');
     assert.equal(monsters.length, 8);
-    assert.equal(heroes.length, 6);
+    assert.equal(heroes.length, 8);
     assert.ok(monsters.some(e => !e.unlocked), '怪物图鉴需要未解锁条目');
     assert.ok(heroes.some(e => !e.unlocked), '英雄图鉴需要未解锁条目');
     assert.equal(new Set(CODEX_ENTRIES.map(e => e.id)).size, CODEX_ENTRIES.length);

@@ -160,6 +160,12 @@ export const CODEX_ENTRIES: CodexEntry[] = [
     { id: 'liana', category: 'hero', name: '冰霜狙击手·利亚娜', subtitle: '精准狙击 / 冰霜控制',
       desc: '英雄档案尚未完全解锁。达成解锁条件后显示完整资料。',
       artKey: 'char_liana', color: '#00ccff', rarity: '英雄', traits: ['狙击', '冰霜', '高伤害'], unlocked: false },
+    { id: 'via', category: 'hero', name: '盗神·薇娅', subtitle: '技能窃取 / 灵活诡诈',
+      desc: '窃取怪物的技能据为己用，截取敌方弹幕反戈一击，掠夺领域让敌人的火力调转枪口。',
+      artKey: 'char_via', color: '#f0c04a', rarity: '英雄', traits: ['窃取', '诡诈', '反弹'], unlocked: true },
+    { id: 'mortis', category: 'hero', name: '亡灵法师·莫提斯', subtitle: '召唤军团 / 灵魂滚雪球',
+      desc: '驱使骸骨仆从挡刀作战，靠灵魂层数滚雪球——越苟越强，挨打就掉层。',
+      artKey: 'char_mortis', color: '#a8e06e', rarity: '英雄', traits: ['召唤', '灵魂', '滚雪球'], unlocked: true },
 ];
 
 export function questsByBranch(branch: QuestBranch): QuestDef[] {

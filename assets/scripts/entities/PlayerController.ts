@@ -4,7 +4,7 @@
 import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
-import { CHARACTERS, CharDef, CharStats, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
+import { CHARACTERS, CharDef, CharStats, SKILL_Q_CD, SKILL_E_CD, fireStoredAttacks } from '../data/CharacterDB';
 import { applyArtSprite, preloadArt } from '../core/SpriteUtils';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import {
@@ -318,6 +318,12 @@ export class PlayerController extends Component {
         this.hp -= amount;
         // 受击钩子：深海恐惧「海之霸主」期间每受一次伤害 Boss 生成护盾（测试房）
         game.onPlayerHit?.(this, game);
+        // 亡灵法师·灵魂收割：被怪物命中损失2层灵魂（越苟越强，挨打就掉层）
+        if (this.stats?.soulHarvest && (this.stats._souls || 0) > 0) {
+            this.stats._souls = Math.max(0, (this.stats._souls || 0) - 2);
+            this.stats.eCdFlatReduction = Math.floor(Math.min(60, this.stats._souls) / 20);
+            game.floatingText?.spawn(this.x, this.y - 40, '灵魂 -2', '#a8e06e', 12, false);
+        }
         this._iframeTimer = 0.5;
         this.playVisualAction('hit');
         game.audio?.playSfx?.('player_hurt');
@@ -466,6 +472,9 @@ export class PlayerController extends Component {
         // 格雷夫被动·荆棘刺鞭：0.5秒后落下的普攻二段伤害
         this.tickThornPending(dt);
 
+        // 盗神·薇娅：截取状态超过6秒自动向怪群释放
+        if (this.stats?._intercept) this._tickIntercept(dt, game);
+
         // 移动
         this.tickMovement(dt, input, game);
         // 跳跃使用独立的起跳/腾空/落地姿势，长按不会不断重置起跳帧。
@@ -484,6 +493,7 @@ export class PlayerController extends Component {
         }
 
         // 技能 Q（CD 可按角色定制：qCd ?? 默认SKILL_Q_CD=4秒）
+        // 盗神·薇娅：窃取成功时 deferQcd 挂起冷却，赃技释放后再启动
         if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
             if (this._requestSkill('q', () => {
                 game.audio?.playSfx?.('skill_q');
@@ -492,10 +502,15 @@ export class PlayerController extends Component {
                 const qName = this._charDef.skills.q.split('—')[0].trim();
                 game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
                 game.augmentManager?.dispatchSkill(this, game);
-            })) this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
+            })) {
+                if (this.stats.deferQcd) { this._qCd = 0; }
+                else this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
+            }
         }
         // 技能 E（CD 可按角色定制：eCd ?? 默认SKILL_E_CD=10秒）
         // 黑洞引擎(black_hole)词条已重做为独立定时器自动施放，不再替换 E 技能。
+        // 盗神·薇娅：进入截取状态时 deferEcd 挂起冷却，全部释放后再启动；
+        // 亡灵法师：eCdFlatReduction（每20层灵魂-1秒）在标准冷却上做扁平缩减。
         if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
             if (this._requestSkill('e', () => {
                 game.audio?.playSfx?.('skill_e');
@@ -506,7 +521,13 @@ export class PlayerController extends Component {
                 const eName = this._charDef.skills.e.split('—')[0].trim();
                 game.floatingText?.spawn(this.x, this.y - 55, eName, this.color, 15, true);
                 game.augmentManager?.dispatchSkill(this, game);
-            })) this._eCd = (this._charDef.eCd ?? SKILL_E_CD) * (1 - this.stats.cdReduction);
+            })) {
+                if (this.stats.deferEcd) { this._eCd = 0; }
+                else {
+                    this._eCd = Math.max(1, ((this._charDef.eCd ?? SKILL_E_CD)
+                        - (this.stats.eCdFlatReduction || 0)) * (1 - this.stats.cdReduction));
+                }
+            }
         }
         // 宇宙法则(cosmos_law)：R 键触发（独立于大招 R，走独立30s CD）。
         // 对齐 hexblast-py entities/player.py 的触发方式：
@@ -700,6 +721,14 @@ export class PlayerController extends Component {
             t.game?.floatingText?.spawn?.(t.enemy.x, t.enemy.y - 24, `刺鞭 ${Math.ceil(t.dmg)}`, '#d687ff', 12, false);
             t.game?.particles?.hit?.(t.enemy.x, t.enemy.y, '#cc44ff');
         }
+    }
+
+    /** 盗神·薇娅：截取状态6秒超时——自动向怪群释放全部储存攻击。 */
+    private _tickIntercept(dt: number, game: any): void {
+        const icpt = this.stats._intercept;
+        icpt.t -= dt;
+        if (icpt.t > 0) return;
+        fireStoredAttacks(this, game);
     }
 
     // ── 发射子弹 ─────────────────────────────────────────
