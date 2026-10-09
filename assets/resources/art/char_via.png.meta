@@ -45,32 +45,32 @@
         "offsetY": 0,
         "trimX": 0,
         "trimY": 0,
-        "width": 512,
-        "height": 512,
-        "rawWidth": 512,
-        "rawHeight": 512,
+        "width": 1254,
+        "height": 1254,
+        "rawWidth": 1254,
+        "rawHeight": 1254,
         "borderTop": 0,
         "borderBottom": 0,
         "borderLeft": 0,
         "borderRight": 0,
-        "packable": true,
+        "packable": false,
         "pixelsToUnit": 100,
         "pivotX": 0.5,
         "pivotY": 0.5,
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -256,
-            -256,
+            -627,
+            -627,
             0,
-            256,
-            -256,
+            627,
+            -627,
             0,
-            -256,
-            256,
+            -627,
+            627,
             0,
-            256,
-            256,
+            627,
+            627,
             0
           ],
           "indexes": [
@@ -83,12 +83,12 @@
           ],
           "uv": [
             0,
-            512,
-            512,
-            512,
+            1254,
+            1254,
+            1254,
             0,
             0,
-            512,
+            1254,
             0
           ],
           "nuv": [
@@ -102,20 +102,20 @@
             1
           ],
           "minPos": [
-            -256,
-            -256,
+            -627,
+            -627,
             0
           ],
           "maxPos": [
-            256,
-            256,
+            627,
+            627,
             0
           ]
         },
         "isUuid": true,
         "imageUuidOrDatabaseUri": "4c0b18ba-7a25-49b7-aaa1-941bc10f659f@6c48a",
         "atlasUuid": "",
-        "trimType": "auto"
+        "trimType": "none"
       },
       "ver": "1.0.12",
       "imported": true,
@@ -128,7 +128,7 @@
   "userData": {
     "type": "sprite-frame",
     "fixAlphaTransparencyArtifacts": false,
-    "hasAlpha": false,
+    "hasAlpha": true,
     "redirect": "4c0b18ba-7a25-49b7-aaa1-941bc10f659f@6c48a"
   }
 }

@@ -779,7 +779,9 @@ export class ScreenManager extends Component {
             name.getComponent(Label)!.fontSize = 19;
             name.getComponent(Label)!.lineHeight = 26;
             name.getComponent(UITransform)!.setContentSize(170, 28);
-            this._loadPortrait(tile, `char_${def.id}`, 76, 16);
+            const portraitKey = def.id === 'via' || def.id === 'mortis'
+                ? `ui_portrait_${def.id}` : `char_${def.id}`;
+            this._loadPortrait(tile, portraitKey, 76, 16);
             if (locked) label(tile, 'Locked', '未解锁', 0, 12, 78, 28, 15, UI_PALETTE.reward);
             const marker = new Node('Selected'); marker.setParent(tile);
             markers.push(marker.addComponent(Graphics));

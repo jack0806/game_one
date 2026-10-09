@@ -1,5 +1,7 @@
 # 现有美术资源清单（assets/resources/art/）
 
+> 2026-10-09：薇娅（女性）、莫提斯（男性）静态形象已替换色块：`char_via` / `char_mortis` 为介绍半身立绘，`char_token_via` / `char_token_mortis` 为战场静态全身像；新增 `ui_portrait_via` / `ui_portrait_mortis` 用于选人列表与战斗 HUD。六张均为 1254×1254 RGBA，保留内置 image_gen 原始透明通道；原有四张资源 UUID 保留。战斗动作动画暂缓，弹丸仍为原占位资源。详见[本批交付记录](via-mortis-static-2026-10-09.md)。
+
 > 2026-09-03新增逐帧图集的清单、来源和状态单独维护于[动画重做记录](animation-rebuild-2026-09-03.md)及[覆盖矩阵](animation-qa/coverage.json)。下面的分类张数为历史静态素材基线；2026-10-01 当前目录实数为 482 张 PNG。
 
 历史静态素材清单共 174 张 PNG。2026-09-30 新增 2 张章节底图、13 张独立残骸；全部运行时 art key 由 `tests/specs/artmanifest.test.js` 检查。

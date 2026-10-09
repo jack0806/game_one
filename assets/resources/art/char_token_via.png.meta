@@ -45,32 +45,32 @@
         "offsetY": 0,
         "trimX": 0,
         "trimY": 0,
-        "width": 128,
-        "height": 128,
-        "rawWidth": 128,
-        "rawHeight": 128,
+        "width": 1254,
+        "height": 1254,
+        "rawWidth": 1254,
+        "rawHeight": 1254,
         "borderTop": 0,
         "borderBottom": 0,
         "borderLeft": 0,
         "borderRight": 0,
-        "packable": true,
+        "packable": false,
         "pixelsToUnit": 100,
         "pivotX": 0.5,
         "pivotY": 0.5,
         "meshType": 0,
         "vertices": {
           "rawPosition": [
-            -64,
-            -64,
+            -627,
+            -627,
             0,
-            64,
-            -64,
+            627,
+            -627,
             0,
-            -64,
-            64,
+            -627,
+            627,
             0,
-            64,
-            64,
+            627,
+            627,
             0
           ],
           "indexes": [
@@ -83,12 +83,12 @@
           ],
           "uv": [
             0,
-            128,
-            128,
-            128,
+            1254,
+            1254,
+            1254,
             0,
             0,
-            128,
+            1254,
             0
           ],
           "nuv": [
@@ -102,20 +102,20 @@
             1
           ],
           "minPos": [
-            -64,
-            -64,
+            -627,
+            -627,
             0
           ],
           "maxPos": [
-            64,
-            64,
+            627,
+            627,
             0
           ]
         },
         "isUuid": true,
         "imageUuidOrDatabaseUri": "dc550d2a-efe4-4b41-8004-14b2a7bf1d98@6c48a",
         "atlasUuid": "",
-        "trimType": "auto"
+        "trimType": "none"
       },
       "ver": "1.0.12",
       "imported": true,
@@ -128,7 +128,7 @@
   "userData": {
     "type": "sprite-frame",
     "fixAlphaTransparencyArtifacts": false,
-    "hasAlpha": false,
+    "hasAlpha": true,
     "redirect": "dc550d2a-efe4-4b41-8004-14b2a7bf1d98@6c48a"
   }
 }

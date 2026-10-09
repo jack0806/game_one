@@ -25,6 +25,8 @@ function collectAllArtKeys() {
     keys.add('title_screen');
     keys.add('ui_gold_coin');
     keys.add('ui_lobby_portal_frame');
+    keys.add('ui_portrait_via');
+    keys.add('ui_portrait_mortis');
     keys.add('turret_base_vivian');
     keys.add('turret_barrel_vivian');
     for (const c of CHAPTERS) keys.add(c.bgKey);

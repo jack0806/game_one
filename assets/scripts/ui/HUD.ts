@@ -258,8 +258,11 @@ export class HUD extends Component {
         if (!id || id === this._portraitId) return;
         this._portraitId = id; this._portrait.spriteFrame = null;
         this._portraitFrame?.destroy(); this._portraitFrame = undefined;
-        loadArtSprite(`char_${id}`, source => {
+        const dedicatedPortrait = id === 'via' || id === 'mortis';
+        loadArtSprite(dedicatedPortrait ? `ui_portrait_${id}` : `char_${id}`, source => {
             if (!source || !this._portrait.isValid || this._portraitId !== id) return;
+            // 新英雄使用独立近景头像，保留完整头发与骨冠，不再二次裁切。
+            if (dedicatedPortrait) { this._portrait.spriteFrame = source; return; }
             source.packable = false;
             const rect = source.rect, side = Math.min(rect.width * 0.6, rect.height * 0.68);
             const frame = new SpriteFrame(); frame.texture = source.texture;

@@ -44,8 +44,8 @@
 | `char_<id>_skill_q/e/r` | 技能专属图标（现在技能图标与词条图标混用） | `CharacterDB.skillIcons` 改为独立 key |
 | `ui_frame_rarity_*` | 稀有度边框素材（现在是 Graphics 画框） | `HUD`/`AugSelectUI`/`ShopUI` 换贴图渲染 |
 | `ui_hp_bar` 等 HUD 素材 | HUD 目前基本是 Graphics 程序化绘制；金币素材已经接入 | `HUD.ts` 相应位置换 Sprite |
-| `char_via` / `char_token_via` / `bullet_via` | 盗神·薇娅占位图（2026-10-02 程序生成纯色块，金色 #f0c04a） | 正式立绘/战斗token/弹丸就位后覆盖同名文件 |
-| `char_mortis` / `char_token_mortis` / `bullet_mortis` | 亡灵法师·莫提斯占位图（同上，骨绿色 #a8e06e） | 正式立绘/战斗token/弹丸就位后覆盖同名文件；两角色暂无动作帧表（ACTOR_ANIMATIONS 无 char_token_via/mortis 条目，走默认回退渲染） |
+| `bullet_via` | 盗神·薇娅弹丸仍为占位图 | 2026-10-09 已完成介绍立绘、独立头像与静态战斗 token；弹丸后续覆盖同名文件 |
+| `bullet_mortis` | 亡灵法师·莫提斯弹丸仍为占位图 | 2026-10-09 已完成介绍立绘、独立头像与静态战斗 token；弹丸后续覆盖同名文件。两角色动作动画按用户要求暂缓，当前只加载基础静态 token，不请求缺失的方向/移动帧 |
 
 ## D. 资源入库流程（即梦生成图之后）
 
