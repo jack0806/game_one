@@ -9,9 +9,9 @@ const { makeMockGame, makePlayer } = require('./mockGame');
 
 const byId = (id) => DIFFICULTIES.find(d => d.id === id);
 
-function makeBoss(game, chapter0 = 0) {
+function makeBoss(game, mapId = 1) {
     const boss = new BossController();
-    boss.initBoss(chapter0, game);
+    boss.initBoss(mapId * 5, game);   // v5：图 m 章 5（图末节点）
     boss.x = 0; boss.y = 0;
     return boss;
 }
@@ -122,7 +122,7 @@ test('简单难度：灭世机神仅保留天罚网格激光，导弹/追踪弹�
         startInvaderMissiles() { calls.push('missiles'); },
         startInvaderLaserGrid() { gridFired++; },
     });
-    const boss = makeBoss(game, 5); // 第6章 → invader 技能集
+    const boss = makeBoss(game, 6); // 图6 → invader 技能集
     assert.equal(boss.chapter, 6);
     const player = makePlayer({ x: 400, y: 0 });
     boss._invMissileCd = 0;

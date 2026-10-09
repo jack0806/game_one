@@ -7,7 +7,9 @@
 // 数值与抽取前逐字一致，不影响正式局平衡。
 
 export interface BossDef {
-    /** 1-based 章节号（1~5），与 BossController.chapter 语义一致。 */
+    /** 图末大 Boss 显式 id（LevelIndex.MapDef.bossId 引用；ch1~ch6 = 图 1~6；测试房条目不用）。 */
+    id?: string;
+    /** 1-based 图号（1~6），与 BossController.chapter 语义一致。 */
     chapter: number;
     maxHp: number;
     damage: number;
@@ -26,20 +28,25 @@ export interface BossDef {
 }
 
 export const BOSSES: BossDef[] = [
-	{ chapter: 1, maxHp: 3000,  damage: 42,  speed: 62, armor: 10, goldValue: 150, radius: 45, color: '#cc3300', glow: '#ff0000', label: '废土领主·腐肉',       spriteKey: 'enemy_boss_ch1', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ id: 'ch1', chapter: 1, maxHp: 3000,  damage: 42,  speed: 62, armor: 10, goldValue: 150, radius: 45, color: '#cc3300', glow: '#ff0000', label: '废土领主·腐肉',       spriteKey: 'enemy_boss_ch1', visualScale: 2.0, attackWindupMax: 0.42 },
 
     // 熔炉橙：钢蓝工厂背景下蓝色 Boss 几乎隐形（视觉评审 2026-08-18），改互补暖色
-	{ chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 280, radius: 45, color: '#cc7a33', glow: '#ffaa44', label: '钢铁之王·熔炉',       spriteKey: 'enemy_boss_ch2', visualScale: 2.0, attackWindupMax: 0.42 },
-	{ chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 360, radius: 45, color: '#00cc88', glow: '#00ffcc', label: '海克斯异变体·无限核', spriteKey: 'enemy_boss_ch3', visualScale: 2.0, attackWindupMax: 0.42 },
-	{ chapter: 4, maxHp: 14000, damage: 132, speed: 80, armor: 40, goldValue: 450, radius: 45, color: '#8800cc', glow: '#cc44ff', label: '混沌深渊·终焉之门',   spriteKey: 'enemy_boss_ch4', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ id: 'ch2', chapter: 2, maxHp: 5500,  damage: 66,  speed: 68, armor: 20, goldValue: 280, radius: 45, color: '#cc7a33', glow: '#ffaa44', label: '钢铁之王·熔炉',       spriteKey: 'enemy_boss_ch2', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ id: 'ch3', chapter: 3, maxHp: 9000,  damage: 94,  speed: 74, armor: 30, goldValue: 360, radius: 45, color: '#00cc88', glow: '#00ffcc', label: '海克斯异变体·无限核', spriteKey: 'enemy_boss_ch3', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ id: 'ch4', chapter: 4, maxHp: 14000, damage: 132, speed: 80, armor: 40, goldValue: 450, radius: 45, color: '#8800cc', glow: '#cc44ff', label: '混沌深渊·终焉之门',   spriteKey: 'enemy_boss_ch4', visualScale: 2.0, attackWindupMax: 0.42 },
     // 第5章机械高达X-剑（2026-09-21 玩家调整：由测试房转正，数值取第五章档位，
     // 复用测试房专属俯视立绘 enemy_boss_mech）
-	{ chapter: 5, maxHp: 20000, damage: 160, speed: 68, armor: 50, goldValue: 550, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ id: 'ch5', chapter: 5, maxHp: 20000, damage: 160, speed: 68, armor: 50, goldValue: 550, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
     // 第6章灭世机神·天罚：暂无独立贴图，复用 enemy_boss 素体+橙红染色。
-	{ chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 650, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
+	{ id: 'ch6', chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 650, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
-/** 按 0-based 章节号取 Boss 定义，越界回落到最后一章。 */
+/** 按显式 id 取图末大 Boss 定义（v5：LevelIndex.MapDef.bossId 的查询入口）。 */
+export function getBossDefById(id: string): BossDef {
+    return BOSSES.find(b => b.id === id) ?? BOSSES[BOSSES.length - 1];
+}
+
+/** 按 0-based 图号取 Boss 定义，越界回落到最后一章（测试与旧调用兼容入口）。 */
 export function getBossDef(chapter0Based: number): BossDef {
     return BOSSES[Math.min(Math.max(0, chapter0Based), BOSSES.length - 1)];
 }

@@ -34,18 +34,18 @@ function mkWm(chapter = 1, opts = {}) {
     return wm;
 }
 
-test('v4数量公式:(10+2.4L)×波型×章节×难度,round封顶128', () => {
-    // 第 1 章普通：W1=12 / W13 兽潮=60 / W6 呼吸=17 / W15 Boss 波=37
+test('v5数量公式:(10+2.4L)×波型×章节×难度,round封顶128', () => {
+    // 第 1 节点(图1章1)普通：W1=12 / W13 兽潮=60 / W6 呼吸=17 / W15 Boss 波=37
     assert.equal(enemyCountForWave(1, 1), 12);
     assert.equal(enemyCountForWave(13, 1), 60, 'W13 兽潮 ×1.45');
     assert.equal(enemyCountForWave(6, 1), 17, 'W6 呼吸 ×0.7');
     assert.equal(enemyCountForWave(15, 1), 37, 'W15 Boss 波小兵 ×0.8');
-    // 章节数量系数：第 6 章 W13 = round(41.2×1.45×2.0) = 119，逼近封顶
-    assert.equal(enemyCountForWave(13, 6), 119);
-    // 难度数量倍率与封顶：第 6 章 W13 = round(119.48×2) 超过 128 截断
-    assert.equal(enemyCountForWave(13, 6, 2), ENEMY_COUNT_CAP);
-    assert.equal(enemyCountForWave(13, 6, 1.5), 128, '×1.5 倍率超封顶截到 128');
-    // v4 难度三联系数（DifficultyDB.countMult）：地狱 ×1.2 时 W13 = round(119.48×1.2) = 143 → 截 128
+    // v5 章节数量系数（30 档曲线）：终点 k=30 W13 = round(41.2×1.45×2.2) = 131 → 顶满封顶 128（提案 6.4）
+    assert.equal(enemyCountForWave(13, 30), 128);
+    // 难度数量倍率与封顶：终点 W13 ×2 超过 128 截断
+    assert.equal(enemyCountForWave(13, 30, 2), ENEMY_COUNT_CAP);
+    assert.equal(enemyCountForWave(13, 30, 1.5), 128, '×1.5 倍率超封顶截到 128');
+    // v4 难度三联系数（DifficultyDB.countMult）：地狱 ×1.2 时 W13 = round(60×1.2) = 72 → 不触顶
     assert.equal(enemyCountForWave(13, 1, 1.2), Math.min(Math.round(60 * 1.2), 128), '地狱数量 ×1.2');
     // 全章总量约 430 只（文档 3 节模板）
     let total = 0;
@@ -62,24 +62,25 @@ test('波型槽位:W9/W13兽潮,W6/W11呼吸,W5/W10小首领护卫,W14守卫,W15
     assert.equal(waveKind(7), 'normal');
 });
 
-test('精英固定槽:W4/W8/W14随章爬升(8/11/14),其余波为0', () => {
+test('精英固定槽:W4/W8/W14随图爬升(8/11/14),其余波为0', () => {
     for (const w of [1, 2, 3, 5, 7, 9, 12, 13, 15]) assert.equal(eliteSlots(w, 1), 0);
     assert.deepEqual([eliteSlots(4, 1), eliteSlots(8, 1), eliteSlots(14, 1)], [2, 3, 3]);
-    assert.deepEqual([eliteSlots(4, 3), eliteSlots(8, 3), eliteSlots(14, 3)], [3, 4, 4]);
-    assert.deepEqual([eliteSlots(4, 5), eliteSlots(8, 5), eliteSlots(14, 5)], [4, 5, 5]);
+    // v5 档位按图：k=11(图3章1) tier1 / k=21(图5章1) tier2
+    assert.deepEqual([eliteSlots(4, 11), eliteSlots(8, 11), eliteSlots(14, 11)], [3, 4, 4]);
+    assert.deepEqual([eliteSlots(4, 21), eliteSlots(8, 21), eliteSlots(14, 21)], [4, 5, 5]);
 });
 
-test('战备包表:第1章0抽0金,第6章10抽700金', () => {
+test('战备包曲线:第1节点0抽0金,终点(图6章5)14抽900金', () => {
     assert.deepEqual(starterPack(1), { draws: 0, gold: 0 });
-    assert.deepEqual(starterPack(6), { draws: 10, gold: 700 });
+    assert.deepEqual(starterPack(30), { draws: 14, gold: 900 });
 });
 
-test('W15=Boss波:小兵先上,清空后大Boss登场;W8波后小兵量×0.8', () => {
+test('图末章W15=Boss波:小兵先上,清空后大Boss登场;W8波后小兵量×0.8', () => {
     const originalRandom = Math.random;
     Math.random = () => 0.5;   // 固定敌池与远程抽取
     try {
         const game = makeMockGame();
-        const wm = mkWm(1);
+        const wm = mkWm(5);   // 全局 5 = 图1章5（图末决战）
         wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
         for (let w = 1; w <= 14; w++) runWave(wm, game);
         const types = runWave(wm, game);
@@ -87,7 +88,7 @@ test('W15=Boss波:小兵先上,清空后大Boss登场;W8波后小兵量×0.8', (
         assert.ok(wm.isBossWave(), '关内第15波应判定为Boss波');
         assert.equal(types.filter(t => t === 'boss').length, 0, '开局不刷boss');
         const minionCount = types.filter(t => t !== 'boss').length;
-        assert.equal(minionCount, enemyCountForWave(15, 1) + eliteSlots(15, 1), 'Boss波小兵量×0.8');
+        assert.equal(minionCount, enemyCountForWave(15, 5) + eliteSlots(15, 5), 'Boss波小兵量×0.8');
         for (const e of game.enemies) e.dead = true;
         wm.update(0.1, game);
         assert.equal(game.enemies.filter(e => e.type === 'boss').length, 1, '小兵清空后刷出boss');
@@ -123,7 +124,7 @@ test('小首领固定槽位:第1章W5×1/W10×2/W14×1(普通档),其余波为0'
     }
 });
 
-test('小首领档位随章爬升:第4章W5史诗/W14地狱,第6章W10双地狱', () => {
+test('小首领档位随图/图内章爬升:图4章1 W5史诗/W14地狱,图6章1 W10双地狱', () => {
     const originalRandom = Math.random;
     Math.random = () => 0.5;
     try {
@@ -135,9 +136,9 @@ test('小首领档位随章爬升:第4章W5史诗/W14地狱,第6章W10双地狱'
             const types = runWave(wm, game);
             return types.filter(t => MINI_IDS.has(t)).map(t => TIER[t]);
         };
-        assert.deepEqual(tiersAt(4, 5), ['史诗'], '第4章 W5 史诗');
-        assert.deepEqual(tiersAt(4, 14), ['地狱'], '第4章 W14 地狱');
-        assert.deepEqual(tiersAt(6, 10).sort(), ['地狱', '地狱'], '第6章 W10 双地狱');
+        assert.deepEqual(tiersAt(16, 5), ['史诗'], '图4章1 W5 史诗');
+        assert.deepEqual(tiersAt(16, 14), ['地狱'], '图4章1 W14 地狱');
+        assert.deepEqual(tiersAt(26, 10).sort(), ['地狱', '地狱'], '图6章1 W10 双地狱');
     } finally {
         Math.random = originalRandom;
     }
@@ -242,9 +243,9 @@ test('困难模式兽潮对齐W9/W13,非困难/其他波不触发', () => {
     }
 });
 
-test('变异mirrorArmy在Boss波使boss数量×2(小兵清空后登场)', () => {
+test('变异mirrorArmy在图末Boss波使boss数量×2(小兵清空后登场)', () => {
     const game = makeMockGame({ _mutationMods: { mirrorArmy: true } });
-    const wm = mkWm(1);
+    const wm = mkWm(5);   // 图1章5 = 图末决战
     wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); };
     for (let w = 1; w <= 15; w++) runWave(wm, game);
     for (const e of game.enemies) e.dead = true;
@@ -333,7 +334,7 @@ test('兽潮强化数值与触发条件(源码门禁,v4:对齐W9/W13)', () => {
     const path = require('node:path');
     const gm = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/core/GameManager.ts'), 'utf8');
     const wm = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/systems/WaveManager.ts'), 'utf8');
-    assert.match(gm, /spawnBeastTide\(chapter: number\): void/, '兽潮入口');
+    assert.match(gm, /spawnBeastTide\(globalChapterId: number\): void/, '兽潮入口');
     assert.match(gm, /e\.maxHp = Math\.round\(e\.maxHp \* 1\.5\)/, '血量+50%');
     assert.match(gm, /e\.armor \+= 40/, '护甲+40');
     assert.match(gm, /Math\.round\(e\.maxHp \* 0\.2\)/, '护盾=20%血量');

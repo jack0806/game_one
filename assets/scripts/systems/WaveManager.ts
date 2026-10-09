@@ -1,48 +1,23 @@
 // ============================================================
-//  WaveManager.ts — 波次管理器（一局一章 × 15 波，2026-10-03 v4）
+//  WaveManager.ts — 波次管理器（一局一章 × 15 波，v5 六图五章）
 // ============================================================
-// - chapter 由 GameManager 注入（所选章 1~6），不再按全局波次反推；
-// - wave 为关内波次 1~15（W15 = Boss 波，击杀即本局通关）；
+// - chapter 为全局章号 1~30（LevelIndex 唯一真源，1-based）；
+// - wave 为关内波次 1~15（W15 = 关底，击杀即本局通关）；
+// - W15 关底：图末章 = 图鉴大 Boss；前 4 章 = 小首领组合（LevelIndex.finaleFor）；
 // - 小首领固定槽位（W5/W10/W14），精英固定槽（W4/W8/W14），兽潮 W9/W13。
 // （无尽模式已于 2026-10-07 按玩家要求整体移除。）
-import { enemyCountForWave, waveKind, eliteSlots } from '../data/WaveData';
+import { enemyCountForWave, waveKind } from '../data/WaveData';
+import { mapDef, mapOf, miniBossTiers, meleePoolFor, rangedPoolFor, finaleFor, eliteSlots } from '../data/LevelIndex';
 import { MINI_BOSSES } from '../data/BossDB';
 import { Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
 export type WaveState = 'idle' | 'spawning' | 'fighting' | 'intermission';
 
-/** 各章小首领池（v4 6.2，按主题分配现有 11 只；tier 档位取用）。 */
-const MINI_POOL: Record<number, { 普通: string[]; 史诗: string[]; 地狱: string[] }> = {
-    1: { 普通: ['chain_hound', 'jelly'],            史诗: [],                                        地狱: [] },
-    2: { 普通: ['turtle', 'prism_snail'],            史诗: ['drone_s'],                               地狱: [] },
-    3: { 普通: ['jelly', 'prism_snail'],             史诗: ['squid', 'triune_priest'],                地狱: [] },
-    4: { 普通: [],                                   史诗: ['squid', 'triune_priest', 'rail_butcher'],地狱: ['shrimp'] },
-    5: { 普通: ['drone_a'],                          史诗: ['drone_s', 'rail_butcher'],               地狱: ['shrimp'] },
-    6: { 普通: [],                                   史诗: ['squid', 'triune_priest', 'rail_butcher', 'drone_s'], 地狱: ['shrimp', 'bell_devourer'] },
-};
-
-/** 小首领出场槽位（v4 6.1：W5 试炼 / W10 关中战 / W14 守卫，每局共 4 次）。 */
-function miniBossTiers(chapterId: number, wave: number): string[] {
-    const T = (w5: number, w10a: string, w10b: string, w14: string): string[] =>
-        wave === 5 ? Array(w5).fill('普通')
-        : wave === 10 ? [w10a, w10b]
-        : wave === 14 ? [w14]
-        : [];
-    switch (chapterId) {
-        case 1:  return T(1, '普通', '普通', '普通');
-        case 2:  return T(1, '普通', '史诗', '史诗');
-        case 3:  return T(1, '史诗', '史诗', '史诗');
-        case 4:  return wave === 5 ? ['史诗'] : wave === 10 ? ['史诗', '史诗'] : wave === 14 ? ['地狱'] : [];
-        case 5:  return wave === 5 ? ['史诗'] : wave === 10 ? ['史诗', '地狱'] : wave === 14 ? ['地狱'] : [];
-        default: return wave === 5 ? ['史诗'] : wave === 10 ? ['地狱', '地狱'] : wave === 14 ? ['地狱'] : [];
-    }
-}
-
 export class WaveManager {
-    /** 关内波次（1~15；无尽模式继续累加）。 */
+    /** 关内波次（1~15）。 */
     wave        = 0;
-    /** 所选章 1~6（GameManager 开局注入）。 */
+    /** 所选全局章号 1~30（GameManager 开局注入，1-based）。 */
     chapter     = 1;
     state: WaveState = 'idle';
     /** 难度数量倍率（GameManager 注入 DifficultyDB.countMult；缺省 1 = 普通基准）。 */
@@ -65,8 +40,10 @@ export class WaveManager {
     /** 波间间歇（v4 4.2：1.5→1.0）。 */
     private readonly INTERMISSION = 1.0;
     private _intermissionTimer = 0;
-    /** Boss 波待登场：小兵全部死亡后才刷大Boss（2026-09-21 玩家调整）。 */
+    /** Boss 波待登场：小兵全部死亡后刷关底（图末章大 Boss / 前 4 章小首领组合）。 */
     private _bossPending = false;
+    /** 前 4 章 W15 关底待登场的小首领 id（boss 波开始时解析）。 */
+    private _finaleMini: string[] = [];
     /** 镜像军队变异：延迟登场的 Boss 同样 ×2。 */
     private _bossMirror = false;
     /** 变异：混沌节拍(chaos_beat) — 每5秒随机buff一批场上敌人的计时器。 */
@@ -77,28 +54,14 @@ export class WaveManager {
         return ((this.wave - 1) % 15) + 1;
     }
 
-    // 当前章近战类型池（v4 5.2 十六怪分布；miniboss=暗影猎手是高级近战不占小首领槽）
+    // 当前章近战池（v5：LevelIndex 图池 × 图内章节渐进过滤；miniboss=暗影猎手是高级近战）
     private _meleePool(): string[] {
-        switch (this.chapter) {
-            case 1:  return ['grunt', 'grunt', 'grunt', 'rust_biter', 'blast_tick', 'exploder'];
-            case 2:  return ['grunt', 'shield', 'shield', 'rivet_beast', 'blast_tick'];
-            case 3:  return ['shield', 'rivet_beast', 'golem', 'elite_grunt'];
-            case 4:  return ['golem', 'exploder', 'elite_grunt', 'rust_biter', 'miniboss'];
-            case 5:  return ['golem', 'rivet_beast', 'elite_grunt', 'elite_grunt', 'miniboss'];
-            default: return ['golem', 'rivet_beast', 'elite_grunt', 'elite_grunt', 'miniboss', 'blast_tick'];
-        }
+        return meleePoolFor(this.chapter);
     }
 
-    // 远程类型池（v4 5.2）
+    // 远程类型池（同上，渐进过滤）
     private _rangedPool(): string[] {
-        switch (this.chapter) {
-            case 1:  return ['archer'];
-            case 2:  return ['archer', 'needle_gunner'];
-            case 3:  return ['needle_gunner', 'ember_acolyte', 'frost_acolyte', 'acid_sac'];
-            case 4:  return ['ember_acolyte', 'frost_acolyte', 'acid_sac', 'arc_leech'];
-            case 5:  return ['needle_gunner', 'arc_leech', 'archer'];
-            default: return ['arc_leech', 'ember_acolyte', 'frost_acolyte', 'acid_sac'];
-        }
+        return rangedPoolFor(this.chapter);
     }
 
     /** 一批敌人共享的边缘出生锚点：整批从同一边缘进场，形成"一波"的群体感。 */
@@ -123,9 +86,24 @@ export class WaveManager {
         const count = enemyCountForWave(tw, this.chapter, this.countMult);
         this._bossPending = false;
         this._bossMirror = !!((game._mutationMods || {}).mirrorArmy);
+        this._finaleMini = [];
         if (kind === 'boss') {
             this._spawnBatches = this._buildMinionBatches(count, game._mutationMods || {}, tw);
-            this._bossPending = true;   // 小兵清空后由 update 阶段补刷 Boss
+            this._bossPending = true;   // 小兵清空后由 update 阶段补刷关底
+            const finale = finaleFor(this.chapter);
+            if (finale.kind === 'mini') {
+                // 前 4 章关底：按档位从图池无重复抽小首领（池小允许回落复用）。
+                const pool = mapDef(mapOf(this.chapter)).miniPool;
+                const used = new Set<string>();
+                for (const tier of finale.tiers) {
+                    const ids = pool[tier as '普通'] ?? [];
+                    const candidates = ids.filter(id => !used.has(id));
+                    const pickFrom = candidates.length ? candidates : ids;
+                    const id = pickFrom.length ? pickFrom[Rng.int(0, pickFrom.length - 1)] : 'chain_hound';
+                    used.add(id);
+                    this._finaleMini.push(id);
+                }
+            }
         } else {
             this._spawnBatches = this._buildMinionBatches(count, game._mutationMods || {}, tw);
         }
@@ -190,16 +168,18 @@ export class WaveManager {
             batches.push(['elite_grunt']);
             intervals.push(interval);
         }
-        const eliteChance = 0.05 + (this.chapter - 1) * 0.08;
+        // 随机精英批概率（v5：按图爬升 0.05→0.45，图内持平）
+        const eliteChance = 0.05 + (mapOf(this.chapter) - 1) * 0.08;
         if (Rng.chance(eliteChance)) { batches.push(['elite_grunt']); intervals.push(interval); }
 
-        // 小首领固定槽位（v4 6.1/6.2：W5/W10/W14，档位随章爬升，同波不重复）
+        // 小首领固定槽位（W5/W10/W14，档位随图与图内章爬升，同波不重复）
         const tiers = miniBossTiers(this.chapter, tw);
         const usedMini = new Set<string>();
+        const miniPool = mapDef(mapOf(this.chapter)).miniPool;
         for (const tier of tiers) {
-            const pool = (MINI_POOL[this.chapter] ?? MINI_POOL[6])[tier as '普通'] ?? [];
+            const pool = miniPool[tier as '普通'] ?? [];
             let candidates = pool.filter(id => !usedMini.has(id));
-            if (!candidates.length) candidates = pool;   // 第 1 章普通池仅 2 只，跨槽允许复用
+            if (!candidates.length) candidates = pool;   // 小池跨槽允许复用
             const id = candidates.length ? candidates[Rng.int(0, candidates.length - 1)] : 'chain_hound';
             usedMini.add(id);
             batches.push([id]);
@@ -256,12 +236,18 @@ export class WaveManager {
         if (this.state === 'fighting') {
             const alive = game.enemies.filter((e: any) => !e.dead && e.alive).length;
             if (alive === 0) {
-                // Boss 波：小兵全部死亡后大Boss才登场（镜像军队变异 ×2）
+                // 关底波：小兵全部死亡后关底登场（图末章大 Boss / 前 4 章小首领组合；
+                // 镜像军队变异 ×2）
                 if (this._bossPending) {
                     this._bossPending = false;
                     const spawn = this.onSpawnEnemy ?? ((t: string, x?: number, y?: number) => game.spawnEnemy(t, x, y));
-                    spawn('boss');
-                    if (this._bossMirror) spawn('boss');
+                    if (this._finaleMini.length) {
+                        for (const id of this._finaleMini) spawn(id);
+                        if (this._bossMirror) for (const id of this._finaleMini) spawn(id);
+                    } else {
+                        spawn('boss');
+                        if (this._bossMirror) spawn('boss');
+                    }
                     // spawn 未生效（极端/mock 场景）时直接按清场处理，避免卡死
                     const bossAlive = game.enemies.filter((e: any) => !e.dead && e.alive).length;
                     if (bossAlive === 0) {
@@ -307,6 +293,6 @@ export class WaveManager {
         this.wave = 0; this.chapter = 1; this.state = 'idle'; this.countMult = 1;
         this._spawnBatches = []; this._spawnBatchesInterval = [];
         this._spawnTimer = 0;
-        this._bossPending = false; this._bossMirror = false;
+        this._bossPending = false; this._bossMirror = false; this._finaleMini = [];
     }
 }

@@ -58,14 +58,16 @@ test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,
     assert.match(gameSource, /onPlayPressed     = \(\) => this\._setState\('saveSelect'\)/);
     // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
     assert.match(gameSource, /onSlotPicked      = \(slot\) => \{[\s\S]*?SaveSystem\.selectSlot\(slot\);[\s\S]*?this\._setState\('lobby'\);/);
-    // 大厅传送门 → 章节选择 → 难度选择 → 选人页；难度页/选人页都可返回大厅
-    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('mapSelect'\)/, '传送门先进章节选择');
-    assert.match(gameSource, /onMapPicked        = \(chapterId\) => \{[\s\S]*?this\._selectedChapter = chapterId;[\s\S]*?this\._setState\('difficultySelect'\)/, '选章节后进难度选择');
-    assert.match(gameSource, /onMapBack          = \(\) => this\._setState\('lobby'\)/, '章节页返回大厅');
+    // 大厅传送门 → 选图 → 图内章节 → 难度选择 → 选人页；难度页/选人页都可返回大厅
+    assert.match(gameSource, /onLobbyPortal     = \(\) => this\._setState\('mapSelect'\)/, '传送门先进选图页');
+    assert.match(gameSource, /onMapPicked        = \(mapId\) => \{[\s\S]*?this\._selectedMap = mapId;[\s\S]*?this\._setState\('chapterSelect'\)/, '选图后进图内章节页');
+    assert.match(gameSource, /onChapterPicked    = \(chapterId\) => \{[\s\S]*?this\._selectedChapter = chapterId;[\s\S]*?this\._setState\('difficultySelect'\)/, '选章节后进难度选择');
+    assert.match(gameSource, /onMapBack          = \(\) => this\._setState\('lobby'\)/, '选图页返回大厅');
     assert.match(gameSource, /onQueryChapterUnlock = \(\) => SaveSystem\.unlockedChapterCount\(\)/, '章节解锁链查询');
-    assert.match(screenSource, /_buildMapSelectPanel\(\);/, '章节选择页构建');
-    assert.match(screenSource, /'选择作战章节'/, 'v4 章节选择标题');
-    assert.match(screenSource, /一局一章 × 15 波/, '一局一章副标题');
+    assert.match(screenSource, /_buildMapSelectPanel\(\);/, '选图页构建');
+    assert.match(screenSource, /_buildChapterSelectPanel\(\);/, '图内章节页构建');
+    assert.match(screenSource, /'选择作战地图'/, 'v5 选图页标题');
+    assert.match(screenSource, /六图 × 每图五章 · 一局一章 15 波/, '一局一章副标题');
     assert.doesNotMatch(screenSource, /无尽 · 天罚循环/, '无尽入口卡已按玩家要求移除');
     assert.match(gameSource, /onDifficultyPicked = \(d\) => \{[\s\S]*?this\._difficulty = d;[\s\S]*?this\._setState\('charSelect'\);/);
     assert.match(gameSource, /onDifficultyBack  = \(\) => this\._setState\('lobby'\)/);

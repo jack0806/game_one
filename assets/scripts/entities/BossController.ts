@@ -4,7 +4,8 @@
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { EnemyBase } from './EnemyBase';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
-import { getBossDef, TEST_BOSSES } from '../data/BossDB';
+import { getBossDefById, TEST_BOSSES } from '../data/BossDB';
+import { mapDef, mapOf } from '../data/LevelIndex';
 import { resetLocomotion } from '../core/Locomotion';
 import { resetDirectionalFacing } from '../core/DirectionalFacing';
 
@@ -87,8 +88,8 @@ export class BossController extends EnemyBase {
     override init(type: string, wave: number, game: any): void {
         this.isBoss = true;
         this.type   = 'boss';
-        // v4：一局一章，章号取所选章（0-based _chapter + 1）；wave 仅作名义参数保留
-        this.chapter = Math.max(1, (game?._chapter ?? 0) + 1);
+        // v5：一局一章，chapter = 图号 1~6（由全局章号投影；wave 仅作名义参数保留）
+        this.chapter = mapOf(Math.max(1, game?._chapter ?? 1));
         this.alive  = true;
         this.dots   = [];
         this.frozen = 0; this.slowMult = 1;
@@ -116,22 +117,28 @@ export class BossController extends EnemyBase {
         this.bossSkillCut = game?._difficulty?.bossSkillCut ?? 0;
     }
 
-    /** Called by GameManager.spawnEnemy('boss') — chapter is 0-based。 */
-    initBoss(chapter: number, game: any): void {
-        // v4：Boss 波恒为关内 W15（wave 仅名义）；章号以显式入参为准，
-        // 与 game._chapter 不一致时（测试房跨章点卡 / 无尽 Boss 轮换）重套章节配置。
+    /** Called by GameManager.spawnEnemy('boss') — chapterId 为全局章号 1~30。 */
+    initBoss(chapterId: number, game: any): void {
+        // v5：Boss 波恒为关内 W15（wave 仅名义）；chapter 落到图号，
+        // 与 game._chapter 投影不一致时（测试房跨图点卡）重套配置。
         this.init('boss', 15, game);
-        if (this.chapter !== chapter + 1) {
-            this.chapter = chapter + 1;
-            this._setupForChapter(this.chapter);
+        const map = mapOf(chapterId);
+        if (this.chapter !== map) {
+            this.chapter = map;
+            this._setupForChapter(map);
             this._applyDifficulty(game);
         }
     }
 
-    /** 测试房间专属 Boss：按 kind 套 TEST_BOSSES 数值与技能集（chapter 取自表内基准章）。 */
+    /** 测试房间专属 Boss：按 kind 套 TEST_BOSSES 数值与技能集（chapter 取自表内基准图）。 */
     initBossKind(kind: string, game: any): void {
         const def = TEST_BOSSES.find(t => t.kind === kind) ?? TEST_BOSSES[0];
-        this.initBoss(def.chapter - 1, game);
+        this.init('boss', 15, game);
+        if (this.chapter !== def.chapter) {
+            this.chapter = def.chapter;
+            this._setupForChapter(def.chapter);
+            this._applyDifficulty(game);
+        }
         this.bossKind = kind;
         this.maxHp = def.maxHp; this.hp = def.maxHp;
         this.damage = def.damage; this.speed = def.speed;
@@ -165,9 +172,9 @@ export class BossController extends EnemyBase {
         return super.takeDamage(rawDmg, attacker, game);
     }
 
-    private _setupForChapter(ch: number): void {
-        // 数值来自 data/BossDB.ts（与测试房间共用单一数据源），内容与历史内联表一致
-        const t = getBossDef(ch - 1);
+    private _setupForChapter(mapId: number): void {
+        // 数值来自 data/BossDB.ts 显式 id 查表（与测试房间共用单一数据源）
+        const t = getBossDefById(mapDef(mapId).bossId);
         this.maxHp     = t.maxHp; this.hp        = t.maxHp;
         this.damage    = t.damage; this.speed     = t.speed;
         this.color     = t.color;  this.glowColor  = t.glow;
@@ -188,7 +195,7 @@ export class BossController extends EnemyBase {
         this.attackWindupMax = t.attackWindupMax;
         // 第1/2章是有脚的巨兽/机甲；第3/4章本体为悬浮晶核与深渊门环。
         // 大型单位使用专用低频步态，避免高速冲锋时大图换帧闪烁。
-        this.locomotionKind = ch <= 2 ? 'bossHeavy' : 'bossHover';
+        this.locomotionKind = mapId <= 2 ? 'bossHeavy' : 'bossHover';
         this.moveSpriteKey = `${this.spriteKey}_move`;
         this.locomotionFrameKey = '';
     }

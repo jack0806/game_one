@@ -4,6 +4,7 @@
 import { Vec, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { DIFFICULTIES } from '../data/DifficultyDB';
+import { mapOf } from '../data/LevelIndex';
 
 interface GoldDrop {
     x: number; y: number;
@@ -141,9 +142,9 @@ export class Economy {
     spend(amount: number): boolean { return this.spendGold(amount); }
 
     /** Generate shop items appropriate for the current chapter. */
-    generateShopItems(chapter: number): ShopItem[] {
+    generateShopItems(globalChapterId: number): ShopItem[] {
         // v4 9.4 重定价：单局金币预算 ≈1600，原 30~90 相当于白送；
-        // 章节递增系数沿用 ×0.3/章。
+        // v5：入参为全局章号 1~30，价格系数按图走（×0.3/图）。
         const items: ShopItem[] = [
             { id: 'heal',     name: '急救包',     desc: '恢复 40 HP',          cost: 80,  effect: 'heal',    value: 40  },
             { id: 'maxhp',    name: '生命强化',   desc: '永久增加 20 最大 HP', cost: 150, effect: 'maxhp',   value: 20  },
@@ -152,8 +153,9 @@ export class Economy {
             { id: 'damage',   name: '伤害晶核',   desc: '伤害 +15%',           cost: 160, effect: 'damage',  value: 0.15},
             { id: 'augment',  name: '神秘强化',   desc: '随机选一张强化卡',    cost: 250, effect: 'augment', value: 0   },
         ];
-        // Scale costs with chapter
-        const mult = 1 + (chapter - 1) * 0.3;
+        // Scale costs with map (v5: 图内五章持平)
+        const mapId = mapOf(globalChapterId);
+        const mult = 1 + (mapId - 1) * 0.3;
         return items.map(it => ({ ...it, cost: Math.round(it.cost * mult) }));
     }
 }

@@ -5,7 +5,7 @@ import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getMiniBossDef, getTestGruntDef } from '../data/BossDB';
-import { chapterDef } from '../data/WaveData';
+import { statScaleFor } from '../data/LevelIndex';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import { createDirectionalFacingState, resetDirectionalFacing, resolveFacingView } from '../core/DirectionalFacing';
 import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
@@ -194,10 +194,10 @@ export class EnemyBase {
 
     init(type: string, wave: number, game: any): void {
         this.type    = type;
-        // v4：wave 为关内波次（1~15），章节取所选章而非全局波次反推；
+        // v5：wave 为关内波次（1~15），chapter 为全局章号 1~30（1-based 直读）；
         // 成长 = 章节血量系数 × 波内成长（W15 ≈ ×1.42）。
-        this.chapter = Math.max(1, (game?._chapter ?? 0) + 1);
-        const statScale = chapterDef(this.chapter).statScale;
+        this.chapter = Math.max(1, game?._chapter ?? 1);
+        const statScale = statScaleFor(this.chapter);
         const scale  = statScale * (1 + (wave - 1) * 0.03);
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false; this._skillStolen = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
@@ -317,7 +317,7 @@ export class EnemyBase {
             // 金币改档位值（普通 40 / 史诗 60 / 地狱 80，v4 9.2）。
             // W14 守卫波小首领单独 +10%：小首领不吃波内成长，同章内 W5/W14 等强，
             // 守卫波压轴需要比试炼波更硬（文档 6.3 调整）。
-            const ss = chapterDef(this.chapter).statScale;
+            const ss = statScaleFor(this.chapter);
             this.maxHp = Math.floor(miniDef.maxHp * ss * (wave === 14 ? 1.1 : 1));
             this.damage = miniDef.damage * ss * (wave === 14 ? 1.1 : 1);
             this.armor = miniDef.armor * ss;

@@ -10,6 +10,7 @@ import {
     UITransform, Vec3, VerticalTextAlignment, sys,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
+import { mapOf, chapterInMap } from '../data/LevelIndex';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
@@ -216,7 +217,7 @@ export class SaveSelectUI {
         if (summary.exists && p) {
             const achCount = p.achievements.length;
             view.lines[0].string = SLOT_TITLES[view.slot];
-            view.lines[1].string = `总局数 ${p.totalRuns}  ·  最远 第${Math.max(1, p.bestChapter)}章`;
+            view.lines[1].string = `总局数 ${p.totalRuns}  ·  最远 图${mapOf(Math.max(1, p.bestChapter))}-${chapterInMap(Math.max(1, p.bestChapter))}`;
             view.lines[2].string = `成就 ${achCount}/${ACHIEVEMENTS.length}  ·  英雄 ${p.charsPlayed.length}/6`;
             view.lines[3].string = p.updatedAt > 0
                 ? `最后游玩  ${new Date(p.updatedAt).toLocaleDateString()}`

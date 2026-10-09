@@ -6,6 +6,7 @@ const path = require('node:path');
 const { ENEMY_HIT_ART, enemyHitArt } = require('../dist/data/CombatArtDB');
 const { EFFECT_ANIMATIONS } = require('../dist/data/EffectAnimationDB');
 const { UNIT_CATALOG } = require('../dist/data/BossDB');
+const { globalChapter } = require('../dist/data/LevelIndex');
 const { ParticleManager, spriteFxFrame } = require('../dist/systems/ParticleManager');
 const { BulletPool } = require('../dist/entities/BulletController');
 const { EnemyBase } = require('../dist/entities/EnemyBase');
@@ -57,7 +58,7 @@ test('真实针枪发射保存单位身份，十种首领身份不会退化为�
     assert.ok(game.enemyBullets.length);
     assert.ok(game.enemyBullets.every(b => b.hitSource === 'needle_gunner'));
     for (let chapter = 0; chapter < 6; chapter++) {
-        const boss = new BossController(); boss.initBoss(chapter, game);
+        const boss = new BossController(); boss.initBoss(globalChapter(chapter + 1, 1), game);
         assert.equal(boss.hitSource, chapter === 4 ? 'boss_mech' : chapter === 5 ? 'boss_invader' : 'boss_ch' + (chapter + 1));
     }
     for (const kind of ['abyss', 'vespa', 'crucible_city', 'manyfold']) {

@@ -206,7 +206,7 @@ test('怪物近战前摇结束时触发剑气(强度0.85,方向指向玩家)', (
 test('Boss接触攻击前摇结束时触发大幅剑气(强度1.8)', () => {
     const game = recordingGame();
     const boss = new BossController();
-    boss.initBoss(0, game);
+    boss.initBoss(5, game);   // 全局 5 = 图1章5
     boss.x = 0; boss.y = 0;
     const player = makePlayer({ x: 40, y: 0 });
     boss.update(0.016, player, game);
@@ -259,7 +259,7 @@ test('Boss四章技能弹幕带enemyFx标签(毒球/齿轮/追踪/混沌)', () =
         const game = makeMockGame();
         game.enemyBullets = [];
         const boss = new BossController();
-        boss.initBoss(ch, game);
+        boss.initBoss((ch + 1) * 5, game);   // v5：旧 0-based 章 ch → 全局图末节点 (ch+1)×5
         boss.x = 100; boss.y = 100;
         boss._useSkill(makePlayer({ x: 400, y: 100 }), game);
         assert.equal(game.enemyBullets.length, counts[ch], `第${ch + 1}章弹幕数量`);

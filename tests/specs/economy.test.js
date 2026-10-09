@@ -56,10 +56,10 @@ test('掉落物超过life后自动消失(未被拾取)', () => {
     assert.equal(eco.gold, 0, '未被拾取不应加金币');
 });
 
-test('generateShopItems按章节数放大价格(mult = 1+(chapter-1)*0.3；v4基价重标)', () => {
+test('generateShopItems按图放大价格(mult = 1+(mapId-1)*0.3；v4基价重标,v5按图)', () => {
     const eco = new Economy();
-    const ch1 = eco.generateShopItems(1);
-    const ch3 = eco.generateShopItems(3);
+    const ch1 = eco.generateShopItems(1);    // 图1章1
+    const ch3 = eco.generateShopItems(11);   // 图3章1
     const heal1 = ch1.find(i => i.id === 'heal');
     const heal3 = ch3.find(i => i.id === 'heal');
     assert.equal(heal1.cost, 80); // mult=1（v4：急救包 30→80，预算≈1600 下不再白送）

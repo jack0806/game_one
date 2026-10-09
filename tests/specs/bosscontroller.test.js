@@ -6,7 +6,7 @@ const { makeMockGame, makePlayer } = require('./mockGame');
 
 function makeBoss(game) {
     const boss = new BossController();
-    boss.initBoss(0, game); // chapter=0 (0-based) → wave=10 → chapter 1 表
+    boss.initBoss(0 * 5 + 5, game); // 全局 5 = 图1章5（图末节点）→ 图1 Boss 表
     boss.x = 0; boss.y = 0;
     return boss;
 }
@@ -110,7 +110,7 @@ test('废土领主毒球、召唤和阶段变化分别播放独立身体动作',
 test('钢铁之王齿轮齐射使用第二章专属身体动作', () => {
     const game = makeMockGame();
     const boss = new BossController();
-    boss.initBoss(1, game);
+    boss.initBoss(10, game);   // 全局 10 = 图2章5 → 钢铁之王
     boss.x = 0; boss.y = 0;
     boss._skillTimer = 0; boss._summonTimer = 999; boss._chargeCd = 999;
     const player = makePlayer({ x: 600, y: 200 });
@@ -126,7 +126,7 @@ test('钢铁之王齿轮齐射使用第二章专属身体动作', () => {
 test('海克斯异变体追踪核使用第三章专属身体动作', () => {
     const game = makeMockGame();
     const boss = new BossController();
-    boss.initBoss(2, game);
+    boss.initBoss(15, game);   // 全局 15 = 图3章5 → 海克斯异变体
     boss.x = 0; boss.y = 0;
     boss._skillTimer = 0; boss._summonTimer = 999; boss._chargeCd = 999;
     const player = makePlayer({ x: 600, y: 200 });
@@ -142,7 +142,7 @@ test('海克斯异变体追踪核使用第三章专属身体动作', () => {
 test('终焉之门混沌弹幕使用第四章专属身体动作', () => {
     const game = makeMockGame();
     const boss = new BossController();
-    boss.initBoss(3, game);
+    boss.initBoss(20, game);   // 全局 20 = 图4章5 → 终焉之门
     boss.x = 0; boss.y = 0;
     boss._skillTimer = 0; boss._summonTimer = 999; boss._chargeCd = 999;
     const player = makePlayer({ x: 600, y: 200 });

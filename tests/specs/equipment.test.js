@@ -7,12 +7,13 @@ const {
     equipmentKey, applyEquipmentToStats, qualityCapForChapter, EQUIP_QUALITY_LABEL,
 } = require('../dist/data/EquipmentDB');
 
-test('品质上限按章:1章普通/2~3稀有/4~6史诗', () => {
+test('品质上限按图:图1普通/图2~3稀有/图4~6史诗(v5全局章号)', () => {
     assert.equal(qualityCapForChapter(1), 0);
-    assert.equal(qualityCapForChapter(2), 1);
-    assert.equal(qualityCapForChapter(3), 1);
-    assert.equal(qualityCapForChapter(4), 2);
-    assert.equal(qualityCapForChapter(6), 2);
+    assert.equal(qualityCapForChapter(5), 0, '图1章5仍只掉普通');
+    assert.equal(qualityCapForChapter(6), 1, '图2章1起稀有');
+    assert.equal(qualityCapForChapter(15), 1, '图3章5仍稀有');
+    assert.equal(qualityCapForChapter(16), 2, '图4章1起史诗');
+    assert.equal(qualityCapForChapter(30), 2);
 });
 
 test('Boss掉落掷取:品质不超章节上限,未拥有组合优先,全拥有后返回null', () => {
@@ -24,8 +25,8 @@ test('Boss掉落掷取:品质不超章节上限,未拥有组合优先,全拥有�
         assert.ok(EQUIP_AFFIXES.some(a => a.id === e.affix));
         assert.ok(e.uid.length > 0, '掉落自带唯一 uid');
     }
-    // 第 5 章：可掉史诗
-    const epic = rollEquipmentDrop(5, new Set(), () => 0.99);
+    // 图5章1（全局 21）：可掉史诗
+    const epic = rollEquipmentDrop(21, new Set(), () => 0.99);
     assert.equal(epic.quality, 2, '高随机位应命中史诗档');
     // 去重：全部组合已拥有 → null（调用方改掉核心币包）
     const all = new Set();

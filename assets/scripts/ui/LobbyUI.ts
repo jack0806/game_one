@@ -10,6 +10,7 @@ import {
     UITransform, Vec3, VerticalTextAlignment, tween, sys,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
+import { mapOf, chapterInMap } from '../data/LevelIndex';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
@@ -96,7 +97,7 @@ export class LobbyUI {
         const slot = SaveSystem.currentSlot();
         this._summaryTitle.string = SLOT_TITLES[slot] ?? `存档 ${slot + 1}`;
         this._summaryLines[0].string = `总局数 ${p.totalRuns}  ·  通关 ${p.totalWins}`;
-        this._summaryLines[1].string = `最远进度  第${Math.max(1, p.bestChapter)}章 · 第${Math.max(1, p.bestWave)}波`;
+        this._summaryLines[1].string = `最远进度  图${mapOf(Math.max(1, p.bestChapter))}-${chapterInMap(Math.max(1, p.bestChapter))} · 第${Math.max(1, p.bestWave)}波`;
         this._summaryLines[2].string = `累计击杀 ${p.totalKills}  ·  Boss ${p.bossKills}`;
         this._summaryLines[3].string = `成就 ${p.achievements.length}/${ACHIEVEMENTS.length}  ·  英雄 ${p.charsPlayed.length}/6`;
     }

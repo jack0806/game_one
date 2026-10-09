@@ -13,7 +13,7 @@ const path = require('path');
 const { resolveArtKey } = require('../dist/core/ArtRemap');
 const { CHARS } = require('../dist/data/CharacterDB');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
-const { CHAPTERS } = require('../dist/data/WaveData');
+const { MAPS } = require('../dist/data/LevelIndex');
 const { CHAPTER_ARENAS } = require('../dist/data/ChapterArenaDB');
 const { QUESTS, CODEX_ENTRIES } = require('../dist/data/MetaProgressionDB');
 const { ACHIEVEMENTS } = require('../dist/systems/SaveSystem');
@@ -29,7 +29,7 @@ function collectAllArtKeys() {
     keys.add('ui_portrait_mortis');
     keys.add('turret_base_vivian');
     keys.add('turret_barrel_vivian');
-    for (const c of CHAPTERS) keys.add(c.bgKey);
+    for (const m of MAPS) keys.add(m.bgKey);
     for (const layout of CHAPTER_ARENAS) for (const prop of layout.obstacles) keys.add(prop.artKey);
     for (const t of [
         'enemy_grunt', 'enemy_shield', 'enemy_exploder', 'enemy_golem',
