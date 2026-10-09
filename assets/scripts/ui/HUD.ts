@@ -18,7 +18,10 @@ export interface HudData {
     maxShield: number;
     gold: number;
     wave: number;
+    /** 图号 1~6（v5）。 */
     chapter: number;
+    /** 展示串"图m-c"（v5，由 GameManager 生成）。 */
+    chapterLabel?: string;
     heroId?: string;
     heroName?: string;
     testRoom?: boolean;
@@ -249,7 +252,7 @@ export class HUD extends Component {
         this._heroLabel.string = (d.heroName || d.initialPassive?.name || '').split('·').pop()!;
         this._refreshHp(d);
         this._goldLabel.string = Math.floor(d.gold).toLocaleString();
-        this._waveLabel.string = d.testRoom ? '战斗测试房' : `第${d.chapter + 1}章 · 第${d.wave}波`;
+        this._waveLabel.string = d.testRoom ? '战斗测试房' : `${d.chapterLabel ?? `图${d.chapter}`} · 第${d.wave}波`;
         this._difficultyLabel.string = d.testRoom ? '' : `${d.wave}/15${d.difficultyName ? ' · ' + d.difficultyName : ''}`;
         this._refreshBoss(d); this._refreshSkills(d.skills);
     }

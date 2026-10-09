@@ -31,6 +31,7 @@
     "assets/scripts/data/DifficultyDB.ts",
     "assets/scripts/data/EffectAnimationDB.ts",
     "assets/scripts/data/EquipmentDB.ts",
+    "assets/scripts/data/LevelIndex.ts",
     "assets/scripts/data/MetaProgressionDB.ts",
     "assets/scripts/data/WaveData.ts",
     "assets/scripts/entities/BossController.ts",

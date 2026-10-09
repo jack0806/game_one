@@ -36,8 +36,8 @@ test('行1:数量−/+、玩家无敌、停火观摩、清场、返回主页、�
     assert.match(testroomSource, /this\.onClear\?\.\(\)/);
     assert.match(testroomSource, /'推进阶段'/);
     assert.match(testroomSource, /onCycleChapter/);
-    assert.match(testroomSource, /`章节:\$\{value\}`/);
-    assert.match(gameSource, /this\._chapter = \(this\._chapter \+ 1\) % CHAPTERS\.length/);
+    assert.match(testroomSource, /`地图:\$\{value\}`/, 'v5 测试房按图轮换标签');
+    assert.match(gameSource, /this\._chapter = globalChapter\(\(mapOf\(this\._chapter\) % MAP_COUNT\) \+ 1, 1\)/, 'v5 测试房按图轮换');
     assert.match(testroomSource, /'靶:静'/);
     assert.match(testroomSource, /'靶:动'/);
     assert.match(gameSource, /this\.state === 'testRoom' && this\._testTargetPaused/);

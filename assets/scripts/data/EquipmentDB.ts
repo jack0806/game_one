@@ -3,8 +3,10 @@
 // ============================================================
 // 定位：唯一跨局的战斗掉落物。金币与海克斯词条均局内；装备只做纯属性
 // 加成、不给新技能（新能力 100% 来自海克斯技能卡）。3 个装备格，大厅配装
-// 带入对局。品质按章：1 章普通 / 2~3 稀有 / 4~6 史诗。
+// 带入对局。品质按图（v5）：图 1 普通 / 图 2~3 稀有 / 图 4~6 史诗。
 // 局内卖出：普通 80 / 稀有 200 / 史诗 450 金（卖出 = 永久失去）。
+
+import { mapOf } from './LevelIndex';
 
 export interface EquipAffixDef {
     id: string;
@@ -27,9 +29,10 @@ export const EQUIP_AFFIXES: EquipAffixDef[] = [
 
 export const EQUIP_QUALITY_LABEL = ['普通', '稀有', '史诗'];
 
-/** 品质上限按章（0=普通 1=稀有 2=史诗；第 4 章起才可能掉史诗）。 */
-export function qualityCapForChapter(chapterId: number): number {
-    return chapterId >= 4 ? 2 : chapterId >= 2 ? 1 : 0;
+/** 品质上限按图（0=普通 1=稀有 2=史诗；v5 提案 6.3：图 1 普通、图 2~3 稀有、图 4~6 史诗）。 */
+export function qualityCapForChapter(globalChapterId: number): number {
+    const mapId = mapOf(globalChapterId);
+    return mapId >= 4 ? 2 : mapId >= 2 ? 1 : 0;
 }
 
 /** 局内卖出价（v4 9.7）。 */

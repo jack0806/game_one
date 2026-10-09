@@ -66,13 +66,13 @@ test('成就判定:累计击杀到100时解锁百人斩', () => {
 
 test('存档持久化:重新load(清缓存)后数据仍在', () => {
     freshProfile();
-    SaveSystem.recordRun({ charId: 'olia', chapter: 3, wave: 12, kills: 10, bossKills: 1,
+    SaveSystem.recordRun({ charId: 'olia', chapter: 11, wave: 12, kills: 10, bossKills: 1,
         goldEarned: 50, maxCombo: 8, augmentCount: 1, won: false });
     SaveSystem.resetCache(); // 模拟下次启动游戏
     const p = SaveSystem.load();
     assert.equal(p.totalRuns, 1);
-    assert.equal(p.bestChapter, 3);
-    assert.ok(p.achievements.indexOf('chapter_2') >= 0, '到达第3章应已解锁初入混沌');
+    assert.equal(p.bestChapter, 11);
+    assert.ok(p.achievements.indexOf('chapter_2') >= 0, '到达图3(全局11节点)应已解锁初入混沌');
 });
 
 test('损坏存档容错:非法JSON回退空白档案不抛错', () => {

@@ -7,6 +7,7 @@
 // 之后大厅/成就墙/局末统计都读写当前选中槽。
 import { sys } from 'cc';
 import { equipmentKey } from '../data/EquipmentDB';
+import { TOTAL_CHAPTERS } from '../data/LevelIndex';
 
 /** 一局结束时的汇总数据（由 GameManager 在死亡/通关时填写）。 */
 export interface RunSummary {
@@ -42,7 +43,7 @@ export interface PlayerProfile {
     achievements: string[];    // 已解锁成就id
     /** v4：核心币余额（通关结算金币折算 20% 封顶 80；元进度货币）。 */
     coreCoins: number;
-    /** v4：已通关的最高章号（1~6；章节解锁链=chaptersCleared+1，第 1 章恒解锁）。 */
+    /** v5：已通关的最高全局章号（1~30；解锁链=chaptersCleared+1，第 1 章恒解锁）。 */
     chaptersCleared: number;
     /** v4：装备仓库（跨局永久；uid/affix/quality，见 data/EquipmentDB.ts）。 */
     equipments: any[];
@@ -50,6 +51,8 @@ export interface PlayerProfile {
     equipLoadout: (string | null)[];
     /** v4：旧档一次性迁移标记（六章连打时代的 bestWave → 章节解锁链）。 */
     migratedV4?: boolean;
+    /** v5：挑战星完成记录（全局章号 → 已完成挑战 id 列表，见提案 8.3）。 */
+    questStars?: Record<number, string[]>;
 }
 
 /** 存档槽概览（存档选择页渲染用；exists=false 即空槽）。 */
@@ -89,9 +92,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
       progress: p => p.totalKills },
     { id: 'boss_10',    name: '屠龙者',     desc: '累计击杀 10 个首领',    icon: '👑', artKey: 'chaos', rarity: '传奇', category: '挑战', reward: '首领猎手徽记', goal: 10,
       progress: p => p.bossKills },
-    { id: 'chapter_2',  name: '初入混沌',   desc: '到达第 2 章',           icon: '🌿', artKey: 'summon', rarity: '稀有', category: '探索', reward: '核心币 × 160', goal: 2,
+    { id: 'chapter_2',  name: '初入混沌',   desc: '通关第 2 张地图',       icon: '🌿', artKey: 'summon', rarity: '稀有', category: '探索', reward: '核心币 × 160', goal: 10,
       progress: p => p.bestChapter },
-    { id: 'chapter_4',  name: '深渊行者',   desc: '到达第 4 章',           icon: '🌌', artKey: 'chaos', rarity: '史诗', category: '探索', reward: '紫晶档案框', goal: 4,
+    { id: 'chapter_4',  name: '深渊行者',   desc: '通关第 4 张地图',       icon: '🌌', artKey: 'chaos', rarity: '史诗', category: '探索', reward: '紫晶档案框', goal: 20,
       progress: p => p.bestChapter },
     { id: 'gold_5000',  name: '富甲一方',   desc: '累计获得 5000 金币',    icon: '💰', artKey: 'gold', rarity: '稀有', category: '收集', reward: '核心币 × 300', goal: 5000,
       progress: p => p.totalGoldEarned },
@@ -107,7 +110,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 
 function freshProfile(): PlayerProfile {
     return {
-        version: 1,
+        version: 2,
         createdAt: 0, updatedAt: 0,
         totalRuns: 0, totalWins: 0, totalKills: 0, bossKills: 0,
         bestChapter: 0, bestWave: 0, totalGoldEarned: 0,
@@ -115,7 +118,7 @@ function freshProfile(): PlayerProfile {
         charsPlayed: [], achievements: [],
         coreCoins: 0, chaptersCleared: 0,
         equipments: [], equipLoadout: [null, null, null],
-        migratedV4: false,
+        migratedV4: true, questStars: {},
     };
 }
 
@@ -207,6 +210,16 @@ export class SaveSystem {
             p.migratedV4 = true;
             const legacyCleared = Math.min(6, Math.floor((p.bestWave ?? 0) / 5));
             if (legacyCleared > (p.chaptersCleared ?? 0)) p.chaptersCleared = legacyCleared;
+        }
+        // v5 一次性迁移（提案 3.1 规则 B，2026-10-09 定稿）：v4 的 6 章制档
+        // 折算进 30 节点链——旧"通关第 N 章"打过图 N 的大 Boss ≈ 新"图 N 全通"，
+        // 即全局 N×5。v4 迁移先跑，产出旧语义 1~6 后再统一放大。
+        if ((p.version ?? 1) < 2) {
+            p.version = 2;
+            const oldCleared = Math.min(6, Math.max(0, p.chaptersCleared ?? 0));
+            const oldBest = Math.min(6, Math.max(0, p.bestChapter ?? 0));
+            p.chaptersCleared = Math.min(TOTAL_CHAPTERS, oldCleared * 5);
+            p.bestChapter = Math.min(TOTAL_CHAPTERS, Math.max(oldBest * 5, p.chaptersCleared));
             try { sys.localStorage.setItem(this.slotKey(this._slot), JSON.stringify(p)); } catch (_e) { /* 存储失败下次再迁 */ }
         }
         this._cache = p;
@@ -269,7 +282,7 @@ export class SaveSystem {
         return this.load().coreCoins ?? 0;
     }
 
-    /** 记录通关章号（解锁链：通关第 N 章解锁第 N+1 章）。 */
+    /** 记录通关全局章号（解锁链：通关第 k 节点解锁第 k+1 节点）。 */
     static recordChapterCleared(chapterId: number): void {
         const p = this.load();
         if (chapterId > (p.chaptersCleared ?? 0)) {
@@ -278,9 +291,25 @@ export class SaveSystem {
         }
     }
 
-    /** 已解锁的章节数（第 1 章恒解锁；通关 6 章后无尽入口解锁）。 */
+    /** 已解锁的节点数（第 1 章恒解锁；1~30 线性链）。 */
     static unlockedChapterCount(): number {
-        return Math.min(6, (this.load().chaptersCleared ?? 0) + 1);
+        return Math.min(TOTAL_CHAPTERS, (this.load().chaptersCleared ?? 0) + 1);
+    }
+
+    // ── v5：挑战星（提案 8.3；完成即记，与首通无关） ──
+
+    static questStarsFor(chapterId: number): string[] {
+        return this.load().questStars?.[chapterId] ?? [];
+    }
+
+    static recordQuestStar(chapterId: number, challengeId: string): void {
+        const p = this.load();
+        if (!p.questStars) p.questStars = {};
+        const done = p.questStars[chapterId] ?? (p.questStars[chapterId] = []);
+        if (done.indexOf(challengeId) < 0) {
+            done.push(challengeId);
+            this.save();
+        }
     }
 
     // ── v4：装备仓库（《关卡设计-15波.md》第 10 节） ──

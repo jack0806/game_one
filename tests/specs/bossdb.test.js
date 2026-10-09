@@ -35,19 +35,19 @@ test('getBossDef越界时回落到首/末章', () => {
     assert.equal(getBossDef(-5).label, BOSSES[0].label, '负章节回落第一章');
 });
 
-test('initBoss按0-based章节读到对应BossDB行', () => {
+test('initBoss按全局章号投影图号读到对应BossDB行', () => {
     const game = makeMockGame();
-    for (let ch = 0; ch < 6; ch++) {
+    for (let mapId = 1; mapId <= 6; mapId++) {
         const boss = new BossController();
-        boss.initBoss(ch, game);
-        const def = BOSSES[ch];
-        assert.equal(boss.maxHp, def.maxHp, `第${ch + 1}章Boss生命应来自BossDB`);
+        boss.initBoss(mapId * 5, game);   // 图 m 章 5（图末节点）
+        const def = BOSSES[mapId - 1];
+        assert.equal(boss.maxHp, def.maxHp, `图${mapId}Boss生命应来自BossDB`);
         assert.equal(boss.damage, def.damage);
         assert.equal(boss.speed, def.speed);
         assert.equal(boss.armor, def.armor);
         assert.equal(boss.label, def.label);
         assert.equal(boss.spriteKey, def.spriteKey);
-        assert.equal(boss.chapter, ch + 1, 'initBoss传入0-based章节,内部应为1-based');
+        assert.equal(boss.chapter, mapId, 'initBoss传入全局章号,内部应为图号');
     }
 });
 

@@ -17,7 +17,11 @@ import { drawCombatEnemyBar } from './UIStyle';
 import { CharDef, CHARS, spawnSkeletonServant } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
-import { CHAPTERS, MUTATIONS, starterPack } from '../data/WaveData';
+import { MUTATIONS } from '../data/WaveData';
+import {
+    MAP_COUNT, TOTAL_CHAPTERS, mapDef, mapOf, chapterInMap, chapterNode,
+    globalChapter, goldStageMult,
+} from '../data/LevelIndex';
 import { rollEquipmentDrop, equipmentLabel, equipmentSellValue, applyEquipmentToStats } from '../data/EquipmentDB';
 import { ArenaLayout, EMPTY_ARENA } from '../data/ChapterArenaDB';
 import { arenaLineClear, arenaSteerTarget, dashInArena, firstArenaBulletHit, isArenaFree, moveInArena,
@@ -29,7 +33,7 @@ import { BossController }    from '../entities/BossController';
 import { BulletPool }        from '../entities/BulletController';
 import { AugmentManager }    from '../systems/AugmentManager';
 import { WaveManager }       from '../systems/WaveManager';
-import { Economy, ShopItem, GOLD_STAGE_MULT, nextAugRefreshCost, difficultyGoldMult } from '../systems/Economy';
+import { Economy, ShopItem, nextAugRefreshCost, difficultyGoldMult } from '../systems/Economy';
 import { SaveSystem }        from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
@@ -91,7 +95,7 @@ const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
 
 export type GameState =
     | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'playing'
-    | 'mapSelect' | 'augSelect' | 'shop' | 'gameover'
+    | 'mapSelect' | 'chapterSelect' | 'augSelect' | 'shop' | 'gameover'
     | 'chapterClear' | 'paused' | 'stats'
     | 'testRoom';
 
@@ -161,7 +165,8 @@ export class GameManager extends Component {
     // v4：波次唯一权威是 WaveManager.wave（原 _wave 双份计数已删，防 W1 瞬间 0 值漂移）
     state:             GameState = 'menu';
     private _char?:    CharDef;
-    private _chapter   = 0;
+    /** v5：所选全局章号（1~30，1-based 唯一真源；图号 = mapOf(_chapter)）。 */
+    private _chapter   = 1;
     private _mutations: string[] = [];
     private _runId = 0;
     private _visualTime = 0;
@@ -272,8 +277,10 @@ export class GameManager extends Component {
      */
     _difficulty?: DifficultyDef;
 
-    /** v4：所选章（1~6，章节选择页注入）。默认第 1 章。（无尽模式已移除） */
+    /** v5：所选全局章号（1~30，图内章节页注入）。默认第 1 章。 */
     private _selectedChapter = 1;
+    /** v5：当前浏览的图号（选图页点入后由章节页消费）。 */
+    private _selectedMap = 1;
     /** v4：通关结算折算的核心币（20% 封顶 80，chapterClear 面板显示用）。 */
     private _coinsEarned = 0;
     /** v4：本局已掉过装备的波次（镜像军队 ×2 Boss 同波只掉一件；无尽换波再掉）。 */
@@ -491,13 +498,19 @@ export class GameManager extends Component {
         };
         this._screenMgr.onLobbyPortal     = () => this._setState('mapSelect');
         this._screenMgr.onLobbyBack       = () => this._setState('menu');
-        // v4：章节选择（6 章）→ 难度选择 → 英雄选择 → 开战。
-        this._screenMgr.onMapPicked        = (chapterId) => {
+        // v5：选图（6 图）→ 图内章节（5 章）→ 难度选择 → 英雄选择 → 开战。
+        this._screenMgr.onMapPicked        = (mapId) => {
+            this._selectedMap = mapId;
+            this._setState('chapterSelect');
+        };
+        this._screenMgr.onMapBack          = () => this._setState('lobby');
+        this._screenMgr.onChapterPicked    = (chapterId) => {
             this._selectedChapter = chapterId;
             this._setState('difficultySelect');
         };
-        this._screenMgr.onMapBack          = () => this._setState('lobby');
+        this._screenMgr.onChapterBack      = () => this._setState('mapSelect');
         this._screenMgr.onQueryChapterUnlock = () => SaveSystem.unlockedChapterCount();
+        this._screenMgr.onQueryActiveMap    = () => this._selectedMap;
         this._screenMgr.onDifficultyPicked = (d) => {
             this._difficulty = d;
             this._screenMgr.setRunDifficulty(d);
@@ -581,7 +594,8 @@ export class GameManager extends Component {
         // 章节结束/结算页必须清空上一帧战斗残影。此前浮字、金币池和粒子只在
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
         if (s === 'chapterClear' || s === 'gameover' || s === 'menu' || s === 'charSelect'
-            || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect' || s === 'mapSelect') {
+            || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect' || s === 'mapSelect'
+            || s === 'chapterSelect') {
             this._floatText?.clear();
             for (const label of this._floatLabels) label.active = false;
             for (const enemy of this._enemies) {
@@ -610,6 +624,10 @@ export class GameManager extends Component {
                 this._screenMgr.show('mapSelect');
                 this._audio.playBgm('title');
                 break;
+            case 'chapterSelect':
+                this._screenMgr.show('chapterSelect');
+                this._audio.playBgm('title');
+                break;
             case 'difficultySelect':
                 this._screenMgr.show('difficultySelect');
                 this._audio.playBgm('title');
@@ -620,28 +638,28 @@ export class GameManager extends Component {
                 break;
             case 'gameover':
                 this._screenMgr.setRunReport('gameover', {
-                    chapter: Math.min(CHAPTERS.length, this._chapter + 1),
+                    chapter: Math.min(TOTAL_CHAPTERS, this._chapter),
                     wave: this._waveMgr.templateWave(),
                     kills: this.kills,
                     maxCombo: this.maxCombo,
                     goldEarned: this._economy.earnedThisRun,
                     score: this.score,
-                    finalChapter: this._chapter + 1 >= CHAPTERS.length,
+                    finalChapter: this._chapter >= TOTAL_CHAPTERS,
                     coinsEarned: 0,
                 });
                 this._screenMgr.show('gameover');
                 this._audio.playBgm('title');
                 break;
             case 'chapterClear':
-                // v4：通关结算（一局一章）——显示用时/击杀/金币折算核心币
+                // v5：通关结算（一局一章）——显示用时/击杀/金币折算核心币
                 this._screenMgr.setRunReport('chapterClear', {
-                    chapter: Math.min(CHAPTERS.length, this._chapter + 1),
+                    chapter: Math.min(TOTAL_CHAPTERS, this._chapter),
                     wave: this._waveMgr.templateWave(),
                     kills: this.kills,
                     maxCombo: this.maxCombo,
                     goldEarned: this._economy.earnedThisRun,
                     score: this.score,
-                    finalChapter: this._chapter + 1 >= CHAPTERS.length,
+                    finalChapter: this._chapter >= TOTAL_CHAPTERS,
                     coinsEarned: this._coinsEarned,
                 });
                 this._screenMgr.show('chapterClear');
@@ -674,7 +692,7 @@ export class GameManager extends Component {
     }
 
     private _chapterBgm(): BgmCue {
-        return (`ch${Math.min(4, Math.max(1, this._chapter + 1))}`) as BgmCue;
+        return mapDef(mapOf(this._chapter)).bgmCue as BgmCue;
     }
 
     private _startGame(char: CharDef) {
@@ -684,8 +702,8 @@ export class GameManager extends Component {
         // 开局即固定，避免沿用上一场测试房遗留的 'testRoom' 值。
         this._pauseReturn = 'playing';
         this._char    = char;
-        // v4：一局一章——注入所选章（章节选择页设置，默认第 1 章）
-        this._chapter = Math.max(0, Math.min(CHAPTERS.length - 1, this._selectedChapter - 1));
+        // v5：一局一章——注入所选全局章号（1~30，1-based；章节页设置，默认第 1 章）
+        this._chapter = Math.max(1, Math.min(TOTAL_CHAPTERS, this._selectedChapter));
         this._mutations = [];
         this._enemies   = [];
         this._turrets    = [];
@@ -704,7 +722,7 @@ export class GameManager extends Component {
         // v4 9.6 层1：击杀掉落产出硬上限（预算×1.25，防崩塌保险丝；
         // 测试房走 reset 后的 Infinity，不受限）
         this._economy.killGoldCap = Math.round(
-            2000 * GOLD_STAGE_MULT[this._chapter] * difficultyGoldMult(this._difficulty?.id));
+            2000 * goldStageMult(this._chapter) * difficultyGoldMult(this._difficulty?.id));
         this._augMgr.reset();
         this._waveMgr.reset();
         // v4：难度数量倍率注入（简单 0.85 / 普通 1 / 困难 1.1 / 地狱 1.2）
@@ -724,12 +742,19 @@ export class GameManager extends Component {
         for (const eq of equips) applyEquipmentToStats(eq, this._player.stats);
         if (equips.some(e => e.affix === 'hp')) this._player.hp = this._player.stats.maxHp;
         this._setState('playing');
-        // WaveManager.reset() 已把 wave 归零，这里只需注入所选章（1-based）
-        this._waveMgr.chapter = this._chapter + 1;
+        // WaveManager.reset() 已把 wave 归零，这里只需注入所选全局章号（1-based）
+        this._waveMgr.chapter = this._chapter;
         this._bossEquipDropWave = -1;
-        // v4 2.3：开局战备包（第 2 章起）——起始金币直接入账，
+        // v5：本章固定变异（提案 5.3 排期；随机变异池沿用 v4 逻辑）
+        const node = chapterNode(this._chapter);
+        this._mutations = [...node.mutations];
+        for (const id of node.mutations) {
+            const def = MUTATIONS.find(m => m.id === id);
+            if (def) def.apply(this);
+        }
+        // v5 6.2：开局战备包（第 2 节点起）——起始金币直接入账，
         // N 次三选一连抽（复用 augSelect，不进战斗）抽完才开 W1
-        const pack = starterPack(this._chapter + 1);
+        const pack = node.starter;
         if (pack.gold > 0) this._economy.addGold(pack.gold);
         if (pack.draws > 0) {
             this._openStarterPacks(pack.draws);
@@ -750,17 +775,17 @@ export class GameManager extends Component {
         this._augUI.show(options, this._buildAugShopCtx(() => this._openStarterPacks(left - 1)));
     }
 
-    /** Load & apply CHAPTERS[this._chapter].bgKey onto _bgSprite (art already resolved through ArtRemap). */
+    /** Load & apply 地图背景（mapDef(mapOf(_chapter)).bgKey）onto _bgSprite（经 ArtRemap 解析）。 */
     private _updateBgForChapter() {
-        const bgKey = CHAPTERS[this._chapter]?.bgKey;
+        const bgKey = mapDef(mapOf(this._chapter)).bgKey;
         if (!bgKey) return;
         applyArtSprite(this._bgSprite, bgKey);
         applyArtSprite(this._bgFillLeft, bgKey);
         applyArtSprite(this._bgFillRight, bgKey);
         // 只在进入新章节时抽布局；同章波次/窗口变化重画时维持原布局。
-        const chapter = this._chapter + 1;
-        if (this._arena.chapter !== chapter) {
-            this._arena = randomArenaForChapter(chapter, Rng.int);
+        const mapId = mapOf(this._chapter);
+        if (this._arena.chapter !== mapId) {
+            this._arena = randomArenaForChapter(mapId, Rng.int);
         }
         this._drawArenaProps();
         this._fitBackgroundToVisible();
@@ -869,7 +894,7 @@ export class GameManager extends Component {
         const visW = visibleDesignWidth();
         this._bgLayer.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
         this._bgToneGfx.node.getComponent(UITransform)!.setContentSize(visW, CANVAS_H);
-        this._applyBackgroundTone(this._chapter);
+        this._applyBackgroundTone(mapOf(this._chapter) - 1);
     }
 
     /**
@@ -888,8 +913,8 @@ export class GameManager extends Component {
         }
     }
 
-    /** 亮度按 B 校准；小幅色温只用于章间统一，不压低可战斗中间调。 */
-    private _applyBackgroundTone(chapterIndex: number) {
+    /** 亮度按 B 校准；小幅色温只用于图间统一，不压低可战斗中间调。入参为 0-based 图号。 */
+    private _applyBackgroundTone(mapIndex: number) {
         const visW = visibleDesignWidth();
         const tones = [
             { tint: new Color(255, 255, 255, 255), overlay: new Color(22, 30, 42, 0), center: 0 },
@@ -899,7 +924,7 @@ export class GameManager extends Component {
             { tint: new Color(250, 250, 255, 255), overlay: new Color(22, 27, 36, 18), center: 6 },
             { tint: new Color(255, 250, 245, 255), overlay: new Color(32, 23, 22, 20), center: 7 },
         ];
-        const tone = tones[Math.min(Math.max(0, chapterIndex), tones.length - 1)];
+        const tone = tones[Math.min(Math.max(0, mapIndex), tones.length - 1)];
         this._bgSprite.color = tone.tint;
         const g = this._bgToneGfx;
         g.clear();
@@ -936,7 +961,7 @@ export class GameManager extends Component {
         this._runId++;
         this._pauseReturn = 'testRoom';
         this._char    = this._char ?? CHARS[0];
-        this._chapter = 0;
+        this._chapter = 1;
         this._mutations = [];
         this._enemies   = [];
         this._turrets    = [];
@@ -1061,11 +1086,13 @@ export class GameManager extends Component {
      * 登场并向屏幕中心收拢（EnemyBase.tideConverge）。兽潮怪物全部强化：
      * 血量 +50%、护甲 +40、护盾 = 20% 最大生命。
      */
-    spawnBeastTide(chapter: number): void {
-        const n = 8 + Math.min(5, Math.max(1, chapter)) * 2;   // 10~18 只
+    spawnBeastTide(globalChapterId: number): void {
+        // v5：入参为全局章号 1~30，池档位按图判断（图 4 起高级池）
+        const mapId = mapOf(globalChapterId);
+        const n = 8 + Math.min(5, mapId) * 2;   // 10~18 只
         const cx = CANVAS_W / 2, cy = PLAYFIELD_BOTTOM / 2;
         const radius = Math.max(CANVAS_W, PLAYFIELD_BOTTOM) * 0.62;
-        const pool = chapter >= 4 ? ['golem', 'elite_grunt', 'grunt'] : ['grunt', 'shield', 'exploder'];
+        const pool = mapId >= 4 ? ['golem', 'elite_grunt', 'grunt'] : ['grunt', 'shield', 'exploder'];
         for (let i = 0; i < n; i++) {
             const a = (i / n) * Math.PI * 2 + Rng.float(-0.08, 0.08);
             const x = clamp(cx + Math.cos(a) * radius, 24, CANVAS_W - 24);
@@ -1243,18 +1270,19 @@ export class GameManager extends Component {
         }
     }
 
-    /** 测试房轮换六章场景，便于检查不同明暗与色相背景上的可读性。 */
+    /** 测试房轮换六张地图场景，便于检查不同明暗与色相背景上的可读性。 */
     cycleTestChapter(): number {
-        if (this.state !== 'testRoom') return this._chapter + 1;
-        this._chapter = (this._chapter + 1) % CHAPTERS.length;
+        if (this.state !== 'testRoom') return this._chapter;
+        // 图内固定取章 1（基础数值），只轮换图号
+        this._chapter = globalChapter((mapOf(this._chapter) % MAP_COUNT) + 1, 1);
         this._updateBgForChapter();
         const safe = safeArenaPoint(this._arena, this._player.x, this._player.y, this._player.radius);
         this._player.x = safe.x;
         this._player.y = safe.y;
         if (!this._boss) this._audio.playBgm(this._chapterBgm());
-        const chapter = CHAPTERS[this._chapter];
-        this._floatText.spawn(CANVAS_W / 2, 200, `第${chapter.id}章 · ${chapter.name}`, '#9adcff', 17, true);
-        return chapter.id;
+        const map = mapDef(mapOf(this._chapter));
+        this._floatText.spawn(CANVAS_W / 2, 200, `图${map.id} · ${map.name}`, '#9adcff', 17, true);
+        return map.id;
     }
 
     /** 静止靶模式只停掉测试房敌方AI，仍保留受击、碰撞、血条与玩家技能闭环。 */
@@ -2180,7 +2208,7 @@ export class GameManager extends Component {
             // 任意按钮都不能漏记（旧实现只在领取按钮回调里记，点返回会丢解锁）。
             this._coinsEarned = Math.min(80, Math.round(this._economy.gold * 0.2));
             SaveSystem.addCoreCoins(this._coinsEarned);
-            SaveSystem.recordChapterCleared(this._chapter + 1);
+            SaveSystem.recordChapterCleared(this._chapter);
             this._setState('chapterClear');
             return;
         }
@@ -2283,7 +2311,7 @@ export class GameManager extends Component {
     /** 通用商店（章节结算 / 第五章 Boss 战前共用）。 */
     private _openShop(onDone: () => void) {
         this._setState('shop');
-        const items = this._economy.generateShopItems(this._chapter + 1);
+        const items = this._economy.generateShopItems(this._chapter);
         this._shopUI.show(
             items,
             this._economy.gold,
@@ -4194,7 +4222,7 @@ export class GameManager extends Component {
             hp: p.hp, maxHp: p.maxHp,
             shield: p.shield, maxShield: p.maxShield,
             gold: this._economy.gold,
-            wave: this._waveMgr.wave, chapter: this._chapter,
+            wave: this._waveMgr.wave, chapter: mapOf(this._chapter), chapterLabel: `图${mapOf(this._chapter)}-${chapterInMap(this._chapter)}`,
             heroId: this._char?.id, heroName: this._char?.name,
             testRoom: this.state === 'testRoom',
             difficultyName: this._difficulty?.name,
@@ -4239,7 +4267,7 @@ export class GameManager extends Component {
                 { label: '冷却缩减', value: pct(st.cdReduction || 0) },
                 { label: '金币',     value: `${this._economy.gold}` },
             ],
-            progress: `进度  第${this._chapter + 1}章 · 第${this._waveMgr.wave}波 · 击杀 ${this.kills} · 得分 ${this.score}`,
+            progress: `进度  图${mapOf(this._chapter)}-${chapterInMap(this._chapter)} · 第${this._waveMgr.wave}波 · 击杀 ${this.kills} · 得分 ${this.score}`,
             augments:    this._augMgr.all(),
             skillStates: p.getSkillStates(),
         };
@@ -4294,8 +4322,9 @@ export class GameManager extends Component {
             boss.sprite = eSprite;
             if (typeof bossKey === 'string') boss.initBossKind(bossKey, this);
             else {
-                // 显式章号优先（测试房 boss_chN 点卡）；正式局恒为所选章（Boss 波=W15）
-                const ch = typeof bossKey === 'number' ? bossKey : this._chapter;
+                // 显式章号优先（测试房 boss_chN 点卡，N=图号 → 投影到该图章 1）；
+                // 正式局恒为所选全局章号（Boss 波=W15）
+                const ch = typeof bossKey === 'number' ? globalChapter(bossKey, 1) : this._chapter;
                 boss.initBoss(ch, this);
             }
             // boss精英(海克斯28)：持有期间 Boss 入场生命上限 -10%
@@ -4480,9 +4509,9 @@ export class GameManager extends Component {
     private _recordRun(won: boolean) {
         if (this._runRecorded) return; // 一局只记一次（先通关后死亡不重复计）
         this._runRecorded = true;
-        // "到达第 N 章"防刷：开局送死不算到达——至少打到 W5（首个小高潮）
+        // "到达第 N 节点"防刷：开局送死不算到达——至少打到 W5（首个小高潮）
         // 或通关才记所选章，否则按第 1 章计。
-        const reached = (won || this._waveMgr.wave >= 5) ? this._chapter + 1 : 1;
+        const reached = (won || this._waveMgr.wave >= 5) ? this._chapter : 1;
         const unlocked = SaveSystem.recordRun({
             charId:        this._player?.charId ?? '',
             chapter:       reached,
@@ -5158,7 +5187,9 @@ export class GameManager extends Component {
         // 镜像军队 ×2 Boss 同波双杀只掉一件
         if (this._bossEquipDropWave === this._waveMgr.wave) return;
         this._bossEquipDropWave = this._waveMgr.wave;
-        const chapterId = Math.max(1, Math.min(CHAPTERS.length, (boss.chapter ?? this._chapter + 1)));
+        // boss.chapter 为图号 1~6（测试房 Boss 基准图）→ 投影到该图章 1 的全局章号
+        const chapterId = Math.max(1, Math.min(TOTAL_CHAPTERS,
+            (boss.chapter ? globalChapter(boss.chapter, 1) : this._chapter)));
         const owned = SaveSystem.ownedEquipmentKeys();
         const equip = rollEquipmentDrop(chapterId, owned);
         if (equip) {
@@ -5173,9 +5204,9 @@ export class GameManager extends Component {
         this._audio.playSfx('augment_pick');
     }
 
-    /** 章节金币乘率（v4 9.3 新表 1.0~1.75）× 难度金币系数（金币不再吃 statMult）。 */
+    /** 章节金币乘率（v5 30 档曲线 1.0~1.75）× 难度金币系数（金币不再吃 statMult）。 */
     get goldDropMult(): number {
-        return GOLD_STAGE_MULT[Math.min(Math.max(0, this._chapter), GOLD_STAGE_MULT.length - 1)]
+        return goldStageMult(this._chapter)
             * difficultyGoldMult(this._difficulty?.id);
     }
 

@@ -127,8 +127,8 @@ test('所有普通怪、小Boss与正式/测试Boss都有明确的移动结构',
 
     for (let chapter = 0; chapter < 4; chapter++) {
         const boss = new BossController();
-        boss.initBoss(chapter, game);
-        assert.equal(boss.locomotionKind, chapter < 2 ? 'bossHeavy' : 'bossHover', `第${chapter + 1}章Boss`);
+        boss.initBoss((chapter + 1) * 5, game);   // v5：旧 0-based 章 chapter → 全局图末节点
+        assert.equal(boss.locomotionKind, chapter < 2 ? 'bossHeavy' : 'bossHover', `第${chapter + 1}图Boss`);
         assert.equal(boss.moveSpriteKey, `enemy_boss_ch${chapter + 1}_move`);
     }
 
@@ -206,8 +206,8 @@ test('全部正式与测试Boss接近后稳定停在接触距离，不穿过英�
     const player = { x: 500, y: 300, radius: 16, alive: true, takeDamage() {} };
     const cases = [
         ...[0, 1, 2, 3].map(chapter => ({
-            label: `第${chapter + 1}章Boss`,
-            init: boss => boss.initBoss(chapter, game),
+            label: `第${chapter + 1}图Boss`,
+            init: boss => boss.initBoss((chapter + 1) * 5, game),   // v5 全局图末节点
         })),
         ...TEST_BOSSES.map(def => ({
             label: def.label,
@@ -263,7 +263,7 @@ test('Boss冲锋与撞墙反弹时身体沿真实速度方向转向', () => {
     const game = makeMockGame();
     const player = { x: 900, y: 300, radius: 16, alive: true, takeDamage() {} };
     const boss = new BossController();
-    boss.initBoss(0, game);
+    boss.initBoss(5, game);   // 全局 5 = 图1章5
     boss.x = 300; boss.y = 300;
     boss._skillTimer = 999; boss._summonTimer = 999; boss._chargeCd = 0;
     boss.update(1 / 60, player, game);

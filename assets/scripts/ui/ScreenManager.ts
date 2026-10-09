@@ -6,8 +6,12 @@ import {
 import { CharDef } from '../data/CharacterDB';
 import { CHARS, splitSkillText, SKILL_Q_CD, SKILL_E_CD } from '../data/CharacterDB';
 import { DIFFICULTIES, DifficultyDef } from '../data/DifficultyDB';
-import { CHAPTERS } from '../data/WaveData';
-import { getBossDef } from '../data/BossDB';
+import {
+    MAPS, MAP_COUNT, CHAPTERS_PER_MAP, TOTAL_CHAPTERS,
+    mapDef, mapOf, chapterInMap, globalChapter, chapterNode, finaleFor,
+} from '../data/LevelIndex';
+import { MUTATIONS } from '../data/WaveData';
+import { getBossDefById } from '../data/BossDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
@@ -25,6 +29,7 @@ export type ScreenName =
     | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
     | 'playing'
     | 'gameover' | 'chapterClear' | 'pause' | 'settings' | 'exitVeil' | 'mapSelect'
+    | 'chapterSelect'
     | MetaPageName;
 
 type BtnCallback = () => void;
@@ -61,8 +66,12 @@ export class ScreenManager extends Component {
     private _panels: Map<ScreenName, Node> = new Map();
     private _metaPages!: MetaPageUI;
     private _saveSelect!: SaveSelectUI;
-    /** v4 章节选择页的卡片区容器（每次进入页面按存档解锁链重建）。 */
+    /** v4 章节选择页(v5 选图页)的卡片区容器（每次进入页面按存档解锁链重建）。 */
     private _mapCardsRoot!: Node;
+    /** v5 图内章节页的卡片区容器。 */
+    private _chapterCardsRoot!: Node;
+    /** v5 图内章节页的任务线节点绘制（每次重建重画）。 */
+    private _questLineGfx?: Graphics;
     private _lobby!: LobbyUI;
     private _menuArtNode?: Node;
     private _drawSettingsBg?: () => void;
@@ -95,10 +104,14 @@ export class ScreenManager extends Component {
     onSlotPicked?:         (slot: number) => void;   // 存档选择 → 进入存档大厅
     onLobbyPortal?:        BtnCallback;   // 大厅传送门 → 作战地图选择
     onLobbyBack?:         BtnCallback;   // 存档大厅 → 首页，状态由 GameManager 同步
-    onMapPicked?:          (chapterId: number) => void;   // 章节卡选定（1~6；0=无尽）→ 难度选择
+    onMapPicked?:          (mapId: number) => void;      // 选图卡（1~6）→ 图内章节页
     onMapBack?:            BtnCallback;   // 地图页返回 → 存档大厅
-    /** v4：查询已解锁章节数（GameManager 注入 SaveSystem.unlockedChapterCount）。 */
+    /** v5：查询已解锁节点数（GameManager 注入 SaveSystem.unlockedChapterCount）。 */
     onQueryChapterUnlock?: () => number;
+    /** v5：查询当前浏览图号（GameManager 注入 _selectedMap）。 */
+    onQueryActiveMap?:     () => number;
+    onChapterPicked?:      (chapterId: number) => void;   // 章节卡选定（全局章号 1~30）→ 难度选择
+    onChapterBack?:        BtnCallback;   // 章节页返回 → 选图页
     onDifficultyPicked?:   (d: DifficultyDef) => void;   // 难度选择 → 角色选择
     onDifficultyBack?:     BtnCallback;   // 难度选择返回 → 回存档大厅
     onCharSelectBack?:     BtnCallback;   // 选人页返回 → 回存档大厅
@@ -135,6 +148,7 @@ export class ScreenManager extends Component {
         });
         for (const [name, panel] of this._metaPages.entries()) this._panels.set(name, panel);
         this._buildMapSelectPanel();
+        this._buildChapterSelectPanel();
         this._buildDifficultySelectPanel();
         this._buildCharSelectPanel();
         // 英雄介绍弹窗在选人页之后构建，保证层级在选人卡之上（点击遮罩不穿透）
@@ -197,7 +211,7 @@ export class ScreenManager extends Component {
         if (p) p.active = true;
         if (name === 'menu' || name === 'saveSelect' || name === 'lobby' || name === 'settings'
             || name === 'gameover' || name === 'chapterClear' || name === 'charDetail'
-            || name === 'mapSelect' || name === 'difficultySelect' || name === 'charSelect') {
+            || name === 'mapSelect' || name === 'chapterSelect' || name === 'difficultySelect' || name === 'charSelect') {
             this.fitToVisible();
         }
         if (name === 'tasks' || name === 'codex' || name === 'achievements') {
@@ -210,8 +224,10 @@ export class ScreenManager extends Component {
         } else if (name === 'lobby') {
             this._lobby.refresh();
         } else if (name === 'mapSelect') {
-            // v4：章节解锁状态随通关进度变化，每次进入都重读存档重建卡片
+            // 解锁状态随通关进度变化，每次进入都重读存档重建卡片
             this._rebuildMapCards();
+        } else if (name === 'chapterSelect') {
+            this._rebuildChapterCards();
         }
     }
 
@@ -353,12 +369,13 @@ export class ScreenManager extends Component {
         const view = this._runReports.get(name);
         if (!view) return;
         const won = name === 'chapterClear';
+        const pos = `图${mapOf(data.chapter)}-${chapterInMap(data.chapter)}`;
         view.title.string = won
-            ? (data.finalChapter ? '终局达成！' : `第 ${data.chapter} 章通关！`)
+            ? (data.finalChapter ? '终局达成！' : `${pos} 通关！`)
             : '行动终止';
         view.subtitle.string = won
-            ? `击败章节 Boss · 用时内完成 ${data.wave} 波 · 剩余金币折算核心币`
-            : `止步第 ${data.chapter} 章 · 第 ${data.wave} 波`;
+            ? `击败章节关底 · 用时内完成 ${data.wave} 波 · 剩余金币折算核心币`
+            : `止步${pos} · 第 ${data.wave} 波`;
         // v4：通关面板第 4 格显示核心币折算（20% 封顶 80），gameover 仍显示积分
         const values = won
             ? [data.kills, data.maxCombo, data.goldEarned, data.coinsEarned ?? 0]
@@ -498,9 +515,8 @@ export class ScreenManager extends Component {
     }
 
     /**
-     * v4：章节选择页（一局一章）——6 张章节卡（上 4 下 2）。
-     * 卡片信息：章名 / Boss / 主力敌人 / 预计时长；未解锁章显示解锁条件。
-     * （无尽入口卡已于 2026-10-07 按玩家要求移除。）
+     * v5：选图页——6 张地图卡（上 4 下 2，沿用 v4 布局）。
+     * 卡片信息：图名 / 图末 Boss / 图内进度 x/5；未解锁图显示解锁条件。
      */
     private _buildMapSelectPanel() {
         const p = this._mkPanel('mapSelect', 1280, 720);
@@ -518,7 +534,7 @@ export class ScreenManager extends Component {
         tn.setPosition(new Vec3(0, 292, 0));
         tn.addComponent(UITransform).setContentSize(500, 44);
         const tl = tn.addComponent(Label);
-        tl.string = '选择作战章节';
+        tl.string = '选择作战地图';
         tl.fontSize = 28; tl.color = UI_PALETTE.text;
         styleLabel(tl);
 
@@ -526,7 +542,7 @@ export class ScreenManager extends Component {
         sub.setPosition(new Vec3(0, 258, 0));
         sub.addComponent(UITransform).setContentSize(860, 22);
         const sl = sub.addComponent(Label);
-        sl.string = '一局一章 × 15 波 · 每章独立结算 · 第 2 章起开局附战备包';
+        sl.string = '六图 × 每图五章 · 一局一章 15 波 · 通关整张图解锁下一张';
         sl.fontSize = 14; sl.color = new Color(150, 172, 190, 235);
         styleLabel(sl);
 
@@ -536,7 +552,7 @@ export class ScreenManager extends Component {
     }
 
     /**
-     * 按当前存档解锁链重建 6 张章节卡。锁定判定在构建时读取一次快照的旧实现
+     * 按当前存档解锁链重建 6 张地图卡。锁定判定在构建时读取一次快照的旧实现
      * 会导致"通关后回章节页仍是锁定"——现在每次进入页面都重读
      * onQueryChapterUnlock（SaveSystem.unlockedChapterCount）。
      */
@@ -547,21 +563,23 @@ export class ScreenManager extends Component {
             child.removeFromParent();
             child.destroy();
         }
-        // 章节卡信息（Boss 名读 BossDB；主力敌人为文案速查，对应设计文档 12 节）
+        // 地图卡信息（Boss 名读 BossDB；主力敌人为文案速查，对应设计文档 12 节）
         const ENEMY_BRIEF = [
             '割草教学局', '+铆甲兽·断针射手', '+石像鬼·三咒仆', '+暗影猎手·闪弧', '机械军团', '全明星混编',
         ];
         const unlocked = Math.max(1, this.onQueryChapterUnlock?.() ?? 1);
+        const cleared = unlocked - 1;
         const CARD_W = 286, CARD_H = 212;
 
-        const mkCard = (x: number, y: number, idx: number): void => {
-            const ch = CHAPTERS[idx];
-            const boss = getBossDef(idx)?.label ?? '';
-            const locked = idx + 1 > unlocked;
-            const accent = Color.fromHEX(new Color(),
-                ['#4ec8c8', '#c8874e', '#4ecc8e', '#a06ee0', '#6e9fe0', '#e06e5a'][idx]);
+        const mkCard = (x: number, y: number, mapId: number): void => {
+            const map = mapDef(mapId);
+            const boss = getBossDefById(map.bossId)?.label ?? '';
+            const locked = globalChapter(mapId, 1) > unlocked;
+            const clearedInMap = clamp(cleared - (mapId - 1) * CHAPTERS_PER_MAP, 0, CHAPTERS_PER_MAP);
+            const swept = clearedInMap >= CHAPTERS_PER_MAP;
+            const accent = Color.fromHEX(new Color(), map.accent);
 
-            const card = new Node(`Map_Ch${idx + 1}`); card.setParent(p);
+            const card = new Node(`Map_${mapId}`); card.setParent(p);
             card.setPosition(new Vec3(x, y, 0));
             card.addComponent(UITransform).setContentSize(CARD_W, CARD_H);
 
@@ -569,7 +587,7 @@ export class ScreenManager extends Component {
             nameN.setPosition(new Vec3(0, 66, 0));
             nameN.addComponent(UITransform).setContentSize(CARD_W - 24, 30);
             const nl = nameN.addComponent(Label);
-            nl.string = `第${idx + 1}章 ${ch.name}`;
+            nl.string = `图${mapId} ${map.name}${swept ? ' ✓' : ''}`;
             nl.fontSize = 20;
             nl.color = locked ? new Color(166, 180, 194, 255) : new Color(235, 246, 250, 255);
             styleLabel(nl);
@@ -578,7 +596,7 @@ export class ScreenManager extends Component {
             bossN.setPosition(new Vec3(0, 28, 0));
             bossN.addComponent(UITransform).setContentSize(CARD_W - 24, 26);
             const bl = bossN.addComponent(Label);
-            bl.string = `Boss：${boss}`;
+            bl.string = `图末 Boss：${boss}`;
             bl.fontSize = 14; bl.lineHeight = 18;
             bl.color = locked ? new Color(152, 170, 186, 245) : new Color(200, 214, 228, 245);
             bl.overflow = Label.Overflow.SHRINK;
@@ -588,7 +606,9 @@ export class ScreenManager extends Component {
             infoN.setPosition(new Vec3(0, -16, 0));
             infoN.addComponent(UITransform).setContentSize(CARD_W - 24, 52);
             const il = infoN.addComponent(Label);
-            il.string = locked ? `通关第 ${idx} 章解锁` : `${ENEMY_BRIEF[idx]} · 约 10 分钟`;
+            il.string = locked ? `通关图 ${mapId - 1} 全部章节解锁`
+                : swept ? `${ENEMY_BRIEF[mapId - 1]} · 已肃清`
+                : `${ENEMY_BRIEF[mapId - 1]} · 进度 ${clearedInMap}/5`;
             il.fontSize = 13; il.lineHeight = 18;
             il.color = locked ? new Color(140, 152, 166, 235) : new Color(168, 190, 206, 245);
             il.overflow = Label.Overflow.SHRINK;
@@ -597,18 +617,169 @@ export class ScreenManager extends Component {
 
             applyHexCardSkin(card, CARD_W, CARD_H, accent, locked);
             if (!locked) {
-                const pick = idx + 1;
-                card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(pick), this);
+                card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(mapId), this);
             }
         };
 
-        // 上行 4 卡（第 1~4 章），下行 2 卡（第 5/6 章居中）
+        // 上行 4 卡（图 1~4），下行 2 卡（图 5/6 居中）
         const rowY = [96, -146];
         // 286px 卡片之间留 18px 实际点击间隔，避免后创建的卡覆盖前一张热区。
         const topX = [-456, -152, 152, 456];
-        for (let i = 0; i < 4; i++) mkCard(topX[i], rowY[0], i);
-        mkCard(-152, rowY[1], 4);
-        mkCard(152, rowY[1], 5);
+        for (let i = 0; i < 4; i++) mkCard(topX[i], rowY[0], i + 1);
+        mkCard(-152, rowY[1], 5);
+        mkCard(152, rowY[1], 6);
+    }
+
+    // ── 图内章节选择页（v5 新增） ─────────────────────────────
+
+    /**
+     * v5：图内章节页——顶部图名 + 任务线一览（5 节点连线）+ 5 张章节卡（3+2）。
+     * 纵向分带（无重叠验收 7.4）：标题带 y≥240 / 任务线 y≈225 / 卡片区 -250~+200 / 底部 y≤-280。
+     */
+    private _buildChapterSelectPanel() {
+        const p = this._mkPanel('chapterSelect', 1280, 720);
+
+        const bg = p.addComponent(Graphics);
+        bg.fillColor = UI_PALETTE.deep;
+        bg.fillRect(-1600, -360, 3200, 720);
+        this._buildSelectionBackdrop(p);
+
+        const backBtn = this._mkBtn(p, '返回选图', -540, 320, 160,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
+        backBtn.on(Node.EventType.TOUCH_END, () => this.onChapterBack?.(), this);
+
+        const tn = new Node('T'); tn.setParent(p);
+        tn.setPosition(new Vec3(0, 288, 0));
+        tn.addComponent(UITransform).setContentSize(600, 40);
+        const tl = tn.addComponent(Label);
+        tl.string = '';
+        tl.fontSize = 26; tl.color = UI_PALETTE.text;
+        tl.overflow = Label.Overflow.SHRINK;
+        styleLabel(tl);
+        this._chapterTitleLabel = tl;
+
+        // 任务线一览：5 个节点圆 + 连线（Graphics 每次进入页面重画）
+        const qNode = new Node('QuestLine'); qNode.setParent(p);
+        qNode.addComponent(UITransform).setContentSize(560, 40);
+        qNode.setPosition(new Vec3(0, 228, 0));
+        this._questLineGfx = qNode.addComponent(Graphics);
+
+        this._chapterCardsRoot = new Node('Cards'); this._chapterCardsRoot.setParent(p);
+        this._rebuildChapterCards();
+    }
+
+    private _chapterTitleLabel!: Label;
+
+    /** 进入页面时按当前图 + 存档解锁链重建 5 张章节卡与任务线。 */
+    private _rebuildChapterCards(): void {
+        const p = this._chapterCardsRoot;
+        for (const child of [...p.children]) {
+            child.off(Node.EventType.TOUCH_END);
+            child.removeFromParent();
+            child.destroy();
+        }
+        const mapId = clamp(this.onQueryActiveMap?.() ?? 1, 1, MAP_COUNT);
+        const map = mapDef(mapId);
+        const unlocked = Math.max(1, this.onQueryChapterUnlock?.() ?? 1);
+        const cleared = unlocked - 1;
+        const accent = Color.fromHEX(new Color(), map.accent);
+
+        this._chapterTitleLabel.string = `图${mapId} · ${map.name} —— 选择章节`;
+
+        // 任务线：已通节点点亮 / 当前节点高亮 / 未解锁空心
+        const g = this._questLineGfx!;
+        g.clear();
+        const qy = 0, qx = [-200, -100, 0, 100, 200];
+        g.lineWidth = 3;
+        for (let i = 0; i < 4; i++) {
+            const k = globalChapter(mapId, i + 1);
+            const done = k <= cleared, next = k === cleared + 1;
+            g.strokeColor = done ? accent : next
+                ? new Color(255, 214, 85, 220) : new Color(90, 106, 122, 160);
+            g.moveTo(qx[i], qy); g.lineTo(qx[i + 1], qy); g.stroke();
+        }
+        for (let i = 0; i < 5; i++) {
+            const c = i + 1, k = globalChapter(mapId, c);
+            const done = k <= cleared, next = k === cleared + 1;
+            g.fillColor = done ? accent : next ? new Color(255, 214, 85, 235) : new Color(24, 34, 48, 255);
+            g.circle(qx[i], qy, 13); g.fill();
+            g.lineWidth = 2;
+            g.strokeColor = done ? accent : next ? new Color(255, 214, 85, 255) : new Color(90, 106, 122, 200);
+            g.circle(qx[i], qy, 13); g.stroke();
+        }
+
+        const CARD_W = 300, CARD_H = 220;
+        const mkCard = (x: number, y: number, c: number): void => {
+            const k = globalChapter(mapId, c);
+            const node = chapterNode(k);
+            const locked = k > unlocked;
+            const done = k <= cleared;
+            const fin = finaleFor(k);
+            const mutNames = node.mutations
+                .map(id => MUTATIONS.find(m => m.id === id)?.name ?? id).join('·');
+            const finaleText = fin.kind === 'boss'
+                ? `Boss：${getBossDefById(map.bossId)?.label ?? ''}`
+                : `关底：小首领 ×${fin.tiers.length}`;
+
+            const card = new Node(`Ch_${k}`); card.setParent(p);
+            card.setPosition(new Vec3(x, y, 0));
+            card.addComponent(UITransform).setContentSize(CARD_W, CARD_H);
+
+            const nameN = new Node('Name'); nameN.setParent(card);
+            nameN.setPosition(new Vec3(0, 76, 0));
+            nameN.addComponent(UITransform).setContentSize(CARD_W - 24, 30);
+            const nl = nameN.addComponent(Label);
+            nl.string = `第${c}章 · ${node.name}`;
+            nl.fontSize = 18;
+            nl.color = locked ? new Color(166, 180, 194, 255) : new Color(235, 246, 250, 255);
+            nl.overflow = Label.Overflow.SHRINK;
+            styleLabel(nl);
+
+            const questN = new Node('Quest'); questN.setParent(card);
+            questN.setPosition(new Vec3(0, 40, 0));
+            questN.addComponent(UITransform).setContentSize(CARD_W - 24, 26);
+            const ql = questN.addComponent(Label);
+            ql.string = locked ? '' : `任务：${node.quest.title}`;
+            ql.fontSize = 13; ql.lineHeight = 18;
+            ql.color = new Color(255, 224, 130, 240);
+            ql.overflow = Label.Overflow.SHRINK;
+            styleLabel(ql);
+
+            const gimN = new Node('Gimmick'); gimN.setParent(card);
+            gimN.setPosition(new Vec3(0, 6, 0));
+            gimN.addComponent(UITransform).setContentSize(CARD_W - 24, 26);
+            const gl = gimN.addComponent(Label);
+            gl.string = locked ? '' : mutNames ? `变异：${mutNames}` : finaleText;
+            gl.fontSize = 13; gl.lineHeight = 18;
+            gl.color = locked ? new Color(152, 170, 186, 245) : new Color(200, 214, 228, 245);
+            gl.overflow = Label.Overflow.SHRINK;
+            styleLabel(gl);
+
+            const infoN = new Node('Info'); infoN.setParent(card);
+            infoN.setPosition(new Vec3(0, -38, 0));
+            infoN.addComponent(UITransform).setContentSize(CARD_W - 24, 52);
+            const il = infoN.addComponent(Label);
+            il.string = locked
+                ? (c === 1 ? `通关图 ${mapId - 1} 全部章节解锁` : `通关第 ${c - 1} 章解锁`)
+                : done ? `✓ 已通关 · 可重打\n${mutNames ? `变异：${mutNames}` : finaleText}`
+                : `${node.isMapFinale ? '图末决战' : '推进任务线'} · ${finaleText}`;
+            il.fontSize = 13; il.lineHeight = 19;
+            il.color = locked ? new Color(140, 152, 166, 235)
+                : done ? new Color(140, 220, 160, 245) : new Color(168, 190, 206, 245);
+            il.overflow = Label.Overflow.SHRINK;
+            il.enableWrapText = true;
+            styleLabel(il);
+
+            applyHexCardSkin(card, CARD_W, CARD_H, accent, locked);
+            if (!locked) {
+                card.on(Node.EventType.TOUCH_END, () => this.onChapterPicked?.(k), this);
+            }
+        };
+
+        // 3+2 双行（与选图页同构）：卡 300×220。行内中心距 380 → 边缘净距 80px；
+        // 行间中心距 244 → 纵向净距 24px（≥18px 红线）；下排底缘 -264 不侵入底部带（≤-280）。
+        mkCard(-380, 90, 1); mkCard(0, 90, 2); mkCard(380, 90, 3);
+        mkCard(-190, -154, 4); mkCard(190, -154, 5);
     }
 
     // ── 难度选择页 ─────────────────────────────────────────────

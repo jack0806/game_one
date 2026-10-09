@@ -229,10 +229,11 @@ export class TestRoomUI extends Component {
 
         const chapter = this._mkSmallBtn(this.node, '', 397, 20, 96, 30, new Color(45, 82, 115, 245));
         this._chapterLbl = chapter.getChildByName('L')!.getComponent(Label)!;
+        this._chapterLbl.string = '地图:1';
         chapter.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
             const value = this.onCycleChapter?.() ?? 1;
-            this._chapterLbl.string = `章节:${value}`;
+            this._chapterLbl.string = `地图:${value}`;
         }, this);
 
         const targetPause = this._mkSmallBtn(this.node, '', 500, 20, 88, 30, new Color(56, 72, 82, 245));
