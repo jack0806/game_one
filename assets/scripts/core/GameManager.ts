@@ -1,3 +1,6 @@
+import { ENEMY_PROJECTILE_ART, enemyProjectileSize, UNIT_ATTACK_ART } from '../data/CombatArtDB';
+import { separatePlayerBodies } from './CombatCollision';
+import { drawAttackSector, drawChargeLane, drawEnergyBeam, drawEnergyArc, localSectorBounds, sectorPath } from './CombatVfx';
 import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
     UITransform, director, game, Label, Sprite, view, sys
@@ -50,26 +53,6 @@ import {
 } from './DirectionalFacing';
 
 const { ccclass, property } = _decorator;
-
-/** 敌方弹体的正式材质层；判定拖尾仍由 Graphics 画在下方。 */
-const ENEMY_PROJECTILE_ART: Record<string, { key: string; aspect: number; scale: number; spin?: number }> = {
-    needle:       { key: 'fx_enemy_needle', aspect: 0.42, scale: 5.5 },
-    shrimp_spike: { key: 'fx_enemy_needle', aspect: 0.42, scale: 5.8 },
-    frost:        { key: 'fx_enemy_frost', aspect: 0.52, scale: 5.2 },
-    water_spike:  { key: 'fx_enemy_frost', aspect: 0.52, scale: 5.8 },
-    poison:       { key: 'fx_enemy_toxic', aspect: 1, scale: 3.6, spin: 42 },
-    toxin_dart:   { key: 'fx_enemy_toxic', aspect: 0.64, scale: 4.8 },
-    venom_sting:  { key: 'fx_enemy_toxic', aspect: 0.64, scale: 5.2 },
-    water_bomb:   { key: 'fx_enemy_water_bomb', aspect: 1, scale: 3.8, spin: 30 },
-    gear:         { key: 'fx_enemy_saw', aspect: 1, scale: 4.1, spin: 260 },
-    rail:         { key: 'fx_enemy_rail', aspect: 0.34, scale: 7.2 },
-    blade:        { key: 'fx_enemy_void_blade', aspect: 0.46, scale: 6.3 },
-    chaos:        { key: 'fx_enemy_void_blade', aspect: 0.46, scale: 5.6, spin: 100 },
-    sonic:        { key: 'fx_enemy_bell_wave', aspect: 1, scale: 3.9, spin: 55 },
-    arc:          { key: 'fx_enemy_arc', aspect: 1, scale: 4.0, spin: 120 },
-    homing:       { key: 'fx_enemy_arc', aspect: 1, scale: 4.0, spin: 95 },
-    beam:         { key: 'fx_enemy_arc', aspect: 0.58, scale: 5.6 },
-};
 
 /** 测试房间水体系召唤单位共享上限：水柱 + 水分身 + 深海鱿鱼 合计最多 12。 */
 const MAX_TEST_WATER_UNITS = 12;
@@ -126,6 +109,8 @@ export class GameManager extends Component {
     private _summonArtPool!:     SpriteNodePool;
     /** One-shot art FX (explosion/heal/poison/cold_arrow/hex_ring), synced from ParticleManager.spriteFx each frame. */
     private _fxPool!:        SpriteNodePool;
+    private _contactFxPool!: SpriteNodePool;
+    private _groundFxPool!:  SpriteNodePool;
     /** 持续敌方弹体/区域机制材质层；容量按后期弹幕密度预分配。 */
     private _enemyArtPool!:  SpriteNodePool;
     /** 亡灵法师·莫提斯头顶灵魂层数标签：懒创建挂在 GameLayer（不在玩家节点下，
@@ -315,7 +300,9 @@ export class GameManager extends Component {
         if (this._hitStop.active) {
             this._hitStop.update(rawDt);
             if (this._inCombat() && this._player?.alive) {
-                this._player.tickMovement(dt, this._input);
+                this._player.tickMovement(dt, this._input, this);
+                separatePlayerBodies(this._player, this._enemies, (x, y, dx, dy, radius) =>
+                    moveInArena(this._arena, x, y, dx, dy, radius));
                 if (this._input.justPressed('Escape')) this._pauseCombat();
                 if (this._input.isKeyMPressed()) this._openStats();
             }
@@ -385,6 +372,8 @@ export class GameManager extends Component {
         this._gameLayer.addComponent(UITransform)
             .setContentSize(CANVAS_W, CANVAS_H);
         this._coinPool = new SpriteNodePool(this._gameLayer, 80, 'GoldCoin', [30, 30]);
+        // 在所有角色/弹体之前创建，范围特效不会覆盖英雄身体。
+        this._groundFxPool = new SpriteNodePool(this._gameLayer, 40, 'GroundFx', [64, 64]);
         this._turretBasePool = new SpriteNodePool(this._gameLayer, 24, 'TurretBase', [52, 52]);
         this._turretBarrelPool = new SpriteNodePool(this._gameLayer, 24, 'TurretBarrel', [72, 48]);
         this._summonArtPool = new SpriteNodePool(this._gameLayer, 16, 'SummonArt', [82, 82]);
@@ -400,7 +389,8 @@ export class GameManager extends Component {
         // entities/HP bars but its own nodes are toggled active/inactive rather
         // than reallocated per explosion/heal/poison/etc.
         this._fxPool = new SpriteNodePool(this._particleLayer, 24, 'Fx', [64, 64]);
-        this._enemyArtPool = new SpriteNodePool(this._particleLayer, 220, 'EnemyArt', [48, 48]);
+        this._contactFxPool = new SpriteNodePool(this._particleLayer, 3, 'PlayerContactFx', [64, 64]);
+        this._enemyArtPool = new SpriteNodePool(this._gameLayer, 220, 'EnemyArt', [48, 48]);
 
         // UILayer — HUD and panels
         this._uiLayer = new Node('UILayer');
@@ -592,7 +582,7 @@ export class GameManager extends Component {
                 if (enemy.node?.isValid) enemy.node.active = false;
             }
             this._particles?.clear();
-            this._fxPool?.releaseAll();
+            this._fxPool?.releaseAll(); this._contactFxPool?.releaseAll();
             this._coinPool?.releaseAll();
             this._bullets?.reset();
         }
@@ -1170,10 +1160,10 @@ export class GameManager extends Component {
                     this._bullets.spawn({
                         x: z.x, y: z.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
                         damage: dmg, radius: 9, color: '#66ddff',
-                        owner: 'enemy', isEnemyBullet: true, lifeTime: 2.5,
+                        owner: 'enemy', isEnemyBullet: true, hitSource: 'boss_abyss', enemyFx: 'water_spike', lifeTime: 2.5,
                         explodeOnExpire: true, // 水刺最后会爆炸：命中即炸，未命中在终点范围爆炸
                     });
-                    this._particles.explode(z.x, z.y, '#33ccff', 30);
+                    this._particles.enemyBurst(z.x, z.y, 'water', 30);
                     this._audio.playSfx('freeze', 0.4);
                     // 6 发射完回 idle；对立两根都射完 → 关闭护盾模式
                     if (z.shootLeft <= 0) {
@@ -1455,7 +1445,7 @@ export class GameManager extends Component {
         } else if (kind === 'manyfold') {
             for (const off of [-0.34, -0.18, 0.12, 0.24, 0.36]) {
                 const aa = a + off;
-                this.enemyBullets.push({ x: boss.x, y: boss.y, vx: Math.cos(aa) * 260, vy: Math.sin(aa) * 260,
+                this.enemyBullets.push({ hitSource: boss.hitSource, x: boss.x, y: boss.y, vx: Math.cos(aa) * 260, vy: Math.sin(aa) * 260,
                     damage: 18, radius: 6, color: '#d8b8ff', life: 3, lifeTime: 3,
                     owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos', srcBossTag: 'doc_manyfold' });
             }
@@ -1605,14 +1595,14 @@ export class GameManager extends Component {
             for (const q of this._docPlayerTrail) q.age += dt;
             this._docPlayerTrail = this._docPlayerTrail.filter(q => q.age <= 3.15);
         }
-        const hurt = (damage: number, label?: string) => {
-            if (!p?.alive || p.godMode) return;
-            p.takeDamage(damage, this, { ignoreIframe: true });
-            if (label) this._floatText.spawn(p.x, p.y - 42, label, '#ffb37b', 14, true);
-        };
         for (let i = this._docBossMechanics.length - 1; i >= 0; i--) {
             const m = this._docBossMechanics[i];
             const boss: BossController = m.boss;
+            const hurt = (damage: number, label?: string) => {
+                if (!p?.alive) return;
+                p.takeDamage(damage, this, { ignoreIframe: true, impact: { source: boss.hitSource, kind: m.kind, angle: Math.atan2(p.y - boss.y, p.x - boss.x) } });
+                if (label && !p.godMode) this._floatText.spawn(p.x, p.y - 42, label, '#ffb37b', 14, true);
+            };
             if (!boss?.alive) { for (const n of (m.nodes || [])) n.alive = false; this._docBossMechanics.splice(i, 1); continue; }
             m.timer -= dt;
             if (m.hitCd > 0) m.hitCd -= dt;
@@ -1652,7 +1642,7 @@ export class GameManager extends Component {
                 m.elapsed += dt;
                 for (const pt of m.points) if (!pt.hit && m.elapsed >= pt.at) {
                     pt.hit = true; boss.x = pt.x; boss.y = pt.y;
-                    this._particles.explode(pt.x, pt.y, '#71ff42', 76);
+                    this._particles.enemyBurst(pt.x, pt.y, 'acid', 76);
                     if (Vec.dist(pt.x, pt.y, p.x, p.y) < 76 + p.radius) hurt(30, '弹跳猎杀');
                     if (pt === m.points[m.points.length - 1] && m.points.length === 3) {
                         this._docBossMechanics.push({ kind: 'vespa_poison_pool', boss, timer: 4, max: 4, x: pt.x, y: pt.y, hitCd: 0, main: false });
@@ -1665,7 +1655,7 @@ export class GameManager extends Component {
                 }
             } else if (m.kind === 'vespa_rain') {
                 if (m.timer <= 0.25) for (const d of m.drops) if (!d.hit) {
-                    d.hit = true; this._particles.explode?.(d.x, d.y, '#72ff38', 34);
+                    d.hit = true; this._particles.enemyBurst(d.x, d.y, 'acid', 34);
                     if (Vec.dist(d.x, d.y, p.x, p.y) < 34 + p.radius) { hurt(18, '母囊毒雨'); p.applyDot?.(3, 4, '#72ff38'); }
                 }
             } else if (m.kind === 'vespa_eggs') {
@@ -1677,7 +1667,7 @@ export class GameManager extends Component {
                 const n = m.nodes[0];
                 if (m.timer <= 0 && n.alive && !m.exploded) {
                     m.exploded = true; n.alive = false; hurt(18, '蜕晶毒震');
-                    this._particles.explode(n.x, n.y, '#73ff3f', 160);
+                    this._particles.enemyBurst(n.x, n.y, 'acid', 160);
                     this._docBossMechanics.push({ kind: 'vespa_broken_ring', boss, timer: 2.5, max: 2.5, x: n.x, y: n.y, radius: 30, hitCd: 0, main: false });
                 }
             } else if (m.kind === 'vespa_broken_ring') {
@@ -1805,14 +1795,14 @@ export class GameManager extends Component {
         this._docBossTargets = this._docBossTargets.filter(n => n.alive);
     }
 
-    private _refreshPlayerDot(color: string, dps: number, duration: number, maxStacks: number): void {
+    private _refreshPlayerDot(color: string, dps: number, duration: number, maxStacks: number, type = 'dot'): void {
         const p = this._player;
         if (!p) return;
         const matches = (p.dots || []).filter((d: any) => d.color === color);
         if (matches.length >= maxStacks) {
             for (const d of matches) d.timeLeft = Math.max(d.timeLeft, duration);
         } else {
-            p.applyDot(dps, duration, color);
+            p.applyDot(dps, duration, color, type);
         }
     }
 
@@ -1831,10 +1821,10 @@ export class GameManager extends Component {
                 else this._particles.impact(z.x, z.y, 0, 0.35, '#ff5f4a');
                 this._audio.playSfx(z.kind === 'trap' ? 'hit' : 'explode', 0.32);
                 if (p?.alive && Vec.dist(z.x, z.y, p.x, p.y) <= z.r + (p.radius ?? 16)) {
-                    p.takeDamage(z.kind === 'acid' ? 4 : z.kind === 'ember' ? 5 : z.kind === 'priest_fire' ? 18 : 12, this, { ignoreIframe: true });
+                    p.takeDamage(z.kind === 'acid' ? 4 : z.kind === 'ember' ? 5 : z.kind === 'priest_fire' ? 18 : 12, this, { ignoreIframe: true, impact: { source: z.kind === 'acid' ? 'acid_sac' : z.kind === 'ember' ? 'ember_acolyte' : z.kind === 'priest_fire' ? 'triune_priest' : 'chain_hound', kind: z.kind === 'priest_fire' ? 'fire' : z.kind } });
                     if (z.kind === 'acid') this._refreshPlayerDot('#72ff38', 2, 4, 2);
-                    else if (z.kind === 'ember') this._refreshPlayerDot('#ff7a24', 2, 4, 1);
-                    else if (z.kind === 'priest_fire') this._refreshPlayerDot('#ff8a35', 2, 3, 1);
+                    else if (z.kind === 'ember') this._refreshPlayerDot('#ff7a24', 2, 4, 1, 'fire');
+                    else if (z.kind === 'priest_fire') this._refreshPlayerDot('#ff8a35', 2, 3, 1, 'fire');
                     else {
                         p.applyBuff?.('hound_trap_slow', 1.5, { speed: 0.65 });
                         this._floatText.spawn(p.x, p.y - 42, '捕获！', '#ff7968', 16, true);
@@ -1853,9 +1843,9 @@ export class GameManager extends Component {
                 z.tickCd = 1;
                 if (p?.alive && Vec.dist(z.x, z.y, p.x, p.y) <= z.r + (p.radius ?? 16)) {
                     if (z.kind === 'acid') this._refreshPlayerDot('#72ff38', 2, 4, 2);
-                    else if (z.kind === 'ember') this._refreshPlayerDot('#ff7a24', 2, 4, 1);
+                    else if (z.kind === 'ember') this._refreshPlayerDot('#ff7a24', 2, 4, 1, 'fire');
                     else {
-                        p.takeDamage(12, this, { ignoreIframe: true });
+                        p.takeDamage(12, this, { ignoreIframe: true, impact: { source: 'chain_hound' } });
                         p.applyBuff?.('hound_trap_slow', 1.5, { speed: 0.65 });
                         this._floatText.spawn(p.x, p.y - 42, '捕获！', '#ff7968', 16, true);
                         this._enemyHazards.splice(i, 1);
@@ -1873,9 +1863,8 @@ export class GameManager extends Component {
             if (!w.hit && p?.alive && Math.abs(p.x - w.x) <= w.r + (p.radius ?? 16) &&
                 Math.abs(p.y - w.y) <= w.halfH + (p.radius ?? 16)) {
                 w.hit = true;
-                p.takeDamage(20, this, { ignoreIframe: true });
+                p.takeDamage(20, this, { ignoreIframe: true, impact: { source: 'triune_priest', kind: 'frost' } });
                 p.applyBuff?.('triune_ice_slow', 1.5, { speed: 0.75 });
-                this._particles.coldImpact(p.x, p.y);
             }
             if (w.distance >= 420) { this._particles.coldImpact(w.x, w.y); this._priestWalls.splice(i, 1); }
         }
@@ -1893,8 +1882,7 @@ export class GameManager extends Component {
                 const qx = a.x + abx * t, qy = a.y + aby * t;
                 if (Vec.dist(qx, qy, p.x, p.y) <= 9 + (p.radius ?? 16)) {
                     group.hitCd = 1;
-                    p.takeDamage(22, this, { ignoreIframe: true });
-                    this._particles.impact(p.x, p.y, Math.atan2(aby, abx), 0.7, '#d8f7ff');
+                    p.takeDamage(22, this, { ignoreIframe: true, impact: { source: 'triune_priest' } });
                     break;
                 }
             }
@@ -1911,8 +1899,7 @@ export class GameManager extends Component {
                 s.x = s.cx + Math.cos(a) * 145; s.y = s.cy + Math.sin(a) * 80;
                 if (s.hitCd <= 0 && p?.alive && Vec.dist(s.x, s.y, p.x, p.y) <= 20 + (p.radius ?? 16)) {
                     s.hitCd = 0.8;
-                    p.takeDamage(18, this, { ignoreIframe: true });
-                    this._particles.impact(p.x, p.y, a, 0.75, '#ff9b32');
+                    p.takeDamage(18, this, { ignoreIframe: true, impact: { source: 'rail_butcher', angle: a } });
                 }
             }
             if (s.timer <= 0) this._railSaws.splice(i, 1);
@@ -1954,9 +1941,9 @@ export class GameManager extends Component {
             c._t -= dt;
             // 撞到玩家：40 伤 + 10% 减速 3s
             if (player.alive && Vec.dist(c.x, c.y, player.x, player.y) < c.r + (player.radius ?? 16) + 6) {
-                player.takeDamage(40, g);
+                player.takeDamage(40, g, { impact: { source: 'boss_abyss', angle: c._aim } });
                 player.applyBuff?.('water_slow', 3, { speed: 0.9 });
-                g.particles?.explode?.(c.x, c.y, '#33ccff', 70);
+                g.particles?.enemyBurst?.(c.x, c.y, 'water', 70);
                 g.floatingText?.spawn?.(player.x, player.y - 50, '水冲！', '#33ccff', 18, true);
                 c.alive = false;
                 return;
@@ -2102,8 +2089,7 @@ export class GameManager extends Component {
                     if (grid.cols[col] || grid.rows[row]) {
                         if (grid.hitCd <= 0) {
                             grid.hitCd = 0.8;
-                            p.takeTrueDamage(grid.dmg, this);
-                            this._particles.hit(p.x, p.y, '#ff5544');
+                            p.takeTrueDamage(grid.dmg, this, { impact: { source: 'boss_invader', kind: 'beam' } });
                         }
                     } else {
                         // 离开激光带后短冷却：再次误入很快吃伤，鼓励持续走位
@@ -2123,7 +2109,7 @@ export class GameManager extends Component {
                 this._audio.playSfx('explode', 0.8);
                 this._shake.add(16, 350);
                 if (p?.alive && Vec.dist(z.x, z.y, p.x, p.y) < z.r + (p.radius ?? 16)) {
-                    p.takeDamage(z.dmg, this, { ignoreIframe: this.state === 'testRoom' });
+                    p.takeDamage(z.dmg, this, { ignoreIframe: this.state === 'testRoom', impact: { source: 'boss_invader', kind: 'explosion' } });
                     this._floatText.spawn(p.x, p.y - 50, '导弹命中！', '#ffaa33', 18, true);
                 }
             }
@@ -2157,7 +2143,7 @@ export class GameManager extends Component {
         this._invGrid = undefined;
         this._missileZones = [];
         this._bullets?.reset();
-        this._fxPool?.releaseAll();
+        this._fxPool?.releaseAll(); this._contactFxPool?.releaseAll();
         this._coinPool?.releaseAll();
         this._turretBasePool?.releaseAll();
         this._turretBarrelPool?.releaseAll();
@@ -2353,6 +2339,8 @@ export class GameManager extends Component {
         if (this._playerDeathPending) return;
 
         // Bullets
+        separatePlayerBodies(this._player, this._enemies, (x, y, dx, dy, radius) =>
+            moveInArena(this._arena, x, y, dx, dy, radius));
         this._bullets.update(dt, this._enemies, this._player, this);
         this._bullets.updateEnemyBullets(dt, this._player, this);
         if (this._playerDeathPending) return;
@@ -2437,6 +2425,10 @@ export class GameManager extends Component {
         // 引导/延迟发射计时（暂停冻结，换局作废）
         this._updateTimers(dt);
 
+        // 延迟技能/召唤也可能改变位置；渲染前统一收尾，避免一帧穿身。
+        separatePlayerBodies(this._player, this._enemies, (x, y, dx, dy, radius) =>
+            moveInArena(this._arena, x, y, dx, dy, radius));
+
         // Combo timer decay
         if (this.comboTimer > 0) {
             this.comboTimer -= dt;
@@ -2517,36 +2509,42 @@ export class GameManager extends Component {
                 const [bx, by] = this._toLocal(boss.x, boss.y);
                 for (const off of [-0.24, 0.24]) {
                     const a = -(m.angle + off);
-                    g.strokeColor = new Color(129, 255, 101, 130 + Math.floor(pulse * 100)); g.lineWidth = 4;
-                    g.moveTo(bx, by); g.lineTo(bx + Math.cos(a) * 145, by + Math.sin(a) * 145); g.stroke();
+                    drawAttackSector(g, bx, by, a, 145, 0.24, pulse, '#8cdd65');
+                    this._placeEnemyArt('fx_enemy_toxic', bx + Math.cos(a) * 45, by + Math.sin(a) * 45,
+                        34, 34, a * 180 / Math.PI, 190);
                 }
             } else if (m.kind === 'crucible_mortar') {
                 const [x, y] = this._toLocal(m.x, m.y);
-                g.fillColor = new Color(255, 105, 30, m.fired ? 54 : 24); g.circle(x, y, 42); g.fill();
-                g.strokeColor = new Color(255, 164, 64, 210); g.lineWidth = 2.5; g.circle(x, y, 42); g.stroke();
+                if (!m.fired) drawAttackSector(g, x, y, 0, 42, Math.PI, pulse, '#e8a16a');
+                else this._placeEnemyArt('fx_ground_ember', x, y, 92, 92, 0, 170);
             } else if (m.kind === 'vespa_web') {
                 g.strokeColor = new Color(117, 255, 75, m.warn > 0 ? 100 : 220); g.lineWidth = m.warn > 0 ? 1.5 : 4;
                 for (let e = 0; e < 6; e++) {
                     const a = m.nodes[e], b = m.nodes[(e + 1) % 6]; if (!a.alive || !b.alive) continue;
                     const [ax, ay] = this._toLocal(a.x, a.y), [bx, by] = this._toLocal(b.x, b.y);
-                    g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                    if (m.warn > 0) drawChargeLane(g, ax, ay, Math.atan2(by - ay, bx - ax), Math.hypot(bx - ax, by - ay), 5, 0.5);
+                    else drawEnergyBeam(g, ax, ay, bx, by, 5, this._visualTime, '#91dd64');
                 }
             } else if (m.kind === 'vespa_jump') {
                 for (const pt of m.points) if (!pt.hit) {
                     const [x, y] = this._toLocal(pt.x, pt.y);
                     const r = 30 + Math.max(0, pt.at - m.elapsed) * 48;
-                    g.fillColor = new Color(105, 255, 65, 28); g.circle(x, y, 76); g.fill();
-                    g.strokeColor = new Color(154, 255, 118, 220); g.lineWidth = 3; g.circle(x, y, r); g.stroke();
+                    drawAttackSector(g, x, y, 0, 76, Math.PI, Math.max(0, 1 - (pt.at - m.elapsed)), '#a8bf62');
                 }
             } else if (m.kind === 'vespa_poison_pool') {
                 const [x, y] = this._toLocal(m.x, m.y);
-                g.fillColor = new Color(85, 220, 35, 70 + Math.floor(pulse * 30)); g.circle(x, y, 70); g.fill();
-                g.strokeColor = new Color(148, 255, 74, 190); g.lineWidth = 2; g.circle(x, y, 70); g.stroke();
+                this._placeEnemyArt('fx_ground_acid', x, y, 154, 154, 0, 155 * Math.min(1, m.timer / 0.4));
             } else if (m.kind === 'vespa_rain') {
                 for (const d of m.drops) {
                     const [x, y] = this._toLocal(d.x, d.y);
-                    g.fillColor = new Color(112, 255, 56, 30); g.circle(x, y, 34); g.fill();
-                    g.strokeColor = new Color(171, 255, 105, 150 + Math.floor(pulse * 90)); g.lineWidth = 2; g.circle(x, y, 34); g.stroke();
+                    if (!d.hit) {
+                        drawAttackSector(g, x, y, 0, 34, Math.PI, pulse, '#a8bf62');
+                        // 最后半秒毒滴落向同一命中点；不再只有圈然后瞬间扣血。
+                        if (m.timer < 0.8) this._placeEnemyArt('fx_enemy_toxic', x,
+                            y + Math.max(0, (m.timer - 0.25) / 0.55) * 100, 25, 25, -90);
+                    } else {
+                        this._placeEnemyArt('fx_ground_acid', x, y, 74, 64, 0, 170 * Math.max(0, m.timer / 0.25));
+                    }
                 }
             } else if (m.kind === 'vespa_shell') {
                 const n = m.nodes[0]; if (n?.alive) {
@@ -2557,45 +2555,50 @@ export class GameManager extends Component {
                 }
             } else if (m.kind === 'vespa_broken_ring') {
                 const [x, y] = this._toLocal(m.x, m.y);
-                g.strokeColor = new Color(120, 255, 72, 220); g.lineWidth = 7;
-                for (let seg = 0; seg < 24; seg++) if ([0, 1, 12, 13].indexOf(seg) < 0) {
-                    const a0 = seg / 24 * Math.PI * 2, a1 = (seg + 0.8) / 24 * Math.PI * 2;
-                    g.arc(x, y, m.radius, a0, a1, false); g.stroke();
+                const gap = Math.asin(0.18); // 与伤害判定的左右两处缺口完全一致。
+                for (let half = 0; half < 2; half++) {
+                    drawEnergyArc(g, x, y, m.radius, 13,
+                        half * Math.PI + gap, (half + 1) * Math.PI - gap,
+                        this._visualTime, '#8bdc59', 0.8);
                 }
             } else if (m.kind === 'crucible_poles') {
                 for (let i = 0; i < m.nodes.length; i++) if (m.nodes[i].alive) {
                     const n = m.nodes[i], [x, y] = this._toLocal(n.x, n.y);
-                    const c = i === 0 ? new Color(65, 155, 255, 55) : new Color(255, 72, 190, 55);
-                    g.fillColor = c; g.circle(x, y, 150); g.fill();
-                    g.strokeColor = i === 0 ? new Color(92, 190, 255, 230) : new Color(255, 92, 205, 230);
-                    g.lineWidth = 3; g.circle(x, y, 22 + pulse * 4); g.stroke();
+                    const color = i === 0 ? '#77b1db' : '#d37aab';
+                    drawAttackSector(g, x, y, 0, 150, Math.PI, 0.45, color);
+                    // 吸引/排斥用径向流动碎屑说明方向，不铺蓝紫实心圆盘。
+                    for (let k = 0; k < 8; k++) {
+                        const a = k * Math.PI / 4;
+                        const q = (this._visualTime * 0.65 + k * 0.13) % 1;
+                        const r = 24 + (i === 0 ? 1 - q : q) * 112;
+                        drawEnergyBeam(g, x + Math.cos(a) * r, y + Math.sin(a) * r,
+                            x + Math.cos(a) * (r + 10), y + Math.sin(a) * (r + 10),
+                            1.5, this._visualTime, color, 0.65);
+                    }
                 }
             } else if (m.kind === 'crucible_pistons') {
                 for (let i = 0; i < m.lanes.length; i++) {
                     const lane = m.lanes[i];
                     g.fillColor = new Color(255, 118, 36, lane.hit ? 28 : 18 + i * 14);
                     g.strokeColor = new Color(255, 174, 76, lane.hit ? 70 : 190 + i * 20); g.lineWidth = lane.hit ? 1.5 : 3;
-                    if (lane.vertical) {
-                        const [x] = this._toLocal(lane.center, 0); g.rect(x - 35, CANVAS_H / 2 - PLAYFIELD_BOTTOM, 70, PLAYFIELD_BOTTOM); g.fill(); g.rect(x - 35, CANVAS_H / 2 - PLAYFIELD_BOTTOM, 70, PLAYFIELD_BOTTOM); g.stroke();
-                    } else {
-                        const [, y] = this._toLocal(0, lane.center); g.rect(-CANVAS_W / 2, y - 35, CANVAS_W, 70); g.fill(); g.rect(-CANVAS_W / 2, y - 35, CANVAS_W, 70); g.stroke();
+                    const [ax, ay] = this._toLocal(lane.vertical ? lane.center : 0, lane.vertical ? 0 : lane.center);
+                    const [bx, by] = this._toLocal(lane.vertical ? lane.center : CANVAS_W, lane.vertical ? PLAYFIELD_BOTTOM : lane.center);
+                    const angle = Math.atan2(by - ay, bx - ax), len = Math.hypot(bx - ax, by - ay);
+                    drawChargeLane(g, ax, ay, angle, len, 35, lane.hit ? 0.2 : 0.8);
+                    const flash = Math.max(0, 1 - (m.elapsed - lane.at) / 0.38);
+                    if (lane.hit && flash > 0) {
+                        drawEnergyBeam(g, ax, ay, bx, by, 35, this._visualTime, '#ffad58', flash);
+                        for (let d = 40; d < len; d += 90) this._placeEnemyArt('fx_enemy_ember_brand',
+                            ax + Math.cos(angle) * d, ay + Math.sin(angle) * d, 62, 62, d + this._visualTime * 45, 220 * flash);
                     }
                 }
             } else if (m.kind === 'crucible_backflow') {
                 const [x, y] = this._toLocal(boss.x, boss.y);
                 for (let k = 0; k < 3; k++) {
-                    g.strokeColor = new Color(255, 104, 30, m.warn > 0 ? 100 : 230); g.lineWidth = m.warn > 0 ? 8 : 22;
-                    // 三层炉环共享同一个70°安全扇区；分段画线避免Graphics.arc跨0°时
-                    // 走长弧/短弧不一致，保证视觉缺口与碰撞判定完全同向。
-                    for (let seg = 0; seg < 72; seg++) {
-                        const w0 = seg / 72 * Math.PI * 2, w1 = (seg + 1) / 72 * Math.PI * 2;
-                        const mid = (w0 + w1) * 0.5;
-                        const diff = Math.abs(Math.atan2(Math.sin(mid - m.safeAngle), Math.cos(mid - m.safeAngle)));
-                        if (diff <= 35 * Math.PI / 180) continue;
-                        const r = 190 + k * 32;
-                        g.moveTo(x + Math.cos(w0) * r, y - Math.sin(w0) * r);
-                        g.lineTo(x + Math.cos(w1) * r, y - Math.sin(w1) * r); g.stroke();
-                    }
+                    const halfGap = 35 * Math.PI / 180;
+                    drawEnergyArc(g, x, y, 190 + k * 32, m.warn > 0 ? 4 : 11,
+                        -m.safeAngle + halfGap, -m.safeAngle + Math.PI * 2 - halfGap,
+                        this._visualTime + k * 0.2, '#ff963a', m.warn > 0 ? 0.32 : 0.8);
                 }
                 g.strokeColor = new Color(100, 205, 255, 210); g.lineWidth = 3;
                 const s0 = m.safeAngle - 35 * Math.PI / 180, s1 = m.safeAngle + 35 * Math.PI / 180;
@@ -2608,30 +2611,48 @@ export class GameManager extends Component {
             } else if (m.kind === 'manyfold_lines') {
                 for (let i = 0; i < m.lines.length; i++) {
                     const l = m.lines[i], [ax, ay] = this._toLocal(l.ax, l.ay), [bx, by] = this._toLocal(l.bx, l.by);
-                    g.strokeColor = new Color(212, 172, 255, l.hit ? 45 : 95 + i * 60); g.lineWidth = l.hit ? 1 : (m.elapsed >= l.at ? 8 : 2 + i);
-                    g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                    const angle = Math.atan2(by - ay, bx - ax), length = Math.hypot(bx - ax, by - ay);
+                    if (!l.hit) drawChargeLane(g, ax, ay, angle, length, 11, Math.min(1, m.elapsed / l.at));
+                    else {
+                        const flash = Math.max(0, 1 - (m.elapsed - l.at) / 0.32);
+                        if (flash > 0) {
+                            drawEnergyBeam(g, ax, ay, bx, by, 11, this._visualTime, '#c699f3', flash);
+                            for (let d = 40; d < length; d += 110) this._placeEnemyArt('fx_enemy_void_blade',
+                                ax + Math.cos(angle) * d, ay + Math.sin(angle) * d, 54, 54, angle * 180 / Math.PI, 240 * flash);
+                        }
+                    }
                 }
             } else if (m.kind === 'manyfold_mirror') {
-                g.strokeColor = new Color(210, 170, 255, 230); g.lineWidth = 4;
-                if (m.vertical) { const [x] = this._toLocal(CANVAS_W / 2, 0); g.moveTo(x, CANVAS_H / 2); g.lineTo(x, CANVAS_H / 2 - PLAYFIELD_BOTTOM); }
-                else { const [, y] = this._toLocal(0, PLAYFIELD_BOTTOM / 2); g.moveTo(-CANVAS_W / 2, y); g.lineTo(CANVAS_W / 2, y); }
-                g.stroke();
+                const [ax, ay] = this._toLocal(m.vertical ? CANVAS_W / 2 : 0, m.vertical ? 0 : PLAYFIELD_BOTTOM / 2);
+                const [bx, by] = this._toLocal(m.vertical ? CANVAS_W / 2 : CANVAS_W, m.vertical ? PLAYFIELD_BOTTOM : PLAYFIELD_BOTTOM / 2);
+                drawEnergyBeam(g, ax, ay, bx, by, 6, this._visualTime, '#c699f3');
             } else if (m.kind === 'manyfold_shadow') {
                 if (m.points.length > 1) {
-                    g.strokeColor = new Color(215, 185, 255, m.warn > 0 ? 100 : 220); g.lineWidth = m.warn > 0 ? 2 : 6;
                     for (let k = 1; k < m.points.length; k++) {
                         const [ax, ay] = this._toLocal(m.points[k - 1].x, m.points[k - 1].y), [bx, by] = this._toLocal(m.points[k].x, m.points[k].y);
-                        g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                        if (m.warn > 0) drawChargeLane(g, ax, ay, Math.atan2(by - ay, bx - ax), Math.hypot(bx - ax, by - ay), 24, 0.25);
+                        else drawEnergyBeam(g, ax, ay, bx, by, 3, this._visualTime, '#c699f3', 0.25);
+                    }
+                    if (m.warn <= 0) {
+                        // 裁片沿真实命中游标回放，轨迹只保留淡尾迹。
+                        const index = Math.min(m.points.length - 1, Math.floor(m.cursor));
+                        const pt = m.points[index], prev = m.points[Math.max(0, index - 1)];
+                        const [x, y] = this._toLocal(pt.x, pt.y);
+                        const angle = Math.atan2(-(pt.y - prev.y), pt.x - prev.x) * 180 / Math.PI;
+                        this._placeEnemyArt('fx_enemy_void_blade', x, y, 48, 48, angle, 240);
                     }
                 }
             } else if (m.kind === 'manyfold_sectors') {
                 const [x, y] = this._toLocal(boss.x, boss.y);
                 for (let k = 0; k < 6; k++) {
-                    const a0 = k * Math.PI / 3 - Math.PI, a1 = a0 + Math.PI / 3;
-                    g.fillColor = k === m.safe ? new Color(82, 132, 145, 34) : new Color(183, 71, 255, 54 + Math.floor(pulse * 20));
-                    g.moveTo(x, y); g.arc(x, y, 285, a0, a1, false); g.close(); g.fill();
-                    g.strokeColor = k === m.safe ? new Color(110, 220, 230, 170) : new Color(218, 170, 255, 160);
-                    g.lineWidth = 2; g.moveTo(x, y); g.lineTo(x + Math.cos(a0) * 285, y + Math.sin(a0) * 285); g.stroke();
+                    const [a0, a1] = localSectorBounds(k, 6);
+                    drawAttackSector(g, x, y, (a0 + a1) / 2, 285, (a1 - a0) / 2, pulse,
+                        k === m.safe ? '#719b96' : '#c18ada');
+                    if (k !== m.safe && m.elapsed >= 1) {
+                        const a = (a0 + a1) / 2;
+                        for (const r of [110, 210]) this._placeEnemyArt('fx_enemy_void_blade',
+                            x + Math.cos(a) * r, y + Math.sin(a) * r, 64, 64, a * 180 / Math.PI, 180);
+                    }
                 }
             } else if (m.kind === 'manyfold_boundary') {
                 const q = m.progress ?? 0, ix = 128 * q, iy = 58 * q;
@@ -2656,7 +2677,7 @@ export class GameManager extends Component {
                     g.strokeColor = color; g.lineWidth = width;
                     const draw = (ax: number, ay: number, bx: number, by: number): void => {
                         const [x0, y0] = this._toLocal(ax, ay), [x1, y1] = this._toLocal(bx, by);
-                        g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+                        drawEnergyBeam(g, x0, y0, x1, y1, Math.max(2, width * 0.5), this._visualTime, '#c699f3');
                     };
                     for (const [a, b] of spans(iy, PLAYFIELD_BOTTOM - iy, dead.filter((n: any) => n.edge === 'left').map((n: any) => n.y))) draw(ix, a, ix, b);
                     for (const [a, b] of spans(iy, PLAYFIELD_BOTTOM - iy, dead.filter((n: any) => n.edge === 'right').map((n: any) => n.y))) draw(CANVAS_W - ix, a, CANVAS_W - ix, b);
@@ -2687,6 +2708,8 @@ export class GameManager extends Component {
             const isVespa = n.kind.includes('vespa'), isMany = n.kind.includes('manyfold');
             g.fillColor = isVespa ? new Color(66, 145, 40, 180) : isMany ? new Color(73, 42, 105, 190) : new Color(95, 57, 31, 190);
             hex(x, y, n.radius + 4); g.fill();
+            this._placeEnemyArt(isVespa ? 'fx_enemy_web' : isMany ? 'fx_enemy_void_blade' : 'fx_enemy_saw',
+                x, y, n.radius * 2.1, n.radius * 2.1, isMany ? this._visualTime * 30 : 0);
             g.strokeColor = isVespa ? new Color(148, 255, 88, 245) : isMany ? new Color(210, 177, 255, 245) : new Color(255, 154, 64, 245);
             g.lineWidth = 2.5; hex(x, y, n.radius + 4); g.stroke();
             g.fillColor = new Color(15, 20, 28, 215); g.rect(x - 18, y - n.radius - 12, 36, 4); g.fill();
@@ -2705,7 +2728,10 @@ export class GameManager extends Component {
         node.getComponent(UITransform)!.setContentSize(Math.max(2, width), Math.max(2, height));
         const sprite = node.getComponent(Sprite)!;
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        applyArtSprite(sprite, key);
+        sprite.trim = false;
+        const clip = EFFECT_ANIMATIONS[key];
+        if (clip) applyAnimationFrame(sprite, clip, clip.frames[Math.floor(this._visualTime * 7) % clip.frames.length]);
+        else applyArtSprite(sprite, key);
         const color = Color.fromHEX(new Color(), tint);
         color.a = Math.max(0, Math.min(255, Math.round(alpha)));
         sprite.color = color;
@@ -2770,17 +2796,18 @@ export class GameManager extends Component {
             g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
         }
 
-        // 测试房间水柱（深海恐惧·海之霸主）：蓝柱 + flash/shoot 白闪
+        // 深海水柱：旋流核心、浮动水滴与脚下涟漪，射击时收紧并提亮。
         for (const z of this._pillars) {
             const [zx, zy] = this._toLocal(z.x, z.y);
             const flash = z.state !== 'idle' ? (Math.sin(this._visualTime * 8) * 0.5 + 0.5) : 0;
-            g.fillColor = new Color(40, 140, 220, 60 + Math.floor(flash * 60));
-            g.circle(zx, zy, z.r); g.fill();
-            g.strokeColor = new Color(90, 200, 255, 190 + Math.floor(flash * 60));
-            g.lineWidth = 3; g.circle(zx, zy, z.r); g.stroke();
-            // 水柱内部高光
-            g.fillColor = new Color(150, 230, 255, 90);
-            g.circle(zx, zy - z.r * 0.15, z.r * 0.45); g.fill();
+            drawEnergyArc(g, zx, zy, z.r, 2.5, 0, Math.PI * 2, this._visualTime, '#5dcaff', 0.6);
+            this._placeEnemyArt('fx_enemy_water_bomb', zx, zy + 5, z.r * 2, z.r * 2,
+                this._visualTime * 40, 180 + Math.floor(flash * 65));
+            for (let drop = 0; drop < 3; drop++) {
+                const a = this._visualTime * 1.6 + drop * Math.PI * 2 / 3;
+                this._placeEnemyArt('fx_enemy_water_lance', zx + Math.cos(a) * z.r * 0.65,
+                    zy + 8 + Math.sin(a) * z.r * 0.7, 13, 13, a * 180 / Math.PI, 170);
+            }
         }
 
         // 测试房间冰冻预告区（深海恐惧）：闪烁蓝圈，越临近越亮
@@ -2788,11 +2815,8 @@ export class GameManager extends Component {
             const [zx, zy] = this._toLocal(z.x, z.y);
             const urgent = Math.max(0, z.timer / 3);
             const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 10);
-            const alpha = Math.floor((60 + (1 - urgent) * 130) * (0.55 + 0.45 * pulse));
-            g.fillColor = new Color(60, 150, 255, Math.floor(alpha * 0.4));
-            g.circle(zx, zy, z.r); g.fill();
-            g.strokeColor = new Color(140, 210, 255, alpha);
-            g.lineWidth = 2.5; g.circle(zx, zy, z.r); g.stroke();
+            drawAttackSector(g, zx, zy, 0, z.r, Math.PI, 1 - urgent, '#93c5d2');
+            this._placeEnemyArt('fx_ground_water', zx, zy, z.r * 1.7, z.r * 1.7, 0, 65 + (1 - urgent) * 45);
         }
 
         // 酸囊/焚芯咒仆地面危险区：毒囊带抛物线，火环由暗到亮后留下余烬。
@@ -2801,8 +2825,6 @@ export class GameManager extends Component {
             if (z.kind === 'trap') {
                 const progress = z.phase === 'telegraph' ? 1 - z.timer / z.telegraphMax : 1;
                 const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 7 + z.x * 0.02);
-                g.fillColor = new Color(120, 28, 22, z.phase === 'telegraph' ? 18 + Math.floor(progress * 32) : 54 + Math.floor(pulse * 18));
-                g.circle(zx, zy, z.r); g.fill();
                 g.strokeColor = new Color(255, 84, 65, z.phase === 'telegraph' ? 130 + Math.floor(progress * 120) : 225);
                 g.lineWidth = z.phase === 'telegraph' ? 2 : 3;
                 for (let tooth = 0; tooth < 6; tooth++) {
@@ -2824,7 +2846,6 @@ export class GameManager extends Component {
             if (z.phase === 'telegraph') {
                 const progress = 1 - z.timer / z.telegraphMax;
                 g.fillColor = acid ? new Color(80, 220, 45, 22) : new Color(255, 75, 20, 20 + Math.floor(progress * 42));
-                g.circle(zx, zy, z.r); g.fill();
                 g.strokeColor = acid ? new Color(125, 255, 70, 220) : new Color(255, 145, 55, 155 + Math.floor(progress * 100));
                 g.lineWidth = 2 + (acid ? 0 : progress * 2.5);
                 for (let seg = 0; seg < 12; seg += 2) {
@@ -2837,29 +2858,9 @@ export class GameManager extends Component {
                     const ox = z.fromX + (z.x - z.fromX) * t;
                     const oy = z.fromY + (z.y - z.fromY) * t - Math.sin(Math.PI * t) * 70;
                     const [px, py] = this._toLocal(ox, oy);
-                    const [fx, fy] = this._toLocal(z.fromX, z.fromY);
-                    const fd = Math.hypot(zx - fx, zy - fy) || 1;
-                    const ux = (zx - fx) / fd, uy = (zy - fy) / fd;
-                    const sx = -uy, sy = ux;
-                    // 飞行态是有朝向的囊状毒弹，避免和落地危险区同为绿色圆圈。
-                    g.fillColor = new Color(65, 155, 24, 95);
-                    g.moveTo(px + ux * 13, py + uy * 13);
-                    g.lineTo(px + sx * 8, py + sy * 8);
-                    g.lineTo(px - ux * 10 + sx * 4, py - uy * 10 + sy * 4);
-                    g.lineTo(px - ux * 15, py - uy * 15);
-                    g.lineTo(px - ux * 10 - sx * 4, py - uy * 10 - sy * 4);
-                    g.lineTo(px - sx * 8, py - sy * 8); g.close(); g.fill();
-                    g.strokeColor = new Color(200, 255, 110, 235); g.lineWidth = 2;
-                    g.moveTo(px + ux * 12, py + uy * 12);
-                    g.lineTo(px + sx * 7, py + sy * 7);
-                    g.lineTo(px - ux * 12, py - uy * 12);
-                    g.lineTo(px - sx * 7, py - sy * 7); g.close(); g.stroke();
-                    g.fillColor = new Color(218, 255, 126, 230);
-                    g.circle(px + ux * 5 + sx * 2, py + uy * 5 + sy * 2, 3); g.fill();
-                    g.fillColor = new Color(122, 235, 50, 150);
-                    g.circle(px - ux * 19 + sx * 2, py - uy * 19 + sy * 2, 2.5); g.fill();
-                    this._placeEnemyArt('fx_enemy_toxic', px, py, 42, 27,
-                        -Math.atan2(z.y - z.fromY, z.x - z.fromX) * 180 / Math.PI, 235);
+                    // 实体毒囊沿抛物轨迹飞行，不叠加巨大的菱形程序轮廓。
+                    this._placeEnemyArt('fx_enemy_toxic', px, py, 28, 28,
+                        -Math.atan2(z.y - z.fromY, z.x - z.fromX) * 180 / Math.PI, 225);
                 } else {
                     for (let k = 0; k < 6; k++) {
                         const a = k / 6 * Math.PI * 2 + this._visualTime * 0.35;
@@ -2871,44 +2872,10 @@ export class GameManager extends Component {
                 }
             } else {
                 const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 3.5 + z.x * 0.01);
-                if (acid) {
-                    // 落地态使用不规则腐蚀滩轮廓，与飞行囊弹形成材质和形状差异。
-                    const puddlePoint = (i: number, inner = false) => {
-                        const a = i / 14 * Math.PI * 2 - 0.18;
-                        const jag = i % 2 === 0 ? 1 : 0.78;
-                        const rr = z.r * jag * (inner ? 0.56 : 1) * (0.97 + Math.sin(i * 4.1 + z.x) * 0.04);
-                        return [zx + Math.cos(a) * rr, zy + Math.sin(a) * rr] as [number, number];
-                    };
-                    const [x0, y0] = puddlePoint(0);
-                    g.fillColor = new Color(40, 118, 18, 70 + Math.floor(pulse * 28));
-                    g.moveTo(x0, y0);
-                    for (let i = 1; i < 14; i++) { const [x, y] = puddlePoint(i); g.lineTo(x, y); }
-                    g.close(); g.fill();
-                    g.strokeColor = new Color(128, 238, 62, 170 + Math.floor(pulse * 65));
-                    g.lineWidth = 2.4; g.moveTo(x0, y0);
-                    for (let i = 1; i < 14; i++) { const [x, y] = puddlePoint(i); g.lineTo(x, y); }
-                    g.close(); g.stroke();
-                    const [ix0, iy0] = puddlePoint(0, true);
-                    g.fillColor = new Color(166, 225, 62, 34 + Math.floor(pulse * 22));
-                    g.moveTo(ix0, iy0);
-                    for (let i = 1; i < 14; i++) { const [x, y] = puddlePoint(i, true); g.lineTo(x, y); }
-                    g.close(); g.fill();
-                    this._placeEnemyArt('fx_enemy_toxic', zx, zy, z.r * 2.15, z.r * 2.15,
-                        this._visualTime * 7, 82 + pulse * 32);
-                } else {
-                    g.fillColor = new Color(125, 45, 15, 48 + Math.floor(pulse * 26));
-                    g.circle(zx, zy, z.r); g.fill();
-                    g.strokeColor = new Color(255, 105, 35, 135 + Math.floor(pulse * 70));
-                    g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
-                    this._placeEnemyArt('fx_enemy_ember_brand', zx, zy, z.r * 2.2, z.r * 2.2,
-                        this._visualTime * -5, 150 + pulse * 55);
-                }
-                for (let bubble = 0; bubble < 5; bubble++) {
-                    const a = bubble * 2.399 + z.x * 0.013;
-                    const br = z.r * (0.2 + bubble * 0.11);
-                    g.fillColor = acid ? new Color(170, 255, 80, 80 + bubble * 15) : new Color(255, 150, 55, 75 + bubble * 13);
-                    g.circle(zx + Math.cos(a) * br, zy + Math.sin(a) * br, 2 + (bubble % 2)); g.fill();
-                }
+                const fade = Math.min(1, z.timer / 0.4);
+                this._placeEnemyArt(acid ? 'fx_ground_acid' : 'fx_ground_ember', zx, zy,
+                    z.r * 2.3, z.r * 2.3, 0, (acid ? 155 : 175) * fade);
+
             }
         }
 
@@ -2935,7 +2902,7 @@ export class GameManager extends Component {
                 for (let edge = 0; edge < 3; edge++) {
                     const a = group.nodes[edge], b = group.nodes[(edge + 1) % 3];
                     const [ax, ay] = this._toLocal(a.x, a.y), [bx, by] = this._toLocal(b.x, b.y);
-                    g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
+                    drawEnergyBeam(g, ax, ay, bx, by, 4, this._visualTime);
                 }
             }
             for (const n of group.nodes) if (n.alive) {
@@ -2987,10 +2954,8 @@ export class GameManager extends Component {
             const urgent = Math.max(0, z.timer / 2);
             const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 12);
             const alpha = Math.floor((70 + (1 - urgent) * 140) * (0.55 + 0.45 * pulse));
-            g.fillColor = new Color(255, 120, 40, Math.floor(alpha * 0.35));
-            g.circle(zx, zy, z.r); g.fill();
-            g.strokeColor = new Color(255, 170, 60, alpha);
-            g.lineWidth = 3; g.circle(zx, zy, z.r); g.stroke();
+            drawAttackSector(g, zx, zy, 0, z.r, Math.PI, 1 - urgent, '#e8a16a');
+            if (z.timer < 0.55) this._placeEnemyArt('fx_enemy_missile', zx, zy + z.timer * 180, 44, 36, -90, 230);
         }
 
         // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
@@ -3098,23 +3063,14 @@ export class GameManager extends Component {
                     const [x1, y1] = corner(t.len, t.halfW);
                     const [x2, y2] = corner(t.len, -t.halfW);
                     const [x3, y3] = corner(0, -t.halfW);
-                    g.fillColor = new Color(30, 4, 48, Math.floor(150 * fade));
-                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x0, y0); g.fill();
-                    g.strokeColor = new Color(204, 68, 255, Math.floor(200 * fade));
-                    g.lineWidth = 2.5;
-                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x0, y0); g.stroke();
-                    // 中脊混沌裂光：沿鞭向的主缝 + 随时间闪烁的横向裂纹
-                    const [sx, sy] = corner(0, 0);
-                    const [ex, ey] = corner(t.len, 0);
-                    g.strokeColor = new Color(244, 170, 255, Math.floor(160 + 70 * Math.sin(this._visualTime * 9)) * fade | 0);
-                    g.lineWidth = 3;
-                    g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
-                    g.lineWidth = 1.5;
-                    for (const f of [0.33, 0.66]) {
-                        const [c1x, c1y] = corner(t.len * f, t.halfW * 0.8);
-                        const [c2x, c2y] = corner(t.len * f, -t.halfW * 0.8);
-                        g.strokeColor = new Color(204, 68, 255, Math.floor(120 * fade));
-                        g.moveTo(c1x, c1y); g.lineTo(c2x, c2y); g.stroke();
+                    g.fillColor = new Color(30, 4, 48, Math.floor(35 * fade));
+                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.close(); g.fill();
+                    const [sx, sy] = corner(0, 0), [ex, ey] = corner(t.len, 0);
+                    drawEnergyBeam(g, sx, sy, ex, ey, t.halfW * 0.65, this._visualTime, '#c86bff', fade);
+                    for (const f of [0.22, 0.5, 0.78]) {
+                        const [cx, cy] = corner(t.len * f, 0);
+                        this._placeEnemyArt('fx_enemy_void_blade', cx, cy, t.halfW * 1.3, t.halfW * 1.3,
+                            -Math.atan2(ny, nx) * 180 / Math.PI, 220 * fade);
                     }
                 } else {
                     const fade = Math.max(0, 1 - t.r / t._maxR);
@@ -3151,13 +3107,9 @@ export class GameManager extends Component {
                 continue;
             }
 
-            // 水分身蓄力时仍保留冲锋方向线；身体本身由深海恐惧的逐帧动作绘制。
+            // 水分身的冲锋也只标记侧界，不保留指向英雄的中心细线。
             if (t.kind === 'waterClone' && t._phase === 'windup') {
-                g.strokeColor = new Color(140, 225, 255, 170);
-                g.lineWidth = 2;
-                g.moveTo(tx, ty);
-                g.lineTo(tx + Math.cos(t._aim ?? 0) * 70, ty - Math.sin(t._aim ?? 0) * 70);
-                g.stroke();
+                drawChargeLane(g, tx, ty, -(t._aim ?? 0), 100, r, 0.7);
             }
 
             if (t._actorAnimation?.clip && t._actorAnimation.currentFrame) {
@@ -3184,14 +3136,13 @@ export class GameManager extends Component {
             }
 
             if (t.kind === 'timeOrb') {
-                // 时空行者·时空奇点能量球：蓝白光球 + 呼吸光环
-                g.fillColor = new Color(170, 221, 255, 150);
-                g.circle(tx, ty, r); g.fill();
-                g.strokeColor = new Color(220, 240, 255, 230);
-                g.lineWidth = 2.5; g.circle(tx, ty, r); g.stroke();
-                g.strokeColor = new Color(170, 221, 255, 120);
-                g.lineWidth = 1.5;
-                g.circle(tx, ty, r + 8 + Math.sin(this._visualTime * 6) * 4); g.stroke();
+                // 有独立能量核和绕行碎片的奇点；蓄力在头顶，飞行时随真实球心移动。
+                this._placeEnemyArt('fx_enemy_water_bomb', tx, ty, r * 2, r * 2, this._visualTime * 35, 225);
+                for (let k = 0; k < 3; k++) {
+                    const a = this._visualTime * 2.5 + k * Math.PI * 2 / 3;
+                    this._placeEnemyArt('fx_enemy_frost', tx + Math.cos(a) * (r + 5),
+                        ty + Math.sin(a) * (r + 5), 16, 16, a * 180 / Math.PI + 90, 190);
+                }
                 continue;
             }
 
@@ -3339,59 +3290,24 @@ export class GameManager extends Component {
                 }
             }
 
-            // 普通怪/Boss接触攻击前摇：红橙危险区 + 锁定方向线。
-            // attackWindup 从 max 倒数到0，环形进度会逐渐收紧并增强亮度。
+            // 接触攻击为径向判定；只有剑虾横扫使用方向扇面，避免假安全区。
             if (e.attackWindup > 0 && e.attackWindupMax > 0) {
                 const progress = 1 - e.attackWindup / e.attackWindupMax;
-                const dangerR = r + 13 - progress * 5;
-                const warning = e.type === 'exploder'
-                    ? new Color(255, 150, 25, 255)
-                    : new Color(255, 55, 45, 255);
                 const [tx, ty] = this._toLocal(e.attackTargetX, e.attackTargetY);
-                if (e.type === 'rust_biter') {
-                    // 锈齿扑兵：0.28秒小扇形明确表达扑击方向与可横移躲避的边界。
-                    const aim = Math.atan2(ty - ey, tx - ex);
-                    const fanR = 58;
-                    const half = 0.58;
-                    g.fillColor = new Color(255, 45, 30, 38 + Math.floor(progress * 70));
-                    g.moveTo(ex, ey);
-                    g.arc(ex, ey, fanR, aim - half, aim + half, false);
-                    g.close(); g.fill();
-                    g.strokeColor = new Color(255, 105, 60, 185 + Math.floor(progress * 70));
-                    g.lineWidth = 2 + progress * 2.5;
-                    g.moveTo(ex, ey);
-                    g.arc(ex, ey, fanR, aim - half, aim + half, false);
-                    g.close(); g.stroke();
+                const aim = Math.atan2(ty - ey, tx - ex);
+                if (e.type === 'exploder') {
+                    drawAttackSector(g, ex, ey, 0, 100, Math.PI, progress, '#ffad56');
                 } else if (e.type === 'rivet_beast' || (e.type === 'chain_hound' && e.miniSkillState === 'chain_charge')) {
-                    // 铆甲兽：宽走廊比圆形危险圈更准确表达100px冲撞与55px击退。
-                    const aim = Math.atan2(ty - ey, tx - ex);
-                    const ux = Math.cos(aim), uy = Math.sin(aim);
-                    const px = -uy, py = ux;
-                    const hound = e.type === 'chain_hound';
-                    const len = hound ? 390 : 132, halfW = hound ? 30 : 25;
-                    const x1 = ex + px * halfW, y1 = ey + py * halfW;
-                    const x2 = ex - px * halfW, y2 = ey - py * halfW;
-                    const x3 = ex + ux * len - px * halfW, y3 = ey + uy * len - py * halfW;
-                    const x4 = ex + ux * len + px * halfW, y4 = ey + uy * len + py * halfW;
-                    g.fillColor = hound
-                        ? new Color(255, 55, 42, 28 + Math.floor(progress * 72))
-                        : new Color(105, 205, 255, 30 + Math.floor(progress * 65));
-                    g.moveTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x4, y4); g.close(); g.fill();
-                    g.strokeColor = hound
-                        ? new Color(255, 126, 92, 170 + Math.floor(progress * 85))
-                        : new Color(190, 238, 255, 170 + Math.floor(progress * 85));
-                    g.lineWidth = 2 + progress * 3;
-                    g.moveTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x4, y4); g.close(); g.stroke();
-                } else {
-                    g.fillColor = new Color(warning.r, warning.g, warning.b, 28 + Math.floor(progress * 55));
-                    g.circle(ex, ey, dangerR + 10); g.fill();
-                    g.strokeColor = new Color(warning.r, warning.g, warning.b, 170 + Math.floor(progress * 85));
-                    g.lineWidth = 2.5 + progress * 2.5;
-                    g.circle(ex, ey, dangerR); g.stroke();
-                    g.strokeColor = new Color(255, 235, 210, 150 + Math.floor(progress * 100));
-                    g.lineWidth = 1.5 + progress;
-                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
+                    drawChargeLane(g, ex, ey, aim, e.type === 'chain_hound' ? 390 : 132, r, progress);
+                } else if (e.type === 'shrimp') {
+                    drawAttackSector(g, ex, ey, aim, r + e.meleeRange + 30, 1, progress);
+                } else if (e.type === 'rust_biter') {
+                    drawChargeLane(g, ex, ey, aim, 38 + r, r, progress);
                 }
+                const chargeSize = 12 + progress * 15;
+                this._placeEnemyArt(UNIT_ATTACK_ART[e.hitSource] ?? 'fx_enemy_claw_slash', ex + Math.cos(aim) * visualR * 0.62,
+                    ey + Math.sin(aim) * visualR * 0.62, chargeSize, chargeSize, aim * 180 / Math.PI,
+                    90 + progress * 140);
             }
 
             if (e.type === 'prism_snail' && (e.miniSkillState === 'prism_windup' || e.miniSkillState === 'prism_sweep')) {
@@ -3401,17 +3317,13 @@ export class GameManager extends Component {
                 const [beamX, beamY] = this._toLocal(e.x + Math.cos(worldAngle) * 900, e.y + Math.sin(worldAngle) * 900);
                 const aim = Math.atan2(beamY - ey, beamX - ex);
                 const ux = Math.cos(aim), uy = Math.sin(aim), px = -uy, py = ux;
-                const halfW = sweeping ? 14 : 8;
-                const alpha = sweeping ? 105 : 38 + Math.floor((1 - e.miniSkillTimer / Math.max(0.01, e.miniSkillMax)) * 52);
-                g.fillColor = new Color(125, 225, 255, alpha);
-                g.moveTo(ex + px * halfW, ey + py * halfW);
-                g.lineTo(ex - px * halfW, ey - py * halfW);
-                g.lineTo(ex + ux * 900 - px * halfW, ey + uy * 900 - py * halfW);
-                g.lineTo(ex + ux * 900 + px * halfW, ey + uy * 900 + py * halfW);
-                g.close(); g.fill();
-                g.strokeColor = new Color(220, 250, 255, sweeping ? 245 : 175);
-                g.lineWidth = sweeping ? 3.5 : 1.8;
-                g.moveTo(ex, ey); g.lineTo(ex + ux * 900, ey + uy * 900); g.stroke();
+                if (sweeping) {
+                    drawEnergyBeam(g, ex, ey, beamX, beamY, 14, this._visualTime);
+                    this._placeEnemyArt('fx_enemy_arc', ex, ey, 58, 58, this._visualTime * 90);
+                } else {
+                    drawChargeLane(g, ex, ey, aim, 900, 14, 1 - e.miniSkillTimer / Math.max(0.01, e.miniSkillMax));
+                    this._placeEnemyArt('fx_enemy_frost', ex, ey, 38, 38, this._visualTime * 45);
+                }
             }
             if (e.type === 'prism_snail' && e.miniSkillState === 'prism_shell') {
                 const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 8);
@@ -3443,22 +3355,23 @@ export class GameManager extends Component {
                 const aim = Math.atan2(endY - ey, endX - ex), ux = Math.cos(aim), uy = Math.sin(aim);
                 const px = -uy, py = ux, halfW = 27;
                 const progress = 1 - e.miniSkillTimer / Math.max(0.01, e.miniSkillMax);
-                g.fillColor = new Color(255, 45, 177, 26 + Math.floor(progress * 72));
-                g.moveTo(ex + px * halfW, ey + py * halfW); g.lineTo(ex - px * halfW, ey - py * halfW);
-                g.lineTo(ex + ux * 1400 - px * halfW, ey + uy * 1400 - py * halfW);
-                g.lineTo(ex + ux * 1400 + px * halfW, ey + uy * 1400 + py * halfW); g.close(); g.fill();
-                g.strokeColor = new Color(255, 111, 207, 175 + Math.floor(progress * 80)); g.lineWidth = 2 + progress * 3;
-                g.moveTo(ex, ey); g.lineTo(ex + ux * 1400, ey + uy * 1400); g.stroke();
+                drawChargeLane(g, ex, ey, aim, 1400, halfW, progress);
+                this._placeEnemyArt('fx_enemy_rail', ex, ey, 28 + progress * 35, 24, aim * 180 / Math.PI);
             } else if (e.type === 'rail_butcher' && e.miniSkillState === 'rail_drag') {
                 const [px, py] = this._toLocal(this._player.x, this._player.y);
                 const a = Math.atan2(ey - py, ex - px), ux = Math.cos(a), uy = Math.sin(a);
                 const warned = e.miniSkillTimer > 1.8;
-                g.strokeColor = new Color(102, 190, 255, warned ? 225 : 150); g.lineWidth = warned ? 3.5 : 2.5;
-                g.moveTo(px, py); g.lineTo(ex, ey); g.stroke();
-                for (let arrow = 0; arrow < 3; arrow++) {
-                    const d = 50 + arrow * 45, ax = px + ux * d, ay = py + uy * d;
-                    g.moveTo(ax, ay); g.lineTo(ax - ux * 13 - uy * 7, ay - uy * 13 + ux * 7);
-                    g.moveTo(ax, ay); g.lineTo(ax - ux * 13 + uy * 7, ay - uy * 13 - ux * 7); g.stroke();
+                const length = Math.hypot(ex - px, ey - py);
+                if (warned) {
+                    // 磁场蓄能聚在两端，不以瞄准细线穿过英雄。
+                    this._placeEnemyArt('fx_enemy_arc', ex, ey, 34, 34, this._visualTime * 70);
+                    drawEnergyArc(g, px, py, 29, 3, 0, Math.PI * 1.5, this._visualTime, '#83c9ff', 0.55);
+                } else {
+                    drawEnergyBeam(g, px, py, ex, ey, 7, this._visualTime, '#83c9ff', 0.7);
+                    for (let fragment = 0; fragment < 3; fragment++) {
+                        const d = ((this._visualTime * 190 + fragment * length / 3) % Math.max(1, length));
+                        this._placeEnemyArt('fx_enemy_rail', px + ux * d, py + uy * d, 28, 16, a * 180 / Math.PI);
+                    }
                 }
             }
 
@@ -3468,12 +3381,8 @@ export class GameManager extends Component {
                 const ringR = (elapsed - phase * 0.32) * 360;
                 const gap = (phase % 2) * Math.PI / 3 + phase * Math.PI / 3;
                 const halfGap = 0.34;
-                g.strokeColor = new Color(255, 240, 166, 225); g.lineWidth = 5;
-                g.arc(ex, ey, Math.max(2, ringR), gap + halfGap, gap + Math.PI * 2 - halfGap, false); g.stroke();
-                g.strokeColor = new Color(181, 131, 216, 90); g.lineWidth = 10;
-                g.arc(ex, ey, Math.max(2, ringR), gap + halfGap, gap + Math.PI * 2 - halfGap, false); g.stroke();
-                this._placeEnemyArt('fx_enemy_bell_wave', ex, ey, Math.max(28, ringR * 2.1), Math.max(28, ringR * 2.1),
-                    gap * 180 / Math.PI, 150);
+                drawEnergyArc(g, ex, ey, Math.max(2, ringR), 14,
+                    -gap + halfGap, -gap + Math.PI * 2 - halfGap, this._visualTime, '#edbd69');
             }
             if (e.type === 'bell_devourer' && (e.miniSkillState === 'bell_echo_warn' || e.miniSkillState === 'bell_echo_play')) {
                 const points = e.miniPoints ?? [];
@@ -3482,12 +3391,18 @@ export class GameManager extends Component {
                 for (let i = 1; i < points.length; i++) {
                     const [x0, y0] = this._toLocal(points[i - 1].x, points[i - 1].y);
                     const [x1, y1] = this._toLocal(points[i].x, points[i].y);
-                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+                    drawEnergyBeam(g, x0, y0, x1, y1, 2, this._visualTime, '#bd73ff', 0.25);
+                }
+                // 真正伤害沿旧轨迹反向移动；释放主体跟随当前碰撞采样点。
+                if (e.miniSkillState === 'bell_echo_play' && points.length) {
+                    const progress = 1 - Math.max(0, e.miniSkillTimer) / 1.2;
+                    const index = Math.max(0, Math.min(points.length - 1, Math.floor((1 - progress) * points.length)));
+                    const [x, y] = this._toLocal(points[index].x, points[index].y);
+                    this._placeEnemyArt('fx_enemy_bell_wave', x, y, 70, 70, this._visualTime * 90);
                 }
             }
             if (e.type === 'bell_devourer' && e.miniSkillState === 'bell_silence') {
                 const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 4);
-                g.fillColor = new Color(68, 35, 91, 34 + Math.floor(pulse * 18)); g.circle(ex, ey, 165); g.fill();
                 g.strokeColor = new Color(255, 240, 166, 175 + Math.floor(pulse * 70)); g.lineWidth = 3.5;
                 for (let side = 0; side < 6; side++) {
                     const a0 = side / 6 * Math.PI * 2 + Math.PI / 6;
@@ -3540,83 +3455,42 @@ export class GameManager extends Component {
                     const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 13 + linked.x * 0.03);
                     g.strokeColor = new Color(90, 235, 255, 105 + Math.floor(pulse * 105));
                     g.lineWidth = 2.2;
-                    g.moveTo(ex, ey); g.lineTo((ex + lx) * 0.5 + Math.sin(this._visualTime * 19) * 6, (ey + ly) * 0.5); g.lineTo(lx, ly); g.stroke();
+                    drawEnergyBeam(g, ex, ey, lx, ly, 3, this._visualTime, '#85eaff', 0.6 + pulse * 0.3);
                 }
             } else if (e.type === 'blast_tick' && e.blastCountdown > 0) {
                 const progress = 1 - e.blastCountdown / Math.max(0.01, e.blastCountdownMax);
                 const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * (10 + progress * 18));
-                g.fillColor = new Color(255, 75, 20, 22 + Math.floor(progress * 48));
-                g.circle(ex, ey, 92); g.fill();
-                g.strokeColor = new Color(255, 175, 70, 170 + Math.floor(pulse * 85));
-                g.lineWidth = 2.5 + progress * 4;
-                g.circle(ex, ey, 92); g.stroke();
+                drawAttackSector(g, ex, ey, 0, 92, Math.PI, progress, '#ffad56');
+                this._placeEnemyArt('fx_enemy_ember_brand', ex, ey, 24 + progress * 16, 24 + progress * 16, 0, 180);
             }
 
             if (e.rangedAimWindup > 0 && e.rangedAimWindupMax > 0) {
                 const progress = 1 - e.rangedAimWindup / e.rangedAimWindupMax;
                 const [tx, ty] = this._toLocal(e.rangedAimTargetX, e.rangedAimTargetY);
-                if (e.type === 'frost_acolyte') {
-                    // 冰棱侍从：三条低饱和冰蓝射界提前展开，与断针射手的黄色校射点形成明确语义区分。
-                    const center = Math.atan2(ty - ey, tx - ex);
-                    for (const off of [-0.16, 0, 0.16]) {
-                        const a = center + off;
-                        const len = 620;
-                        const lx = ex + Math.cos(a) * len;
-                        const ly = ey + Math.sin(a) * len;
-                        g.strokeColor = new Color(75, 205, 245, 24 + Math.floor(progress * 52));
-                        g.lineWidth = 9; g.moveTo(ex, ey); g.lineTo(lx, ly); g.stroke();
-                        g.strokeColor = new Color(185, 247, 255, 105 + Math.floor(progress * 135));
-                        g.lineWidth = 1.4 + progress * 1.6;
-                        g.moveTo(ex, ey); g.lineTo(lx, ly); g.stroke();
-                    }
-                    g.strokeColor = new Color(218, 253, 255, 135 + Math.floor(progress * 110));
-                    g.lineWidth = 2;
-                    g.arc(ex, ey, visualR + 9 + progress * 6, center - 0.18, center + 0.18, false); g.stroke();
-                } else {
-                    // 断针射手：0.55秒逐级点亮的校射线，结束后3发沿同一方向射出。
-                    g.strokeColor = new Color(255, 220, 65, 38 + Math.floor(progress * 58));
-                    g.lineWidth = 6; g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
-                    g.strokeColor = new Color(255, 250, 205, 145 + Math.floor(progress * 105));
-                    g.lineWidth = 1.3 + progress * 1.2;
-                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
-                    const lit = Math.min(6, 1 + Math.floor(progress * 6));
-                    for (let seg = 1; seg <= 6; seg++) {
-                        const t = seg / 8;
-                        const sx = ex + (tx - ex) * t;
-                        const sy = ey + (ty - ey) * t;
-                        g.fillColor = seg <= lit
-                            ? new Color(255, 246, 155, 230)
-                            : new Color(70, 78, 88, 150);
-                        g.circle(sx, sy, 2.2 + progress * 0.8); g.fill();
-                    }
-                }
+                const aim = Math.atan2(ty - ey, tx - ex);
+                const frost = e.type === 'frost_acolyte';
+                const size = 14 + progress * 20;
+                // 枪口聚能提示发射时机，不用贯穿战场的细线锁住玩家。
+                this._placeEnemyArt(frost ? 'fx_enemy_frost' : 'fx_enemy_needle',
+                    ex + Math.cos(aim) * visualR * 0.75, ey + Math.sin(aim) * visualR * 0.75,
+                    size, size, aim * 180 / Math.PI, 80 + progress * 170);
             }
 
             if (e instanceof BossController) {
                 // 弹幕技能蓄力：大范围脉冲环提示“即将发射”。
                 if (e.skillWindup > 0 && e.skillWindupMax > 0) {
                     const progress = 1 - e.skillWindup / e.skillWindupMax;
-                    const sr = r * 1.8 + 28 - progress * 18;
-                    const sc = Color.fromHEX(new Color(), e.glowColor);
-                    g.fillColor = new Color(sc.r, sc.g, sc.b, 24 + Math.floor(progress * 42));
-                    g.circle(ex, ey, sr); g.fill();
-                    g.strokeColor = new Color(255, 245, 215, 210);
-                    g.lineWidth = 3 + progress * 3;
-                    g.circle(ex, ey, sr); g.stroke();
+                    const art = UNIT_ATTACK_ART[e.hitSource] ?? 'fx_enemy_ember_brand';
+                    const size = 26 + progress * 22;
+                    // 蓄力收束到武器/身体，不能伪装成一片范围伤害圆盘。
+                    this._placeEnemyArt(art, ex, ey + r * 0.45, size, size, 0, 100 + progress * 140);
                 }
-                // 冲锋蓄力：宽半透明路线 + 中心高亮线 + 目标圈。
+                // 冲锋前摇只标出通道两侧，冲锋由实体位移和释放动作承担。
                 if (e.chargeWindup > 0 && e.chargeWindupMax > 0) {
                     const progress = 1 - e.chargeWindup / e.chargeWindupMax;
                     const [tx, ty] = this._toLocal(e.chargeTargetX, e.chargeTargetY);
-                    g.strokeColor = new Color(255, 45, 35, 45 + Math.floor(progress * 45));
-                    g.lineWidth = r * 1.3;
-                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
-                    g.strokeColor = new Color(255, 235, 190, 180 + Math.floor(progress * 75));
-                    g.lineWidth = 2.5 + progress * 2;
-                    g.moveTo(ex, ey); g.lineTo(tx, ty); g.stroke();
-                    g.strokeColor = new Color(255, 70, 45, 220);
-                    g.lineWidth = 3;
-                    g.circle(tx, ty, 24 - progress * 8); g.stroke();
+                    drawChargeLane(g, ex, ey, Math.atan2(ty - ey, tx - ex),
+                        Math.hypot(tx - ex, ty - ey), r, progress);
                 }
                 // 机械高达·横劈蓄力：主角方向高亮大扇形。
                 // 用采样描点画扇面（不依赖 Graphics.arc 的角度方向语义），
@@ -3627,35 +3501,14 @@ export class GameManager extends Component {
                     const reach = 280;
                     const half = 1.05; // 与 BossController 横劈判定角度一致
                     const a = -e.mechSlashAngle; // 画布角 → 本地角（y 翻转）
-                    const SEG = 24;
-                    g.fillColor = new Color(150, 210, 255, Math.floor((18 + prog * 26) * pulse));
-                    g.moveTo(ex, ey);
-                    for (let k = 0; k <= SEG; k++) {
-                        const ang = a - half + (k / SEG) * (half * 2);
-                        g.lineTo(ex + Math.cos(ang) * reach, ey + Math.sin(ang) * reach);
-                    }
-                    g.close(); g.fill();
-                    g.strokeColor = new Color(210, 240, 255, Math.floor((150 + prog * 90) * pulse));
-                    g.lineWidth = 2.5 + prog * 2;
-                    g.moveTo(ex + Math.cos(a - half) * reach, ey + Math.sin(a - half) * reach);
-                    for (let k = 1; k <= SEG; k++) {
-                        const ang = a - half + (k / SEG) * (half * 2);
-                        g.lineTo(ex + Math.cos(ang) * reach, ey + Math.sin(ang) * reach);
-                    }
-                    g.stroke();
+                    drawAttackSector(g, ex, ey, a, reach, half, prog, '#eeb47c');
                 }
                 // 机械高达·天空坠击：锁定目标圈（飞空期间 Boss 贴图淡出）
                 if (e.mechSkyT > 0) {
                     const [sx, sy] = this._toLocal(e.mechSkyTargetX, e.mechSkyTargetY);
                     const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 9);
-                    g.strokeColor = new Color(255, 120, 90, 170 + Math.floor(pulse * 85));
-                    g.lineWidth = 3;
-                    g.circle(sx, sy, 170); g.stroke();
-                    g.fillColor = new Color(255, 80, 60, Math.floor(pulse * 40));
-                    g.circle(sx, sy, 170); g.fill();
-                    g.strokeColor = new Color(255, 230, 200, 220);
-                    g.lineWidth = 2;
-                    g.circle(sx, sy, 24 + pulse * 12); g.stroke();
+                    drawAttackSector(g, sx, sy, 0, 170, Math.PI, pulse, '#ee9672');
+                    this._placeEnemyArt('fx_ground_dust', sx, sy, 72, 72, 0, 110);
                 }
             }
 
@@ -3719,230 +3572,47 @@ export class GameManager extends Component {
                         g.lineWidth = 2;
                         g.rect(lx, ly, lw, lh); g.stroke();
                     } else {
-                        const hot = 0.75 + 0.25 * pulse;
-                        g.fillColor = new Color(255, 120, 40, Math.floor(80 * hot));
+                        g.fillColor = new Color(255, 110, 35, 35);
                         g.fillRect(lx, ly, lw, lh);
-                        const inset = 10;
-                        g.fillColor = new Color(255, 235, 215, Math.floor(150 + 90 * hot));
-                        g.fillRect(lx + inset, ly + inset, lw - inset * 2, lh - inset * 2);
+                        const vertical = bh > bw;
+                        const count = vertical ? 4 : 3;
+                        for (let beam = 0; beam < count; beam++) {
+                            const t = (beam + 0.5) / count;
+                            const ax = vertical ? lx + lw * t : lx;
+                            const ay = vertical ? ly : ly + lh * t;
+                            const ex = vertical ? ax : lx + lw;
+                            const ey = vertical ? ly + lh : ay;
+                            drawEnergyBeam(g, ax, ay, ex, ey, (vertical ? lw : lh) / count * 0.36,
+                                this._visualTime + beam * 0.17, '#ffae51');
+                            const len = Math.hypot(ex - ax, ey - ay);
+                            for (let d = 55; d < len; d += 145) this._placeEnemyArt('fx_enemy_ember_brand',
+                                ax + (ex - ax) * d / len, ay + (ey - ay) * d / len,
+                                64, 64, this._visualTime * 80 + d, 180);
+                        }
                     }
                 }
             }
         }
 
-        // Bullets — 玩家、分身和炮台弹携带角色 Sprite；敌弹按威胁类型程序绘制。
+        // 弹体均持有独立 Sprite；旋转与真实速度方向一致。
         for (const b of this._bullets.active) {
             const [bx, by] = this._toLocal(b.x, b.y);
             if (b.node && b.node.active) {
+                const projectileArt = ENEMY_PROJECTILE_ART[b.enemyFx ?? ''];
+                const clip = projectileArt && EFFECT_ANIMATIONS[projectileArt.key];
+                if (clip && b.sprite) applyAnimationFrame(b.sprite, clip, clip.frames[Math.floor(b.life * 16) % clip.frames.length]);
                 b.node.setPosition(Math.round(bx), Math.round(by), 0);
-                b.node.setRotationFromEuler(0, 0, -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
+                const art = (b.isEnemyBullet || b.owner === 'enemy') ? ENEMY_PROJECTILE_ART[b.enemyFx ?? 'needle'] : undefined;
+                b.node.setRotationFromEuler(0, 0, art?.spin !== undefined
+                    ? b.life * art.spin : -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
                 continue;
             }
             const radius = b.radius ?? 5;
-            const col = Color.fromHEX(new Color(), b.color ?? '#ffff80');
-            if (b.isEnemyBullet || b.owner === 'enemy') {
-                const speed = Math.hypot(b.vx, b.vy) || 1;
-                const nx = b.vx / speed, ny = -b.vy / speed;
-                // 敌弹先画通用拖尾、辉光和白色外轮廓，再叠加弹种轮廓。
-                // 这样既保留四章弹幕的形状语言，也能在同色背景上稳定辨认。
-                g.strokeColor = new Color(col.r, col.g, col.b, 125);
-                g.lineWidth = Math.max(3, radius * 0.75);
-                g.moveTo(bx - nx * radius * 3.2, by - ny * radius * 3.2);
-                g.lineTo(bx, by); g.stroke();
-                g.fillColor = new Color(col.r, col.g, col.b, 55);
-                g.circle(bx, by, radius * 1.9); g.fill();
-                g.fillColor = new Color(col.r, col.g, col.b, 245);
-                g.circle(bx, by, radius); g.fill();
-                g.strokeColor = new Color(255, 248, 220, 245);
-                g.lineWidth = 2;
-                g.circle(bx, by, radius + 2); g.stroke();
-            } else {
-                // 兜底也使用定向能量梭而不是圆点；正常业务路径都会提供 charKey
-                // 并在上方走正式角色弹丸 Sprite。
-                const speed = Math.hypot(b.vx, b.vy) || 1;
-                const nx = b.vx / speed, ny = -b.vy / speed;
-                const px = -ny, py = nx;
-                g.fillColor = new Color(col.r, col.g, col.b, 245);
-                g.moveTo(bx + nx * radius * 2.2, by + ny * radius * 2.2);
-                g.lineTo(bx + px * radius * 0.72, by + py * radius * 0.72);
-                g.lineTo(bx - nx * radius * 1.45, by - ny * radius * 1.45);
-                g.lineTo(bx - px * radius * 0.72, by - py * radius * 0.72);
-                g.close(); g.fill();
-            }
-            // 敌弹分弹种轮廓：不看颜色也能一眼分辨威胁类型
-            // （毒球=双层绿圈+外毒环 / 齿轮=旋转环+4辐条 / 追踪=锁定环+十字 / 混沌=脉冲紫圈+交叉线）
-            if (b.enemyFx) {
-                const r = radius;
-                const t = b.life ?? 0;
-                const pulse = 1 + Math.sin(t * 18) * 0.12;
-                const art = ENEMY_PROJECTILE_ART[b.enemyFx];
-                if (art) {
-                    const width = Math.max(24, r * art.scale);
-                    const angle = art.spin !== undefined
-                        ? this._visualTime * art.spin
-                        : -Math.atan2(b.vy, b.vx) * 180 / Math.PI;
-                    this._placeEnemyArt(art.key, bx, by, width, width * art.aspect, angle, 248);
-                }
-                switch (b.enemyFx) {
-                    case 'poison':
-                        g.strokeColor = new Color(80, 255, 60, 220);
-                        g.lineWidth = 2; g.circle(bx, by, r + 2); g.stroke();
-                        g.strokeColor = new Color(40, 160, 30, 140);
-                        g.lineWidth = 3; g.circle(bx, by, r * 1.6); g.stroke();
-                        break;
-                    case 'toxin_dart': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd;
-                        const px = -ny, py = nx;
-                        g.fillColor = new Color(205, 255, 112, 250);
-                        g.moveTo(bx + nx * (r + 5), by + ny * (r + 5));
-                        g.lineTo(bx + px * 2.5, by + py * 2.5);
-                        g.lineTo(bx - nx * (r + 3), by - ny * (r + 3));
-                        g.lineTo(bx - px * 2.5, by - py * 2.5); g.close(); g.fill();
-                        g.strokeColor = new Color(76, 156, 34, 220); g.lineWidth = 1.25;
-                        g.moveTo(bx - nx * (r + 5), by - ny * (r + 5));
-                        g.lineTo(bx + nx * (r + 6), by + ny * (r + 6)); g.stroke();
-                        break;
-                    }
-                    case 'water_bomb':
-                        g.fillColor = new Color(22, 86, 116, 235); g.circle(bx, by, r); g.fill();
-                        g.strokeColor = new Color(112, 230, 255, 245); g.lineWidth = 2;
-                        g.circle(bx, by, r + 2); g.stroke();
-                        g.strokeColor = new Color(80, 195, 240, 145); g.lineWidth = 1.5;
-                        g.circle(bx, by, r + 6 + Math.sin(t * 14) * 2); g.stroke();
-                        g.fillColor = new Color(205, 250, 255, 230); g.circle(bx - r * 0.28, by - r * 0.28, 2.2); g.fill();
-                        break;
-                    case 'water_spike': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
-                        g.fillColor = new Color(115, 225, 255, 245);
-                        g.moveTo(bx + nx * (r + 9), by + ny * (r + 9));
-                        g.lineTo(bx + px * (r * 0.48), by + py * (r * 0.48));
-                        g.lineTo(bx - nx * (r + 5), by - ny * (r + 5));
-                        g.lineTo(bx - px * (r * 0.48), by - py * (r * 0.48)); g.close(); g.fill();
-                        g.strokeColor = new Color(215, 250, 255, 245); g.lineWidth = 1.4;
-                        g.moveTo(bx - nx * (r + 5), by - ny * (r + 5));
-                        g.lineTo(bx + nx * (r + 9), by + ny * (r + 9)); g.stroke();
-                        break;
-                    }
-                    case 'shrimp_spike':
-                    case 'venom_sting':
-                    case 'rail': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
-                        const rail = b.enemyFx === 'rail';
-                        const venom = b.enemyFx === 'venom_sting';
-                        const len = rail ? r + 15 : r + 9;
-                        const halfW = rail ? 3.5 : venom ? 2.6 : 4.2;
-                        g.fillColor = rail ? new Color(255, 80, 190, 250)
-                            : venom ? new Color(205, 105, 255, 250) : new Color(255, 154, 76, 250);
-                        g.moveTo(bx + nx * len, by + ny * len);
-                        g.lineTo(bx + px * halfW, by + py * halfW);
-                        g.lineTo(bx - nx * len * 0.7, by - ny * len * 0.7);
-                        g.lineTo(bx - px * halfW, by - py * halfW); g.close(); g.fill();
-                        if (!venom) {
-                            g.strokeColor = rail ? new Color(255, 208, 245, 240) : new Color(255, 226, 170, 235);
-                            g.lineWidth = 1.4;
-                            g.moveTo(bx - nx * len * 0.3 + px * (halfW + 2), by - ny * len * 0.3 + py * (halfW + 2));
-                            g.lineTo(bx - nx * len * 0.55, by - ny * len * 0.55);
-                            g.lineTo(bx - nx * len * 0.3 - px * (halfW + 2), by - ny * len * 0.3 - py * (halfW + 2)); g.stroke();
-                        }
-                        break;
-                    }
-                    case 'sonic':
-                        g.fillColor = new Color(255, 105, 105, 225); g.circle(bx, by, Math.max(2.5, r * 0.38)); g.fill();
-                        g.strokeColor = new Color(255, 170, 155, 225); g.lineWidth = 1.6;
-                        g.circle(bx, by, r * 0.9); g.stroke();
-                        g.strokeColor = new Color(255, 105, 95, 165); g.lineWidth = 2;
-                        g.circle(bx, by, r + 5 + Math.sin(t * 18) * 2); g.stroke();
-                        break;
-                    case 'beam': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
-                        g.strokeColor = new Color(255, 75, 70, 245); g.lineWidth = 4;
-                        g.moveTo(bx - nx * (r + 11), by - ny * (r + 11));
-                        g.lineTo(bx + nx * (r + 11), by + ny * (r + 11)); g.stroke();
-                        g.strokeColor = new Color(255, 225, 215, 250); g.lineWidth = 1.4;
-                        g.moveTo(bx - nx * (r + 12), by - ny * (r + 12));
-                        g.lineTo(bx + nx * (r + 12), by + ny * (r + 12)); g.stroke();
-                        g.moveTo(bx + px * 5, by + py * 5); g.lineTo(bx - px * 5, by - py * 5); g.stroke();
-                        break;
-                    }
-                    case 'blade': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd, px = -ny, py = nx;
-                        g.fillColor = new Color(175, 225, 255, 220);
-                        g.moveTo(bx + nx * (r + 12), by + ny * (r + 12));
-                        g.lineTo(bx + px * (r + 3), by + py * (r + 3));
-                        g.lineTo(bx - nx * (r + 7), by - ny * (r + 7));
-                        g.lineTo(bx + px * 2, by + py * 2); g.close(); g.fill();
-                        g.strokeColor = new Color(235, 250, 255, 245); g.lineWidth = 1.6;
-                        g.moveTo(bx - nx * (r + 7), by - ny * (r + 7));
-                        g.lineTo(bx + nx * (r + 12), by + ny * (r + 12)); g.stroke();
-                        break;
-                    }
-                    case 'gear': {
-                        g.strokeColor = new Color(140, 190, 255, 230);
-                        g.lineWidth = 2.5; g.circle(bx, by, r + 1.5); g.stroke();
-                        const a0 = t * 6;
-                        for (let k = 0; k < 4; k++) {
-                            const aa = a0 + (k / 4) * Math.PI * 2;
-                            g.moveTo(bx + Math.cos(aa) * (r - 2), by + Math.sin(aa) * (r - 2));
-                            g.lineTo(bx + Math.cos(aa) * (r + 4), by + Math.sin(aa) * (r + 4));
-                        }
-                        g.stroke();
-                        break;
-                    }
-                    case 'homing':
-                        g.strokeColor = new Color(0, 255, 210, 230);
-                        g.lineWidth = 2; g.circle(bx, by, r + 4); g.stroke();
-                        g.moveTo(bx - r - 8, by); g.lineTo(bx - r - 2, by);
-                        g.moveTo(bx + r + 2, by); g.lineTo(bx + r + 8, by);
-                        g.moveTo(bx, by - r - 8); g.lineTo(bx, by - r - 2);
-                        g.moveTo(bx, by + r + 2); g.lineTo(bx, by + r + 8);
-                        g.stroke();
-                        break;
-                    case 'chaos':
-                        g.strokeColor = new Color(220, 100, 255, 230);
-                        g.lineWidth = 2; g.circle(bx, by, r * pulse + 2); g.stroke();
-                        const ca = t * 3;
-                        for (let k = 0; k < 2; k++) {
-                            const aa = ca + k * Math.PI / 2;
-                            g.moveTo(bx - Math.cos(aa) * (r + 5), by - Math.sin(aa) * (r + 5));
-                            g.lineTo(bx + Math.cos(aa) * (r + 5), by + Math.sin(aa) * (r + 5));
-                        }
-                        g.stroke();
-                        break;
-                    case 'needle': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd;
-                        g.strokeColor = new Color(255, 252, 205, 255);
-                        g.lineWidth = 3;
-                        g.moveTo(bx - nx * (r + 8), by - ny * (r + 8));
-                        g.lineTo(bx + nx * (r + 8), by + ny * (r + 8));
-                        g.stroke();
-                        g.fillColor = new Color(255, 220, 55, 245);
-                        g.circle(bx, by, 2.5); g.fill();
-                        break;
-                    }
-                    case 'frost': {
-                        const spd = Math.hypot(b.vx, b.vy) || 1;
-                        const nx = b.vx / spd, ny = -b.vy / spd;
-                        const px = -ny, py = nx;
-                        g.fillColor = new Color(195, 248, 255, 250);
-                        g.moveTo(bx + nx * (r + 6), by + ny * (r + 6));
-                        g.lineTo(bx + px * 4, by + py * 4);
-                        g.lineTo(bx - nx * (r + 4), by - ny * (r + 4));
-                        g.lineTo(bx - px * 4, by - py * 4); g.close(); g.fill();
-                        break;
-                    }
-                    case 'arc':
-                        g.strokeColor = new Color(130, 250, 255, 245);
-                        g.lineWidth = 2; g.circle(bx, by, r + 4); g.stroke();
-                        g.moveTo(bx - r - 5, by); g.lineTo(bx, by - 3); g.lineTo(bx + r + 5, by + 2); g.stroke();
-                        break;
-                }
-            }
+            const art = ENEMY_PROJECTILE_ART[b.enemyFx ?? 'needle'] ?? ENEMY_PROJECTILE_ART.needle;
+            const width = enemyProjectileSize(radius, art);
+            const angle = art.spin !== undefined ? this._visualTime * art.spin
+                : -Math.atan2(b.vy, b.vx) * 180 / Math.PI;
+            this._placeEnemyArt(art.key, bx, by, width, width * art.aspect, angle, 255);
         }
 
         // Player — Sprite node (char_<id> battle token, set up in PlayerController.init)
@@ -4035,14 +3705,8 @@ export class GameManager extends Component {
 
             } else if (p.type === 'line') {
                 const [px2, py2] = this._toLocal(p.x2!, p.y2!);
-                if (p.glow) {
-                    g.strokeColor = new Color(c.r, c.g, c.b, Math.floor(alpha * 0.35));
-                    g.lineWidth = (p.lineWidth ?? 2) + 5;
-                    g.moveTo(px, py); g.lineTo(px2, py2); g.stroke();
-                }
-                g.strokeColor = new Color(c.r, c.g, c.b, alpha);
-                g.lineWidth = p.lineWidth ?? 2;
-                g.moveTo(px, py); g.lineTo(px2, py2); g.stroke();
+                drawEnergyBeam(g, px, py, px2, py2, (p.lineWidth ?? 2) * 0.75,
+                    this._visualTime, p.color, alpha / 255);
             }
         }
 
@@ -4085,11 +3749,16 @@ export class GameManager extends Component {
      */
     private _drawSpriteFx() {
         this._fxPool.releaseAll();
+        this._contactFxPool.releaseAll();
+        this._groundFxPool.releaseAll();
         if (!this._inCombat()) return;
 
         for (const fx of this._particles.spriteFx) {
-            const node = this._fxPool.acquire();
-            if (!node) break; // pool exhausted — extremely unlikely at 24 slots, just skip the rest
+            const node = (fx.playerContact ? this._contactFxPool : fx.layer === 'ground' ? this._groundFxPool : this._fxPool).acquire();
+            if (!node) continue;
+
+            // 先分配保证名额，同时抬到出手弧刃上方，避免近战释放图遮住真实受击。
+            if (fx.playerContact) node.setSiblingIndex(this._particleLayer.children.length - 1);
 
             const sprite = node.getComponent(Sprite)!;
             const frame = spriteFxFrame(fx);
@@ -4097,12 +3766,12 @@ export class GameManager extends Component {
             else {
                 // 同一池节点可能上一帧还在画偏心枪口特效，旧图必须恢复中心锚点。
                 node.getComponent(UITransform)!.setAnchorPoint(0.5, 0.5);
-                sprite.trim = true;
+                sprite.trim = false;
                 applyArtSprite(sprite, fx.key);
             }
 
             const sourceX = fx.follow?.alive === false ? fx.x : (fx.follow?.x ?? fx.x);
-            const sourceY = fx.follow?.alive === false ? fx.y : (fx.follow?.y ?? fx.y);
+            const sourceY = fx.follow?.alive === false ? fx.y : (fx.follow ? fx.follow.y + (fx.followOffsetY ?? 0) : fx.y);
             const [fx_x, fx_y] = this._toLocal(sourceX, sourceY);
             node.setPosition(Math.round(fx_x), Math.round(fx_y), 0);
 
@@ -5218,7 +4887,7 @@ export class GameManager extends Component {
                 color: b.color ?? '#ff8844', owner: 'enemy',
                 isEnemyBullet: true, homing: b.homing ?? false,
                 lifeTime: b.life ?? 3,
-                enemyFx: b.enemyFx,
+                enemyFx: b.enemyFx, hitSource: b.hitSource,
                 pierceShield: b.pierceShield ?? false,
                 dot: b.dot,
                 bounceLeft: b.bounceLeft ?? 0,

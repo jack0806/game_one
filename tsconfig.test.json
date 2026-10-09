@@ -44,6 +44,9 @@
     "assets/scripts/systems/InputManager.ts",
     "assets/scripts/systems/ParticleManager.ts",
     "assets/scripts/systems/SaveSystem.ts",
-    "assets/scripts/systems/WaveManager.ts"
+    "assets/scripts/systems/WaveManager.ts",
+    "assets/scripts/core/CombatVfx.ts",
+    "assets/scripts/core/CombatCollision.ts",
+    "assets/scripts/data/CombatArtDB.ts"
   ]
 }

@@ -16,7 +16,7 @@ test('登记图集真实存在且PNG尺寸、RGBA、元数据与逐帧索引一�
         const png = fs.readFileSync(file);
         assert.equal(png.subarray(1, 4).toString(), 'PNG', clip.sheet);
         assert.equal(png.readUInt32BE(16), clip.columns * clip.cellSize, clip.sheet);
-        assert.equal(png.readUInt32BE(20), clip.rows * clip.cellSize, clip.sheet);
+        assert.equal(png.readUInt32BE(20), clip.rows * (clip.cellHeight ?? clip.cellSize), clip.sheet);
         assert.equal(png[25], 6, '必须为真实RGBA：' + clip.sheet);
         const meta = JSON.parse(fs.readFileSync(file + '.meta', 'utf8'));
         assert.ok(!uuids.has(meta.uuid) || uuids.get(meta.uuid) === file, '不同图集不能共享uuid');
@@ -24,7 +24,7 @@ test('登记图集真实存在且PNG尺寸、RGBA、元数据与逐帧索引一�
         const sf = Object.values(meta.subMetas).find(value => value.importer === 'sprite-frame');
         assert.ok(sf, '必须存在spriteFrame子资源：' + clip.sheet);
         assert.equal(sf.userData.rawWidth, clip.columns * clip.cellSize, clip.sheet);
-        assert.equal(sf.userData.rawHeight, clip.rows * clip.cellSize, clip.sheet);
+        assert.equal(sf.userData.rawHeight, clip.rows * (clip.cellHeight ?? clip.cellSize), clip.sheet);
         assert.equal(sf.userData.packable, false, '逐帧纹理禁止动态合图');
         for (const frame of clip.frames) {
             assert.ok(Number.isInteger(frame.index) && frame.index >= 0 && frame.index < clip.rows * clip.columns);

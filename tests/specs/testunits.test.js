@@ -298,6 +298,7 @@ test('锈齿扑兵锁定0.28秒扇形后只沿旧方向扑38px,命中伤害并�
     const e = new EnemyBase(); e.init('rust_biter', 1, game);
     e.x = 100; e.y = 100;
     const player = makePlayer({ x: 145, y: 100, hp: 100 });
+    player.takeDamage = (damage, _game, opts) => { player.hp -= damage; impacts.push(opts?.impact); };
 
     e.update(0.01, player, game);
     assert.equal(e.attackWindup, 0.28, '50px内应进入0.28秒前摇');
@@ -308,7 +309,7 @@ test('锈齿扑兵锁定0.28秒扇形后只沿旧方向扑38px,命中伤害并�
     assert.ok(Math.abs((e.x - x0) - 38) < 0.001, '扑击距离应为38px');
     assert.equal(player.hp, 93, '命中造成7点伤害');
     assert.equal(player.x, 163, '命中沿扑击方向推开18px');
-    assert.ok(impacts.length > 0, '命中应有冲击反馈');
+    assert.equal(impacts[0]?.source, 'rust_biter', '命中应向伤害结算传递锈齿扑兵的独立受击身份');
 });
 
 test('锈齿扑兵前摇锁定后不重新追踪,玩家横移可躲且扑空僵直0.35秒', () => {
@@ -327,14 +328,14 @@ test('锈齿扑兵前摇锁定后不重新追踪,玩家横移可躲且扑空僵�
     assert.equal(e.x, x0, '僵直期间不得继续追击');
 });
 
-test('断针射手0.55秒校射后以0.12秒间隔沿同一预判方向发射3针', () => {
+test('断针射手0.55秒校射后以0.12秒间隔沿同一锁定方向发射3针', () => {
     const game = makeMockGame();
     const e = new EnemyBase(); e.init('needle_gunner', 1, game);
     e.x = 100; e.y = 100;
     const player = makePlayer({ x: 450, y: 100, facingX: 0, facingY: 1 });
 
     e.update(0.01, player, game);
-    assert.equal(e.rangedAimWindup, 0.55, '进入射程应显示0.55秒逐级点亮瞄准线');
+    assert.equal(e.rangedAimWindup, 0.55, '进入射程应显示0.55秒枪口聚能');
     const locked = [e.rangedAimTargetX, e.rangedAimTargetY];
     player.x = 450; player.y = 220; // 锁定后横移，三发不得重新追踪
     e.update(0.55, player, game);
@@ -350,7 +351,7 @@ test('断针射手0.55秒校射后以0.12秒间隔沿同一预判方向发射3�
     assert.deepEqual([e.rangedAimTargetX, e.rangedAimTargetY], locked, '锁定点不随玩家横移改变');
 });
 
-test('酸囊投手向玩家移动前方45px抛投,同类初始冷却错开且攻击间隔2.2秒', () => {
+test('酸囊投手向玩家实际位置抛投,同类初始冷却错开且攻击间隔2.2秒', () => {
     const throws = [];
     const game = makeMockGame({
         spawnEnemyAcidHazard: (...args) => throws.push(args),
@@ -363,7 +364,7 @@ test('酸囊投手向玩家移动前方45px抛投,同类初始冷却错开且攻
     e.update(0.01, player, game);
     assert.equal(throws.length, 1);
     assert.notDeepEqual(throws[0].slice(0, 2), [100, 100], '酸球必须从机械爪而非逻辑中心抛出');
-    assert.deepEqual(throws[0].slice(2), [445, 250], '目标应领先玩家移动方向45px');
+    assert.deepEqual(throws[0].slice(2), [400, 250], '站立朝向不能造成45px错误预判');
     assert.equal(e._rangedCd, 2.2, '投掷后进入2.2秒间隔');
 });
 

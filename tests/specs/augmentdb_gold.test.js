@@ -5,10 +5,7 @@ const assert = require('node:assert/strict');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 
 // 现有 ui_icon_* 资源集合（新增图标必须先落盘，artmanifest 测试会校验文件存在）
-const KNOWN_ICONS = new Set([
-    'pierce', 'lightning', 'explosion', 'fire', 'poison', 'crit', 'speed',
-    'lifesteal', 'bounce', 'heart', 'shield', 'combo', 'gold', 'summon', 'ice', 'chaos',
-]);
+const KNOWN_ICONS = new Set(require('node:fs').readdirSync(require('node:path').resolve(__dirname, '../../assets/resources/art')).filter(name => /^ui_icon_.+\.png$/.test(name)).map(name => name.slice(8, -4)));
 
 test('海克斯总数为32个，编号1~32且id唯一', () => {
     assert.equal(AUGMENT_DB.length, 32);

@@ -1,10 +1,12 @@
+import { ENEMY_PROJECTILE_ART, enemyProjectileSize } from '../data/CombatArtDB';
 // ============================================================
 //  BulletController.ts — 子弹对象池（Cocos Creator 3.x）
 // ============================================================
 import { Node, Sprite, Color, UITransform } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
-import { applyArtSprite } from '../core/SpriteUtils';
+import { applyArtSprite, applyAnimationFrame } from '../core/SpriteUtils';
+import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 import { applyElementMark } from '../data/AugmentDB';
 import { kleptoCaptureBullet } from '../data/CharacterDB';
 
@@ -30,6 +32,8 @@ export interface BulletData {
     infinite:     boolean;
     isEnemyBullet: boolean;
     homing:       boolean;
+    /** 发射者的美术身份，回池时清空。 */
+    hitSource?: string;
     /** 敌弹特效标签：同色威胁也以轮廓区分（毒镖≠Boss毒球）。 */
     enemyFx?:     'poison' | 'toxin_dart' | 'gear' | 'homing' | 'chaos' |
         'needle' | 'frost' | 'arc' | 'rail' | 'water_bomb' | 'water_spike' |
@@ -59,7 +63,7 @@ export interface BulletData {
     /** 元素飞弹（海克斯19 元素暴击）：命中时给目标打对应元素印记，集齐引爆。 */
     element?: 'water' | 'fire' | 'earth' | 'wind';
     trailCd?:     number;
-    /** Sprite node carrying bullet_<charKey> art; enemy bullets use programmatic threat shapes. */
+    /** 每个池槽持有独立弹体 Sprite，友敌都不会因共享特效池耗尽而消失。 */
     node?:        Node;
     sprite?:      Sprite;
     [key: string]: any;
@@ -96,7 +100,7 @@ function resetBullet(b: BulletData): void {
     b.color = '#00ffcc'; b.owner = 'player'; b.charKey = '';
     b.hitEnemies.clear(); b.isCrit = false; b.onHitCb = null;
     b.novaMode = false; b.infinite = false; b.isEnemyBullet = false; b.homing = false;
-    b.enemyFx = undefined; b.trailCd = 0;
+    b.enemyFx = undefined; b.hitSource = undefined; b.trailCd = 0;
     b.pierceShield = false; b.dot = undefined; b.slow = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
     b.explodeRadius = undefined; b.explodeColor = undefined;
     b.speedUpAfter = undefined; b.speedUpMult = undefined; b._spedUp = false;
@@ -126,7 +130,7 @@ export class BulletPool {
         b.life = 0;
 
         // 只要调用方提供 charKey 就使用角色弹丸美术；敌弹不提供 charKey，
-        // 继续走 GameManager 中按威胁类型绘制的程序化轮廓。
+        // 从 CombatArtDB 选择敌方弹体，独立节点随真实弹道移动。
         if (b.node && b.sprite) {
             if (!b.isEnemyBullet && b.owner !== 'enemy' && b.charKey) {
                 b.node.active = true;
@@ -136,12 +140,27 @@ export class BulletPool {
                 b.node.getComponent(UITransform)!.setContentSize(
                     Math.max(18, diameter * 2.6), Math.max(8, diameter * 1.15),
                 );
+                if (b.charKey === 'via' || b.charKey === 'mortis') {
+                    // 钥矢是横向画布、骨矛是方形画布，保留各自构图和厚度。
+                    const size = Math.max(32, Math.min(60, diameter * 2.8));
+                    b.node.getComponent(UITransform)!.setContentSize(size, b.charKey === 'via' ? size * 0.5 : size);
+                    b.sprite.trim = false;
+                }
                 b.node.setRotationFromEuler(0, 0, -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
                 applyArtSprite(b.sprite, `bullet_${b.charKey}`);
                 // 保留素材自身的金属、亮核与尾焰层次；纯色染色会再次把它压成色块。
                 b.sprite.color = new Color(255, 255, 255, 255);
             } else {
-                b.node.active = false;
+                const art = ENEMY_PROJECTILE_ART[b.enemyFx ?? 'needle'] ?? ENEMY_PROJECTILE_ART.needle;
+                b.node.active = true;
+                const width = enemyProjectileSize(b.radius, art);
+                b.node.getComponent(UITransform)!.setContentSize(width, width * art.aspect);
+                b.sprite.trim = false;
+                b.sprite.color = new Color(255, 255, 255, 255);
+                b.node.setRotationFromEuler(0, 0, -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
+                const clip = EFFECT_ANIMATIONS[art.key];
+                if (clip) applyAnimationFrame(b.sprite, clip, clip.frames[0]);
+                else applyArtSprite(b.sprite, art.key);
             }
         }
 
@@ -343,7 +362,8 @@ export class BulletPool {
             const startX = b.x, startY = b.y;
             b.x += b.vx * dt; b.y += b.vy * dt; b.life += dt;
             if (game.firstArenaBulletHit?.(startX, startY, b.x, b.y, b.radius)) {
-                game.particles?.explode?.(b.x, b.y, b.explodeColor ?? b.color, 24);
+                if (b.enemyFx === 'water_spike' || b.enemyFx === 'water_bomb') game.particles?.enemyBurst?.(b.x, b.y, 'water', 24);
+                else game.particles?.explode?.(b.x, b.y, b.explodeColor ?? b.color, 24);
                 this._release(b); continue;
             }
             // 分弹种尾迹（0.08s 节流）：毒球绿雾 / 齿轮光环 / 追踪尾焰 / 混沌紫烟
@@ -364,7 +384,7 @@ export class BulletPool {
                     b.vy *= -1; b.y = clamp(b.y, b.radius, PLAYFIELD_BOTTOM - b.radius); b.bounceLeft--; bounced = true;
                 }
                 if (bounced) {
-                    game.particles?.explode?.(b.x, b.y, '#66ddff', 26);
+                    game.particles?.enemyBurst?.(b.x, b.y, 'water', 26);
                     game.audio?.playSfx?.('freeze', 0.3);
                 }
             } else if (b.bounceExplode &&
@@ -372,10 +392,10 @@ export class BulletPool {
                 // 反弹次数耗尽后撞边 → 直接爆炸（范围伤害，玩家在爆心附近受伤）
                 const ex = clamp(b.x, 0, CANVAS_W);
                 const ey = clamp(b.y, 0, PLAYFIELD_BOTTOM);
-                game.particles?.explode?.(ex, ey, '#33ccff', 80);
+                game.particles?.enemyBurst?.(ex, ey, 'water', 80);
                 game.audio?.playSfx?.('explode', 0.6);
                 if (player.alive && Vec.dist(ex, ey, player.x, player.y) < 100) {
-                    player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
+                    player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: b.hitSource, kind: b.enemyFx, angle: Math.atan2(b.vy, b.vx) } });
                 }
                 this._release(b); continue;
             } else if (b.explodeOnExpire &&
@@ -383,17 +403,17 @@ export class BulletPool {
                 // 终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺/追踪导弹脱靶时）
                 const ex = clamp(b.x, 0, CANVAS_W);
                 const ey = clamp(b.y, 0, PLAYFIELD_BOTTOM);
-                game.particles?.explode?.(ex, ey, b.explodeColor ?? '#33ccff', 70);
+                if (b.enemyFx === 'water_spike' || b.enemyFx === 'water_bomb') game.particles?.enemyBurst?.(ex, ey, 'water', 70);
+                else game.particles?.explode?.(ex, ey, b.explodeColor ?? '#33ccff', 70);
                 game.audio?.playSfx?.('explode', 0.6);
                 if (player.alive && Vec.dist(ex, ey, player.x, player.y) < (b.explodeRadius ?? 90)) {
-                    player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
+                    player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: b.hitSource, kind: b.enemyFx, angle: Math.atan2(b.vy, b.vx) } });
                 }
                 this._release(b); continue;
             } else if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30) {
                 this._release(b); continue;
             }
             if (player.alive && Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
-                if (b.enemyFx === 'toxin_dart') game.particles?.toxicImpact?.(b.x, b.y, b.vx, b.vy);
                 // 破盾弹：先清空玩家护盾（锯齿剑虾尖刺/无人机声波）
                 if (b.pierceShield && player.shield > 0) {
                     player.shield = 0;
@@ -401,12 +421,11 @@ export class BulletPool {
                     game.floatingText?.spawn?.(player.x, player.y - 42, '护盾失效', '#ff8888', 14, true);
                 }
                 // DoT 弹：命中挂持续伤害（毒刺/高能光束，可叠加）
-                if (b.dot && player.applyDot) player.applyDot(b.dot.dps, b.dot.dur, b.dot.color);
+                if (b.dot && player.applyDot) player.applyDot(b.dot.dps, b.dot.dur, b.dot.color, b.enemyFx === 'beam' ? 'fire' : 'dot');
                 if (b.slow && player.applyBuff) player.applyBuff('enemy_frost_slow', b.slow.dur, { speed: b.slow.mult });
-                // 终点爆炸弹：命中玩家时也炸（水刺/追踪导弹，范围溅射特效）
-                if (b.explodeOnExpire) game.particles?.explode?.(player.x, player.y, b.explodeColor ?? '#33ccff', 46);
+                // 直接命中的爆发由伤害结算按来源播放，避免橙色通用爆炸盖住水花/剑气。
                 // 测试房敌弹穿透受击无敌帧：逐发水刺/剑气等高频弹幕不被 0.5s 无敌帧吞掉
-                player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom' });
+                player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: b.hitSource, kind: b.enemyFx, angle: Math.atan2(b.vy, b.vx) } });
                 this._release(b);
             }
         }

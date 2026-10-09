@@ -72,9 +72,12 @@ export function preloadArt(keys: string[], onDone?: () => void): void {
 
 /** 把某个 Sprite 组件的 spriteFrame 设为指定 key 对应的图（缓存命中同步生效，否则异步补挂）。 */
 export function applyArtSprite(sprite: Sprite, key: string): void {
+    // 所有节点由代码指定显示尺寸。异步挂图时不能让 RAW/TRIMMED 把尺寸重置成原图像素。
+    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
     _requestedKey.set(sprite, key);
     const cached = _cache.get(key);
     if (cached) { sprite.spriteFrame = cached; return; }
+    sprite.spriteFrame = null;
     loadArtSprite(key, (sf) => {
         if (sf && sprite.isValid && _requestedKey.get(sprite) === key) sprite.spriteFrame = sf;
     });
@@ -82,12 +85,15 @@ export function applyArtSprite(sprite: Sprite, key: string): void {
 
 /** 复用图集纹理与网格切片，逐帧应用同一坐标定义的枢轴。 */
 export function applyAnimationFrame(sprite: Sprite, clip: ActorClip, frame: AnimationFrame): void {
+    sprite.sizeMode = Sprite.SizeMode.CUSTOM;
     const key = `${clip.sheet}:${clip.columns}:${clip.rows}:${frame.index}`;
     _requestedKey.set(sprite, key);
     sprite.trim = false;
     sprite.node.getComponent(UITransform)!.setAnchorPoint(frame.pivot[0], 1 - frame.pivot[1]);
     const cached = _animationFrames.get(key);
     if (cached) { sprite.spriteFrame = cached; return; }
+    // 换图等待期间清除池节点的旧材质，避免水弹/机械弹短暂显示上一发冰弹。
+    sprite.spriteFrame = null;
     loadArtSprite(clip.sheet, (source) => {
         if (!source || !sprite.isValid || _requestedKey.get(sprite) !== key) return;
         // 子帧共用源纹理，禁止动态合图搬移后造成rect错位。

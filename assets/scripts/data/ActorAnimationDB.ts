@@ -19,6 +19,8 @@ export interface ActorClip {
     columns: number;
     rows: number;
     cellSize: number;
+    /** 矩形特效图集可单独指定单元高度；角色图集默认正方形。 */
+    cellHeight?: number;
     /** 各方向稿的统一尺度标定；渲染和挂点必须同时使用。 */
     displayScale?: number;
     loop: boolean;

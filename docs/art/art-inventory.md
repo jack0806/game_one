@@ -1,6 +1,8 @@
 # 现有美术资源清单（assets/resources/art/）
 
-> 2026-10-09：薇娅（女性）、莫提斯（男性）静态形象已替换色块：`char_via` / `char_mortis` 为介绍半身立绘，`char_token_via` / `char_token_mortis` 为战场静态全身像；新增 `ui_portrait_via` / `ui_portrait_mortis` 用于选人列表与战斗 HUD。六张均为 1254×1254 RGBA，保留内置 image_gen 原始透明通道；原有四张资源 UUID 保留。战斗动作动画暂缓，弹丸仍为原占位资源。详见[本批交付记录](via-mortis-static-2026-10-09.md)。
+> 2026-10-09 战斗重做：新增 24 个技能图标、32 个海克斯图标；同名替换 12 张敌方特效、6 张动画特效图集、薇娅/莫提斯 2 张弹丸。当前目录 546 张 PNG。本批范围、实机证据和验证见[战斗重做验收](combat-redesign-2026-10-09.md)。
+
+> 2026-10-09：薇娅（女性）、莫提斯（男性）静态形象已替换色块：`char_via` / `char_mortis` 为介绍半身立绘，`char_token_via` / `char_token_mortis` 为战场静态全身像；新增 `ui_portrait_via` / `ui_portrait_mortis` 用于选人列表与战斗 HUD。六张均为 1254×1254 RGBA，保留内置 image_gen 原始透明通道；原有四张资源 UUID 保留。战斗动作动画暂缓；弹丸已在同日战斗特效重做中替换为正式钥矢/骨矛。详见[本批交付记录](via-mortis-static-2026-10-09.md)。
 
 > 2026-09-03新增逐帧图集的清单、来源和状态单独维护于[动画重做记录](animation-rebuild-2026-09-03.md)及[覆盖矩阵](animation-qa/coverage.json)。下面的分类张数为历史静态素材基线；2026-10-01 当前目录实数为 482 张 PNG。
 
@@ -178,3 +180,14 @@
 2026-10-09：大厅改为半透明全息科技风。`LobbyUI.ts` 使用代码绘制青色细线刻度环、反向流动的能量弧和低透明呼吸光，`fx_hex_ring` 保留为独立旋转核心；悬停或键盘聚焦时增强光环。背景及左侧恢复暗色科技终端样式，撤掉实体底座与金属铭牌。
 
 `ui_lobby_portal_frame`：1254×1254 真透明装甲圆环，现已停用，保留原 PNG 与 `.meta` 供历史方案参考，不改名、不删除。[原始提示词](../prompts/lobby-portal-frame-2026-10-01.md)。
+
+
+### 2026-10-09 敌方命中动画
+
+新增 `anim_hit_units_1` 至 `anim_hit_units_9`，9 张 1254×1254 RGBA 透明图集，共 36 组独立四帧动画（35 种有攻击单位 + 1 种物理兜底），取代统一受击闪光及扩散圆环。单位映射、提示词、来源与实战截图见 [敌方命中反馈重制](enemy-impact-redesign-2026-10-09.md)。
+
+### 2026-10-09 弹体与地面残留补画
+
+- `anim_fx_ground_residue`：1261×1247 RGBA，4×4，酸液/焦痕/水迹/尘土各四帧。
+- `anim_fx_enemy_payloads`：1402×1122 RGBA，4×4，水流弹/机械导弹/电浆/毒刺各四帧。
+- 保持生成原始分辨率，矩形网格由 `cellHeight` 描述，不拉伸或重命名现有资源。提示词与原稿见 `style-a/combat-corrections-jobs.json`。

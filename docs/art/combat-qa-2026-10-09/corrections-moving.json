@@ -1,0 +1,261 @@
+[
+  {
+    "id": "grunt",
+    "seconds": 20,
+    "moved": 680,
+    "minGap": 0,
+    "contactFrames": 480
+  },
+  {
+    "id": "shield",
+    "seconds": 20,
+    "moved": 672,
+    "minGap": 0,
+    "contactFrames": 480
+  },
+  {
+    "id": "exploder",
+    "seconds": 20,
+    "moved": 495,
+    "minGap": 0,
+    "contactFrames": 480
+  },
+  {
+    "id": "golem",
+    "seconds": 20,
+    "moved": 494,
+    "minGap": 0,
+    "contactFrames": 480
+  },
+  {
+    "id": "elite_grunt",
+    "seconds": 20,
+    "moved": 664,
+    "minGap": 0,
+    "contactFrames": 480
+  },
+  {
+    "id": "archer",
+    "seconds": 20,
+    "moved": 577,
+    "minGap": 0,
+    "contactFrames": 24
+  },
+  {
+    "id": "miniboss",
+    "seconds": 20,
+    "moved": 497,
+    "minGap": 0,
+    "contactFrames": 480
+  },
+  {
+    "id": "rust_biter",
+    "seconds": 20,
+    "moved": 498,
+    "minGap": 0,
+    "contactFrames": 432
+  },
+  {
+    "id": "needle_gunner",
+    "seconds": 20,
+    "moved": 659,
+    "minGap": 0,
+    "contactFrames": 192
+  },
+  {
+    "id": "ember_acolyte",
+    "seconds": 20,
+    "moved": 583,
+    "minGap": 0,
+    "contactFrames": 0
+  },
+  {
+    "id": "frost_acolyte",
+    "seconds": 20,
+    "moved": 584,
+    "minGap": 0,
+    "contactFrames": 48
+  },
+  {
+    "id": "acid_sac",
+    "seconds": 20,
+    "moved": 604,
+    "minGap": 0,
+    "contactFrames": 0
+  },
+  {
+    "id": "rivet_beast",
+    "seconds": 20,
+    "moved": 497,
+    "minGap": 0,
+    "contactFrames": 288
+  },
+  {
+    "id": "arc_leech",
+    "seconds": 20,
+    "moved": 609,
+    "minGap": 0,
+    "contactFrames": 24
+  },
+  {
+    "id": "gold_scavenger",
+    "seconds": 20,
+    "moved": 493,
+    "minGap": 0,
+    "contactFrames": 0
+  },
+  {
+    "id": "blast_tick",
+    "seconds": 20,
+    "moved": 237,
+    "minGap": 0,
+    "contactFrames": 24
+  },
+  {
+    "id": "squid",
+    "seconds": 20,
+    "moved": 499,
+    "minGap": 0,
+    "contactFrames": 120
+  },
+  {
+    "id": "turtle",
+    "seconds": 20,
+    "moved": 498,
+    "minGap": 0,
+    "contactFrames": 506
+  },
+  {
+    "id": "shrimp",
+    "seconds": 20,
+    "moved": 504,
+    "minGap": 0,
+    "contactFrames": 352
+  },
+  {
+    "id": "jelly",
+    "seconds": 20,
+    "moved": 573,
+    "minGap": -0.01,
+    "contactFrames": 460
+  },
+  {
+    "id": "drone_a",
+    "seconds": 20,
+    "moved": 656,
+    "minGap": 0,
+    "contactFrames": 193
+  },
+  {
+    "id": "drone_s",
+    "seconds": 20,
+    "moved": 491,
+    "minGap": 0,
+    "contactFrames": 0
+  },
+  {
+    "id": "chain_hound",
+    "seconds": 20,
+    "moved": 674,
+    "minGap": 0,
+    "contactFrames": 456
+  },
+  {
+    "id": "prism_snail",
+    "seconds": 20,
+    "moved": 559,
+    "minGap": 0,
+    "contactFrames": 346
+  },
+  {
+    "id": "triune_priest",
+    "seconds": 20,
+    "moved": 647,
+    "minGap": 0,
+    "contactFrames": 384
+  },
+  {
+    "id": "rail_butcher",
+    "seconds": 20,
+    "moved": 646,
+    "minGap": 0,
+    "contactFrames": 414
+  },
+  {
+    "id": "bell_devourer",
+    "seconds": 20,
+    "moved": 613,
+    "minGap": 0,
+    "contactFrames": 441
+  },
+  {
+    "id": "boss_ch1",
+    "seconds": 20,
+    "moved": 534,
+    "minGap": -0.01,
+    "contactFrames": 137
+  },
+  {
+    "id": "boss_ch2",
+    "seconds": 20,
+    "moved": 534,
+    "minGap": 0,
+    "contactFrames": 227
+  },
+  {
+    "id": "boss_ch3",
+    "seconds": 20,
+    "moved": 534,
+    "minGap": 0,
+    "contactFrames": 161
+  },
+  {
+    "id": "boss_ch4",
+    "seconds": 20,
+    "moved": 534,
+    "minGap": 0,
+    "contactFrames": 179
+  },
+  {
+    "id": "boss_mech",
+    "seconds": 20,
+    "moved": 614,
+    "minGap": 0,
+    "contactFrames": 72
+  },
+  {
+    "id": "boss_abyss",
+    "seconds": 20,
+    "moved": 653,
+    "minGap": 0,
+    "contactFrames": 144
+  },
+  {
+    "id": "boss_vespa",
+    "seconds": 20,
+    "moved": 533,
+    "minGap": -0.01,
+    "contactFrames": 126
+  },
+  {
+    "id": "boss_crucible_city",
+    "seconds": 20,
+    "moved": 653,
+    "minGap": 0,
+    "contactFrames": 96
+  },
+  {
+    "id": "boss_manyfold",
+    "seconds": 20,
+    "moved": 604,
+    "minGap": 0,
+    "contactFrames": 120
+  },
+  {
+    "id": "boss_invader",
+    "seconds": 20,
+    "moved": 615,
+    "minGap": 0,
+    "contactFrames": 168
+  }
+]

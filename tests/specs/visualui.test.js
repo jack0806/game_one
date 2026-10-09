@@ -436,10 +436,10 @@ test('敌方技能使用材质资源池覆盖弹体、陷阱、近战与钟波',
         'fx_enemy_needle', 'fx_enemy_frost', 'fx_enemy_toxic', 'fx_enemy_water_bomb',
         'fx_enemy_saw', 'fx_enemy_void_blade', 'fx_enemy_bell_wave', 'fx_enemy_ember_brand',
         'fx_enemy_claw_slash', 'fx_enemy_web', 'fx_enemy_arc', 'fx_enemy_rail',
-    ]) assert.match(gameSource + enemySource + particleSource, new RegExp(key), key);
-    assert.match(gameSource, /new SpriteNodePool\(this\._particleLayer, 220, 'EnemyArt'/);
+    ]) assert.match(gameSource + enemySource + particleSource + fs.readFileSync(path.join(root, 'assets/scripts/data/CombatArtDB.ts'), 'utf8'), new RegExp(key), key);
+    assert.match(gameSource, /new SpriteNodePool\(this\._gameLayer, 220, 'EnemyArt'/);
     assert.match(gameSource, /this\._enemyArtPool\.releaseAll\(\)/);
-    assert.match(gameSource, /ENEMY_PROJECTILE_ART\[b\.enemyFx\]/);
+    assert.match(gameSource, /ENEMY_PROJECTILE_ART\[b\.enemyFx \?\?/);
     assert.match(enemySource, /actionRecoil/);
     assert.match(bossSource, /actionRecoil/);
 });

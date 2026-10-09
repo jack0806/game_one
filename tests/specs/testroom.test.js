@@ -102,7 +102,7 @@ test('酸囊投手地面闭环含0.7秒抛物预告、3秒毒斑、直伤与最�
     assert.match(gameSource, /spawnEnemyAcidHazard\(fromX: number, fromY: number, targetX: number, targetY: number\)/);
     assert.match(gameSource, /phase: 'telegraph', timer: 0\.7, telegraphMax: 0\.7/);
     assert.match(gameSource, /z\.phase = 'pool'; z\.timer = z\.kind === 'acid' \? 3 : z\.kind === 'ember' \? 1\.5 : z\.kind === 'priest_fire' \? 0\.12 : 5/);
-    assert.match(gameSource, /p\.takeDamage\(z\.kind === 'acid' \? 4 : z\.kind === 'ember' \? 5 : z\.kind === 'priest_fire' \? 18 : 12, this, \{ ignoreIframe: true \}\)/);
+    assert.match(gameSource, /p\.takeDamage\(z\.kind === 'acid' \? 4 : z\.kind === 'ember' \? 5 : z\.kind === 'priest_fire' \? 18 : 12, this, \{ ignoreIframe: true, impact:/);
     assert.match(gameSource, /this\._refreshPlayerDot\('#72ff38', 2, 4, 2\)/);
     assert.match(gameSource, /Math\.sin\(Math\.PI \* t\) \* 70/, '投射物应沿可见抛物弧飞行');
 });
@@ -110,7 +110,7 @@ test('酸囊投手地面闭环含0.7秒抛物预告、3秒毒斑、直伤与最�
 test('烬火侍从地面闭环含0.85秒火圈预警、1.5秒余烬、直伤与单层灼烧', () => {
     assert.match(gameSource, /spawnEnemyEmberHazard\(targetX: number, targetY: number\)/);
     assert.match(gameSource, /kind: 'ember'[\s\S]*?phase: 'telegraph', timer: 0\.85, telegraphMax: 0\.85/);
-    assert.match(gameSource, /this\._refreshPlayerDot\('#ff7a24', 2, 4, 1\)/);
+    assert.match(gameSource, /this\._refreshPlayerDot\('#ff7a24', 2, 4, 1, 'fire'\)/);
 });
 
 test('铆链猎犬捕兽夹含0.8秒六角预警、5秒封路、12伤害与35%减速', () => {
@@ -131,7 +131,7 @@ test('spawnEnemy支持bossKey(number章节|string文档Boss),敌弹shim透传破
 
 test('测试房敌弹命中玩家穿透受击无敌帧', () => {
     const bulletSource = fs.readFileSync(path.join(root, 'assets/scripts/entities/BulletController.ts'), 'utf8');
-    assert.match(bulletSource, /player\.takeDamage\(b\.damage, game, \{ ignoreIframe: game\?\.state === 'testRoom' \}\)/);
+    assert.match(bulletSource, /player\.takeDamage\(b\.damage, game, \{ ignoreIframe: game\?\.state === 'testRoom', impact:/);
 });
 
 test('测试房间跳过波次调度,玩家阵亡3秒后重生且不写档案', () => {
@@ -205,7 +205,7 @@ test('切换英雄重建玩家并保留无敌状态,清空召唤物', () => {
 
 test('机械高达横劈扇形与判定区域一致,飞空期间完全消失', () => {
     assert.match(gameSource, /const half = 1\.05; \/\/ 与 BossController 横劈判定角度一致/, '扇形角度范围与伤害判定一致');
-    assert.match(gameSource, /for \(let k = 0; k <= SEG; k\+\+\) \{[\s\S]*?g\.lineTo\(ex \+ Math\.cos\(ang\) \* reach/, '扇形采样描点绘制(不依赖arc方向语义)');
+    assert.match(gameSource, /drawAttackSector\(g, ex, ey, a, reach, half, prog/, '边缘预警沿真实横劈范围绘制');
     assert.match(gameSource, /e\.invisible \? 60 : 0\)/, '机械高达飞空时贴图完全消失,水母隐身仍半透明');
 });
 
@@ -253,7 +253,7 @@ test('灭世机神·天罚场景系统:网格激光(激光×震荡波融合)3×3
     assert.match(gameSource, /phase = 'fire';[\s\S]*?timer = 2;/, '发射持续2秒');
     assert.match(gameSource, /dmg: boss\.finalForm \? 30 : 20,/, '每次命中真伤普通20/最终30');
     assert.match(gameSource, /this\._boss\.invLaserT = 2;/, '发射期间Boss站桩定身');
-    assert.match(gameSource, /p\.takeTrueDamage\(grid\.dmg, this\);/, '接触危险带结算真伤');
+    assert.match(gameSource, /p\.takeTrueDamage\(grid\.dmg, this, \{ impact:/, '接触危险带结算真伤');
     const bossSource2 = fs.readFileSync(path.join(root, 'assets/scripts/entities/BossController.ts'), 'utf8');
     assert.match(bossSource2, /game\.startInvaderLaserGrid\?\.\(this\);/, 'Boss冷却到点直接调度网格激光');
     assert.match(bossSource2, /this\._invFormT > 0 \|\| this\.invLaserT > 0/, '网格激光发射期间Boss定身');
@@ -305,11 +305,9 @@ test('主页有测试房间入口,设置面板提供音乐/音效音量滑杆并
 });
 
 test('玩家具备godMode无敌与DoT持续伤害字段', () => {
-    assert.match(playerSource, /if \(!this\.alive \|\| this\.godMode\) return;/);
-    assert.match(playerSource, /if \(this\._invincible > 0\) return;/);
-    assert.match(playerSource, /if \(!opts\?\.ignoreIframe && this\._iframeTimer > 0\) return;/, '受击无敌帧可被ignoreIframe穿透');
+    assert.match(playerSource, /this\.godMode \|\| this\._invincible > 0 \|\| \(!opts\?\.ignoreIframe && this\._iframeTimer > 0\)/, '保护状态免伤但保留接触反馈');
     assert.match(playerSource, /dots: DotEffect\[\] = \[\];/);
-    assert.match(playerSource, /applyDot\(dps: number, dur: number, color = '#cc66ff'\): void/);
+    assert.match(playerSource, /applyDot\(dps: number, dur: number, color = '#cc66ff', type = 'dot'\): void/);
     assert.match(playerSource, /game\.onPlayerHit\?\.\(this, game\);/);
 });
 

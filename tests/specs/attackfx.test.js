@@ -132,8 +132,8 @@ test('超杀伤害的冲击粒子倍率钳制为1,避免千像素光环', () => 
     const particles = new ParticleManager();
     particles.impact(100, 100, 0, 40, '#ff6600');
     const rings = particles.particles.filter(p => p.type === 'ring');
-    assert.equal(rings.length, 1);
-    assert.ok(rings[0].maxRadius <= 60);
+    assert.equal(rings.length, 0, '命中不再生成通用扩散圆环');
+    assert.ok(particles.particles.length <= 16);
     assert.ok(particles.particles.every(p => p.size <= 9));
 });
 

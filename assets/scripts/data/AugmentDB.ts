@@ -228,17 +228,17 @@ export const AUGMENT_DB: AugmentDef[] = [
     // ─── 功能性海克斯（银） ───────────────────────────────
     // 2026-09-21 玩家调整：数值全部改为小步叠加档（可无限叠购），
     // 攻速/攻击/暴击 1%/2%/5%，血量 1%/5%/10%，射程 +10/15/30 码。
-    { id: 'hex01', index: 1, rarity: 'silver', icon: 'speed', name: '加速齿轮', category: '功能',
+    { id: 'hex01', index: 1, rarity: 'silver', icon: 'hex01', name: '加速齿轮', category: '功能',
       prices: [10, 40, 150], values: [0.01, 0.02, 0.05],
       descAt: (l) => `攻速 +${[1, 2, 5][l - 1]}%`,
       onLevel(p, _g, from, to) { swapFactor(p.stats, 'attackSpeed', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'hex02', index: 2, rarity: 'silver', icon: 'pierce', name: '力量核心', category: '功能',
+    { id: 'hex02', index: 2, rarity: 'silver', icon: 'hex02', name: '力量核心', category: '功能',
       prices: [12, 45, 160], values: [0.01, 0.02, 0.05],
       descAt: (l) => `攻击 +${[1, 2, 5][l - 1]}%`,
       onLevel(p, _g, from, to) { swapFactor(p.stats, 'damage', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'hex03', index: 3, rarity: 'silver', icon: 'heart', name: '生命涌泉', category: '功能',
+    { id: 'hex03', index: 3, rarity: 'silver', icon: 'hex03', name: '生命涌泉', category: '功能',
       prices: [15, 50, 180], values: [0.01, 0.05, 0.10],
       descAt: (l) => `血量 +${[1, 5, 10][l - 1]}%`,
       onLevel(p, _g, from, to) {
@@ -246,18 +246,18 @@ export const AUGMENT_DB: AugmentDef[] = [
           p.hp = Math.min(p.hp, p.stats.maxHp);
       } },
 
-    { id: 'hex07', index: 7, rarity: 'silver', icon: 'crit', name: '精准仪轨', category: '功能',
+    { id: 'hex07', index: 7, rarity: 'silver', icon: 'hex07', name: '精准仪轨', category: '功能',
       prices: [15, 55, 200], values: [0.01, 0.02, 0.05],
       descAt: (l) => `暴击几率 +${[1, 2, 5][l - 1]}%`,
       onLevel(p, _g, from, to) { swapFlat(p.stats, 'critRate', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
-    { id: 'hex11', index: 11, rarity: 'silver', icon: 'pierce', name: '延展力场', category: '功能',
+    { id: 'hex11', index: 11, rarity: 'silver', icon: 'hex11', name: '延展力场', category: '功能',
       prices: [18, 60, 220], values: [10, 15, 30],
       descAt: (l) => `攻击距离 +${[10, 15, 30][l - 1]} 码`,
       onLevel(p, _g, from, to) { swapFlat(p.stats, 'rangeBonus', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
 
     // ─── 技能海克斯（金） ─────────────────────────────────
-    { id: 'hex04', index: 4, rarity: 'gold', icon: 'explosion', name: '裂变脉冲', category: '技能',
+    { id: 'hex04', index: 4, rarity: 'gold', icon: 'hex04', name: '裂变脉冲', category: '技能',
       prices: [30, 120, 500], values: [1, 2, 5],
       descAt: (l) => `每 3 秒在敌群中引爆 ${[1, 2, 5][l - 1]} 个半径 100 码的范围伤害（伤害=攻击力）`,
       _t: 3,
@@ -277,7 +277,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           }
       } },
 
-    { id: 'hex05', index: 5, rarity: 'gold', icon: 'bounce', name: '幻影特效', category: '技能',
+    { id: 'hex05', index: 5, rarity: 'gold', icon: 'hex05', name: '幻影特效', category: '技能',
       prices: [35, 150, 550], values: [1, 3, 5],
       descAt: (l) => `额外攻击特效 +${[1, 3, 5][l - 1]} 个（远程分裂子弹 / 近战多段伤害）`,
       onLevel(p, _g, from, to) {
@@ -286,7 +286,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           else swapFlat(p.stats, 'extraBullets', 0, d);
       } },
 
-    { id: 'hex06', index: 6, rarity: 'prismatic', icon: 'crit', name: '死神之瞳', category: '技能',
+    { id: 'hex06', index: 6, rarity: 'prismatic', icon: 'hex06', name: '死神之瞳', category: '技能',
       prices: [50, 250, 650], values: [0.005, 0.01, 0.02],
       descAt: (l) => `${[0.5, 1, 2][l - 1]}% 概率发现弱点秒杀怪物，每击杀 +0.05%（上限 5%），对 Boss 转化为 300 点伤害`,
       _rate: 0.005,
@@ -304,7 +304,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       },
       onKill() { this._rate = Math.min(0.05, this._rate + 0.0005); } },
 
-    { id: 'hex08', index: 8, rarity: 'gold', icon: 'lightning', name: '弱点透视', category: '技能',
+    { id: 'hex08', index: 8, rarity: 'gold', icon: 'hex08', name: '弱点透视', category: '技能',
       prices: [40, 160, 600], values: [0.30, 0.40, 0.50],
       descAt: (l) => `${[30, 40, 50][l - 1]}% 概率发现怪物弱点，下一发攻击自动追踪并造成 3 倍暴击伤害`,
       onHit(p, enemy, _dmg, game) {
@@ -313,7 +313,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           game?.floatingText?.spawn?.(enemy.x, enemy.y - 26, '弱点已标记！', '#ffe066', 15, true);
       } },
 
-    { id: 'hex09', index: 9, rarity: 'gold', icon: 'shield', name: '破甲重铸', category: '技能',
+    { id: 'hex09', index: 9, rarity: 'gold', icon: 'hex09', name: '破甲重铸', category: '技能',
       prices: [45, 140, 500], values: [0.5, 0.65, 0.8],
       descAt: (l) => `将当前全部护甲转化为攻击力（转化率 1:${[0.5, 0.65, 0.8][l - 1]}，已转化部分不随卖出退还）`,
       onLevel(p, _g, _from, to) {
@@ -323,7 +323,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           p.stats.damage += bonus;
       } },
 
-    { id: 'hex10', index: 10, rarity: 'gold', icon: 'lightning', name: '制导蜂群', category: '技能',
+    { id: 'hex10', index: 10, rarity: 'gold', icon: 'hex10', name: '制导蜂群', category: '技能',
       prices: [45, 180, 650], values: [1, 2, 5],
       descAt: (l) => `每 3 秒发射 ${[1, 2, 5][l - 1]} 枚 ${[10, 20, 50][l - 1]} 伤害的自动追踪导弹`,
       _t: 3,
@@ -348,7 +348,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           game?.audio?.playSfx?.('skill_e', 0.5);
       } },
 
-    { id: 'hex12', index: 12, rarity: 'prismatic', icon: 'shield', name: '不灭协议', category: '技能',
+    { id: 'hex12', index: 12, rarity: 'prismatic', icon: 'hex12', name: '不灭协议', category: '技能',
       prices: [50, 250, 850], values: [1.5, 2, 2.5],
       descAt: (l) => `受到致命伤或只剩 1 滴血时，生成 ${[1.5, 2, 2.5][l - 1]} 倍最大生命的护盾 5 秒 + 25% 吸血 10 秒（冷却 75 秒）`,
       // 触发与 75 秒冷却都在 PlayerController.takeDamage/tick 内消费 stats.hasHexGuard。
@@ -357,7 +357,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           if (to > 0) p.stats._hexGuardShieldMult = this.values[to - 1];
       } },
 
-    { id: 'hex13', index: 13, rarity: 'gold', icon: 'summon', name: '猎杀无人机', category: '技能',
+    { id: 'hex13', index: 13, rarity: 'gold', icon: 'hex13', name: '猎杀无人机', category: '技能',
       prices: [50, 210, 700], values: [30, 40, 50],
       descAt: (l) => `每 15 秒召唤攻击无人机（攻 ${[30, 40, 50][l - 1]} / 攻速 1.0 / 血 ${[25, 50, 75][l - 1]}），上限 3 架`,
       _t: 3,
@@ -370,7 +370,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           game?.spawnHexDrone?.(p, 'attack', this.level ?? 1);
       } },
 
-    { id: 'hex14', index: 14, rarity: 'gold', icon: 'summon', name: '支援无人机', category: '技能',
+    { id: 'hex14', index: 14, rarity: 'gold', icon: 'hex14', name: '支援无人机', category: '技能',
       prices: [48, 200, 680], values: [5, 10, 15],
       descAt: (l) => `每 15 秒召唤支援无人机（攻 ${[5, 10, 15][l - 1]} / 攻速 0.5 / 血 ${[50, 75, 125][l - 1]}），每 3 秒恢复主角 20% 已损失生命，上限 2 架`,
       _t: 3,
@@ -384,12 +384,12 @@ export const AUGMENT_DB: AugmentDef[] = [
       } },
 
     // ─── 一次性海克斯 ─────────────────────────────────────
-    { id: 'hex15', index: 15, rarity: 'prismatic', icon: 'gold', name: '进阶蓝图', category: '一次性',
+    { id: 'hex15', index: 15, rarity: 'prismatic', icon: 'hex15', name: '进阶蓝图', category: '一次性',
       prices: [500], values: [1], oneShot: true,
       descAt: () => '下一个获得的海克斯强化提升一个等级（最高 Lv.3）',
       onLevel(_p, game) { const am = game?.augmentManager; if (am) am.nextLevelBonus = (am.nextLevelBonus || 0) + 1; } },
 
-    { id: 'hex16', index: 16, rarity: 'silver', icon: 'gold', name: '点金手', category: '一次性',
+    { id: 'hex16', index: 16, rarity: 'silver', icon: 'hex16', name: '点金手', category: '一次性',
       prices: [40, 200, 800], values: [0.25, 0.5, 1.0],
       descAt: (l) => `获得的金币增加 ${[0.25, 0.5, 1.0][l - 1] * 100}%`,
       onLevel(_p, game, from, to) {
@@ -398,14 +398,14 @@ export const AUGMENT_DB: AugmentDef[] = [
           swapFactor(eco, 'gainMult', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
       } },
 
-    { id: 'hex17', index: 17, rarity: 'silver', icon: 'gold', name: '战争红利', category: '一次性',
+    { id: 'hex17', index: 17, rarity: 'silver', icon: 'hex17', name: '战争红利', category: '一次性',
       // v4 9.6 重标定：原 500/1000/2000（花 750 回 2000 净赚再造一局，最大
       // 印钞单点）→ 80/250/900，变"应急取款"，净赚 45~150。
       prices: [35, 180, 750], values: [80, 250, 900], oneShot: true,
       descAt: (l) => `立刻获得 ${[80, 250, 900][l - 1]} 金币`,
       onLevel(_p, game, _from, to) { game?.economy?.addGold(this.values[to - 1]); } },
 
-    { id: 'hex18', index: 18, rarity: 'silver', icon: 'heart', name: '应急壁垒', category: '一次性',
+    { id: 'hex18', index: 18, rarity: 'silver', icon: 'hex18', name: '应急壁垒', category: '一次性',
       prices: [35], values: [50],
       descAt: () => '得到 50 点护盾，护盾被打破后 5 秒内每秒回复 10 点生命',
       _hadShield: false, _regenT: 0,
@@ -428,7 +428,7 @@ export const AUGMENT_DB: AugmentDef[] = [
     // ─── 元素暴击 + 四元素海克斯（2026-09-19 用户设计稿） ───
     // 元素暴击为单档彩色海克斯：只有集齐 风/火/土/水 四种元素海克斯后
     // 才会解锁购买条件（AugmentManager.rollOptions / equip 校验）。
-    { id: 'hex19', index: 19, rarity: 'prismatic', icon: 'chaos', name: '元素暴击', category: '技能',
+    { id: 'hex19', index: 19, rarity: 'prismatic', icon: 'hex19', name: '元素暴击', category: '技能',
       prices: [900], values: [1],
       descAt: () => `攻击暴击时发射 ${ELEMENT_VOLLEY.count[0]}-${ELEMENT_VOLLEY.count[1]} 枚元素飞弹` +
           `（水/火/土/风随机，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射，内置 0.5 秒冷却）；` +
@@ -444,7 +444,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       onUpdate(_p, dt) { if (this._volleyCd > 0) this._volleyCd = Math.max(0, this._volleyCd - dt); } },
 
     // ─── 四元素海克斯（集齐解锁元素暴击） ──────────────────
-    { id: 'hex20', index: 20, rarity: 'silver', icon: 'speed', name: '风元素', category: '技能',
+    { id: 'hex20', index: 20, rarity: 'silver', icon: 'hex20', name: '风元素', category: '技能',
       prices: [50, 230, 880], values: [0.10, 0.15, 0.20],
       descAt: (l) => `远程：子弹飞行速度 +${[10, 15, 20][l - 1]}%；近战：攻击伤害 +${[5, 8, 10][l - 1]}%`,
       onLevel(p, _g, from, to) {
@@ -455,7 +455,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           }
       } },
 
-    { id: 'hex21', index: 21, rarity: 'silver', icon: 'fire', name: '火元素', category: '技能',
+    { id: 'hex21', index: 21, rarity: 'silver', icon: 'hex21', name: '火元素', category: '技能',
       prices: [50, 230, 880], values: [0.05, 0.06, 0.07],
       descAt: (l) => `攻击附加灼烧：每秒造成怪物当前生命值 ${[5, 6, 7][l - 1]}% 的伤害（持续 1.5 秒，命中刷新）`,
       onHit(_p, enemy, _dmg, _game) {
@@ -469,7 +469,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           else dots.push({ type: 'hex_fire', dps, timeLeft: 1.5, color: '#ff6a3d' });
       } },
 
-    { id: 'hex22', index: 22, rarity: 'silver', icon: 'pierce', name: '土元素', category: '技能',
+    { id: 'hex22', index: 22, rarity: 'silver', icon: 'hex22', name: '土元素', category: '技能',
       prices: [50, 230, 880], values: [1, 2, 3],
       descAt: (l) => `远程：攻击可以穿刺（+${[1, 2, 3][l - 1]} 个目标）；近战：攻击范围 +${[20, 25, 30][l - 1]}%`,
       onLevel(p, _g, from, to) {
@@ -483,7 +483,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           }
       } },
 
-    { id: 'hex23', index: 23, rarity: 'silver', icon: 'ice', name: '水元素', category: '技能',
+    { id: 'hex23', index: 23, rarity: 'silver', icon: 'hex23', name: '水元素', category: '技能',
       prices: [50, 230, 880], values: [0.20, 0.25, 0.30],
       descAt: (l) => `攻击附加减速：命中使敌人移速 -${[20, 25, 30][l - 1]}%，持续 2 秒（重复命中刷新）`,
       onHit(_p, enemy, _dmg, _game) {
@@ -495,7 +495,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       } },
 
     // ─── 自定义强化包（2026-09-21 用户设计稿，单档） ─────────
-    { id: 'hex24', index: 24, rarity: 'gold', icon: 'lightning', name: '闪电网链', category: '技能',
+    { id: 'hex24', index: 24, rarity: 'gold', icon: 'hex24', name: '闪电网链', category: '技能',
       prices: [120], values: [1],
       descAt: () => '攻击命中时连接附近 4-5 个敌人，各受本次伤害 50% 的额外闪电伤害',
       onHit(p, enemy, dmg, game) {
@@ -517,7 +517,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           game?.audio?.playSfx?.('skill_e', 0.35);
       } },
 
-    { id: 'hex25', index: 25, rarity: 'gold', icon: 'explosion', name: '天雷', category: '技能',
+    { id: 'hex25', index: 25, rarity: 'gold', icon: 'hex25', name: '天雷', category: '技能',
       prices: [110], values: [1],
       descAt: () => '每 5 秒降下天雷，对雷击点 150 码圆形区域造成 80 点伤害',
       _t: 5,
@@ -535,7 +535,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           game?.floatingText?.spawn?.(target.x, target.y - 46, '天雷！', '#9fe8ff', 16, true);
       } },
 
-    { id: 'hex26', index: 26, rarity: 'prismatic', icon: 'summon', name: '化气为剑', category: '技能',
+    { id: 'hex26', index: 26, rarity: 'prismatic', icon: 'hex26', name: '化气为剑', category: '技能',
       prices: [600], values: [1],
       descAt: () => '无法进行普攻；攻速按 1:0.75 转化为攻击力，并召唤 攻击力/10（四舍五入）把飞剑环绕自身，每把飞剑命中造成 1.5 倍攻击力伤害',
       onLevel(p, game, _from, to) {
@@ -544,7 +544,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           else game?.despawnQiSwords?.();
       } },
 
-    { id: 'hex27', index: 27, rarity: 'gold', icon: 'poison', name: '实习刺客', category: '技能',
+    { id: 'hex27', index: 27, rarity: 'gold', icon: 'hex27', name: '实习刺客', category: '技能',
       prices: [150], values: [1],
       descAt: () => '每 15 秒进入 2 秒不可选中的隐身状态，隐身期间的下一次攻击造成 200% 伤害',
       _t: 15,
@@ -560,7 +560,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           game?.particles?.hexActivate?.(p.x, p.y, '#7dff9e');
       } },
 
-    { id: 'hex28', index: 28, rarity: 'prismatic', icon: 'crit', name: 'boss精英', category: '技能',
+    { id: 'hex28', index: 28, rarity: 'prismatic', icon: 'hex28', name: 'boss精英', category: '技能',
       prices: [550], values: [1],
       descAt: () => '对精英（首领）与 Boss 增伤 150%；装备时立即削减当前 Boss 10% 生命上限，之后 Boss 入场时生命上限 -10%',
       onLevel(p, game, from, to) {
@@ -568,7 +568,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           if (to > 0) game?.cutBossHp?.(0.10, p);
       } },
 
-    { id: 'hex29', index: 29, rarity: 'prismatic', icon: 'combo', name: '再来一次（强化版）', category: '一次性',
+    { id: 'hex29', index: 29, rarity: 'prismatic', icon: 'hex29', name: '再来一次（强化版）', category: '一次性',
       prices: [500], values: [1],
       descAt: () => '接下来每次遇到强化选择，都可免费刷新 5 次',
       onLevel(_p, game, _from, to) {
@@ -578,7 +578,7 @@ export const AUGMENT_DB: AugmentDef[] = [
           else am.freeRefreshes = 0;
       } },
 
-    { id: 'hex30', index: 30, rarity: 'silver', icon: 'gold', name: '合理避税', category: '一次性',
+    { id: 'hex30', index: 30, rarity: 'silver', icon: 'hex30', name: '合理避税', category: '一次性',
       prices: [40], values: [1],
       descAt: () => '强化选择页的刷新费用减少 50%',
       onLevel(_p, game, _from, to) {
@@ -586,12 +586,12 @@ export const AUGMENT_DB: AugmentDef[] = [
           if (am) am.refreshCostMult = to > 0 ? 0.5 : 1;
       } },
 
-    { id: 'hex31', index: 31, rarity: 'gold', icon: 'speed', name: '加速', category: '一次性',
+    { id: 'hex31', index: 31, rarity: 'gold', icon: 'hex31', name: '加速', category: '一次性',
       prices: [160], values: [1],
       descAt: () => '所有技能与强化的冷却时间缩减 20%',
       onLevel(p, _g, from, to) { swapFlat(p.stats, 'cdReduction', from ? 0.2 : 0, to ? 0.2 : 0); } },
 
-    { id: 'hex32', index: 32, rarity: 'gold', icon: 'shield', name: '保命分身', category: '技能',
+    { id: 'hex32', index: 32, rarity: 'gold', icon: 'hex32', name: '保命分身', category: '技能',
       prices: [140], values: [1],
       descAt: () => '血量低于 10% 时，在离玩家最远处生成分身吸引怪物仇恨（持续 6 秒，内置 30 秒冷却）',
       _cloneCd: 0,

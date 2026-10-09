@@ -15,6 +15,8 @@ import { kleptoStagger, kleptoCaptureAttack } from '../data/CharacterDB';
 export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
 
 export class EnemyBase {
+    /** 伤害表现身份独立于生命与节点；弹体发射时复制，不持有实体引用。 */
+    get hitSource(): string { return this.type; }
     type        = 'grunt';
     alive       = true;
     isElite     = false;
@@ -763,7 +765,7 @@ export class EnemyBase {
                 game.particles?.explode?.(this.x, this.y, '#ff6b1f', 92);
                 game.audio?.playSfx?.('explode', 0.75);
                 if (player.alive && Vec.dist(this.x, this.y, player.x, player.y) <= 92 + (player.radius ?? 16)) {
-                    player.takeDamage(this.damage * this.buffDmgMult, game, { ignoreIframe: game?.state === 'testRoom' });
+                    player.takeDamage(this.damage * this.buffDmgMult, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
                 }
                 this.invulnerable = false;
                 this.hp = 0;
@@ -822,7 +824,7 @@ export class EnemyBase {
             }
             if (this._chargeDmg > 0 && player.alive &&
                 Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 8) {
-                player.takeDamage(this._chargeDmg, game);
+                player.takeDamage(this._chargeDmg, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
                 if (this._chargePush > 0) {
                     const [pdx, pdy] = Vec.normalize(this._chargeVx, this._chargeVy);
                     const r = player.radius ?? 16;
@@ -831,7 +833,6 @@ export class EnemyBase {
                         ?? { x: clamp(player.x + pdx * this._chargePush, r, CANVAS_W - r),
                              y: clamp(player.y + pdy * this._chargePush, r, PLAYFIELD_BOTTOM - r) };
                     player.x = next.x; player.y = next.y;
-                    game.particles?.impact?.(player.x, player.y, Math.atan2(pdy, pdx), 0.55, this.glowColor);
                 }
                 this._chargeDmg = 0;
                 this._chargePush = 0;
@@ -873,7 +874,7 @@ export class EnemyBase {
                     this._chargeDmg = this.damage * this.buffDmgMult;
                     this._chargePush = 18;
                     this._chargeRecovery = 0.35;
-                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), this.glowColor, 38, 0.9);
+                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), this.glowColor, 38, 0.9, this.type);
                 } else if (this.type === 'chain_hound' && this.miniSkillState === 'chain_charge') {
                     // 链钉冲猎：0.70秒走廊锁向后冲360px；撞墙分支在上方统一结算眩晕。
                     const [lx, ly] = Vec.normalize(this.attackTargetX - this.x, this.attackTargetY - this.y);
@@ -885,7 +886,7 @@ export class EnemyBase {
                     this._chargePush = 65;
                     this._chargeRecovery = 0.30;
                     this.miniSkillState = '';
-                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), '#ff4138', 72, 1.25);
+                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), '#ff4138', 72, 1.25, this.type);
                 } else if (this.type === 'rivet_beast') {
                     // 0.55秒长走廊锁向后冲100px，冲锋本身不再追踪玩家。
                     const [lx, ly] = Vec.normalize(this.attackTargetX - this.x, this.attackTargetY - this.y);
@@ -896,26 +897,25 @@ export class EnemyBase {
                     this._chargeDmg = this.damage * this.buffDmgMult;
                     this._chargePush = 55;
                     this._chargeRecovery = 0.25;
-                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), '#a9e5ff', 52, 1.15);
+                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), '#a9e5ff', 52, 1.15, this.type);
                 } else if (this.type === 'shrimp') {
                     // 锯齿剑虾·钳击：面前中等扇形横扫（±~57°），可毁坏主角召唤物/随从/分身
                     const facing = Math.atan2(this.attackTargetY - this.y, this.attackTargetX - this.x);
                     const toPlayer = Math.atan2(player.y - this.y, player.x - this.x);
                     const diff = Math.abs(Math.atan2(Math.sin(toPlayer - facing), Math.cos(toPlayer - facing)));
+                    game.particles?.meleeSlash?.(this.x, this.y, facing, this.glowColor, this.radius + this.meleeRange + 30, 1.3, this.type);
                     if (dist <= atkDist + 30 && diff < 1.0) {
-                        game.particles?.meleeSlash?.(this.x, this.y, facing, this.glowColor, this.meleeRange + 10, 1.3);
-                        game.particles?.impact?.(player.x, player.y, facing, 0.8, this.color);
-                        player.takeDamage(this.damage * this.buffDmgMult * 0.55, game); // 25/45
+                        player.takeDamage(this.damage * this.buffDmgMult * 0.55, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } }); // 25/45
                         for (const t of (game.turrets || [])) {
                             if (t.alive && Vec.dist(t.x, t.y, this.x, this.y) < atkDist + 30) t.alive = false;
                         }
                     }
-                } else if (dist <= atkDist + 10) {
+                } else {
                     const angle = Math.atan2(player.y - this.y, player.x - this.x);
-                    // 前摇结束再挥出剑气并结算伤害，避免贴脸瞬间扣血。
-                    game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this.meleeRange, 0.85);
-                    game.particles?.impact(player.x, player.y, angle, 0.35, this.color);
-                    player.takeDamage(this.damage * this.buffDmgMult, game);
+                    game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this.radius + this.meleeRange, 0.85, this.type);
+                    if (dist <= atkDist + 10) {
+                        player.takeDamage(this.damage * this.buffDmgMult, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
+                    }
                 }
             }
             return;
@@ -1039,19 +1039,16 @@ export class EnemyBase {
             } else if (this._rangedCd > 0) {
                 this._rangedCd -= dt;
             } else if (this.type === 'needle_gunner' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
-                // 用英雄当前移动朝向做一次轻量预判；三发都锁定这条线，不逐发追踪。
-                const lead = 70;
-                const px = player.x + (player.facingX ?? 0) * lead;
-                const py = player.y + (player.facingY ?? 0) * lead;
-                const a = Math.atan2(py - this.y, px - this.x);
-                this.rangedAimTargetX = this.x + Math.cos(a) * 620;
-                this.rangedAimTargetY = this.y + Math.sin(a) * 620;
+                // 锁定英雄真实位置，不能拿射击/面朝方向当移动速度预判。
+                const px = player.x, py = player.y;
+                this.rangedAimTargetX = px;
+                this.rangedAimTargetY = py;
                 this.rangedAimWindup = this.rangedAimWindupMax;
                 mvx = 0; mvy = 0;
             } else if (this.type === 'acid_sac' && player.alive && dist <= this.rangedRange && this.frozen <= 0) {
-                // 落点领先玩家当前移动方向45px；抛物线与虚线落点由GameManager统一绘制。
-                const tx = clamp(player.x + (player.facingX ?? 0) * 45, 52, CANVAS_W - 52);
-                const ty = clamp(player.y + (player.facingY ?? 0) * 45, 52, PLAYFIELD_BOTTOM - 52);
+                // 落点锁定英雄当前站位；抛物线由GameManager统一绘制。
+                const tx = clamp(player.x, 52, CANVAS_W - 52);
+                const ty = clamp(player.y, 52, PLAYFIELD_BOTTOM - 52);
                 this.rangedAimTargetX = tx; this.rangedAimTargetY = ty;
                 acidShot = [tx, ty];
                 mvx = 0; mvy = 0;
@@ -1080,7 +1077,7 @@ export class EnemyBase {
                 mvx = 0; mvy = 0;
             } else if (player.alive && dist <= this.rangedRange && this.frozen <= 0) {
                 const a = Math.atan2(player.y - this.y, player.x - this.x);
-                game.enemyBullets?.push({
+                game.enemyBullets?.push({ hitSource: this.hitSource,
                     x: this.x, y: this.y,
                     vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                     damage: this.damage * this.buffDmgMult, radius: 5,
@@ -1120,7 +1117,7 @@ export class EnemyBase {
             }
             const a = Math.atan2(ty - origin[1], tx - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'cyan');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 185, vy: Math.sin(a) * 185,
                 damage: this.damage * this.buffDmgMult, radius: 8, color: '#7df4ff',
                 life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'arc',
@@ -1144,7 +1141,7 @@ export class EnemyBase {
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(center), Math.sin(center), 'ice');
             for (const off of [-0.16, 0, 0.16]) {
                 const a = center + off;
-                game.enemyBullets?.push({
+                game.enemyBullets?.push({ hitSource: this.hitSource,
                     x: origin[0], y: origin[1], vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
                     damage: this.damage * this.buffDmgMult, radius: 6, color: '#9eefff',
                     life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
@@ -1170,7 +1167,7 @@ export class EnemyBase {
             }
             const a = Math.atan2(ty - origin[1], tx - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'toxic');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                 damage: this.damage * this.buffDmgMult, radius: 5, color: '#baff5c',
                 life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'toxin_dart',
@@ -1193,7 +1190,7 @@ export class EnemyBase {
             }
             const a = Math.atan2(ty - origin[1], tx - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                 damage: this.damage * this.buffDmgMult, radius: 5, color: '#fff06a',
                 life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'needle',
@@ -1270,7 +1267,7 @@ export class EnemyBase {
             const origin = this._miniSkillOrigin('skill', bomb[0], bomb[1]);
             const a = Math.atan2(bomb[1] - origin[1], bomb[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'ice');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 240, vy: Math.sin(a) * 240,
                 damage: this.damage * 0.5, radius: 12, color: '#33ccff',
                 life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_bomb',
@@ -1285,7 +1282,7 @@ export class EnemyBase {
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(base), Math.sin(base), 'ice');
             for (let i = -1; i <= 1; i++) {
                 const a = base + i * 0.28;
-                game.enemyBullets?.push({
+                game.enemyBullets?.push({ hitSource: this.hitSource,
                     x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                     damage: this.damage * 0.25, radius: 7, color: '#66ddff',
                     life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'water_spike',
@@ -1304,7 +1301,7 @@ export class EnemyBase {
             const origin = this._miniSkillOrigin('skill', spike[0], spike[1]);
             const a = Math.atan2(spike[1] - origin[1], spike[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 320, vy: Math.sin(a) * 320,
                 damage: this.damage * 0.45, radius: 9, color: '#ffaa66',
                 life: 3.5, lifeTime: 3.5, owner: 'enemy', isEnemyBullet: true,
@@ -1323,7 +1320,7 @@ export class EnemyBase {
         const origin = this._miniSkillOrigin('skill2', venom[0], venom[1]);
         const a = Math.atan2(venom[1] - origin[1], venom[0] - origin[0]);
         game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'toxic');
-        game.enemyBullets?.push({
+        game.enemyBullets?.push({ hitSource: this.hitSource,
             x: origin[0], y: origin[1], vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
             damage: this.damage * 0.1, radius: 8, color: '#cc66ff',
             life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
@@ -1338,7 +1335,7 @@ export class EnemyBase {
             const origin = this._miniSkillOrigin('skill', sonic[0], sonic[1]);
             const a = Math.atan2(sonic[1] - origin[1], sonic[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                 damage: this.damage * 0.4, radius: 9, color: '#ff8888',
                 life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
@@ -1351,7 +1348,7 @@ export class EnemyBase {
             const origin = this._miniSkillOrigin('skill2', beam[0], beam[1]);
             const a = Math.atan2(beam[1] - origin[1], beam[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: origin[0], y: origin[1], vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
                 damage: 1, radius: 7, color: '#ff5555',
                 life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true,
@@ -1445,8 +1442,7 @@ export class EnemyBase {
                 const across = Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle));
                 if (along >= 0 && along <= 900 && across <= 14 + (player.radius ?? 16)) {
                     this.miniSkillHit = true;
-                    player.takeDamage(16, game, { ignoreIframe: game?.state === 'testRoom' });
-                    game.particles?.coldImpact?.(player.x, player.y);
+                    player.takeDamage(16, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
                 }
             }
             if (this.miniSkillTimer <= 0) this.miniSkillState = '';
@@ -1463,7 +1459,7 @@ export class EnemyBase {
                 this.miniSkillState = ''; this.shieldActive = false; this.shieldHp = 0;
                 for (let i = 0; i < 6; i++) {
                     const a = i / 6 * Math.PI * 2;
-                    game.enemyBullets?.push({
+                    game.enemyBullets?.push({ hitSource: this.hitSource,
                         x: this.x, y: this.y, vx: Math.cos(a) * 175, vy: Math.sin(a) * 175,
                         damage: 8, radius: 8, color: '#a8efff', life: 5, lifeTime: 5,
                         owner: 'enemy', isEnemyBullet: true, enemyFx: 'frost',
@@ -1544,7 +1540,7 @@ export class EnemyBase {
             this.miniSkillTimer -= dt;
             if (this.miniSkillTimer <= 0) {
                 const a = this.miniSkillAngle;
-                game.enemyBullets?.push({
+                game.enemyBullets?.push({ hitSource: this.hitSource,
                     x: this.x + Math.cos(a) * 38, y: this.y + Math.sin(a) * 38,
                     vx: Math.cos(a) * 980, vy: Math.sin(a) * 980,
                     damage: 30, radius: 10, color: '#ff4fb9', life: 1.6, enemyFx: 'rail',
@@ -1620,8 +1616,7 @@ export class EnemyBase {
             const gapDiff = Math.abs(Math.atan2(Math.sin(angle - gap), Math.cos(angle - gap)));
             if (!this.miniSkillHit && this.miniSkillHits < 2 && gapDiff > 0.34 && Math.abs(dist - ringR) <= 14 + (player.radius ?? 16)) {
                 this.miniSkillHit = true; this.miniSkillHits++;
-                player.takeDamage(16, game, { ignoreIframe: game?.state === 'testRoom' });
-                game.particles?.impact?.(player.x, player.y, angle, 0.7, '#fff0a6');
+                player.takeDamage(16, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
             }
             if (this.miniSkillTimer <= 0) this.miniSkillState = '';
             return;
@@ -1649,8 +1644,7 @@ export class EnemyBase {
             const pt = this.miniPoints[idx];
             if (pt && !this.miniSkillHit && Vec.dist(pt.x, pt.y, player.x, player.y) <= 28 + (player.radius ?? 16)) {
                 this.miniSkillHit = true;
-                player.takeDamage(24, game, { ignoreIframe: game?.state === 'testRoom' });
-                game.particles?.impact?.(player.x, player.y, 0, 0.9, '#bd73ff');
+                player.takeDamage(24, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
             }
             if (this.miniSkillTimer <= 0) { this.miniSkillState = ''; this.miniPoints = []; }
             return;
@@ -1694,8 +1688,7 @@ export class EnemyBase {
                 const dist = Vec.dist(this.x, this.y, player.x, player.y);
                 if (!this.miniSkillHit && Math.abs(dist - ringR) <= 16 + (player.radius ?? 16)) {
                     this.miniSkillHit = true;
-                    player.takeDamage(20, game, { ignoreIframe: game?.state === 'testRoom' });
-                    game.particles?.impact?.(player.x, player.y, Math.atan2(player.y - this.y, player.x - this.x), 0.8, '#fff0a6');
+                    player.takeDamage(20, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
                 }
             }
             if (this.miniSkillTimer <= 0) {
@@ -1762,7 +1755,7 @@ export class EnemyBase {
         // 放完一轮技能后自毁消失（消耗水柱召唤的一次性单位，不长期占场）
         if (this._miniSkillCount >= 3) {
             this._miniSkillCount = 0;
-            game.particles?.explode?.(this.x, this.y, '#33ccff', 60);
+            game.particles?.enemyBurst?.(this.x, this.y, 'water', 60);
             game.floatingText?.spawn?.(this.x, this.y - 40, '技能释放完毕', '#33ccff', 14, true);
             game.audio?.playSfx?.('explode', 0.7);
             this._die(player, game);
@@ -1813,8 +1806,8 @@ export class EnemyBase {
             Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 16) {
             this._miniCd2 = 8;
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
-            game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.meleeRange + 10, 1.4);
-            player.takeDamage(this.damage * this.buffDmgMult * 0.67, game); // 30/45
+            game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.meleeRange + 10, 1.4, this.type);
+            player.takeDamage(this.damage * this.buffDmgMult * 0.67, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } }); // 30/45
             player.applyBuff?.('shrimp_stun', 1.5, { noMove: true });
             game.floatingText?.spawn?.(player.x, player.y - 50, '眩晕！', '#ffcc66', 18, true);
             this._shrimpTailTarget = [player.x, player.y];

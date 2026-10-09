@@ -40,7 +40,7 @@ export interface CharDef {
     ultCd: number;
     desc: string;
     skills: { q: string; e: string; r: string };
-    /** 技能环(Q/E/R)显示的图标key，取自 ui_icon_* 共享图标模板集（见 ArtRemap 同名key）。 */
+    /** 技能环(Q/E/R)显示的图标key，每个英雄每个技能均有独立 ui_icon_skill_* 素材。 */
     skillIcons: { q: string; e: string; r: string };
     stats: CharStats;
     passive?: (p: any, game: any) => void;
@@ -60,7 +60,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             e: '弱点狙击 — 引导1.25秒后随机锁定5个敌人必暴击；目标不足5个全弹+25%伤害，单目标逐发+25%（上限100%）',
             r: '核心过载 — 30发爆裂弹沿自身弹道飞行(2秒后加速,命中或脱靶均半径50爆炸)+8秒伤害×2',
         },
-        skillIcons: { q: 'pierce', e: 'bounce', r: 'explosion' },
+        skillIcons: { q: 'skill_kai_q', e: 'skill_kai_e', r: 'skill_kai_r' },
         stats: { maxHp: 120, speed: 330, damage: 25, attackSpeed: 2, armor: 10, critRate: 0.05, critDmg: 0.5, pierce: 1 },
         passive(p: any) {
             p.stats.pierce += 1;
@@ -168,7 +168,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         eCd: 12, // 超频指令 CD 12 秒（文档：英雄重做）
         desc: '炮台类词条效果×1.5',
         skills: { q: '部署炮台 — 召唤强化炮台持续攻击', e: '超频指令 — 8秒内自身与所有炮台伤害+20%/攻速+150%', r: '炮台风暴 — 召唤6座轨道炮台环绕旋转' },
-        skillIcons: { q: 'summon', e: 'lightning', r: 'summon' },
+        skillIcons: { q: 'skill_vivian_q', e: 'skill_vivian_e', r: 'skill_vivian_r' },
         stats: { maxHp: 90, speed: 300, damage: 18, attackSpeed: 1.5, armor: 8, critRate: 0.05, critDmg: 0.5, pierce: 0 },
         // 被动砍掉永久跟随炮台：只保留"炮台类词条效果×1.5"，炮台全部改为
         // 技能/词条限时召唤（不再开局自带 2 座无限寿命炮台）
@@ -202,7 +202,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         attackType: 'melee', attackRange: 70, ultCd: 18,
         desc: '每损失10% HP，伤害+8%（最高+80%）；攻击吸血5%',
         skills: { q: '怒冲 — 向前冲刺200距离并击飞沿途敌人', e: '战吼 — 10秒攻速+50%/伤害+30%', r: '死亡意志 — 牺牲半血，4秒无敌+45%吸血+50%攻速' },
-        skillIcons: { q: 'speed', e: 'fire', r: 'shield' },
+        skillIcons: { q: 'skill_reik_q', e: 'skill_reik_e', r: 'skill_reik_r' },
         stats: { maxHp: 200, speed: 300, damage: 40, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
         passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.05; },
         qSkill(p: any, game: any) {
@@ -261,7 +261,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             e: '切换形态 — 远程↔攻击形态:近战+30%伤害(附加到所有技能)与+50%攻速',
             r: '时空奇点 — 引导2秒(周围每只怪+10临时护盾)射出能量球,把敌人拉向球心,3秒后爆炸(每拉1只+5%,最高+20%)',
         },
-        skillIcons: { q: 'speed', e: 'chaos', r: 'explosion' },
+        skillIcons: { q: 'skill_olia_q', e: 'skill_olia_e', r: 'skill_olia_r' },
         stats: { maxHp: 100, speed: 320, damage: 20, attackSpeed: 1.0, armor: 20, critRate: 0.10, critDmg: 0.5, pierce: 0 },
         passive(p: any) {
             p.stats.trueDamageRate = 0.35;
@@ -432,7 +432,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             e: '混沌冲击 — 眩晕周围450码的所有怪物2秒',
             r: '混沌爆发 — 向四周发射震荡波造成30点伤害，并同时触发所有已装备词条的击杀效果；携带死神之瞳时小怪直接秒杀、Boss受600点固定伤害',
         },
-        skillIcons: { q: 'chaos', e: 'lightning', r: 'explosion' },
+        skillIcons: { q: 'skill_graf_q', e: 'skill_graf_e', r: 'skill_graf_r' },
         stats: { maxHp: 150, speed: 310, damage: 30, attackSpeed: 0.8, armor: 15, critRate: 0.1, critDmg: 0.5, pierce: 0 },
         passive(p: any) {
             // 洞察：标记计时在 PlayerController.tick 驱动，命中消耗见 consumeInsightMark
@@ -548,7 +548,7 @@ export const CHARACTERS: Record<string, CharDef> = {
         attackType: 'ranged', attackRange: 550, ultCd: 20,
         desc: '低攻速超高单发，冻结要害×2.5伤害',
         skills: { q: '冰晶穿刺 — 发射无限穿透冰弹并冻结命中目标', e: '冰场领域 — 在鼠标位置创造减速冰冻区域', r: '绝对零度 — 冻结全场5秒并对所有敌人造成×3伤害' },
-        skillIcons: { q: 'pierce', e: 'ice', r: 'ice' },
+        skillIcons: { q: 'skill_liana_q', e: 'skill_liana_e', r: 'skill_liana_r' },
         stats: { maxHp: 80, speed: 285, damage: 120, attackSpeed: 0.5, armor: 5, critRate: 0.15, critDmg: 1.0, pierce: 0 },
         passive(p: any) { p.stats.freezeBonus = 2.5; },
         qSkill(p: any, game: any) {
@@ -591,7 +591,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             e: '这招我收下了 — 截取周围150码敌方普攻至多5份（弹幕保留特征/近战化斩击/范围化爆核），再按E向怪群释放；超过6秒自动释放，全部释放后才开始冷却',
             r: '此刻，归我所有 — 展开450码掠夺领域5秒：夺取敌方子弹/陷阱/召唤物与近战攻击（化为残影反击），结束时释放收账冲击，造成30+夺取次数×10点伤害（上限150）',
         },
-        skillIcons: { q: 'gold', e: 'bounce', r: 'chaos' },
+        skillIcons: { q: 'skill_via_q', e: 'skill_via_e', r: 'skill_via_r' },
         stats: { maxHp: 110, speed: 330, damage: 20, attackSpeed: 1.2, armor: 5, critRate: 0.1, critDmg: 0.5, pierce: 0 },
         passive(p: any) { p.stats.klepto = true; },
         qSkill(p: any, game: any) {
@@ -757,7 +757,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             e: '腐雾领域 — 在鼠标位置生成半径350码的死亡腐雾，存在5秒：雾内怪物每秒受12点伤害并减速20%；骸骨仆从在雾内攻速+50%且每秒回复5点生命',
             r: '亡者天灾 — 引爆场上所有骸骨仆从，每具造成一次半径300码的尸爆(60点伤害，可叠加)，随后立即从周围复苏8具仆从(可超上限，持续15秒)，并触发所有已装备词条的击杀效果',
         },
-        skillIcons: { q: 'pierce', e: 'poison', r: 'summon' },
+        skillIcons: { q: 'skill_mortis_q', e: 'skill_mortis_e', r: 'skill_mortis_r' },
         stats: { maxHp: 100, speed: 300, damage: 45, attackSpeed: 0.6, armor: 5, critRate: 0.15, critDmg: 0.6, pierce: 0 },
         passive(p: any) {
             p.stats.skeletonRaiser = true;
