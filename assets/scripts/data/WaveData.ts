@@ -26,7 +26,7 @@ export interface MutationDef {
     apply: (game: any) => void;
 }
 
-/** 每章固定 15 波（关内波次 1~15，HUD 显示 X/15）。 */
+/** 各章固定 15 波（关内波次 1~15，HUD 显示 X/15）。 */
 export const WAVES_PER_CHAPTER = 15;
 
 export const CHAPTERS: ChapterDef[] = [
@@ -36,7 +36,7 @@ export const CHAPTERS: ChapterDef[] = [
     { id: 4, name: '混沌位面',   bgKey: 'bg_chapter4', waves: 15, statScale: 1.7,  countScale: 1.6, desc: '现实崩塌，终焉之门大开' },
     // 第5章使用独立的天罚领域背景；第5章 Boss=机械高达X-剑（BossDB）。
     { id: 5, name: '天罚领域',   bgKey: 'bg_chapter5', waves: 15, statScale: 2.0,  countScale: 1.8, desc: '钢铁巨神镇守天罚之门' },
-    // 第6章：灭世机神·天罚的最终领域（无尽模式沿用本章敌池与数值档）。
+    // 第6章：灭世机神·天罚的最终领域。
     { id: 6, name: '终焉天罚',   bgKey: 'bg_chapter6', waves: 15, statScale: 2.3,  countScale: 2.0, desc: '天空撕裂，灭世机神降临' },
 ];
 
@@ -77,20 +77,15 @@ export const ENEMY_COUNT_CAP = 128;
 
 /**
  * 关内某波的小兵总量（v4 4.1 公式）：
- * round((10 + 2.4×波次) × 波型 × 章节数量 × 难度)，封顶 128。
- * wave 为关内波次 1~15；chapterId 1~6；difficulty 数量倍率（正常游戏恒 normal，
- * 内部模式可传 nightmare/chaos ×1.5/×2）。
+ * round((10 + 2.4×波次) × 波型 × 章节数量 × 难度数量系数)，封顶 128。
+ * wave 为关内波次 1~15；chapterId 1~6；diffMult 为难度数量倍率
+ * （DifficultyDB.countMult，2026-10-07 起：0.85/1/1.1/1.2；缺省 1 = 普通基准）。
  */
-export function enemyCountForWave(
-    wave: number,
-    chapterId: number,
-    difficulty: 'normal' | 'nightmare' | 'chaos' = 'normal',
-): number {
+export function enemyCountForWave(wave: number, chapterId: number, diffMult = 1): number {
     const base = 10 + 2.4 * wave;
     const kind = WAVE_KIND_MULT[waveKind(wave)];
     const chapter = chapterDef(chapterId).countScale;
-    const diff = { normal: 1, nightmare: 1.5, chaos: 2 }[difficulty] || 1;
-    return Math.min(Math.round(base * kind * chapter * diff), ENEMY_COUNT_CAP);
+    return Math.min(Math.round(base * kind * chapter * diffMult), ENEMY_COUNT_CAP);
 }
 
 // ── 开局战备包（第 2 章起的成长补偿，v4 2.3） ─────────────────

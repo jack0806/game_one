@@ -2,9 +2,10 @@
 //  WaveManager.ts — 波次管理器（一局一章 × 15 波，2026-10-03 v4）
 // ============================================================
 // - chapter 由 GameManager 注入（所选章 1~6），不再按全局波次反推；
-// - wave 为关内波次 1~15（无尽模式 16 起按模板波次循环）；
+// - wave 为关内波次 1~15（W15 = Boss 波，击杀即本局通关）；
 // - 小首领固定槽位（W5/W10/W14），精英固定槽（W4/W8/W14），兽潮 W9/W13。
-import { MUTATIONS, enemyCountForWave, waveKind, eliteSlots, MutationDef } from '../data/WaveData';
+// （无尽模式已于 2026-10-07 按玩家要求整体移除。）
+import { enemyCountForWave, waveKind, eliteSlots } from '../data/WaveData';
 import { MINI_BOSSES } from '../data/BossDB';
 import { Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
@@ -41,19 +42,17 @@ function miniBossTiers(chapterId: number, wave: number): string[] {
 export class WaveManager {
     /** 关内波次（1~15；无尽模式继续累加）。 */
     wave        = 0;
-    /** 所选章 1~6（GameManager 开局注入；无尽沿用 6）。 */
+    /** 所选章 1~6（GameManager 开局注入）。 */
     chapter     = 1;
     state: WaveState = 'idle';
-    difficulty: 'normal' | 'nightmare' | 'chaos' = 'normal';
-    /** 无尽模式：W15 击杀 Boss 后不结算，继续无限打（每+10波变异、每+15波Boss）。 */
-    endless     = false;
+    /** 难度数量倍率（GameManager 注入 DifficultyDB.countMult；缺省 1 = 普通基准）。 */
+    countMult   = 1;
 
     /** Called by GameManager: (type, x?, y?) => spawnEnemy(type, x, y) — x/y 为批次共享锚点 */
     onSpawnEnemy?: (type: string, x?: number, y?: number) => void;
     /** Called by GameManager when a wave is fully cleared. */
     onWaveCleared?: () => void;
 
-    private _activeMutations: MutationDef[] = [];
     /** 预切好的批次队列：普通波每批5-7、兽潮波每批10-14（近战+远程混合）。 */
     private _spawnBatches: string[][] = [];
     /** 各批间隔秒数（普通 1.5 / 兽潮 1.2），spawning 阶段逐批出队。 */
@@ -73,7 +72,7 @@ export class WaveManager {
     /** 变异：混沌节拍(chaos_beat) — 每5秒随机buff一批场上敌人的计时器。 */
     private _chaosBeatTimer = 0;
 
-    /** 模板波次：1~15 的节奏槽位（无尽 16+ 波映射回模板，密度曲线按轮循环）。 */
+    /** 模板波次：1~15 的节奏槽位（正常局恒等于 wave；保留取模作防御性钳制）。 */
     templateWave(): number {
         return ((this.wave - 1) % 15) + 1;
     }
@@ -121,18 +120,7 @@ export class WaveManager {
         // 词条 onWaveStart 钩子（wave_heal / time_shard / absolute_zero 等依赖此分发）。
         game.augmentManager?.dispatchWaveStart?.(game.player, game);
 
-        // 无尽模式：W15 后每 +10 波新增 1 个变异（以无尽内部波次计时）
-        if (this.endless && this.wave > 15 && (this.wave - 15) % 10 === 0) {
-            const unused = MUTATIONS.filter(m => !this._activeMutations.find(a => a.id === m.id));
-            if (unused.length) {
-                const m = Rng.pick(unused);
-                this._activeMutations.push(m);
-                m.apply(game);
-                game.floatingText?.spawn(640, 200, `⚠ ${m.name} ⚠`, m.color, 24, true);
-            }
-        }
-
-        const count = enemyCountForWave(tw, this.chapter, this.difficulty);
+        const count = enemyCountForWave(tw, this.chapter, this.countMult);
         this._bossPending = false;
         this._bossMirror = !!((game._mutationMods || {}).mirrorArmy);
         if (kind === 'boss') {
@@ -316,8 +304,8 @@ export class WaveManager {
     }
 
     reset(): void {
-        this.wave = 0; this.chapter = 1; this.state = 'idle'; this.endless = false;
-        this._activeMutations = []; this._spawnBatches = []; this._spawnBatchesInterval = [];
+        this.wave = 0; this.chapter = 1; this.state = 'idle'; this.countMult = 1;
+        this._spawnBatches = []; this._spawnBatchesInterval = [];
         this._spawnTimer = 0;
         this._bossPending = false; this._bossMirror = false;
     }

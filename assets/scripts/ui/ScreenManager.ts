@@ -498,9 +498,9 @@ export class ScreenManager extends Component {
     }
 
     /**
-     * v4：章节选择页（一局一章）——6 张章节卡 + 1 张无尽卡。
+     * v4：章节选择页（一局一章）——6 张章节卡（上 4 下 2）。
      * 卡片信息：章名 / Boss / 主力敌人 / 预计时长；未解锁章显示解锁条件。
-     * 传给 onMapPicked 的章号：1~6；无尽卡传 0。
+     * （无尽入口卡已于 2026-10-07 按玩家要求移除。）
      */
     private _buildMapSelectPanel() {
         const p = this._mkPanel('mapSelect', 1280, 720);
@@ -536,7 +536,7 @@ export class ScreenManager extends Component {
     }
 
     /**
-     * 按当前存档解锁链重建 7 张章节卡。锁定判定在构建时读取一次快照的旧实现
+     * 按当前存档解锁链重建 6 张章节卡。锁定判定在构建时读取一次快照的旧实现
      * 会导致"通关后回章节页仍是锁定"——现在每次进入页面都重读
      * onQueryChapterUnlock（SaveSystem.unlockedChapterCount）。
      */
@@ -554,14 +554,14 @@ export class ScreenManager extends Component {
         const unlocked = Math.max(1, this.onQueryChapterUnlock?.() ?? 1);
         const CARD_W = 286, CARD_H = 212;
 
-        const mkCard = (x: number, y: number, idx: number, endless: boolean): void => {
-            const ch = endless ? null : CHAPTERS[idx];
-            const boss = endless ? '每 15 波轮换章节 Boss' : (getBossDef(idx)?.label ?? '');
-            const locked = endless ? unlocked < 6 : idx + 1 > unlocked;
-            const accent = endless ? new Color(255, 122, 66, 255)
-                : Color.fromHEX(new Color(), ['#4ec8c8', '#c8874e', '#4ecc8e', '#a06ee0', '#6e9fe0', '#e06e5a'][idx]);
+        const mkCard = (x: number, y: number, idx: number): void => {
+            const ch = CHAPTERS[idx];
+            const boss = getBossDef(idx)?.label ?? '';
+            const locked = idx + 1 > unlocked;
+            const accent = Color.fromHEX(new Color(),
+                ['#4ec8c8', '#c8874e', '#4ecc8e', '#a06ee0', '#6e9fe0', '#e06e5a'][idx]);
 
-            const card = new Node(endless ? 'Map_Endless' : `Map_Ch${idx + 1}`); card.setParent(p);
+            const card = new Node(`Map_Ch${idx + 1}`); card.setParent(p);
             card.setPosition(new Vec3(x, y, 0));
             card.addComponent(UITransform).setContentSize(CARD_W, CARD_H);
 
@@ -569,7 +569,7 @@ export class ScreenManager extends Component {
             nameN.setPosition(new Vec3(0, 66, 0));
             nameN.addComponent(UITransform).setContentSize(CARD_W - 24, 30);
             const nl = nameN.addComponent(Label);
-            nl.string = endless ? '无尽 · 天罚循环' : `第${idx + 1}章 ${ch!.name}`;
+            nl.string = `第${idx + 1}章 ${ch.name}`;
             nl.fontSize = 20;
             nl.color = locked ? new Color(166, 180, 194, 255) : new Color(235, 246, 250, 255);
             styleLabel(nl);
@@ -588,9 +588,7 @@ export class ScreenManager extends Component {
             infoN.setPosition(new Vec3(0, -16, 0));
             infoN.addComponent(UITransform).setContentSize(CARD_W - 24, 52);
             const il = infoN.addComponent(Label);
-            il.string = locked
-                ? (endless ? '通关第 6 章解锁' : `通关第 ${idx} 章解锁`)
-                : (endless ? 'W15 后无限继续 · 每+10波变异' : `${ENEMY_BRIEF[idx]} · 约 10 分钟`);
+            il.string = locked ? `通关第 ${idx} 章解锁` : `${ENEMY_BRIEF[idx]} · 约 10 分钟`;
             il.fontSize = 13; il.lineHeight = 18;
             il.color = locked ? new Color(140, 152, 166, 235) : new Color(168, 190, 206, 245);
             il.overflow = Label.Overflow.SHRINK;
@@ -599,18 +597,17 @@ export class ScreenManager extends Component {
 
             applyHexCardSkin(card, CARD_W, CARD_H, accent, locked);
             if (!locked) {
-                const pick = endless ? 0 : idx + 1;
+                const pick = idx + 1;
                 card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(pick), this);
             }
         };
 
-        // 上行 4 卡（第 1~4 章），下行 3 卡（第 5/6 章 + 无尽）
+        // 上行 4 卡（第 1~4 章），下行 2 卡（第 5/6 章居中）
         const rowY = [96, -146];
         const topX = [-360, -120, 120, 360];
-        for (let i = 0; i < 4; i++) mkCard(topX[i], rowY[0], i, false);
-        mkCard(-240, rowY[1], 4, false);
-        mkCard(0, rowY[1], 5, false);
-        mkCard(240, rowY[1], -1, true);
+        for (let i = 0; i < 4; i++) mkCard(topX[i], rowY[0], i);
+        mkCard(-120, rowY[1], 4);
+        mkCard(120, rowY[1], 5);
     }
 
     // ── 难度选择页 ─────────────────────────────────────────────

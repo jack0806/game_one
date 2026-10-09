@@ -3,6 +3,7 @@
 // ============================================================
 import { Vec, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
+import { DIFFICULTIES } from '../data/DifficultyDB';
 
 interface GoldDrop {
     x: number; y: number;
@@ -25,15 +26,13 @@ export const GOLD_STAGE_MULT = [1.0, 1.15, 1.3, 1.45, 1.6, 1.75];
 
 /**
  * 难度金币系数（v4 9.3）：金币脱离难度 statMult（原 easy 0.25/hell 1.5 连
- * 金币一起乘，金币量不可控），改走本表；简单档微降、地狱档小幅上浮。
+ * 金币一起乘，金币量不可控），改走本函数。数值单一来源 = DifficultyDB 的
+ * goldMult（2026-10-07 定稿 0.9 / 1 / 1.2 / 1.35）：高难度金币加成对冲
+ * 怪物强度与数量，让玩家更快成型构筑（金卡/彩卡）。
  */
 export function difficultyGoldMult(difficultyId?: string): number {
-    switch (difficultyId) {
-        case 'easy':   return 0.9;
-        case 'hard':   return 1.15;
-        case 'hell':   return 1.3;
-        default:       return 1;
-    }
+    const def = DIFFICULTIES.find(d => d.id === difficultyId);
+    return def?.goldMult ?? 1;
 }
 
 /**

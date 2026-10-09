@@ -42,9 +42,11 @@ test('v4数量公式:(10+2.4L)×波型×章节×难度,round封顶128', () => {
     assert.equal(enemyCountForWave(15, 1), 37, 'W15 Boss 波小兵 ×0.8');
     // 章节数量系数：第 6 章 W13 = round(41.2×1.45×2.0) = 119，逼近封顶
     assert.equal(enemyCountForWave(13, 6), 119);
-    // 难度倍率与封顶：混沌第 6 章 W13 超过 128 截断
-    assert.equal(enemyCountForWave(13, 6, 'chaos'), ENEMY_COUNT_CAP);
-    assert.equal(enemyCountForWave(13, 6, 'nightmare'), 128, 'nightmare 1.5 倍超封顶截到 128');
+    // 难度数量倍率与封顶：第 6 章 W13 = round(119.48×2) 超过 128 截断
+    assert.equal(enemyCountForWave(13, 6, 2), ENEMY_COUNT_CAP);
+    assert.equal(enemyCountForWave(13, 6, 1.5), 128, '×1.5 倍率超封顶截到 128');
+    // v4 难度三联系数（DifficultyDB.countMult）：地狱 ×1.2 时 W13 = round(119.48×1.2) = 143 → 截 128
+    assert.equal(enemyCountForWave(13, 1, 1.2), Math.min(Math.round(60 * 1.2), 128), '地狱数量 ×1.2');
     // 全章总量约 430 只（文档 3 节模板）
     let total = 0;
     for (let w = 1; w <= 15; w++) total += enemyCountForWave(w, 1);
@@ -240,39 +242,6 @@ test('困难模式兽潮对齐W9/W13,非困难/其他波不触发', () => {
     }
 });
 
-test('无尽模式:W15后不结算继续,每+10波加变异,模板波次循环', () => {
-    const originalRandom = Math.random;
-    Math.random = () => 0.5;
-    try {
-        const game = makeMockGame();
-        const wm = mkWm(6, { endless: true });
-        const applied = [];
-        game.floatingText = { spawn: () => {} };
-        const origApply = (m) => { applied.push(m.id); };
-        // 劫持 MUTATIONS.apply 不可行（apply 直接改 game._mutationMods）——改用浮动文本捕获
-        const wmSpawns = [];
-        wm.onSpawnEnemy = (type) => { game.enemies.push({ type, alive: true, dead: false }); wmSpawns.push(type); };
-        for (let w = 1; w <= 25; w++) {
-            game.enemies = [];
-            wm.startWave(game);
-            drainSpawning(wm, game);
-            // 无尽下 isBossWave 按模板波次循环：W15/W30 是 Boss 模板
-            if (w === 15 || w === 30) assert.ok(wm.isBossWave(), `第${w}波应为Boss模板`);
-            if (w === 16) assert.equal(wm.templateWave(), 1, 'W16 模板回到 W1');
-            if (w === 25) assert.equal(wm.templateWave(), 10, 'W25 模板为 W10');
-            // 变异：wave 25 → (25-15)%10==0 应触发一个变异（写入 _mutationMods）
-        }
-        assert.equal(wm.wave, 25);
-        assert.equal(wm.chapter, 6, '无尽沿用第6章池');
-        // W25 应已注入至少一个变异乘区（speedMult/armor/cloneWar 等任一被改动）
-        const mods = game._mutationMods || {};
-        assert.ok(Object.keys(mods).length > 0, '第25波(+10)应激活首个变异');
-        assert.ok(wmSpawns.includes('boss') === false, 'Boss 延迟登场,不在批次里直出');
-    } finally {
-        Math.random = originalRandom;
-    }
-});
-
 test('变异mirrorArmy在Boss波使boss数量×2(小兵清空后登场)', () => {
     const game = makeMockGame({ _mutationMods: { mirrorArmy: true } });
     const wm = mkWm(1);
@@ -334,14 +303,14 @@ test('变异chaosBeat每5秒对活着敌人的40%施加临时buff', () => {
 
 test('reset()清空波次状态回到初始值', () => {
     const game = makeMockGame();
-    const wm = mkWm(3, { endless: true });
+    const wm = mkWm(3, { countMult: 1.1 });
     wm.onSpawnEnemy = () => {};
     wm.startWave(game);
     wm.reset();
     assert.equal(wm.wave, 0);
     assert.equal(wm.chapter, 1);
     assert.equal(wm.state, 'idle');
-    assert.equal(wm.endless, false);
+    assert.equal(wm.countMult, 1, '难度数量倍率随 reset 归位');
 });
 
 test('兽潮怪物向屏幕中心收拢,进入中心区后恢复常规AI', () => {

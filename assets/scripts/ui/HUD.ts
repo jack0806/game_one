@@ -26,8 +26,6 @@ export interface HudData {
     bossName?: string;
     /** 本局难度名（测试房间缺省 = 不显示）。 */
     difficultyName?: string;
-    /** v4：无尽模式标志（波次显示改为"第N轮 X/15"）。 */
-    endless?: boolean;
 }
 
 @ccclass('HUD')
@@ -249,15 +247,7 @@ export class HUD extends Component {
     }
 
     private _refreshWave(d: HudData) {
-        // v4：关内波次显示 X/15；无尽模式按轮次显示；测试房无难度注入不加后缀
-        if (d.endless) {
-            const round = Math.floor((Math.max(1, d.wave) - 1) / 15) + 1;
-            const tw = ((Math.max(1, d.wave) - 1) % 15) + 1;
-            this._waveLabel.string = d.difficultyName
-                ? `无尽·第${round}轮 ${tw}/15 · ${d.difficultyName}`
-                : `无尽·第${round}轮 ${tw}/15`;
-            return;
-        }
+        // v4：关内波次显示 X/15；测试房无难度注入不加后缀
         this._waveLabel.string = d.difficultyName
             ? `第${d.chapter + 1}章 ${d.wave}/15 · ${d.difficultyName}`
             : `第${d.chapter + 1}章 ${d.wave}/15`;

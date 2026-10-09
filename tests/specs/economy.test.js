@@ -66,6 +66,15 @@ test('generateShopItems按章节数放大价格(mult = 1+(chapter-1)*0.3；v4基
     assert.equal(heal3.cost, Math.round(80 * 1.6)); // mult=1+2*0.3=1.6
 });
 
+test('v4难度金币系数:高难度产出加成对冲怪物强度与数量(单一来源=DifficultyDB)', () => {
+    const { difficultyGoldMult } = require('../dist/systems/Economy');
+    assert.equal(difficultyGoldMult('easy'), 0.9);
+    assert.equal(difficultyGoldMult('normal'), 1);
+    assert.equal(difficultyGoldMult('hard'), 1.2, '困难 +20%（怪物 ×1.25 · 数量 ×1.1）');
+    assert.equal(difficultyGoldMult('hell'), 1.35, '地狱 +35%（怪物 ×1.5 · 数量 ×1.2）');
+    assert.equal(difficultyGoldMult(undefined), 1, '测试房/未注入为基准');
+});
+
 test('v4产出硬上限:击杀掉落累计超killGoldCap后金额衰减到1金(防崩塌保险丝)', () => {
     const eco = new Economy();
     eco.killGoldCap = 100;

@@ -65,8 +65,8 @@ test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,
     assert.match(gameSource, /onQueryChapterUnlock = \(\) => SaveSystem\.unlockedChapterCount\(\)/, '章节解锁链查询');
     assert.match(screenSource, /_buildMapSelectPanel\(\);/, '章节选择页构建');
     assert.match(screenSource, /'选择作战章节'/, 'v4 章节选择标题');
-    assert.match(screenSource, /'无尽 · 天罚循环'/, '无尽入口卡');
     assert.match(screenSource, /一局一章 × 15 波/, '一局一章副标题');
+    assert.doesNotMatch(screenSource, /无尽 · 天罚循环/, '无尽入口卡已按玩家要求移除');
     assert.match(gameSource, /onDifficultyPicked = \(d\) => \{[\s\S]*?this\._difficulty = d;[\s\S]*?this\._setState\('charSelect'\);/);
     assert.match(gameSource, /onDifficultyBack  = \(\) => this\._setState\('lobby'\)/);
     assert.match(gameSource, /onCharSelectBack  = \(\) => this\._setState\('lobby'\)/);

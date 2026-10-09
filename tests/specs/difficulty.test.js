@@ -16,10 +16,12 @@ function makeBoss(game, chapter0 = 0) {
     return boss;
 }
 
-test('难度表：四档 easy→hell，倍率 0.25/0.5/1/1.5，仅简单削减 Boss 技能', () => {
+test('难度表：四档 easy→hell，强度 0.75/1/1.25/1.5 + 数量 0.85/1/1.1/1.2 + 金币 0.9/1/1.2/1.35（2026-10-07 三联定稿）', () => {
     assert.equal(DIFFICULTIES.length, 4);
     assert.deepEqual(DIFFICULTIES.map(d => d.id), ['easy', 'normal', 'hard', 'hell']);
-    assert.deepEqual(DIFFICULTIES.map(d => d.statMult), [0.25, 0.5, 1, 1.5]);
+    assert.deepEqual(DIFFICULTIES.map(d => d.statMult), [0.75, 1, 1.25, 1.5]);
+    assert.deepEqual(DIFFICULTIES.map(d => d.countMult), [0.85, 1, 1.1, 1.2], '数量增幅取强度一半，防密度爆炸');
+    assert.deepEqual(DIFFICULTIES.map(d => d.goldMult), [0.9, 1, 1.2, 1.35], '金币对齐强度再吃数量加成');
     assert.equal(DIFFICULTIES[0].bossSkillCut, 3, '简单难度 Boss 只保留 1/3 技能');
     for (let i = 1; i < 4; i++) {
         assert.ok(!DIFFICULTIES[i].bossSkillCut, '其余难度 Boss 技能完整');
@@ -30,31 +32,31 @@ test('地狱难度：怪物血/攻/甲×1.5 且移速与攻速不变；金币不
     const game = makeMockGame({ _difficulty: byId('hell') });
     const e = new EnemyBase();
     e.init('grunt', 1, game);
-    assert.equal(e.maxHp, 120);
+    assert.equal(e.maxHp, 120);   // 80 × 1.5
     assert.equal(e.hp, 120);
-    assert.equal(e.damage, 12);
+    assert.equal(e.damage, 12);   // 8 × 1.5
     assert.equal(e.goldValue, 2, '金币走独立难度系数，不再吃 statMult');
     assert.equal(e.speed, 65, '移速不吃难度乘区');
     assert.equal(e.attackSpeed, 1, '攻速节奏不吃难度乘区');
 });
 
-test('简单难度：怪物数值×0.25，护盾兵的护盾同样缩放', () => {
+test('简单难度：怪物数值×0.75，护盾兵的护盾同样缩放', () => {
     const game = makeMockGame({ _difficulty: byId('easy') });
     const e = new EnemyBase();
     e.init('shield', 1, game);
-    assert.equal(e.maxHp, 15);          // 60 × 0.25
-    assert.equal(e.hp, 15);
-    assert.equal(e.maxShieldHp, 20);    // 80 × 0.25
-    assert.equal(e.shieldHp, 20);
-    assert.equal(e.damage, 2.5);        // 10 × 0.25
+    assert.equal(e.maxHp, 45);          // 60 × 0.75
+    assert.equal(e.hp, 45);
+    assert.equal(e.maxShieldHp, 60);    // 80 × 0.75
+    assert.equal(e.shieldHp, 60);
+    assert.equal(e.damage, 7.5);        // 10 × 0.75
 });
 
-test('难度乘区先于精英增幅：简单精英 200×0.25×3 = 150', () => {
+test('难度乘区先于精英增幅：简单精英 200×0.75×3 = 450', () => {
     const game = makeMockGame({ _difficulty: byId('easy') });
     const e = new EnemyBase();
     e.init('elite_grunt', 1, game);
-    assert.equal(e.maxHp, 150);
-    assert.equal(e.damage, 6.75);       // 18 × 0.25 × 1.5
+    assert.equal(e.maxHp, 450);
+    assert.equal(e.damage, 20.25);       // 18 × 0.75 × 1.5
 });
 
 test('无难度注入（测试房/旧流程）：数值精确等于表值', () => {
@@ -68,9 +70,9 @@ test('Boss 数值吃难度乘区且移速不变；简单难度带技能削减标
     const easy = makeMockGame({ _difficulty: byId('easy') });
     const b = makeBoss(easy);
     // 第1章 Boss 表值 3000/42/62/10/150（金币 v4 重标且不吃难度乘区）
-    assert.equal(b.maxHp, 750);  assert.equal(b.hp, 750);
-    assert.equal(b.damage, 10.5);
-    assert.equal(b.armor, 2.5);
+    assert.equal(b.maxHp, 2250);  assert.equal(b.hp, 2250);   // 3000 × 0.75
+    assert.equal(b.damage, 31.5);                             // 42 × 0.75
+    assert.equal(b.armor, 7.5);                               // 10 × 0.75
     assert.equal(b.goldValue, 150);
     assert.equal(b.speed, 62, 'Boss 移速不吃难度乘区');
     assert.equal(b.bossSkillCut, 3);
