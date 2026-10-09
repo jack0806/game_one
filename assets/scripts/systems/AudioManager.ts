@@ -107,7 +107,7 @@ export class AudioManager {
     }
 
     /** 不传 parent 时为 headless：保留状态/限流逻辑，但不接触引擎音频对象。 */
-    constructor(parent?: Node) {
+    constructor(parent?: Node, preload = true) {
         // 启动即应用持久化音量（headless 同样生效，保持可测）
         const saved = AudioManager.loadAudioSettings();
         this.bgmVolume = saved.bgm;
@@ -130,7 +130,7 @@ export class AudioManager {
         }
         this._sfxSource = this._sfxChannels[0];
 
-        this.preloadAll();
+        if (preload) this.preloadAll();
     }
 
     preloadAll(): void {

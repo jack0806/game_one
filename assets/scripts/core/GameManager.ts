@@ -6,7 +6,7 @@ import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
 import { visibleDesignWidth, applyScreenPolicy } from './ScreenFit';
 import { Vec, Rng, clamp } from './MathUtils';
 import { worldToLocal, entityVisualPose, entityHealthBar, animationFrameTopOffset } from './EntityVisual';
-import { applyArtSprite, applyAnimationFrame, preloadArt, SpriteNodePool } from './SpriteUtils';
+import { applyArtSprite, applyAnimationFrame, loadArtSprite, preloadArt, prioritizeStartupArt, SpriteNodePool } from './SpriteUtils';
 import { ActorAnimation } from './ActorAnimation';
 import { ActorCorpses } from './ActorCorpses';
 import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
@@ -283,6 +283,7 @@ export class GameManager extends Component {
 
     onLoad() {
         GameManager.inst = this;
+        prioritizeStartupArt('title_screen');
         // 全面屏横屏铺满：宽于16:9的屏用FIXED_HEIGHT横向延展（无左右黑边），
         // 更方的屏回退SHOW_ALL保高留边，不能裁掉HUD/技能区。
         applyScreenPolicy();
@@ -296,6 +297,9 @@ export class GameManager extends Component {
         // 本身被当成单个资源 key。显式使用 Array.from 保证构建产物仍是字符串数组。
         preloadArt(Array.from(new Set(Object.keys(EFFECT_ANIMATIONS).map(key => EFFECT_ANIMATIONS[key].sheet))));
         this._setState('menu');
+        loadArtSprite('title_screen', () => {
+            if (this.isValid) this._audio.preloadAll();
+        });
         loadUIFont(this.node);
 
     }
@@ -411,7 +415,7 @@ export class GameManager extends Component {
         this._hitStop   = new HitStop();
         this._floatText = new FloatingText();
         this._particles = new ParticleManager();
-        this._audio     = new AudioManager(this.node);
+        this._audio     = new AudioManager(this.node, false);
         this._economy   = new Economy();
         this._economy.dropPlacement = (x, y) => safeArenaPoint(this._arena, x, y, 14);
         // _gameLayer already exists here — _initLayers() runs before _initSystems() in onLoad() —

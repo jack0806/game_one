@@ -429,7 +429,7 @@ export class ScreenManager extends Component {
         const menuActions = new Node('MenuActions'); menuActions.setParent(p);
         menuActions.setPosition(new Vec3(0, -70, 0));
         menuActions.addComponent(UITransform).setContentSize(568, 410);
-        const btn = this._mkBtn(menuActions, '开始游戏', 0, 105, 450, 64, new Color(20, 220, 210, 255));
+        const btn = this._mkBtn(menuActions, '开始游戏', 0, 84, 330, 46, new Color(20, 220, 210, 255));
         btn.on(Node.EventType.TOUCH_END, () => this.onPlayPressed?.(), this);
 
         // 测试房间：主页直达的 Boss 训练场入口，配置面板由 GameManager 弹出
@@ -1333,7 +1333,22 @@ export class ScreenManager extends Component {
         const btn = new Node(`Btn_${text}`); btn.setParent(parent);
         btn.setPosition(new Vec3(x, y, 0));
         btn.addComponent(UITransform).setContentSize(w, h);
-        applyHexButtonSkin(btn, w, h, fillCol, disabled);
+        const menuButton = parent.name === 'MenuActions';
+        applyHexButtonSkin(btn, w, h, fillCol, disabled, { focusScale: menuButton ? 1.08 : undefined });
+        if (menuButton && !disabled) {
+            const select = () => {
+                this._clearKeyboardFocus();
+                this._focusedControl = btn;
+                keyboardFocusTarget(btn)?.setFocused(true);
+            };
+            btn.on(Node.EventType.MOUSE_ENTER, select);
+            btn.on(Node.EventType.TOUCH_START, select);
+            const reset = () => {
+                if (this._focusedControl === btn) this._clearKeyboardFocus();
+            };
+            btn.on(Node.EventType.MOUSE_LEAVE, reset);
+            btn.on(Node.EventType.TOUCH_CANCEL, reset);
+        }
 
         const ln = new Node('L'); ln.setParent(btn);
         ln.addComponent(UITransform).setContentSize(w - 16, h);
