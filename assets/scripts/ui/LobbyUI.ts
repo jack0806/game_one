@@ -2,7 +2,7 @@
 //  LobbyUI.ts — 存档大厅（选定存档后的中枢页面）
 // ============================================================
 // 左侧：存档概要 + 任务树/图鉴/成就档案入口（自首页迁移而来）。
-// 右侧：出击传送门——透明装甲门框、独立核心光与旋转符文环，
+// 右侧：出击传送门——半透明全息门场、能量核心与旋转刻度环，
 // 点击进入角色选择开战。页面由代码构建，不依赖 prefab。
 
 import {
@@ -13,7 +13,8 @@ import { styleLabel } from '../core/LabelUtils';
 import { mapOf, chapterInMap } from '../data/LevelIndex';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
+import { DT_MAX } from '../core/Constants';
 import { ACHIEVEMENTS, SaveSystem } from '../systems/SaveSystem';
 import { MetaPageName } from './MetaPageUI';
 import {
@@ -33,21 +34,16 @@ const WHITE = new Color(232, 244, 250, 255);
 const MUTED = new Color(145, 166, 184, 255);
 const CYAN = new Color(40, 224, 218, 255);
 const GOLD = new Color(255, 205, 82, 255);
-const VIOLET = new Color(184, 104, 255, 255);
 
 const SLOT_TITLES = ['存档 一', '存档 二', '存档 三'];
 
-function clippedPath(g: Graphics, w: number, h: number, cut: number): void {
-    const l = -w / 2, r = w / 2, b = -h / 2, t = h / 2;
-    g.moveTo(l + cut, b); g.lineTo(r - cut, b);
-    g.lineTo(r, b + cut); g.lineTo(r, t - cut);
-    g.lineTo(r - cut, t); g.lineTo(l + cut, t);
-    g.lineTo(l, t - cut); g.lineTo(l, b + cut); g.close();
-}
-
-function drawPanel(g: Graphics, w: number, h: number, accent: Color, alpha = 242): void {
-    g.clear();
-    drawHexPanel(g, -w / 2, -h / 2, w, h, accent, alpha);
+function drawPanel(g: Graphics, w: number, h: number, accent: Color): void {
+    const draw = () => {
+        g.clear();
+        drawHexPanel(g, -w / 2, -h / 2, w, h, accent, 232);
+    };
+    draw();
+    attachEnableRedraw(g.node, draw);
 }
 
 export class LobbyUI {
@@ -55,6 +51,8 @@ export class LobbyUI {
     private _portalCoreGfx!: Graphics;
     private _portalGfx!: Graphics;
     private _portalT = 0;
+    private _portalHovered = false;
+    private _portalFocused = false;
     private _summaryTitle!: Label;
     private _summaryLines: Label[] = [];
     /** v4 装备库浮层（查看仓库 / 3 格配装 / 卖出换核心币）。 */
@@ -93,6 +91,8 @@ export class LobbyUI {
 
     /** 每次 show() 时由 ScreenManager 调用：按当前选中槽刷新左侧存档概要。 */
     refresh(): void {
+        this._portalHovered = false;
+        this._portalFocused = false;
         const p = SaveSystem.load();
         const slot = SaveSystem.currentSlot();
         this._summaryTitle.string = SLOT_TITLES[slot] ?? `存档 ${slot + 1}`;
@@ -105,7 +105,7 @@ export class LobbyUI {
     /** 由 ScreenManager.update 每帧转发；大厅隐藏时不推进动画也不重绘。 */
     update(dt: number): void {
         if (!this._panel.active) return;
-        this._portalT += dt;
+        this._portalT += Math.min(dt, DT_MAX);
         this._drawPortal(this._portalT);
     }
 
@@ -118,7 +118,7 @@ export class LobbyUI {
         const bg = page.addComponent(Graphics);
         bg.fillColor = UI_PALETTE.deep; bg.fillRect(-640, -360, 1280, 720);
 
-        // 大厅用第 1 章废土街道做远景，压暗后与首页标题图区分开。
+        // 压低远景明度，让半透明终端与全息门场处于同一视觉层。
         const artN = new Node('AmbientArt'); artN.setParent(page);
         artN.addComponent(UITransform).setContentSize(1280, 720);
         const art = artN.addComponent(Sprite); art.sizeMode = Sprite.SizeMode.CUSTOM;
@@ -126,11 +126,7 @@ export class LobbyUI {
         applyArtSprite(art, 'bg_chapter1');
 
         const veilN = new Node('Veil'); veilN.setParent(page);
-        const veil = veilN.addComponent(Graphics);
-        veil.fillColor = new Color(15, 27, 43, 155); veil.fillRect(-640, -360, 1280, 720);
-        veil.fillColor = new Color(CYAN.r, CYAN.g, CYAN.b, 12); veil.fillRect(-640, 250, 1280, 110);
-        veil.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 90); veil.lineWidth = 1;
-        veil.moveTo(-600, 250); veil.lineTo(600, 250); veil.stroke();
+        veilN.addComponent(Graphics);
 
         this._mkLabel(page, -427, 326, 320, 22, 'OPERATION LOBBY / 存档大厅', 14,
             new Color(CYAN.r, CYAN.g, CYAN.b, 220), HorizontalTextAlignment.LEFT);
@@ -285,7 +281,7 @@ export class LobbyUI {
             card.addComponent(UITransform).setContentSize(186, 108);
             const g = card.addComponent(Graphics);
             const equipped = equippedUids.has(eq.uid);
-            drawPanel(g, 186, 108, equipped ? CYAN : new Color(96, 116, 138, 255), equipped ? 248 : 235);
+            drawPanel(g, 186, 108, equipped ? CYAN : new Color(96, 116, 138, 255));
 
             const affix = EQUIP_AFFIXES.find(a => a.id === eq.affix);
             const isFlat = eq.affix === 'crit' || eq.affix === 'greed';
@@ -329,68 +325,69 @@ export class LobbyUI {
         });
     }
 
-    /** 右侧：透明装甲门框、独立核心光与 Tween 旋转符文环。 */
+    /** 右侧：代码绘制的全息刻度环，仅核心保留能量贴图。 */
     private _buildPortal(page: Node): void {
         const portal = new Node('Portal'); portal.setParent(page);
         portal.setPosition(new Vec3(430, -20, 0));
         portal.addComponent(UITransform).setContentSize(360, 460);
-        registerKeyboardFocus(portal, 360, 460);
+        registerKeyboardFocus(portal, 360, 460, {
+            setFocused: (focused) => { this._portalFocused = focused; },
+        });
+        portal.on(Node.EventType.MOUSE_ENTER, () => { this._portalHovered = true; });
+        portal.on(Node.EventType.MOUSE_LEAVE, () => { this._portalHovered = false; });
+        portal.on(Node.EventType.TOUCH_START, () => { this._portalHovered = true; });
+        portal.on(Node.EventType.TOUCH_CANCEL, () => { this._portalHovered = false; });
 
         const coreNode = new Node('PortalCore'); coreNode.setParent(portal);
         coreNode.addComponent(UITransform).setContentSize(340, 340);
         this._portalCoreGfx = coreNode.addComponent(Graphics);
 
         const coreArtNode = new Node('PortalCoreArt'); coreArtNode.setParent(portal);
-        coreArtNode.addComponent(UITransform).setContentSize(184, 184);
+        coreArtNode.addComponent(UITransform).setContentSize(190, 190);
         const coreArt = coreArtNode.addComponent(Sprite);
         coreArt.sizeMode = Sprite.SizeMode.CUSTOM;
-        coreArt.color = new Color(220, 248, 255, 185);
+        // 核心图标保留素材原色与完整亮度，不再额外降低透明度。
+        coreArt.color = new Color(255, 255, 255, 255);
         applyArtSprite(coreArt, 'fx_hex_ring');
         tween(coreArtNode).by(32, { angle: 360 }).repeatForever().start();
 
-        const frameNode = new Node('PortalFrame'); frameNode.setParent(portal);
-        frameNode.addComponent(UITransform).setContentSize(340, 340);
-        const frame = frameNode.addComponent(Sprite);
-        frame.sizeMode = Sprite.SizeMode.CUSTOM;
-        frame.trim = false;
-        applyArtSprite(frame, 'ui_lobby_portal_frame');
-
-        const inner = new Node('PortalInnerRunes'); inner.setParent(portal);
-        inner.addComponent(UITransform).setContentSize(340, 340);
-        const innerGfx = inner.addComponent(Graphics);
-        innerGfx.strokeColor = new Color(VIOLET.r, VIOLET.g, VIOLET.b, 180);
-        innerGfx.lineWidth = 3;
-        for (let i = 0; i < 6; i++) {
-            const a = i * Math.PI / 3;
-            innerGfx.arc(0, 0, 103, a, a + 0.33, false); innerGfx.stroke();
-        }
-        tween(inner).by(18, { angle: -360 }).repeatForever().start();
-
-        const outer = new Node('PortalOuterRunes'); outer.setParent(portal);
-        outer.addComponent(UITransform).setContentSize(340, 340);
-        const outerGfx = outer.addComponent(Graphics);
-        outerGfx.strokeColor = new Color(CYAN.r, CYAN.g, CYAN.b, 205);
-        outerGfx.lineWidth = 2;
-        for (let i = 0; i < 8; i++) {
-            const a = i * Math.PI / 4;
-            outerGfx.arc(0, 0, 156, a, a + 0.32, false); outerGfx.stroke();
-        }
-        tween(outer).by(26, { angle: 360 }).repeatForever().start();
+        const dial = new Node('PortalDial'); dial.setParent(portal);
+        const dialGfx = dial.addComponent(Graphics);
+        const drawDial = () => {
+            dialGfx.clear();
+            // 细线、留白与刻度构成投影轮廓，背景能透过整个门场。
+            for (const radius of [116, 146, 163]) {
+                dialGfx.strokeColor = new Color(63, 202, 224, radius === 146 ? 115 : 50);
+                dialGfx.lineWidth = 1;
+                dialGfx.circle(0, 0, radius); dialGfx.stroke();
+            }
+            for (let i = 0; i < 60; i++) {
+                const a = i * Math.PI / 30;
+                const major = i % 5 === 0;
+                const r = major ? 151 : 155;
+                dialGfx.strokeColor = new Color(95, 220, 237, major ? 165 : 60);
+                dialGfx.lineWidth = major ? 1.5 : 1;
+                dialGfx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+                dialGfx.lineTo(Math.cos(a) * 159, Math.sin(a) * 159); dialGfx.stroke();
+            }
+        };
+        drawDial(); attachEnableRedraw(dial, drawDial);
 
         const gfxNode = new Node('PortalGfx'); gfxNode.setParent(portal);
         gfxNode.addComponent(UITransform).setContentSize(360, 460);
         this._portalGfx = gfxNode.addComponent(Graphics);
 
         portal.on(Node.EventType.TOUCH_END, () => {
+            this._portalHovered = false;
             this._callbacks.onButtonSfx();
             this._callbacks.onPortalPressed();
         });
 
-        this._mkLabel(portal, 0, -180, 340, 40, '出击传送门', 26, WHITE);
-        this._mkLabel(portal, 0, -212, 340, 24, '选择难度  ·  选择英雄', 15, CYAN);
+        this._mkLabel(portal, 0, -190, 340, 38, '出击传送门', 24, WHITE);
+        this._mkLabel(portal, 0, -220, 340, 24, '选择章节  ·  难度  ·  英雄', 14, CYAN);
     }
 
-    /** t=0 画静态门体；t>0 按时间推进旋转/脉冲/环绕粒子。 */
+    /** 缓慢反向流动的能量弧与轻微呼吸光，悬停/键盘聚焦时增强反馈。 */
     private _drawPortal(t: number): void {
         const core = this._portalCoreGfx;
         const g = this._portalGfx;
@@ -398,24 +395,27 @@ export class LobbyUI {
         core.clear();
         g.clear();
 
-        // 中心辉光：三层低透明度圆叠加出发光核心
-        const glow: [number, number][] = [[86, 22], [62, 38], [36, 64]];
-        for (const [r, a] of glow) {
-            core.fillColor = new Color(40, 224, 218, a);
-            core.circle(0, 0, r + Math.sin(t * 2.4) * 3); core.fill();
+        const active = this._portalHovered || this._portalFocused;
+        const breath = (Math.sin(t * 1.6) + 1) / 2;
+        // 由外向内渐亮的半透明场，避免实心圆盘或机械门框。
+        for (let i = 0; i < 10; i++) {
+            core.fillColor = new Color(35, 175, 215, 3 + Math.round(breath * 2) + (active ? 2 : 0));
+            core.circle(0, 0, 142 - i * 11); core.fill();
         }
-
-        // 核心边缘脉冲，门框和旋转符文保持独立层级。
-        const pulse = 108 + Math.sin(t * 2.4) * 5;
-        g.strokeColor = new Color(40, 224, 218, 130);
-        g.lineWidth = 3; g.circle(0, 0, pulse); g.stroke();
-
-        // 环绕粒子：5 颗青/紫交替，沿最大环缓慢公转
-        for (let i = 0; i < 5; i++) {
-            const a = -t * 0.8 + i * (Math.PI * 2 / 5);
-            const px = Math.cos(a) * 176, py = Math.sin(a) * 176;
-            g.fillColor = i % 2 === 0 ? new Color(40, 224, 218, 235) : new Color(184, 104, 255, 235);
-            g.circle(px, py, 4.5); g.fill();
+        // 弧线用多层低透明描边形成柔光，主体仍为细线。
+        for (let i = 0; i < 3; i++) {
+            const start = t * 0.16 + i * Math.PI * 2 / 3;
+            for (const [width, alpha] of [[10, 10], [5, 24], [1.5, active ? 240 : 180]]) {
+                g.strokeColor = new Color(64, 225, 242, alpha); g.lineWidth = width;
+                g.arc(0, 0, 139, start, start + 1.3, false); g.stroke();
+            }
+            const innerStart = -t * 0.22 + i * Math.PI * 2 / 3;
+            g.strokeColor = new Color(118, 165, 245, active ? 155 : 90); g.lineWidth = 1.5;
+            g.arc(0, 0, 109, innerStart, innerStart + 0.7, false); g.stroke();
+        }
+        if (active) {
+            g.strokeColor = new Color(122, 241, 250, 190); g.lineWidth = 1.5;
+            g.circle(0, 0, 168); g.stroke();
         }
     }
 

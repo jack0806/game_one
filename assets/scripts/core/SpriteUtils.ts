@@ -15,6 +15,18 @@ const _cache: Map<string, SpriteFrame> = new Map();
 const _pending: Map<string, ((sf: SpriteFrame | null) => void)[]> = new Map();
 const _requestedKey: WeakMap<Sprite, string> = new WeakMap();
 const _animationFrames: Map<string, SpriteFrame> = new Map();
+let _startupKey: string | undefined;
+const _startupQueue: (() => void)[] = [];
+
+/** 首页背景先占用下载通道，其余美术等它完成后再请求；失败同样释放队列。 */
+export function prioritizeStartupArt(key: string): void {
+    _startupKey = key;
+    loadArtSprite(key, () => {
+        _startupKey = undefined;
+        const queued = _startupQueue.splice(0);
+        for (const start of queued) start();
+    });
+}
 
 /**
  * 按美术资源 key（如 'enemy_grunt'，会先经 ArtRemap 解析真实文件名）加载
@@ -29,7 +41,7 @@ export function loadArtSprite(key: string, cb: (sf: SpriteFrame | null) => void)
     if (waiters) { waiters.push(cb); return; }
     _pending.set(key, [cb]);
 
-    resources.load(artPath(key), SpriteFrame, (err, frame) => {
+    const start = () => resources.load(artPath(key), SpriteFrame, (err, frame) => {
         const list = _pending.get(key) || [];
         _pending.delete(key);
         if (err || !frame) {
@@ -40,6 +52,8 @@ export function loadArtSprite(key: string, cb: (sf: SpriteFrame | null) => void)
         _cache.set(key, frame);
         for (const fn of list) fn(frame);
     });
+    if (_startupKey && key !== _startupKey) _startupQueue.push(start);
+    else start();
 }
 
 /** 同步读取已缓存的 SpriteFrame（未加载过则返回 undefined，不会触发加载）。 */

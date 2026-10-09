@@ -8,6 +8,10 @@ export interface HexButtonSkin {
 }
 type ButtonVisualState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
+export interface HexButtonOptions {
+    focusScale?: number;
+}
+
 export interface KeyboardFocusTarget {
     isDisabled(): boolean;
     setFocused(focused: boolean): void;
@@ -184,7 +188,7 @@ class EnableRedrawRelay extends Component {
 /** 给节点挂"激活即重绘"代理：redraw 会在该节点每次 onEnable 时执行。 */
 export function attachEnableRedraw(node: Node, redraw: () => void): void {
     try {
-        const relay = node.addComponent(EnableRedrawRelay);
+        const relay = node.getComponent(EnableRedrawRelay) ?? node.addComponent(EnableRedrawRelay);
         relay.redraw = redraw;
     } catch { /* headless/测试环境无组件系统时忽略 */ }
 }
@@ -208,6 +212,7 @@ function clippedRect(g: Graphics, w: number, h: number, cut: number, offsetY = 0
  */
 export function applyHexButtonSkin(
     node: Node, width: number, height: number, accent: Color, initiallyDisabled = false,
+    options: HexButtonOptions = {},
 ): HexButtonSkin {
     const g = node.getComponent(Graphics) ?? node.addComponent(Graphics);
     let disabled = initiallyDisabled;
@@ -217,6 +222,10 @@ export function applyHexButtonSkin(
 
     const draw = () => {
         g.clear();
+        if (options.focusScale) {
+            const scale = !disabled && focused ? options.focusScale : 1;
+            node.setScale(scale, scale, 1);
+        }
         const activeAccent = disabled ? new Color(92, 104, 116, 210) : accent;
         const lift = state === 'hover' ? 22 : state === 'pressed' ? -8 : 0;
 
