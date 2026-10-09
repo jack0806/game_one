@@ -4,6 +4,11 @@
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 
+/** 直线与范围技能的伤害不能越过实体掩体；无地图的测试房沿用原有结算。 */
+function coverClear(game: any, ax: number, ay: number, bx: number, by: number): boolean {
+    return game.arenaLineClear?.(ax, ay, bx, by) !== false;
+}
+
 // CHARS 数组在文件末尾由 CHARACTERS 派生，方便按索引迭代
 
 export interface CharStats {
@@ -204,8 +209,10 @@ export const CHARACTERS: Record<string, CharDef> = {
             // 冲锋方向 = 角色朝向（不再追鼠标）
             const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const startX = p.x, startY = p.y;
-            p.x = clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius);
-            p.y = clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius);
+            const landing = game.dashInArena?.(p.x, p.y, nx * 200, ny * 200, p.radius)
+                ?? { x: clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius),
+                     y: clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius) };
+            p.x = landing.x; p.y = landing.y;
             game.screenShake.shake(8, 0.25);
             // 冲锋撕裂：三段双斧弧刃沿实际位移路径推进；旧 mock/兼容环境回落通用剑气。
             if (game.particles.reikChargeCleave) game.particles.reikChargeCleave(startX, startY, p.x, p.y);
@@ -290,12 +297,17 @@ export const CHARACTERS: Record<string, CharDef> = {
                     const e = targets[strike._i++];
                     // 突刺到敌人脸上：贴到目标身位边缘（真实位移，渲染层跟随）
                     const [bx, by] = Vec.normalize(p.x - e.x, p.y - e.y);
-                    p.x = e.x + bx * (e.radius + (p.radius ?? 16));
-                    p.y = e.y + by * (e.radius + (p.radius ?? 16));
-                    g.particles?.meleeSlash?.(e.x, e.y, Math.atan2(by, bx) + Math.PI, p.color, 70, 1.2);
-                    if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmgPer);
-                    else e.takeDamage(dmgPer, p, g);
-                    g.audio?.playSfx?.('skill_q', 0.5);
+                    const targetX = e.x + bx * (e.radius + (p.radius ?? 16));
+                    const targetY = e.y + by * (e.radius + (p.radius ?? 16));
+                    const landing = g.dashInArena?.(p.x, p.y, targetX - p.x, targetY - p.y, p.radius ?? 16)
+                        ?? { x: targetX, y: targetY };
+                    p.x = landing.x; p.y = landing.y;
+                    if (Vec.dist(p.x, p.y, e.x, e.y) <= e.radius + (p.radius ?? 16) + 8) {
+                        g.particles?.meleeSlash?.(e.x, e.y, Math.atan2(by, bx) + Math.PI, p.color, 70, 1.2);
+                        if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmgPer);
+                        else e.takeDamage(dmgPer, p, g);
+                        g.audio?.playSfx?.('skill_q', 0.5);
+                    }
                 } else {
                     // 全部目标处理完：回到突刺起点，结束序列
                     p.x = startX; p.y = startY;
@@ -358,8 +370,13 @@ export const CHARACTERS: Record<string, CharDef> = {
                 const dist = Math.hypot(dx, dy);
                 if (dist > 30) {
                     const move = Math.min(260 * dt, Math.max(0, dist - 20));
-                    orb.x += (dx / dist) * move;
-                    orb.y += (dy / dist) * move;
+                    const nextX = orb.x + (dx / dist) * move;
+                    const nextY = orb.y + (dy / dist) * move;
+                    if (g.firstArenaBulletHit?.(orb.x, orb.y, nextX, nextY, 12)) {
+                        orb._tx = orb.x; orb._ty = orb.y;
+                    } else {
+                        orb.x = nextX; orb.y = nextY;
+                    }
                 }
                 orb._t -= dt;
                 orb._pull -= dt;
@@ -371,7 +388,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                 for (const e of (g.enemies || [])) {
                     if (!e.alive || e.dead) continue;
                     const d = Math.hypot(e.x - orb.x, e.y - orb.y);
-                    if (d >= 260) continue;
+                    if (d >= 260 || !coverClear(g, orb.x, orb.y, e.x, e.y)) continue;
                     orb._pulled.add(e);
                     if (d > 4) {
                         const pull = Math.min(1, dt * 5);
@@ -390,7 +407,8 @@ export const CHARACTERS: Record<string, CharDef> = {
                     g.audio?.playSfx?.('explode', 0.9);
                     g.floatingText?.spawn(orb.x, orb.y - 40, `时空奇点 ×${mult.toFixed(2)}！`, p.color, 22, true);
                     for (const e of (g.enemies || [])) {
-                        if (e.alive && !e.dead && Math.hypot(e.x - orb.x, e.y - orb.y) < 200) {
+                        if (e.alive && !e.dead && Math.hypot(e.x - orb.x, e.y - orb.y) < 200
+                            && coverClear(g, orb.x, orb.y, e.x, e.y)) {
                             if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmg);
                             else e.takeDamage(dmg, p, g);
                         }
@@ -453,6 +471,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                         const along = dx * gap.dirX + dy * gap.dirY;
                         if (along < -e.radius || along > gap.len + e.radius) continue;
                         if (Math.abs(dx * px + dy * py) > gap.halfW + e.radius) continue;
+                        if (!coverClear(g, gap.x, gap.y, e.x, e.y)) continue;
                         if (p.applyAttackDamage) p.applyAttackDamage(e, g, 20);
                         else e.takeDamage(20, p, g);
                     }
@@ -468,7 +487,8 @@ export const CHARACTERS: Record<string, CharDef> = {
             let stunned = 0;
             for (const e of (game.enemies || [])) {
                 if (!e.alive || e.dead) continue;
-                if (Vec.dist(e.x, e.y, p.x, p.y) <= 450) {
+                if (Vec.dist(e.x, e.y, p.x, p.y) <= 450
+                    && coverClear(game, p.x, p.y, e.x, e.y)) {
                     e.stunned = Math.max(e.stunned || 0, 2);
                     stunned++;
                 }
@@ -494,7 +514,8 @@ export const CHARACTERS: Record<string, CharDef> = {
                 wave.r = Math.min(wave._maxR, wave.r + wave._speed * dt);
                 for (const e of (g.enemies || [])) {
                     if (!e.alive || e.dead || wave._hit.has(e)) continue;
-                    if (Math.hypot(e.x - wave.x, e.y - wave.y) <= wave.r + e.radius) {
+                    if (Math.hypot(e.x - wave.x, e.y - wave.y) <= wave.r + e.radius
+                        && coverClear(g, wave.x, wave.y, e.x, e.y)) {
                         wave._hit.add(e);
                         if (reaperEye) {
                             if (e.isBoss) {
@@ -681,7 +702,8 @@ export const CHARACTERS: Record<string, CharDef> = {
                         wave.r = Math.min(wave._maxR, wave.r + wave._speed * wdt);
                         for (const e of (wg.enemies || [])) {
                             if (!e.alive || e.dead || wave._hit.has(e)) continue;
-                            if (Math.hypot(e.x - wave.x, e.y - wave.y) <= wave.r + e.radius) {
+                            if (Math.hypot(e.x - wave.x, e.y - wave.y) <= wave.r + e.radius
+                                && coverClear(wg, wave.x, wave.y, e.x, e.y)) {
                                 wave._hit.add(e);
                                 if (p.applyAttackDamage) p.applyAttackDamage(e, wg, wave._dmg);
                                 else e.takeDamage(wave._dmg, p, wg);
@@ -785,7 +807,8 @@ export const CHARACTERS: Record<string, CharDef> = {
                 const dmg = 12 * soulMult(p);
                 for (const e of (g.enemies || [])) {
                     if (!e.alive || e.dead) continue;
-                    if (Vec.dist(e.x, e.y, fog.x, fog.y) > fog.r) continue;
+                    if (Vec.dist(e.x, e.y, fog.x, fog.y) > fog.r
+                        || !coverClear(g, fog.x, fog.y, e.x, e.y)) continue;
                     if (p.applyAttackDamage) p.applyAttackDamage(e, g, dmg);
                     else e.takeDamage(dmg, p, g);
                     e.slowMult = Math.min(e.slowMult ?? 1, 0.8);

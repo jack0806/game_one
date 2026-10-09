@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { ActorAnimation, animationSocket } = require('../dist/core/ActorAnimation');
 const { actorClip } = require('../dist/data/ActorAnimationDB');
 const { PlayerController } = require('../dist/entities/PlayerController');
+const { InputManager } = require('../dist/systems/InputManager');
 const { CHARACTERS } = require('../dist/data/CharacterDB');
 const { makeMockGame } = require('./mockGame');
 
@@ -105,19 +106,23 @@ function makeAnimatedPlayer(attackSpeed = 3) {
 const noKeys = { moveX: 0, moveY: 0, mouse: { x: 1000, y: 360 },
     isKeyQ: () => false, isKeyE: () => false, isKeyR: () => false };
 
-test('跳跃按下后完整经过腾空和落地，期间不被自动射击抢走动作', () => {
-    const p = makeAnimatedPlayer(20);
-    let shots = 0;
-    const game = makeMockGame({ bulletPool: { spawn: () => shots++ } });
-    p.tick(0.01, { ...noKeys, isJumpPressed: () => true }, game);
-    assert.equal(p.actorAnimation.action, 'jump');
-    for (let i = 0; i < 7; i++) p.tick(0.05, noKeys, game);
-    assert.equal(p.actorAnimation.frame, 2, '空中收膝帧');
-    assert.equal(shots, 0);
-    p.tick(0.05, noKeys, game);
-    assert.equal(p.actorAnimation.frame, 3, '落地帧');
-    for (let i = 0; i < 6; i++) p.tick(0.05, noKeys, game);
-    assert.ok(shots > 0, '落地后恢复射击');
+test('所有英雄按空格不会触发跳跃动作', () => {
+    const input = new InputManager();
+    input._onKeyDown({ keyCode: 32 });
+    const game = makeMockGame({ testCeasefire: true });
+    for (const [id, def] of Object.entries(CHARACTERS)) {
+        const p = new PlayerController();
+        p.charId = id; p.spriteKey = `char_token_${id}`;
+        p._charDef = def; p.stats = { ...def.stats, cdReduction: 0 };
+        p.hp = p.stats.maxHp;
+        p.tick(0.01, input, game);
+        assert.notEqual(p.actorAnimation.action, 'jump', id);
+        for (const view of ['front', 'side', 'back']) {
+            assert.equal(actorClip(p.spriteKey, view, 'jump'), undefined, `${id}/${view} 不再注册跳跃片段`);
+        }
+    }
+    assert.equal(input.isJumpPressed, undefined);
+    assert.equal(input.fireJumpPressed, undefined);
 });
 
 test('前摇中重复请求不能重置时钟或覆盖尚未发出的攻击', () => {

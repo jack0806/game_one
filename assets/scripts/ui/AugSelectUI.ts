@@ -230,9 +230,7 @@ export class AugSelectUI extends Component {
         styleLabel(priceLabel);
 
         root.on(Node.EventType.TOUCH_END, () => this._buy(idx), this);
-        // 悬停高亮：说明常显 + hover 放大提示可点
-        root.on(Node.EventType.MOUSE_ENTER, () => { if (!this._bought.has(this._options[idx]?.id ?? '')) root.setScale(1.03, 1.03, 1); });
-        root.on(Node.EventType.MOUSE_LEAVE, () => root.setScale(1, 1, 1));
+        // 点击热区始终与卡片尺寸一致，悬停由描边反馈。
         registerKeyboardFocus(root, this.CARD_W, this.CARD_H, {
             isDisabled: () => {
                 const aug = this._options[idx];

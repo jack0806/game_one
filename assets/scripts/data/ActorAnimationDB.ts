@@ -1781,6 +1781,15 @@ for (const [view, row] of [['front', 0], ['side', 1], ['back', 2]] as [ActorView
     liana.skill3 = heroSkillClip('anim_liana_skill3', row, [], 1.2);
 }
 
+// 玩家不再有跳跃输入，英雄动作表也不暴露未使用的跳跃片段。
+for (const key in ACTOR_ANIMATIONS) {
+    if (!key.startsWith('char_token_')) continue;
+    for (const view of ['front', 'side', 'back'] as ActorView[]) {
+        const clips = ACTOR_ANIMATIONS[key][view];
+        if (clips) delete clips.jump;
+    }
+}
+
 export function actorClip(key: string, view: ActorView, action: ActorAction): ActorClip | undefined {
     return ACTOR_ANIMATIONS[key]?.[view]?.[action];
 }

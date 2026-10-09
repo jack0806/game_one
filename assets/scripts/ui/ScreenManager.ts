@@ -604,10 +604,11 @@ export class ScreenManager extends Component {
 
         // 上行 4 卡（第 1~4 章），下行 2 卡（第 5/6 章居中）
         const rowY = [96, -146];
-        const topX = [-360, -120, 120, 360];
+        // 286px 卡片之间留 18px 实际点击间隔，避免后创建的卡覆盖前一张热区。
+        const topX = [-456, -152, 152, 456];
         for (let i = 0; i < 4; i++) mkCard(topX[i], rowY[0], i);
-        mkCard(-120, rowY[1], 4);
-        mkCard(120, rowY[1], 5);
+        mkCard(-152, rowY[1], 4);
+        mkCard(152, rowY[1], 5);
     }
 
     // ── 难度选择页 ─────────────────────────────────────────────
@@ -772,13 +773,13 @@ export class ScreenManager extends Component {
             }
             focusPanels.push(focus);
             const tile = this._mkBtn(p, def.name.split('·').pop()!.trim(), -560 + i * 160, -254,
-                180, 120, new Color(83, 114, 137));
+                150, 120, new Color(83, 114, 137));
             tile.name = `HeroTile_${i}`;
             const name = tile.getChildByName('L')!;
             name.setPosition(0, -39);
             name.getComponent(Label)!.fontSize = 19;
             name.getComponent(Label)!.lineHeight = 26;
-            name.getComponent(UITransform)!.setContentSize(170, 28);
+            name.getComponent(UITransform)!.setContentSize(142, 28);
             const portraitKey = def.id === 'via' || def.id === 'mortis'
                 ? `ui_portrait_${def.id}` : `char_${def.id}`;
             this._loadPortrait(tile, portraitKey, 76, 16);

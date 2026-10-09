@@ -5,14 +5,80 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { ARENA_ART_SOLID_TOP, CHAPTER_ARENAS, arenaForChapter, arenasForChapter } = require('../dist/data/ChapterArenaDB');
+const { ARENA_OBSTACLE_SLOTS, CHAPTER_ARENAS, arenaForChapter,
+    arenasForChapter, arenaWithObstacles, obstacleCandidatesForChapter } = require('../dist/data/ChapterArenaDB');
 const {
-    isArenaFree, moveInArena, safeArenaPoint, firstArenaBulletHit, arenaSteerTarget, overlapsObstacle,
+    arenaIsConnected, isArenaFree, moveInArena, dashInArena, randomArenaForChapter, safeArenaPoint,
+    firstArenaBulletHit, arenaLineClear, arenaSteerTarget, overlapsObstacle,
 } = require('../dist/core/ArenaGeometry');
+const { ARENA_COLLISION_MASKS } = require('../dist/data/ArenaCollisionMasks');
+const { spawnExplosion } = require('../dist/data/AugmentDB');
+const { CHARACTERS } = require('../dist/data/CharacterDB');
 const { BulletPool } = require('../dist/entities/BulletController');
 const { makeMockGame, makePlayer } = require('./mockGame');
 
 const arena = arenaForChapter(1);
+
+test('六章每章十五个候选落点，重复进图随机展示三个更大的独立残骸', () => {
+    assert.equal(ARENA_OBSTACLE_SLOTS.length, 15);
+    for (let chapter = 1; chapter <= 6; chapter++) {
+        const candidates = obstacleCandidatesForChapter(chapter);
+        assert.equal(candidates.length, 15);
+        assert.equal(new Set(candidates.map(prop => `${prop.x},${prop.y}`)).size, 15);
+        assert.ok(candidates.every(prop => prop.visualW > 130));
+        const edges = arenaWithObstacles(chapter, []);
+        for (const prop of candidates) {
+            for (const sx of [-0.5, 0, 0.5]) for (const sy of [-0.5, 0, 0.5]) {
+                assert.equal(isArenaFree(edges, prop.x + sx * prop.w, prop.y + sy * prop.h, 18), true,
+                    `第${chapter}章${prop.id}没有压住背景边缘建筑`);
+            }
+            assert.equal(isArenaFree(arenaWithObstacles(chapter, [prop]), 640, 360, 70), true,
+                `第${chapter}章${prop.id}让出 Boss 出生区`);
+            assert.equal(arenaIsConnected(arenaWithObstacles(chapter, [prop]), 70), true,
+                `第${chapter}章${prop.id}不围出 Boss 孤岛`);
+            assert.equal(arenaIsConnected(arenaWithObstacles(chapter, [prop]), 18), true,
+                `第${chapter}章${prop.id}不围出英雄孤岛`);
+        }
+        const layouts = new Set();
+        for (let seed = 1; seed <= 40; seed++) {
+            let state = seed;
+            const selected = randomArenaForChapter(chapter, (min, max) => {
+                state = (state * 1664525 + 1013904223) >>> 0;
+                return min + state % (max - min + 1);
+            });
+            assert.equal(selected.obstacles.length, 3, `第${chapter}章总是出现三个`);
+            assert.equal(new Set(selected.obstacles.map(prop => prop.id)).size, 3);
+            assert.equal(isArenaFree(selected, 640, 360, 70), true);
+            for (const prop of selected.obstacles) {
+                assert.equal(isArenaFree(selected, prop.x, prop.y, 16), false);
+            }
+            layouts.add(selected.id);
+        }
+        assert.ok(layouts.size >= 10, `第${chapter}章进图布局有明显变化`);
+    }
+});
+
+test('冲刺撞到建筑或画布边界时沿原路径停止，斜墙外的空地可以通行', () => {
+    const wall = arena.obstacles.find(prop => prop.kind === 'wall');
+    assert.ok(wall.angleDeg > 0);
+    const startX = wall.x - 150, startY = wall.y;
+    const landing = dashInArena(arena, startX, startY, 360, 0, 16);
+    assert.ok(landing.x < wall.x - 30, '不可越过路障');
+    assert.equal(landing.y, startY, '冲刺不会自动沿墙滑到另一侧');
+    assert.equal(isArenaFree(arena, landing.x, landing.y, 16), true);
+    const boundary = dashInArena(arena, 1000, 360, 500, 0, 16);
+    assert.ok(boundary.x < 1256, '不可冲进边界建筑');
+    const road = dashInArena(arena, 170, 340, 0, 100, 16);
+    assert.ok(road.y >= 430, '横杆右侧的空白路面可走');
+    const cabinet = dashInArena(arena, 110, 230, 0, 180, 16);
+    assert.ok(cabinet.y < 340, '左侧机柜仍挡住落脚点');
+    const tilted = { id: 'test', chapter: 0, obstacles: [{
+        id: 'sloped', x: 640, y: 360, w: 160, h: 32, angleDeg: 22,
+        blocksBullets: true,
+    }] };
+    assert.equal(isArenaFree(tilted, 570, 370, 8), true, '旧横向矩形遮住的斜墙外空地可通行');
+    assert.equal(isArenaFree(tilted, 570, 335, 8), false, '斜墙实际实体仍挡人');
+});
 
 test('六章各有两套场地并保留中央 Boss 区', () => {
     assert.equal(CHAPTER_ARENAS.length, 12);
@@ -34,51 +100,16 @@ test('六章各有两套场地并保留中央 Boss 区', () => {
 });
 
 test('六章布局的可站立区域都连通中央出生区', () => {
-    for (const layout of CHAPTER_ARENAS) {
-        for (const radius of [18, 70]) {
-            const step = 16;
-            const cols = Math.floor((1280 - radius * 2) / step) + 1;
-            const rows = Math.floor((648 - radius * 2) / step) + 1;
-            const free = new Uint8Array(cols * rows);
-            let total = 0;
-            let start = -1;
-            let nearest = Infinity;
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    const x = radius + col * step;
-                    const y = radius + row * step;
-                    if (!isArenaFree(layout, x, y, radius)) continue;
-                    const id = row * cols + col;
-                    free[id] = 1;
-                    total++;
-                    const distance = Math.hypot(x - 640, y - 360);
-                    if (distance < nearest) { nearest = distance; start = id; }
-                }
-            }
-            assert.ok(start >= 0, `${layout.id} 半径${radius} 有中央出生区`);
-            const queue = [start];
-            free[start] = 0;
-            for (let head = 0; head < queue.length; head++) {
-                const id = queue[head];
-                const col = id % cols;
-                const row = Math.floor(id / cols);
-                for (const [dc, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-                    const nc = col + dc, nr = row + dr;
-                    if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
-                    const next = nr * cols + nc;
-                    if (!free[next]) continue;
-                    free[next] = 0;
-                    queue.push(next);
-                }
-            }
-            const stranded = [];
-            for (let id = 0; id < free.length; id++) {
-                if (free[id]) stranded.push([radius + id % cols * step,
-                    radius + Math.floor(id / cols) * step]);
-            }
-            assert.equal(queue.length, total,
-                `${layout.id} 半径${radius} 没有孤立可站立区：${JSON.stringify(stranded)}`);
-        }
+    const checkedLayouts = [...CHAPTER_ARENAS];
+    for (let chapter = 1; chapter <= 6; chapter++) for (let seed = 1; seed <= 5; seed++) {
+        let state = chapter * 100 + seed;
+        checkedLayouts.push(randomArenaForChapter(chapter, (min, max) => {
+            state = (state * 1664525 + 1013904223) >>> 0;
+            return min + state % (max - min + 1);
+        }));
+    }
+    for (const layout of checkedLayouts) for (const radius of [18, 70]) {
+        assert.equal(arenaIsConnected(layout, radius), true, `${layout.id} 半径${radius} 没有孤岛`);
     }
 });
 
@@ -104,14 +135,14 @@ test('六章底图边缘的实体建筑挡住角色且保留中心通路', () =>
             `${layout.id} 顶部空地不再被提前封住`);
         assert.equal(isArenaFree(edges, 640, 56, 16), false,
             `${layout.id} 护栏后方仍有实体边界`);
-        assert.ok(moveInArena(layout, 640, 360, 0, 500, 18).y <= 602);
+        assert.ok(moveInArena(layout, 640, 360, 0, 500, 18).y <= 630);
     }
-    assert.ok(moveInArena(arena, 640, 150, -700, 0, 18).x >= 143);
-    // 左侧岗哨的箱体延伸到画面约 x=155、y=390，角色脚底不能压在箱体上。
-    assert.ok(moveInArena(arena, 640, 380, -700, 0, 18).x >= 183);
+    assert.ok(moveInArena(arena, 640, 150, -700, 0, 18).x >= 100);
+    // 左侧岗哨的底座仍是实体，右侧已露出的路面可以贴近它。
+    assert.ok(moveInArena(arena, 640, 380, -700, 0, 18).x >= 160);
     assert.ok(moveInArena(arena, 300, 520, -400, 0, 18).x >= 243);
     // 各章侧边的熔炉、培养罐、装甲和破损框架都画在背景里，也要挡住角色。
-    for (const [chapter, minX] of [[2, 148], [3, 163], [5, 158], [6, 183]]) {
+    for (const [chapter, minX] of [[2, 110], [3, 110], [5, 158], [6, 110]]) {
         for (const layout of arenasForChapter(chapter)) {
             assert.ok(moveInArena(layout, 640, 360, -700, 0, 18).x >= minX,
                 `${layout.id} 左侧设备挡住角色`);
@@ -136,11 +167,64 @@ test('六章右侧中段空地可贴近画布边缘，上下建筑仍挡住角�
     }
 });
 
+test('六章底图逐张核对四角：可见路面可走，建筑实体挡人与子弹', () => {
+    // 取样坐标按六张底图逐张叠图确认，覆盖先前矩形误挡的第2/3章空地。
+    const samples = {
+        1: { road: [[180, 320], [1070, 200], [1100, 350]],
+            solid: [[50, 150], [1220, 170], [80, 550], [1200, 550]] },
+        2: { road: [[190, 190], [970, 160], [1080, 250], [180, 300]],
+            solid: [[100, 100], [1140, 130], [60, 320], [1200, 530]] },
+        3: { road: [[170, 240], [140, 300], [1040, 220], [1120, 315]],
+            solid: [[90, 130], [1180, 180], [50, 380], [1200, 520]] },
+        4: { road: [[180, 200], [1050, 230], [140, 360], [1100, 420]],
+            solid: [[50, 120], [1170, 120], [50, 270], [80, 550]] },
+        5: { road: [[200, 200], [1040, 240], [180, 300], [1100, 400]],
+            solid: [[50, 140], [1170, 120], [60, 330], [1200, 550]] },
+        6: { road: [[210, 200], [1020, 250], [140, 300], [1100, 380]],
+            solid: [[50, 140], [1170, 150], [50, 330], [1200, 550]] },
+    };
+    for (let chapter = 1; chapter <= 6; chapter++) {
+        const edges = arenaWithObstacles(chapter, []);
+        for (const [x, y] of samples[chapter].road) {
+            assert.equal(isArenaFree(edges, x, y, 16), true,
+                `第${chapter}章路面 ${x},${y} 可走`);
+        }
+        for (const [x, y] of samples[chapter].solid) {
+            assert.equal(isArenaFree(edges, x, y, 16), false,
+                `第${chapter}章建筑 ${x},${y} 挡人`);
+        }
+        const [rx, ry] = samples[chapter].road[1];
+        const [sx, sy] = samples[chapter].solid[1];
+        assert.ok(firstArenaBulletHit(edges, rx, ry, sx, sy, 0),
+            `第${chapter}章建筑挡子弹`);
+    }
+    assert.equal(arenaLineClear(arenaWithObstacles(2, []), 970, 160, 1080, 250), true,
+        '第二章右上炉台前的空地不再被矩形遮住');
+    assert.equal(arenaLineClear(arenaWithObstacles(3, []), 1040, 220, 1120, 315), true,
+        '第三章右上培养罐前的空地不再被矩形遮住');
+});
+
+test('第二、三章截图中的大片空地允许行走与位移，悬空横杆下也可通过', () => {
+    for (const [chapter, x, y, dx, dy] of [
+        [2, 900, 170, 100, 0], [2, 930, 250, 170, 0],
+        [3, 300, 300, -160, 0], [3, 900, 300, 200, 0],
+        [6, 220, 300, -80, 0],
+    ]) {
+        const edges = arenaWithObstacles(chapter, []);
+        const walked = moveInArena(edges, x, y, dx, dy, 16);
+        const dashed = dashInArena(edges, x, y, dx, dy, 16);
+        assert.ok(Math.hypot(walked.x - x - dx, walked.y - y - dy) < 0.01,
+            `第${chapter}章可见路面可完整走过`);
+        assert.ok(Math.hypot(dashed.x - x - dx, dashed.y - y - dy) < 0.01,
+            `第${chapter}章可见路面可完整位移`);
+    }
+});
+
 test('第二章管线与第六章反应堆的前侧底座挡住向上行走的角色', () => {
-    for (const [chapter, bottom] of [[2, 285], [6, 325]]) {
+    for (const [chapter, stopY] of [[2, 235], [6, 305]]) {
         for (const layout of arenasForChapter(chapter)) {
             const point = moveInArena(layout, 1200, 360, 0, -220, 18);
-            assert.ok(point.y >= bottom + 18, `${layout.id} 角色没有踩进右上建筑底座`);
+            assert.ok(point.y >= stopY, `${layout.id} 角色没有踩进右上建筑底座`);
             assert.equal(isArenaFree(layout, 1050, 350, 18), true,
                 `${layout.id} 建筑左侧仍有通路`);
         }
@@ -150,17 +234,17 @@ test('第二章管线与第六章反应堆的前侧底座挡住向上行走的�
 test('底图上突出的废车、熔炉和反应堆碎石不能被角色踩过', () => {
     for (const layout of arenasForChapter(1)) {
         const point = moveInArena(layout, 350, 580, -180, 0, 18);
-        assert.ok(point.x >= 303, `${layout.id} 左下废车车头挡住横向行走`);
+        assert.ok(point.x >= 300, `${layout.id} 左下废车车头挡住横向行走`);
         assert.equal(isArenaFree(layout, 340, 510, 18), true, `${layout.id} 车头上方仍能绕行`);
     }
     for (const layout of arenasForChapter(2)) {
         const point = moveInArena(layout, 1030, 300, 0, -200, 18);
-        assert.ok(point.y >= 223, `${layout.id} 熔炉前沿挡住向上行走`);
+        assert.ok(point.y >= 105, `${layout.id} 熔炉前沿挡住向上行走`);
         assert.equal(isArenaFree(layout, 900, 160, 18), true, `${layout.id} 熔炉左侧仍有通路`);
     }
     for (const layout of arenasForChapter(6)) {
         const point = moveInArena(layout, 1000, 280, 0, -220, 18);
-        assert.ok(point.y >= 208, `${layout.id} 反应堆右侧碎石挡住向上行走`);
+        assert.ok(point.y >= 170, `${layout.id} 反应堆右侧碎石挡住向上行走`);
         assert.equal(isArenaFree(layout, 700, 150, 18), true, `${layout.id} 碎石左侧仍有通路`);
     }
 });
@@ -168,11 +252,11 @@ test('底图上突出的废车、熔炉和反应堆碎石不能被角色踩过',
 test('第六章右上碎石按画面外形分段，空地可走而碎石仍挡脚底', () => {
     const edges = { ...arenaForChapter(6), obstacles: [] };
     const across = moveInArena(edges, 650, 180, 600, 0, 18);
-    assert.ok(across.x >= 895 && across.x <= 925, `沿空地走到右侧碎石前：${across.x}`);
+    assert.ok(across.x >= 1000 && across.x <= 1020, `沿空地走到右侧碎石前：${across.x}`);
     const left = moveInArena(edges, 850, 280, 0, -220, 18);
-    assert.ok(left.y >= 163 && left.y <= 185, `左侧碎石上沿：${left.y}`);
+    assert.ok(left.y >= 90 && left.y <= 105, `左侧碎石上沿：${left.y}`);
     const right = moveInArena(edges, 1000, 280, 0, -220, 18);
-    assert.ok(right.y >= 208, `右侧碎石下沿：${right.y}`);
+    assert.ok(right.y >= 170, `右侧碎石下沿：${right.y}`);
 });
 
 test('右下背景设备和碎石的外凸底座挡住横向行走', () => {
@@ -194,7 +278,7 @@ test('炉台管线、传送门与后段机械的外凸底座挡住脚底', () =>
             `${layout.id} 右下炉台管线前沿`);
     }
     for (const layout of arenasForChapter(4)) {
-        assert.ok(moveInArena(layout, 900, 175, 260, 0, 18).x <= 998,
+        assert.ok(moveInArena(layout, 900, 175, 260, 0, 18).x <= 1145,
             `${layout.id} 右上传送门基座`);
         assert.ok(moveInArena(layout, 400, 540, -260, 0, 18).x >= 272,
             `${layout.id} 左下遗迹石台`);
@@ -223,7 +307,7 @@ test('第三章左下培养罐的外凸底座挡住横向行走', () => {
 test('第五章左侧装甲墙外凸顶面挡住角色脚底并保留上方通路', () => {
     for (const layout of arenasForChapter(5)) {
         const point = moveInArena(layout, 400, 390, -360, 0, 18);
-        assert.ok(point.x >= 185, `${layout.id} 装甲墙外凸顶面：${point.x}`);
+        assert.ok(point.x >= 180, `${layout.id} 装甲墙外凸顶面：${point.x}`);
         assert.equal(isArenaFree(layout, 180, 300, 18), true,
             `${layout.id} 装甲墙上方仍可通行`);
     }
@@ -247,9 +331,9 @@ test('第四章左下遗迹上段让出可见空地，下段底座仍挡住角�
             upper = moveInArena(edges, upper.x, upper.y, -2, 0, 16);
             lower = moveInArena(edges, lower.x, lower.y, -2, 0, 16);
         }
-        assert.ok(upper.x >= 204 && upper.x <= 216,
+        assert.ok(upper.x >= 210 && upper.x <= 222,
             `${layout.id} 上段走到石块外沿而非被空地挡住：${upper.x}`);
-        assert.ok(lower.x >= 269 && lower.x <= 279,
+        assert.ok(lower.x >= 310 && lower.x <= 322,
             `${layout.id} 下段底座仍挡住角色：${lower.x}`);
         assert.equal(isArenaFree(edges, 230, 480, 16), true,
             `${layout.id} 石块旁的可见空地开放`);
@@ -264,11 +348,11 @@ test('第二章左下炉台按阶梯外形开放空地并挡住下方机座', ()
             for (let i = 0; i < 180; i++) point = moveInArena(edges, point.x, point.y, -2, 0, 16);
             return point.x;
         });
-        assert.ok(stops[0] >= 166 && stops[0] <= 178,
+        assert.ok(stops[0] >= 222 && stops[0] <= 234,
             `${layout.id} 上段地面可走到炉台外沿：${stops[0]}`);
-        assert.ok(stops[1] >= 228 && stops[1] <= 240,
+        assert.ok(stops[1] >= 232 && stops[1] <= 244,
             `${layout.id} 中段机座挡住角色：${stops[1]}`);
-        assert.ok(stops[2] >= 257 && stops[2] <= 267,
+        assert.ok(stops[2] >= 314 && stops[2] <= 326,
             `${layout.id} 下段管线挡住角色：${stops[2]}`);
     }
 });
@@ -278,8 +362,8 @@ test('第六章左侧断框与核心之间的碎石不让角色踩上去', () =>
         const edges = { ...layout, obstacles: [] };
         const upper = moveInArena(edges, 400, 430, -360, 0, 18);
         const lower = moveInArena(edges, 400, 450, -360, 0, 18);
-        assert.ok(upper.x >= 255, `${layout.id} 断框下沿碎石：${upper.x}`);
-        assert.ok(lower.x >= 255, `${layout.id} 核心上沿碎石：${lower.x}`);
+        assert.ok(upper.x >= 200, `${layout.id} 断框下沿碎石：${upper.x}`);
+        assert.ok(lower.x >= 215, `${layout.id} 核心上沿碎石：${lower.x}`);
         assert.equal(isArenaFree(edges, 300, 430, 18), true,
             `${layout.id} 碎石右侧仍可通行`);
     }
@@ -293,18 +377,18 @@ test('第六章左下核心边界按碎石外形开放中段空地', () => {
             for (let i = 0; i < 180; i++) point = moveInArena(edges, point.x, point.y, -2, 0, 16);
             return point.x;
         });
-        assert.ok(stops[0] >= 255 && stops[0] <= 270,
+        assert.ok(stops[0] >= 234 && stops[0] <= 246,
             `${layout.id} 上段仍挡住碎石：${stops[0]}`);
-        assert.ok(stops[1] >= 268 && stops[1] <= 280,
+        assert.ok(stops[1] >= 270 && stops[1] <= 282,
             `${layout.id} 中段可走到碎石外沿：${stops[1]}`);
-        assert.ok(stops[2] >= 285 && stops[2] <= 295,
+        assert.ok(stops[2] >= 316 && stops[2] <= 328,
             `${layout.id} 下段宽底座仍挡住角色：${stops[2]}`);
     }
 });
 
 test('第四章遗迹与第六章核心的左侧碎块挡住从上方走来的玩家脚底', () => {
     // 按运行时玩家半径与连续帧的小步长推进，避免一次大位移提前停住而误判通过。
-    for (const [chapter, x, visualTop] of [[4, 120, 430], [6, 240, 435]]) {
+    for (const [chapter, x, visualTop] of [[4, 120, 450], [6, 240, 516]]) {
         for (const layout of arenasForChapter(chapter)) {
             const edges = { ...layout, obstacles: [] };
             assert.equal(isArenaFree(edges, x, 360, 16), true, `${layout.id} 从合法地面起步`);
@@ -333,7 +417,7 @@ test('第二章右侧炉台斜坡挡住脚底且保留上方地面', () => {
 });
 
 test('左上外凸炉台、培养罐与支架碎石不被脚底踩入', () => {
-    for (const [chapter, minX] of [[2, 208], [3, 213], [6, 228]]) {
+    for (const [chapter, minX] of [[2, 208], [3, 208], [6, 185]]) {
         for (const layout of arenasForChapter(chapter)) {
             const point = moveInArena(layout, 450, 130, -400, 0, 18);
             assert.ok(point.x >= minX, `${layout.id} 左上建筑外角挡住横向行走`);
@@ -345,127 +429,61 @@ test('左上外凸炉台、培养罐与支架碎石不被脚底踩入', () => {
 
 test('背景岗哨和遗迹的上沿不被角色脚底踩入', () => {
     const guardrail = moveInArena(arena, 145, 220, 0, 180, 18);
-    assert.ok(guardrail.y + 37 <= 385, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);
+    assert.ok(guardrail.y + 37 <= 390, `第一章岗哨脚底停在上沿：${guardrail.y + 37}`);
     const ruin = moveInArena(arenaForChapter(4), 150, 360, 0, 200, 18);
     assert.ok(ruin.y + 37 <= 470, `第四章遗迹脚底停在上沿：${ruin.y + 37}`);
 });
 
-test('第一章两套布局的三个残骸与玩家脚底保留可见余量', () => {
-    // 上沿来自当前透明素材在游戏尺寸下的不透明像素，而非逻辑矩形自身。
-    for (const layout of arenasForChapter(1)) {
-        for (const prop of layout.obstacles) {
-            const artTop = prop.y - prop.visualH / 2 + ARENA_ART_SOLID_TOP[prop.artKey] * prop.visualH;
-            const startY = Math.max(125, prop.y - 120);
-            assert.equal(isArenaFree(layout, prop.x, startY, 16), true, `${layout.id}/${prop.id} 的起点可通行`);
-            const point = moveInArena(layout, prop.x, startY, 0, 250, 16);
-            assert.ok(point.y > startY + 20, `${layout.id}/${prop.id} 从上方走到残骸边缘`);
-            assert.ok(point.y + 36 <= artTop - 2, `${layout.id}/${prop.id} 的脚底与素材上沿保留可见余量`);
-            assert.ok(point.y + 36 >= artTop - 25, `${layout.id}/${prop.id} 没有过早停步`);
-        }
+test('六章独立残骸均有与贴图匹配的轮廓碰撞数据', () => {
+    for (const layout of CHAPTER_ARENAS) for (const prop of layout.obstacles) {
+        const rows = ARENA_COLLISION_MASKS[prop.artKey];
+        assert.equal(rows.length, 16, `${prop.artKey} 有完整轮廓`);
+        assert.ok(rows.some(row => parseInt(row, 16) !== 0), `${prop.artKey} 有实体像素`);
+        assert.equal(isArenaFree(layout, prop.x, prop.y, 16), false,
+            `${layout.id}/${prop.id} 正中央仍为实体`);
     }
 });
 
-test('六章全部独立残骸的实体像素上沿挡住玩家脚底', () => {
-    for (const layout of CHAPTER_ARENAS) {
-        for (const prop of layout.obstacles) {
-            const opaqueTopFraction = ARENA_ART_SOLID_TOP[prop.artKey];
-            assert.ok(Number.isFinite(opaqueTopFraction), `${prop.artKey} 有实体像素边界数据`);
-            const artTop = prop.y - prop.visualH / 2 + opaqueTopFraction * prop.visualH;
-            const startY = Math.max(125, prop.y - 120);
-            // 个别北侧残骸嵌在背景建筑下方，正上方起点本身是建筑实体。
-            if (!isArenaFree(layout, prop.x, startY, 16)) {
-                assert.ok(layout.boundaries.some(b => overlapsObstacle(prop.x, startY, 16, b)),
-                    `${layout.id}/${prop.id} 的上方由背景建筑封住`);
-                continue;
-            }
-            const point = moveInArena(layout, prop.x, startY, 0, 250, 16);
-            assert.ok(point.y > startY + 20, `${layout.id}/${prop.id} 从合法起点抵达残骸`);
-            assert.ok(point.y + 36 <= artTop + 1,
-                `${layout.id}/${prop.id} 脚底 ${point.y + 36} 不压入上沿 ${artTop}`);
-            assert.ok(point.y + 36 >= artTop - 25,
-                `${layout.id}/${prop.id} 脚底没有离上沿过远`);
-        }
+test('斜向矮路障的透明角可走，实体斜边挡住行走与冲刺', () => {
+    const prop = arena.obstacles.find(item => item.kind === 'barrier');
+    const isolated = { id: 'barrier-shape', chapter: 0, obstacles: [prop] };
+    const cell = (column, row) => ({
+        x: prop.x - prop.visualW / 2 + (column + 0.5) * prop.visualW / 32,
+        y: prop.y - prop.visualH / 2 + (row + 0.5) * prop.visualH / 16 - 20,
+    });
+    for (const [column, row] of [[3, 6], [2, 8], [25, 12]]) {
+        const point = cell(column, row);
+        assert.equal(isArenaFree(isolated, point.x, point.y, 1), true,
+            `透明空地 ${column},${row} 可走`);
     }
+    for (const [column, row] of [[12, 6], [18, 8], [10, 12]]) {
+        const point = cell(column, row);
+        assert.equal(isArenaFree(isolated, point.x, point.y, 1), false,
+            `可见路障 ${column},${row} 挡人`);
+    }
+    const row = cell(0, 8);
+    const walked = moveInArena(isolated, row.x, row.y, prop.visualW * 1.5, 0, 16);
+    const dashed = dashInArena(isolated, row.x, row.y, prop.visualW * 1.5, 0, 16);
+    assert.ok(walked.x < prop.x, '行走停在可见斜边前');
+    assert.ok(dashed.x < prop.x, '冲刺沿途命中斜边，不穿入路障');
+    assert.equal(isArenaFree(isolated, dashed.x, dashed.y, 16), true);
 });
 
-test('传送门、机械和反应堆的落地侧角不让玩家从上方踩入', () => {
-    // 这些列在主矩形外；上下限按实机贴图侧角的实体像素带留几像素余量。
-    const cases = [
-        ['ch4-rift', 'west-gate', 353, 263, 270],
-        ['ch5-magnetic-rail', 'west-mech', 203, 275, 284],
-        ['ch5-magnetic-rail', 'west-mech', 377, 275, 284],
-        ['ch5-magnetic-rail', 'east-mech', 771, 360, 372],
-        ['ch5-armored-islands', 'north-mech', 753, 255, 266],
-        ['ch5-armored-islands', 'north-mech', 927, 255, 266],
-        ['ch5-magnetic-rail', 'south-rail', 423, 508, 518],
-        ['ch6-final-core', 'west-reactor', 349, 271, 279],
-    ];
-    for (const [layoutId, propId, x, minFoot, maxFoot] of cases) {
-        const layout = CHAPTER_ARENAS.find(a => a.id === layoutId);
-        const prop = layout.obstacles.find(o => o.id === propId);
-        const startY = Math.max(110, prop.y - prop.visualH / 2 - 60);
-        assert.equal(isArenaFree(layout, x, startY, 16), true, `${layoutId}/${propId} 从地面起步`);
-        let y = startY;
-        for (let i = 0; i < 180; i++) {
-            const next = moveInArena(layout, x, y, 0, 2, 16);
-            if (next.y === y) break;
-            y = next.y;
-        }
-        const foot = y + 36;
-        assert.ok(foot > startY + 40, `${layoutId}/${propId} 走到了侧角前`);
-        assert.ok(foot >= minFoot && foot <= maxFoot,
-            `${layoutId}/${propId} 脚底 ${foot} 停在贴图侧角前 ${minFoot}–${maxFoot}`);
+test('断墙和磁轨按各自斜向轮廓阻挡，不封死透明角', () => {
+    for (const key of ['arena_wall_ch1', 'arena_rail_ch5']) {
+        const prop = CHAPTER_ARENAS.flatMap(layout => layout.obstacles).find(item => item.artKey === key);
+        const isolated = { id: key, chapter: 0, obstacles: [prop] };
+        const at = (column, row) => ({
+            x: prop.x - prop.visualW / 2 + (column + 0.5) * prop.visualW / 32,
+            y: prop.y - prop.visualH / 2 + (row + 0.5) * prop.visualH / 16 - 20,
+        });
+        const open = at(2, 3), blocked = at(22, 7);
+        assert.equal(isArenaFree(isolated, open.x, open.y, 1), true, `${key} 透明角可走`);
+        assert.equal(isArenaFree(isolated, blocked.x, blocked.y, 1), false, `${key} 实体边挡人`);
+        const start = at(0, 8);
+        const dash = dashInArena(isolated, start.x, start.y, prop.visualW * 1.5, 0, 16);
+        assert.ok(dash.x < prop.x, `${key} 冲刺不能穿过实体`);
     }
-});
-
-test('机械、门环和磁轨的斜向贴边停在实体像素前', () => {
-    const cases = [
-        ['ch4-rift', 'west-gate', -45, 20, 353, 270],
-        ['ch5-armored-islands', 'north-mech', -165, 0, 755, 266],
-        ['ch5-magnetic-rail', 'south-rail', -165, 20, 423, 518],
-    ];
-    for (const [layoutId, propId, degrees, offset, edgeX, maxFoot] of cases) {
-        const layout = CHAPTER_ARENAS.find(a => a.id === layoutId);
-        const prop = layout.obstacles.find(o => o.id === propId);
-        const angle = degrees * Math.PI / 180;
-        const vx = Math.cos(angle), vy = Math.sin(angle);
-        const distance = Math.max(prop.visualW, prop.visualH) / 2 + 75;
-        let x = prop.x + vx * distance - vy * offset;
-        let y = prop.y + vy * distance + vx * offset;
-        assert.equal(isArenaFree(layout, x, y, 16), true, `${layoutId}/${propId} 从合法地面起步`);
-        let nearest = Infinity, footAtEdge = -Infinity;
-        for (let i = 0; i < 180; i++) {
-            const next = moveInArena(layout, x, y, -vx * 2, -vy * 2, 16);
-            x = next.x; y = next.y;
-            const separation = Math.abs(x - edgeX);
-            if (separation <= 3) {
-                nearest = Math.min(nearest, separation);
-                footAtEdge = Math.max(footAtEdge, y + 36);
-            }
-        }
-        assert.ok(nearest <= 3, `${layoutId}/${propId} 确实到达侧角`);
-        assert.ok(footAtEdge <= maxFoot, `${layoutId}/${propId} 斜向脚底 ${footAtEdge} 不压入实体`);
-    }
-});
-
-test('第六章第二套反应堆左缘挡住斜向贴边且保留外侧通路', () => {
-    const layout = CHAPTER_ARENAS.find(a => a.id === 'ch6-broken-frame');
-    let point = { x: 753, y: 136 };
-    assert.equal(isArenaFree(layout, point.x, point.y, 16), true);
-    for (let i = 0; i < 150; i++) {
-        point = moveInArena(layout, point.x, point.y, 2, 2, 16);
-    }
-    assert.ok(point.x >= 789 && point.x <= 793, `玩家已贴到反应堆左缘：${point.x}`);
-    assert.ok(point.y + 36 <= 258, `脚底未沿侧角滑入贴图：${point.y + 36}`);
-    const bypass = moveInArena(layout, 750, 136, 0, 160, 16);
-    assert.ok(bypass.y >= 290, `残骸左侧地面仍可走：${bypass.y}`);
-});
-
-test('玩家沿断墙滑动且不会穿过薄墙', () => {
-    const next = moveInArena(arena, 172, 280, 180, 30, 18);
-    assert.equal(isArenaFree(arena, next.x, next.y, 18), true);
-    assert.ok(next.x < 220, `横向被挡：${next.x}`);
-    assert.ok(next.y > 280, `贴墙可沿纵向滑动：${next.y}`);
 });
 
 test('刷怪和掉落能从残骸内部移到合法位置', () => {
@@ -475,9 +493,74 @@ test('刷怪和掉落能从残骸内部移到合法位置', () => {
     }
 });
 
-test('高大残骸扫掠挡住快弹，低矮路障允许弹体穿过', () => {
+test('高大残骸与低矮路障都挡住扫掠快弹', () => {
     assert.equal(firstArenaBulletHit(arena, 190, 280, 500, 280, 5)?.id, 'west-wall');
-    assert.equal(firstArenaBulletHit(arena, 390, 544, 520, 544, 5), undefined);
+    assert.equal(firstArenaBulletHit(arena, 390, 544, 520, 544, 5)?.id, 'south-barrier');
+});
+
+test('所有独立残骸的可见实体挡住双向子弹，废车投影不挡路', () => {
+    const seen = new Set();
+    for (const prop of CHAPTER_ARENAS.flatMap(layout => layout.obstacles)) {
+        if (seen.has(prop.artKey)) continue;
+        seen.add(prop.artKey);
+        const isolated = { id: prop.id, chapter: 0, obstacles: [prop] };
+        const left = prop.x - prop.visualW, right = prop.x + prop.visualW;
+        assert.equal(firstArenaBulletHit(isolated, left, prop.y, right, prop.y, 3)?.id, prop.id,
+            `${prop.artKey} 从左侧挡弹`);
+        assert.equal(firstArenaBulletHit(isolated, right, prop.y, left, prop.y, 3)?.id, prop.id,
+            `${prop.artKey} 从右侧挡弹`);
+        assert.equal(arenaLineClear(isolated, left, prop.y, right, prop.y), false);
+    }
+    assert.equal(seen.size, 13);
+    const wreck = CHAPTER_ARENAS.flatMap(layout => layout.obstacles)
+        .find(prop => prop.artKey === 'arena_wreck_ch1');
+    const isolated = { id: 'wreck-shadow', chapter: 0, obstacles: [wreck] };
+    const x = wreck.x - wreck.visualW / 2 + 20.5 * wreck.visualW / 32;
+    const y = wreck.y - wreck.visualH / 2 + 14.5 * wreck.visualH / 16;
+    assert.equal(isArenaFree(isolated, x, y - 20, 1), true, '废车右下投影区域可走');
+    assert.equal(firstArenaBulletHit(isolated, x, y, x + 1, y, 0), undefined,
+        '投影本身不挡子弹');
+});
+
+test('悬空横杆只挡弹，右上建筑按斜边留出空路', () => {
+    const edges = arenaWithObstacles(1, []);
+    assert.equal(isArenaFree(edges, 120, 270, 16), true);
+    assert.equal(firstArenaBulletHit(edges, 70, 292, 170, 292, 0)?.id, 'left-guardrail-bar');
+    assert.equal(isArenaFree(edges, 1140, 200, 16), true);
+    assert.equal(isArenaFree(edges, 1240, 180, 16), false);
+    assert.equal(firstArenaBulletHit(edges, 1100, 180, 1260, 180, 0)?.id, 'upper-right-building');
+});
+
+test('爆炸范围内隔着残骸的目标不会受到远程伤害', () => {
+    const barrier = arena.obstacles.find(prop => prop.kind === 'barrier');
+    const isolated = { id: 'blast-cover', chapter: 0, obstacles: [barrier] };
+    const source = { x: barrier.x - 110, y: barrier.y };
+    const open = { x: source.x + 12, y: source.y, alive: true, damage: 0,
+        takeDamage(amount) { this.damage += amount; } };
+    const covered = { x: barrier.x + 110, y: barrier.y, alive: true, damage: 0,
+        takeDamage(amount) { this.damage += amount; } };
+    const game = { enemies: [open, covered], particles: { explode() {} },
+        audio: { playSfx() {} }, screenShake: { shake() {} },
+        arenaLineClear: (ax, ay, bx, by) => arenaLineClear(isolated, ax, ay, bx, by) };
+    spawnExplosion({}, source.x, source.y, 30, 300, game);
+    assert.equal(open.damage, 30);
+    assert.equal(covered.damage, 0);
+});
+
+test('直线鞭击技能命中掩体前的敌人，但不会隔墙伤人', () => {
+    const barrier = arena.obstacles.find(prop => prop.kind === 'barrier');
+    const isolated = { id: 'whip-cover', chapter: 0, obstacles: [barrier] };
+    const player = { x: barrier.x - 110, y: barrier.y, facingX: 1, facingY: 0 };
+    const enemy = x => ({ x, y: barrier.y, radius: 12, alive: true, dead: false,
+        damage: 0, takeDamage(amount) { this.damage += amount; } });
+    const near = enemy(player.x + 20), behind = enemy(barrier.x + 60);
+    const game = { enemies: [near, behind], turrets: [], input: { mouse: { active: false } },
+        particles: { hexActivate() {} },
+        arenaLineClear: (ax, ay, bx, by) => arenaLineClear(isolated, ax, ay, bx, by) };
+    CHARACTERS.graf.qSkill(player, game);
+    game.turrets[0].update(0.02, game);
+    assert.equal(near.damage, 20);
+    assert.equal(behind.damage, 0);
 });
 
 test('敌人追击被断墙隔开时取得合法绕行角点', () => {

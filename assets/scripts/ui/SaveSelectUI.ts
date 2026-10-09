@@ -87,7 +87,6 @@ export class SaveSelectUI {
         for (const view of this._cards) {
             const summary = slots[view.slot]!;
             view.state = 'normal';
-            view.card.setScale(new Vec3(1, 1, 1));
             this._drawCard(view, summary);
             view.deleteBtn.active = summary.exists;
             view.deleteArmed = false;
@@ -139,8 +138,10 @@ export class SaveSelectUI {
         const g = card.addComponent(Graphics);
         const body = new Node('Body'); body.setParent(card);
         body.addComponent(UITransform).setContentSize(300, 400);
-        registerKeyboardFocus(body, 300, 400);
-        body.on(Node.EventType.TOUCH_END, () => {
+        // 文案与删除键都是卡片的子节点，选档监听必须在卡片根节点上。
+        // 只监听 Body 会让点击文案落到兄弟节点，整片区域看起来像“点了没反应”。
+        registerKeyboardFocus(card, 300, 400);
+        card.on(Node.EventType.TOUCH_END, () => {
             this._disarmDelete();
             this._callbacks.onButtonSfx();
             this._callbacks.onSlotPicked(slot);
@@ -186,11 +187,11 @@ export class SaveSelectUI {
             slot, card, graphics: g, body, lines, deleteBtn, deleteLabel,
             deleteArmed: false, state: 'normal',
         };
-        body.on(Node.EventType.MOUSE_ENTER, () => this._setCardState(view, 'hover'));
-        body.on(Node.EventType.MOUSE_LEAVE, () => this._setCardState(view, 'normal'));
-        body.on(Node.EventType.TOUCH_START, () => this._setCardState(view, 'pressed'));
-        body.on(Node.EventType.TOUCH_END, () => this._setCardState(view, 'hover'));
-        body.on(Node.EventType.TOUCH_CANCEL, () => this._setCardState(view, 'normal'));
+        card.on(Node.EventType.MOUSE_ENTER, () => this._setCardState(view, 'hover'));
+        card.on(Node.EventType.MOUSE_LEAVE, () => this._setCardState(view, 'normal'));
+        card.on(Node.EventType.TOUCH_START, () => this._setCardState(view, 'pressed'));
+        card.on(Node.EventType.TOUCH_END, () => this._setCardState(view, 'hover'));
+        card.on(Node.EventType.TOUCH_CANCEL, () => this._setCardState(view, 'normal'));
         deleteBtn.on(Node.EventType.TOUCH_END, (ev: any) => {
             // 拦截冒泡：删除点击不能落进卡片 body 触发选档
             ev.propagationStopped = true;
@@ -242,12 +243,10 @@ export class SaveSelectUI {
         styleLabel(hl);
     }
 
-    /** 存档卡与地图卡共用轻微悬停/按下反馈；概览文字保持独立节点。 */
+    /** 存档卡悬停/按下仅重绘边框，点击热区不随反馈变化。 */
     private _setCardState(view: SlotCardView, state: SlotCardView['state']): void {
         if (view.state === state) return;
         view.state = state;
-        const scale = state === 'pressed' ? 0.99 : state === 'hover' ? 1.012 : 1;
-        view.card.setScale(new Vec3(scale, scale, 1));
         this._drawCardSkin(view);
     }
 

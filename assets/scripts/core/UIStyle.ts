@@ -1,7 +1,7 @@
 // ============================================================
 //  UIStyle.ts — Hexblast 代码原生 UI 视觉组件
 // ============================================================
-import { Color, Component, Graphics, Node, UITransform, Vec3 } from 'cc';
+import { Color, Component, Graphics, Node, UITransform } from 'cc';
 
 export interface HexButtonSkin {
     setDisabled(disabled: boolean): void;
@@ -144,12 +144,10 @@ export function applyCombatButtonSkin(node: Node, w: number, h: number): void {
         g.fillColor = new Color(8, 24, 36, 246);
         g.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, 3); g.fill();
     };
-    draw(); attachEnableRedraw(node, () => { hover = false; node.setScale(Vec3.ONE); draw(); });
+    draw(); attachEnableRedraw(node, () => { hover = false; draw(); });
     node.on(Node.EventType.MOUSE_ENTER, () => { hover = true; draw(); });
     node.on(Node.EventType.MOUSE_LEAVE, () => { hover = false; draw(); });
-    node.on(Node.EventType.TOUCH_START, () => node.setScale(new Vec3(0.96, 0.96, 1)));
-    node.on(Node.EventType.TOUCH_END, () => node.setScale(Vec3.ONE));
-    node.on(Node.EventType.TOUCH_CANCEL, () => node.setScale(Vec3.ONE));
+    // 点击中不缩放节点：皮肤可重绘，点击热区始终与画出的按钮重合。
     keyboardFocusTargets.set(node, {
         isDisabled: () => false,
         setFocused(value: boolean) { hover = value; draw(); },
@@ -261,25 +259,23 @@ export function applyHexButtonSkin(
         }
     };
 
-    const setState = (next: ButtonVisualState, scale: number) => {
+    const setState = (next: ButtonVisualState) => {
         if (disabled && next !== 'disabled') return;
         state = next;
-        node.setScale(new Vec3(scale, scale, 1));
         draw();
     };
 
-    node.on(Node.EventType.MOUSE_ENTER, () => setState('hover', 1.025));
-    node.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal', 1));
-    node.on(Node.EventType.TOUCH_START, () => setState('pressed', 0.975));
-    node.on(Node.EventType.TOUCH_END, () => setState(disabled ? 'disabled' : 'hover', disabled ? 1 : 1.025));
-    node.on(Node.EventType.TOUCH_CANCEL, () => setState(disabled ? 'disabled' : 'normal', 1));
+    node.on(Node.EventType.MOUSE_ENTER, () => setState('hover'));
+    node.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal'));
+    node.on(Node.EventType.TOUCH_START, () => setState('pressed'));
+    node.on(Node.EventType.TOUCH_END, () => setState(disabled ? 'disabled' : 'hover'));
+    node.on(Node.EventType.TOUCH_CANCEL, () => setState(disabled ? 'disabled' : 'normal'));
 
     draw();
     // 页面激活时皮肤可能因"隐藏状态下绘制丢失"而不可见，onEnable 强制重绘兜底
     attachEnableRedraw(node, () => {
         state = disabled ? 'disabled' : 'normal';
         focused = false;
-        node.setScale(new Vec3(1, 1, 1));
         draw();
     });
     keyboardFocusTargets.set(node, {
@@ -290,7 +286,7 @@ export function applyHexButtonSkin(
         setDisabled(value: boolean) {
             disabled = value;
             if (disabled) focused = false;
-            setState(value ? 'disabled' : 'normal', 1);
+            setState(value ? 'disabled' : 'normal');
         },
     };
 }
@@ -327,24 +323,22 @@ export function applyHexCardSkin(
             g.stroke();
         }
     };
-    const setState = (next: ButtonVisualState, scale: number) => {
+    const setState = (next: ButtonVisualState) => {
         if (disabled && next !== 'disabled') return;
         state = next;
-        node.setScale(new Vec3(scale, scale, 1));
         draw();
     };
-    node.on(Node.EventType.MOUSE_ENTER, () => setState('hover', 1.012));
-    node.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal', 1));
-    hitArea.on(Node.EventType.MOUSE_ENTER, () => setState('hover', 1.012));
-    hitArea.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal', 1));
-    node.on(Node.EventType.TOUCH_START, () => setState('pressed', 0.99));
-    node.on(Node.EventType.TOUCH_END, () => setState(disabled ? 'disabled' : 'hover', disabled ? 1 : 1.012));
-    node.on(Node.EventType.TOUCH_CANCEL, () => setState(disabled ? 'disabled' : 'normal', 1));
+    node.on(Node.EventType.MOUSE_ENTER, () => setState('hover'));
+    node.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal'));
+    hitArea.on(Node.EventType.MOUSE_ENTER, () => setState('hover'));
+    hitArea.on(Node.EventType.MOUSE_LEAVE, () => setState(disabled ? 'disabled' : 'normal'));
+    node.on(Node.EventType.TOUCH_START, () => setState('pressed'));
+    node.on(Node.EventType.TOUCH_END, () => setState(disabled ? 'disabled' : 'hover'));
+    node.on(Node.EventType.TOUCH_CANCEL, () => setState(disabled ? 'disabled' : 'normal'));
     draw();
     attachEnableRedraw(node, () => {
         state = disabled ? 'disabled' : 'normal';
         focused = false;
-        node.setScale(new Vec3(1, 1, 1));
         draw();
     });
     keyboardFocusTargets.set(node, {
@@ -355,7 +349,7 @@ export function applyHexCardSkin(
         setDisabled(value: boolean) {
             disabled = value;
             if (disabled) focused = false;
-            setState(value ? 'disabled' : 'normal', 1);
+            setState(value ? 'disabled' : 'normal');
         },
     };
 }

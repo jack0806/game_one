@@ -825,8 +825,12 @@ export class EnemyBase {
                 player.takeDamage(this._chargeDmg, game);
                 if (this._chargePush > 0) {
                     const [pdx, pdy] = Vec.normalize(this._chargeVx, this._chargeVy);
-                    player.x = clamp(player.x + pdx * this._chargePush, player.radius ?? 16, CANVAS_W - (player.radius ?? 16));
-                    player.y = clamp(player.y + pdy * this._chargePush, player.radius ?? 16, PLAYFIELD_BOTTOM - (player.radius ?? 16));
+                    const r = player.radius ?? 16;
+                    const next = game.moveInArena?.(player.x, player.y,
+                        pdx * this._chargePush, pdy * this._chargePush, r)
+                        ?? { x: clamp(player.x + pdx * this._chargePush, r, CANVAS_W - r),
+                             y: clamp(player.y + pdy * this._chargePush, r, PLAYFIELD_BOTTOM - r) };
+                    player.x = next.x; player.y = next.y;
                     game.particles?.impact?.(player.x, player.y, Math.atan2(pdy, pdx), 0.55, this.glowColor);
                 }
                 this._chargeDmg = 0;
@@ -1567,8 +1571,11 @@ export class EnemyBase {
             this.buffSpeedMult = 0.45;
             if (this.miniSkillTimer <= 1.8) {
                 const [dx, dy] = Vec.normalize(this.x - player.x, this.y - player.y);
-                player.x = clamp(player.x + dx * 95 * dt, player.radius ?? 16, CANVAS_W - (player.radius ?? 16));
-                player.y = clamp(player.y + dy * 95 * dt, player.radius ?? 16, PLAYFIELD_BOTTOM - (player.radius ?? 16));
+                const r = player.radius ?? 16;
+                const next = game.moveInArena?.(player.x, player.y, dx * 95 * dt, dy * 95 * dt, r)
+                    ?? { x: clamp(player.x + dx * 95 * dt, r, CANVAS_W - r),
+                         y: clamp(player.y + dy * 95 * dt, r, PLAYFIELD_BOTTOM - r) };
+                player.x = next.x; player.y = next.y;
             }
             if (this.miniSkillTimer <= 0) { this.miniSkillState = ''; this.buffSpeedMult = 1; }
             return;

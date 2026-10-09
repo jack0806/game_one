@@ -38,7 +38,6 @@ const { ccclass } = _decorator;
 export interface TouchInputBridge {
     setStick(x: number, y: number): void;
     fireSkillPressed(slot: 'q' | 'e' | 'r'): void;
-    fireJumpPressed(): void;
 }
 
 type SkillSlot = 'q' | 'e' | 'r';
@@ -87,7 +86,6 @@ export class TouchControls extends Component {
     private _joyHomeY = -190;
     /** 右上角系统按钮（随可见宽度重排）。 */
     private _topRightBtns: Node[] = [];
-    private _jumpButton?: Node;
     /** 竖屏提示遮罩（触屏端）。 */
     private _rotateHint!: Node;
     private _rotateContent!: Node;
@@ -133,7 +131,6 @@ export class TouchControls extends Component {
         this._stickZone.active = !on;
         this._joyRoot.active = !on;
         for (const btn of this._skillBtns) btn.node.active = !on;
-        if (this._jumpButton) this._jumpButton.active = !on;
     }
 
     onLoad() {
@@ -149,7 +146,6 @@ export class TouchControls extends Component {
         if (this._touchMode) {
             this._buildStickZone();
             this._buildSkillButtons();
-            this._buildJumpButton();
             this._buildRotateHint();
             // 移动端浏览器：首次触摸请求全屏并锁定横屏（需在用户手势内触发）
             input.on(Input.EventType.TOUCH_START, this._tryFullscreen, this);
@@ -220,7 +216,6 @@ export class TouchControls extends Component {
             ));
         }
         // 竖屏遮罩按实际可见高度铺满；横竖切换时同步调整文案与触摸热区。
-        this._jumpButton?.setPosition(new Vec3(right - 390, -285 + (this._testRoomMode ? 110 : 0), 0));
         if (this._rotateHint) {
             const height = visibleDesignHeight();
             this._rotateHint.getComponent(UITransform)!.setContentSize(right * 2, height);
@@ -391,15 +386,6 @@ export class TouchControls extends Component {
         return n;
     }
 
-    private _buildJumpButton(): void {
-        const n = this._mkHintButton(this.node, '跳跃', 0, 0, 96, 48);
-        this._jumpButton = n;
-        n.on(Node.EventType.TOUCH_START, () => {
-            this._input?.fireJumpPressed();
-            this.onButtonSfx?.();
-        }, this);
-    }
-
     /**
      * 触摸时进入全屏并锁定横屏。浏览器要求这两个调用发生在用户手势内，
      * 所以任意首次点按（含菜单按钮）都会触发；不支持的环境静默跳过。
@@ -482,12 +468,9 @@ export class TouchControls extends Component {
 
             // 王者习惯：按下即出手（TOUCH_START），不是抬起才触发
             n.on(Node.EventType.TOUCH_START, () => {
-                n.setScale(new Vec3(0.92, 0.92, 1));
                 this._input?.fireSkillPressed(slot);
                 this.onButtonSfx?.();
             }, this);
-            n.on(Node.EventType.TOUCH_END,   () => n.setScale(Vec3.ONE), this);
-            n.on(Node.EventType.TOUCH_CANCEL, () => n.setScale(Vec3.ONE), this);
         }
     }
 

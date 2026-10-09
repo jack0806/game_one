@@ -482,7 +482,6 @@ export class PlayerController extends Component {
         // 移动
         this.tickMovement(dt, input, game);
         // 跳跃使用独立的起跳/腾空/落地姿势，长按不会不断重置起跳帧。
-        if (input.isJumpPressed?.() && !this.actorAnimation.locked) this.playVisualAction('jump');
         this.updateVisualAnimation(dt);
 
         // 普攻

@@ -77,7 +77,8 @@ export function spawnExplosion(player: any, x: number, y: number, dmg: number, r
     game.audio?.playSfx?.('explode');
     game.screenShake.shake(6, 0.2);
     for (const e of game.enemies) {
-        if (e.alive && Vec.dist(e.x, e.y, x, y) < radius) {
+        if (e.alive && Vec.dist(e.x, e.y, x, y) < radius
+            && game.arenaLineClear?.(x, y, e.x, e.y) !== false) {
             e.takeDamage(dmg, player, game);
         }
     }

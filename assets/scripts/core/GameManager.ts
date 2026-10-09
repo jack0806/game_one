@@ -19,8 +19,9 @@ import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { CHAPTERS, MUTATIONS, starterPack } from '../data/WaveData';
 import { rollEquipmentDrop, equipmentLabel, equipmentSellValue, applyEquipmentToStats } from '../data/EquipmentDB';
-import { ArenaLayout, arenasForChapter, EMPTY_ARENA } from '../data/ChapterArenaDB';
-import { arenaLineClear, arenaSteerTarget, firstArenaBulletHit, isArenaFree, moveInArena, safeArenaPoint } from './ArenaGeometry';
+import { ArenaLayout, EMPTY_ARENA } from '../data/ChapterArenaDB';
+import { arenaLineClear, arenaSteerTarget, dashInArena, firstArenaBulletHit, isArenaFree, moveInArena,
+    randomArenaForChapter, safeArenaPoint } from './ArenaGeometry';
 import { UNIT_CATALOG } from '../data/BossDB';
 import { PlayerController } from '../entities/PlayerController';
 import { EnemyBase }         from '../entities/EnemyBase';
@@ -759,8 +760,7 @@ export class GameManager extends Component {
         // 只在进入新章节时抽布局；同章波次/窗口变化重画时维持原布局。
         const chapter = this._chapter + 1;
         if (this._arena.chapter !== chapter) {
-            const layouts = arenasForChapter(chapter);
-            this._arena = layouts.length ? layouts[Rng.int(0, layouts.length - 1)] : EMPTY_ARENA;
+            this._arena = randomArenaForChapter(chapter, Rng.int);
         }
         this._drawArenaProps();
         this._fitBackgroundToVisible();
@@ -1689,8 +1689,9 @@ export class GameManager extends Component {
                     const dist = Vec.dist(pole.x, pole.y, p.x, p.y);
                     if (dist < 150 && dist > 1) {
                         const force = (n === 0 ? -1 : 1) * 55 * dt;
-                        p.x = clamp(p.x + (p.x - pole.x) / dist * force, p.radius, CANVAS_W - p.radius);
-                        p.y = clamp(p.y + (p.y - pole.y) / dist * force, p.radius, PLAYFIELD_BOTTOM - p.radius);
+                        const next = this.moveInArena(p.x, p.y, (p.x - pole.x) / dist * force,
+                            (p.y - pole.y) / dist * force, p.radius);
+                        p.x = next.x; p.y = next.y;
                     }
                     if (dist < 24 + p.radius && m.hitCd <= 0) { m.hitCd = 1; hurt(10, n === 0 ? '蓝极灼热' : '品红灼热'); }
                 }
@@ -1716,7 +1717,9 @@ export class GameManager extends Component {
                 for (const n of m.nodes) if (n.alive) {
                     n.x += n.vx * dt;
                     if (Vec.dist(n.x, n.y, p.x, p.y) < n.radius + p.radius && (n.hitCd ?? 0) <= 0) {
-                        n.hitCd = 1; hurt(26, '铸件列阵'); p.x = clamp(p.x + 45, p.radius, CANVAS_W - p.radius);
+                        n.hitCd = 1; hurt(26, '铸件列阵');
+                        const next = this.moveInArena(p.x, p.y, 45, 0, p.radius);
+                        p.x = next.x; p.y = next.y;
                     }
                     n.hitCd = Math.max(0, (n.hitCd ?? 0) - dt);
                     if (n.x > 500) n.alive = false;
@@ -1737,8 +1740,14 @@ export class GameManager extends Component {
             } else if (m.kind === 'manyfold_mirror') {
                 if (!m.done && m.timer <= 0) {
                     m.done = true;
-                    if (m.vertical) { p.x = CANVAS_W - m.px; boss.x = CANVAS_W - m.bx; }
-                    else { p.y = PLAYFIELD_BOTTOM - m.py; boss.y = PLAYFIELD_BOTTOM - m.by; }
+                    const px = m.vertical ? CANVAS_W - m.px : p.x;
+                    const py = m.vertical ? p.y : PLAYFIELD_BOTTOM - m.py;
+                    const safePlayer = safeArenaPoint(this._arena, px, py, p.radius);
+                    p.x = safePlayer.x; p.y = safePlayer.y;
+                    const bx = m.vertical ? CANVAS_W - m.bx : boss.x;
+                    const by = m.vertical ? boss.y : PLAYFIELD_BOTTOM - m.by;
+                    const safeBoss = safeArenaPoint(this._arena, bx, by, boss.radius);
+                    boss.x = safeBoss.x; boss.y = safeBoss.y;
                     // 折面既是威胁也是解围工具：清除双方落点55px内的地面危险。
                     const endpoints = [[p.x, p.y], [boss.x, boss.y]];
                     this._enemyHazards = this._enemyHazards.filter(z => endpoints.every(([x, y]) => Vec.dist(z.x, z.y, x, y) > 55));
@@ -2308,6 +2317,10 @@ export class GameManager extends Component {
 
         // Player
         this._player.tick(dt, input, this);
+        if (!isArenaFree(this._arena, this._player.x, this._player.y, this._player.radius)) {
+            const safe = safeArenaPoint(this._arena, this._player.x, this._player.y, this._player.radius);
+            this._player.x = safe.x; this._player.y = safe.y;
+        }
         if (this._playerDeathPending) return;
 
         // Enemies
@@ -4238,6 +4251,10 @@ export class GameManager extends Component {
         return moveInArena(this._arena, x, y, dx, dy, radius);
     }
 
+    dashInArena(x: number, y: number, dx: number, dy: number, radius: number) {
+        return dashInArena(this._arena, x, y, dx, dy, radius);
+    }
+
     arenaSteerTarget(x: number, y: number, targetX: number, targetY: number, radius: number) {
         return arenaSteerTarget(this._arena, { x, y }, { x: targetX, y: targetY }, radius);
     }
@@ -4864,7 +4881,8 @@ export class GameManager extends Component {
                 g.audio?.playSfx?.('explode', 0.8);
                 for (const e of g.enemies || []) {
                     if (!e.alive || e.dead) continue;
-                    if (Math.hypot(e.x - hole.x, e.y - hole.y) >= 140) continue;
+                    if (Math.hypot(e.x - hole.x, e.y - hole.y) >= 140
+                        || !g.arenaLineClear(hole.x, hole.y, e.x, e.y)) continue;
                     if (player?.applyAttackDamage) player.applyAttackDamage(e, g, dmg);
                     else e.takeDamage(dmg, player, g);
                 }
