@@ -66,6 +66,96 @@ export const UI_PALETTE = {
     reward: new Color(255, 200, 92, 255),
 };
 
+/** 战斗 HUD 的 A 图轮廓：短切角、黑色装甲外沿与细蓝灰内沿。 */
+export function combatOutline(g: Graphics, x: number, y: number, w: number, h: number, cut = 6): void {
+    g.moveTo(x + cut, y); g.lineTo(x + w - cut, y);
+    g.lineTo(x + w, y + cut); g.lineTo(x + w, y + h - cut);
+    g.lineTo(x + w - cut, y + h); g.lineTo(x + cut, y + h);
+    g.lineTo(x, y + h - cut); g.lineTo(x, y + cut); g.close();
+}
+
+export function drawCombatFrame(g: Graphics, x: number, y: number, w: number, h: number, cut = 6): void {
+    // 三层填充避免 Cocos 对重叠宽/窄描边的三角化覆盖，实机仍保留细蓝边。
+    g.fillColor = new Color(5, 12, 19, 255);
+    combatOutline(g, x - 2, y - 2, w + 4, h + 4, cut + 2); g.fill();
+    g.fillColor = new Color(109, 161, 181, 255);
+    combatOutline(g, x, y, w, h, cut); g.fill();
+    g.fillColor = new Color(9, 20, 29, 244);
+    combatOutline(g, x + 1.5, y + 1.5, w - 3, h - 3, Math.max(1, cut - 1.5)); g.fill();
+}
+
+/** 方形技能装甲与下方快捷键凸耳；PC 和真实触控键使用同一造型。 */
+export function drawCombatSkill(g: Graphics, radius: number, ratio: number): void {
+    g.clear();
+    const outline = (inset: number) => {
+        const half = radius * 1.34 - inset, cut = radius * 0.34, tab = radius * 0.58 - inset;
+        g.moveTo(-half + cut, half); g.lineTo(half - cut, half);
+        g.lineTo(half, half - cut); g.lineTo(half, -half + cut);
+        g.lineTo(half - cut, -half); g.lineTo(tab, -half);
+        g.lineTo(tab, -half - 10); g.lineTo(tab - 6, -half - 16);
+        g.lineTo(-tab + 6, -half - 16); g.lineTo(-tab, -half - 10);
+        g.lineTo(-tab, -half); g.lineTo(-half + cut, -half);
+        g.lineTo(-half, -half + cut); g.lineTo(-half, half - cut); g.close();
+    };
+    g.fillColor = new Color(3, 12, 20, 255); outline(-2); g.fill();
+    g.fillColor = new Color(119, 174, 191, 255); outline(0); g.fill();
+    g.fillColor = new Color(9, 22, 32, 240); outline(1.5); g.fill();
+    g.strokeColor = new Color(25, 49, 63, 255); g.lineWidth = 4;
+    g.circle(0, 0, radius); g.stroke();
+    if (ratio > 0) {
+        g.strokeColor = new Color(61, 241, 248, ratio >= 1 ? 255 : 230); g.lineWidth = 4;
+        // A 图从十二点顺时针填充；完整圆单独绘制避免 arc 的同起终点退化。
+        if (ratio >= 1) g.circle(0, 0, radius);
+        else g.arc(0, 0, radius, Math.PI / 2 - ratio * Math.PI * 2, Math.PI / 2, false);
+        g.stroke();
+    }
+}
+
+/** 普通怪红槽、精英金色装甲边；位置继续取真实动作帧顶部。 */
+export function drawCombatEnemyBar(g: Graphics, x: number, y: number, w: number, h: number,
+                                   hpRatio: number, elite = false, shieldRatio = 0): void {
+    g.fillColor = new Color(5, 13, 20, 255);
+    g.roundRect(x - 2, y - 1.5, w + 4, h + 3, 2.5); g.fill();
+    if (elite) {
+        g.strokeColor = new Color(213, 172, 101, 255); g.lineWidth = 1;
+        g.roundRect(x - 2, y - 1.5, w + 4, h + 3, 2.5); g.stroke();
+    }
+    const width = w * Math.max(0, Math.min(1, hpRatio));
+    if (width > 0) {
+        g.fillColor = new Color(248, 74, 65, 255); g.roundRect(x, y, width, h, Math.min(1, width / 2)); g.fill();
+        g.fillColor = new Color(255, 159, 133, 220); g.fillRect(x + 1, y + h - 1, Math.max(0, width - 2), 1);
+    }
+    if (shieldRatio > 0) {
+        g.fillColor = new Color(69, 193, 247, 255);
+        g.fillRect(x, y + h + 2, w * Math.min(1, shieldRatio), 2);
+    }
+}
+
+/** 暂停与属性入口沿用 A 图的圆整小方框，图标/文字仍独立可操作。 */
+export function applyCombatButtonSkin(node: Node, w: number, h: number): void {
+    const g = node.addComponent(Graphics);
+    let hover = false;
+    const draw = () => {
+        g.clear();
+        g.fillColor = new Color(3, 12, 20, 255);
+        g.roundRect(-w / 2 - 2, -h / 2 - 2, w + 4, h + 4, 6); g.fill();
+        g.fillColor = hover ? UI_PALETTE.cyan : new Color(132, 201, 221, 255);
+        g.roundRect(-w / 2, -h / 2, w, h, 4); g.fill();
+        g.fillColor = new Color(8, 24, 36, 246);
+        g.roundRect(-w / 2 + 1.5, -h / 2 + 1.5, w - 3, h - 3, 3); g.fill();
+    };
+    draw(); attachEnableRedraw(node, () => { hover = false; node.setScale(Vec3.ONE); draw(); });
+    node.on(Node.EventType.MOUSE_ENTER, () => { hover = true; draw(); });
+    node.on(Node.EventType.MOUSE_LEAVE, () => { hover = false; draw(); });
+    node.on(Node.EventType.TOUCH_START, () => node.setScale(new Vec3(0.96, 0.96, 1)));
+    node.on(Node.EventType.TOUCH_END, () => node.setScale(Vec3.ONE));
+    node.on(Node.EventType.TOUCH_CANCEL, () => node.setScale(Vec3.ONE));
+    keyboardFocusTargets.set(node, {
+        isDisabled: () => false,
+        setFocused(value: boolean) { hover = value; draw(); },
+    });
+}
+
 /** 统一圆角面板：每次重绘都保留独立文本/数值节点。 */
 export function drawHexPanel(g: Graphics, x: number, y: number, w: number, h: number,
                              accent: Color = UI_PALETTE.cyan, alpha = 242): void {

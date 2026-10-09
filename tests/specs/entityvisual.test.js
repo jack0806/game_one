@@ -26,7 +26,8 @@ test('不同尺寸敌人的血条跟随当前身体，后坐力不随目标距�
         const bar = entityHealthBar(pose.x, pose.y, radius, radius * 1.8);
         assert.ok(Math.abs(bar.x + bar.width / 2 - pose.x) < 1e-9);
         assert.equal(bar.y, pose.y + radius * 1.8 + 4);
-        assert.equal(bar.height, 6);
+        assert.equal(bar.height, 3);
+        assert.ok(bar.width >= 24 && bar.width <= 76, '小血条保持紧凑并有最小可读宽度');
     }
 });
 
@@ -38,7 +39,7 @@ test('放大动作帧的血条位于Cocos真实画布顶部且宽度同步放大
     const bar = entityHealthBar(bodyX, bodyY, radius, visualRadius * displayScale, top);
     assert.equal(top, visualRadius * 2 * pivotY * displayScale);
     assert.equal(bar.y, bodyY + top + 4);
-    assert.ok(bar.width >= visualRadius * displayScale * 1.55);
+    assert.equal(bar.width, Math.min(76, Math.max(radius * 1.6, visualRadius * displayScale * 1.1)));
     assert.equal(bar.x + bar.width / 2, bodyX);
 });
 

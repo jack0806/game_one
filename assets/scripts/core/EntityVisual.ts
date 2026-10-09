@@ -45,6 +45,6 @@ export function animationFrameTopOffset(
 export function entityHealthBar(
     x: number, y: number, radius: number, visualRadius: number, topOffset = visualRadius,
 ) {
-    const width = Math.max(radius * 2.2, visualRadius * 1.55);
-    return { x: x - width / 2, y: y + topOffset + 4, width, height: 6 };
+    const width = Math.max(24, Math.min(76, Math.max(radius * 1.6, visualRadius * 1.1)));
+    return { x: x - width / 2, y: y + topOffset + 4, width, height: 3 };
 }

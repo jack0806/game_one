@@ -213,15 +213,17 @@ test('战斗角色关闭auto-trim，避免裁剪框被强塞为正方形后横�
 
 test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
     assert.match(hudSource, /Math\.min\(1, d\.shield \/ d\.maxShield\)/);
-    assert.match(hudSource, /ShieldFg', -508, 290/);
-    assert.match(hudSource, /HpLbl', -388, 337/);
-    assert.match(hudSource, /ShieldLbl', -388, 305/);
-    assert.match(hudSource, /this\._hpLabel\.fontSize = 16/);
-    assert.match(hudSource, /this\._shieldLabel\.fontSize = 13/);
-    assert.match(hudSource, /生命  \$\{Math\.ceil\(d\.hp\)\} \/ \$\{Math\.round\(d\.maxHp\)\}/);
-    assert.match(hudSource, /护盾  \$\{Math\.ceil\(d\.shield\)\} \/ \$\{Math\.round\(d\.maxShield\)\}/);
-    assert.match(hudSource, /BossRoot', -this\.BOSS_W \/ 2, 238/);
-    assert.match(hudSource, /ln\.setPosition\(this\.BOSS_W \/ 2, 41\)/);
+    assert.match(hudSource, /'HpFg', 95, 25/);
+    assert.match(hudSource, /'ShieldFg', 114, 7/);
+    assert.match(hudSource, /'HpLbl', 201, 34, 208, 22, 16/);
+    assert.match(hudSource, /'ShieldLbl', 251, 11, 66, 16, 11/);
+    assert.match(hudSource, /Math\.max\(0, Math\.ceil\(d\.hp\)\)/);
+    assert.match(hudSource, /Math\.max\(0, Math\.ceil\(d\.shield\)\)/);
+    assert.match(hudSource, /BossRoot', -this\.BOSS_W \/ 2, 267/);
+    assert.match(hudSource, /'BossLbl', this\.BOSS_W \/ 2, 26/);
+    assert.match(hudSource, /this\._portraitId !== id/);
+    assert.match(hudSource, /Mask\.Type\.GRAPHICS_STENCIL/);
+    assert.match(hudSource, /this\._moveHintRoot\.active = v/);
 });
 
 test('商店使用不透明独立面板，神秘强化作为二级模态弹窗', () => {
@@ -261,11 +263,12 @@ test('移动端虚拟操控：左下角常驻静态摇杆，触摸可浮动锚�
     assert.match(touchSource, /this\._input\?\.setStick\(dx \/ this\.STICK_R, -dy \/ this\.STICK_R\);/);
 });
 
-test('技能按钮按参考图排成右下曲线弧,按下即触发且带冷却显示', () => {
-    // 左低右高的曲线弧，锚点相对可见右缘（fromRight），1280宽时为Q(290,-240) E(400,-195) R(530,-170)
-    assert.match(touchSource, /q: \{ fromRight: -350, y: -240, r: 52 \}/);
-    assert.match(touchSource, /e: \{ fromRight: -240, y: -195, r: 52 \}/);
-    assert.match(touchSource, /r: \{ fromRight: -110, y: -170, r: 64 \}/);
+test('技能按钮与A图同排装甲方框,按下即触发且带冷却显示', () => {
+    assert.match(touchSource, /q: \{ fromRight: -278, y: -267, r: 32 \}/);
+    assert.match(touchSource, /e: \{ fromRight: -173, y: -267, r: 32 \}/);
+    assert.match(touchSource, /r: \{ fromRight: -68, y: -267, r: 32 \}/);
+    assert.match(touchSource, /drawCombatSkill\(g, btn\.radius, ratio\)/);
+    assert.match(hudSource, /drawCombatSkill\(g, this\.SKILL_R, ratio\)/);
     // 按下(TOUCH_START)即出手，与键盘Q/E/R同一按下沿语义
     assert.match(touchSource, /this\._input\?\.fireSkillPressed\(slot\);/);
     // 冷却环与数字：Q/E显示剩余秒数，R显示充能百分比
@@ -306,8 +309,8 @@ test('移动端默认横屏全屏：竖屏遮罩提示旋转,首次触摸请求�
 });
 
 test('右上角常驻「暂停/属性」按钮,触屏端替代Esc/M键', () => {
-    assert.match(touchSource, /mk\('暂停', new Color\(70, 90, 130, 255\)/);
-    assert.match(touchSource, /mk\('属性', new Color\(40, 150, 190, 255\)/);
+    assert.match(touchSource, /mk\('暂停', \(\) => this\.onPausePressed/);
+    assert.match(touchSource, /mk\('属性', \(\) => this\.onStatsPressed/);
     // GameManager接线：暂停进暂停面板（属性面板开着时则返回战斗）；属性按钮为开关
     assert.match(gameSource, /this\._touchUI\.onPausePressed = \(\) => \{[\s\S]*?this\._pauseCombat\(\);/);
     assert.match(gameSource, /if \(this\.state === 'stats'\) this\._setState\(this\._pauseReturn\);/);
@@ -334,8 +337,10 @@ test('全面屏横屏铺满：宽于16:9用FIXED_HEIGHT横向延展,边缘控件
     assert.match(touchSource, /private _layoutByVisible\(\)/);
     assert.match(touchSource, /this\._joyHomeX = -right \+ 190;/);
     assert.match(touchSource, /right \+ a\.fromRight,[\s\S]*a\.y \+ \(this\._testRoomMode \? 110 : 0\)/);
-    assert.match(touchSource, /right - \(this\._touchMode \? 132 : 88\)/);
-    assert.match(touchSource, /const width = this\._touchMode \? 76 : 48;/);
+    assert.match(touchSource, /right - 35, 332/);
+    assert.match(touchSource, /const width = this\._touchMode \? 76 : 38;/);
+    assert.match(gameSource, /this\._hud\.fitToVisible\(\)/);
+    assert.match(hudSource, /-right \+ 14, 274/);
     // 全面屏的触点坐标按实际可见宽度居中，否则动态摇杆会向右错位。
     assert.match(touchSource, /loc\.x - visibleDesignWidth\(\) \/ 2/);
     // 主菜单立绘按可见宽度铺满，页面底板超宽绘制避免黑边

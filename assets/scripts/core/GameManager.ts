@@ -13,6 +13,7 @@ import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
 import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 import { animationAlphaTop } from '../data/AnimationBoundsDB';
 import { styleLabel, refreshAllLabels, loadUIFont } from './LabelUtils';
+import { drawCombatEnemyBar } from './UIStyle';
 import { CharDef, CHARS, spawnSkeletonServant } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
@@ -470,6 +471,7 @@ export class GameManager extends Component {
         // resize 是多步视口变化，分三档延迟重刷。
         this._touchUI.onViewResized = () => {
             this._fitBackgroundToVisible();
+            this._hud.fitToVisible();
             this._screenMgr.fitToVisible();
             this._statsUI.fitToVisible();
             this._augUI.fitToVisible();
@@ -3659,8 +3661,8 @@ export class GameManager extends Component {
                     : baseTint;
             }
 
-            // HP bar over enemy — 仅受伤后显示，避免满血时的视觉噪音；隐身/飞空时隐藏
-            if (((!e.isBoss && e.hp < e.maxHp) || showGuides) && !hidden) {
+            // A 图小红槽常驻普通/精英头顶；隐身/飞空隐藏，首领由顶部大槽承托。
+            if ((!e.isBoss || showGuides) && !hidden) {
                 const clip = e.actorAnimation.clip;
                 const frame = e.actorAnimation.currentFrame;
                 const actorScale = clip?.displayScale ?? 1;
@@ -3673,18 +3675,8 @@ export class GameManager extends Component {
                     : displayedVisualR;
                 const bar = entityHealthBar(bodyX, bodyY, r, displayedVisualR, topOffset);
                 const { x: rx, y: ry, width: rw, height: rh } = bar;
-                g.fillColor = new Color(12, 24, 34, 235);
-                g.roundRect(rx - 2, ry - 2, rw + 4, rh + 4, 3); g.fill();
-                g.fillColor = e.isMiniBoss ? new Color(224, 175, 99, 255) : new Color(192, 122, 100, 245);
-                g.fillRect(rx, ry, rw * Math.max(0, Math.min(1, e.hp / e.maxHp)), rh);
-                g.fillColor = new Color(240, 219, 181, 130);
-                g.fillRect(rx, ry + rh - 1, rw * Math.max(0, Math.min(1, e.hp / e.maxHp)), 1);
-                // 护盾剩余：血条上方细蓝条
-                if (e.shieldActive && e.shieldHp > 0 && e.maxShieldHp > 0) {
-                    const sh = 3;
-                    g.fillColor = new Color(90, 170, 255, 220);
-                    g.fillRect(rx, ry + rh, rw * (e.shieldHp / e.maxShieldHp), sh);
-                }
+                drawCombatEnemyBar(g, rx, ry, rw, rh, e.hp / e.maxHp, e.isElite || e.isMiniBoss,
+                    e.shieldActive && e.maxShieldHp > 0 ? e.shieldHp / e.maxShieldHp : 0);
             }
         }
 
@@ -4190,6 +4182,8 @@ export class GameManager extends Component {
             shield: p.shield, maxShield: p.maxShield,
             gold: this._economy.gold,
             wave: this._waveMgr.wave, chapter: this._chapter,
+            heroId: this._char?.id, heroName: this._char?.name,
+            testRoom: this.state === 'testRoom',
             difficultyName: this._difficulty?.name,
             augments: this._augMgr.all(),
             skills: p.getSkillStates(),

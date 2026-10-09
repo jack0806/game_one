@@ -4,8 +4,8 @@
 //  布局对齐王者荣耀习惯：
 //   · 左下角常驻静态摇杆：默认停在左下角可见，手指按在左半屏任意处
 //     可重新锚定（浮动锚点），松手回到默认位置；
-//   · 右下角 Q/E/R 三枚大号圆形技能按钮呈扇形弧排布（大招 R 最大、
-//     靠角），带冷却进度环与剩余秒数，按下即触发（与键盘 Q/E/R 同一
+//   · 右下角 Q/E/R 使用 A 图的独立装甲方框与快捷键凸耳，
+//     带冷却进度环与剩余秒数，按下即触发（与键盘 Q/E/R 同一
 //     按下沿语义）；
 //   · 右上角「暂停 / 属性」两个按钮，触屏端替代 Esc/M 键；
 //   · 竖屏时显示「请横屏游玩」全屏遮罩；移动端浏览器首次触摸时以游戏
@@ -22,7 +22,7 @@ import { CANVAS_W, CANVAS_H } from '../core/Constants';
 import { visibleDesignWidth, visibleDesignHeight, applyScreenPolicy } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin } from '../core/UIStyle';
+import { applyCombatButtonSkin, attachEnableRedraw, drawCombatSkill } from '../core/UIStyle';
 
 // web 全屏/屏幕方向 API 按平台存在，any 声明避免依赖 DOM lib 配置
 declare const document: any;
@@ -46,12 +46,12 @@ type SkillSlot = 'q' | 'e' | 'r';
 /**
  * 技能按钮锚点：位置以「可见区右边缘」为基准（fromRight 为相对右缘的偏移），
  * 全面屏横向延展后按钮仍贴住物理右缘；y 为根节点本地纵坐标。
- * 1280 宽时换算结果与固定布局一致：Q(290,-240) E(400,-195) R(530,-170)。
+ * 1280 宽时与 PC HUD 同位：Q(362,-267) E(467,-267) R(572,-267)。
  */
 const SKILL_ANCHORS: Record<SkillSlot, { fromRight: number; y: number; r: number }> = {
-    q: { fromRight: -350, y: -240, r: 52 },
-    e: { fromRight: -240, y: -195, r: 52 },
-    r: { fromRight: -110, y: -170, r: 64 },
+    q: { fromRight: -278, y: -267, r: 32 },
+    e: { fromRight: -173, y: -267, r: 32 },
+    r: { fromRight: -68, y: -267, r: 32 },
 };
 
 interface SkillButtonView {
@@ -192,9 +192,13 @@ export class TouchControls extends Component {
         const right = visibleDesignWidth() / 2;
         // 右上角系统按钮贴可见右缘
         if (this._topRightBtns.length >= 2) {
-            const topY = this._touchMode ? 320 : 322;
-            this._topRightBtns[0].setPosition(new Vec3(right - (this._touchMode ? 132 : 88), topY, 0));
-            this._topRightBtns[1].setPosition(new Vec3(right - (this._touchMode ? 45 : 32), topY, 0));
+            if (this._touchMode) {
+                this._topRightBtns[0].setPosition(new Vec3(right - 46, 324, 0));
+                this._topRightBtns[1].setPosition(new Vec3(right - 46, 250, 0));
+            } else {
+                this._topRightBtns[0].setPosition(new Vec3(right - 35, 332, 0));
+                this._topRightBtns[1].setPosition(new Vec3(right - 35, 286, 0));
+            }
         }
         if (!this._touchMode) return;
         // 左半屏触摸区：从可见左缘延伸到中线右侧80px处
@@ -204,19 +208,19 @@ export class TouchControls extends Component {
         this._joyHomeX = -right + 190;
         this._joyHomeY = this._testRoomMode ? -80 : -190;
         if (!this._joyActive) this._joyRoot.setPosition(new Vec3(this._joyHomeX, this._joyHomeY, 0));
-        // 技能按钮贴右缘（左低右高曲线不变）
+        // 技能按钮贴右缘，与 PC 同一排装甲方框
         for (const btn of this._skillBtns) {
             const a = SKILL_ANCHORS[btn.slot];
             btn.node.setPosition(new Vec3(
                 right + a.fromRight,
                 // Cocos 本地Y轴向上；测试房用+110把整组技能键抬离底栏分页区，
-                // 同时保留右下角弧形层级，不让大招键或冷却环被画布裁切。
+                // 不让快捷键凸耳或冷却环被底栏遮挡。
                 a.y + (this._testRoomMode ? 110 : 0),
                 0,
             ));
         }
         // 竖屏遮罩按实际可见高度铺满；横竖切换时同步调整文案与触摸热区。
-        this._jumpButton?.setPosition(new Vec3(right - 140, -292 + (this._testRoomMode ? 110 : 0), 0));
+        this._jumpButton?.setPosition(new Vec3(right - 390, -285 + (this._testRoomMode ? 110 : 0), 0));
         if (this._rotateHint) {
             const height = visibleDesignHeight();
             this._rotateHint.getComponent(UITransform)!.setContentSize(right * 2, height);
@@ -244,25 +248,37 @@ export class TouchControls extends Component {
 
     /** 右上角「暂停 / 属性」：触屏替代 Esc/M，PC 端也可点击。位置贴可见右缘。 */
     private _buildTopRightButtons() {
-        const width = this._touchMode ? 76 : 48;
-        const height = this._touchMode ? 64 : 38;
-        const mk = (text: string, accent: Color, cb: () => void) => {
+        const width = this._touchMode ? 76 : 38;
+        const height = this._touchMode ? 64 : 32;
+        const mk = (text: string, cb: () => void) => {
             const n = new Node(`Btn_${text}`); n.setParent(this.node);
             n.setPosition(new Vec3(552, 322, 0));
             n.addComponent(UITransform).setContentSize(width, height);
-            applyHexButtonSkin(n, width, height, accent);
+            applyCombatButtonSkin(n, width, height);
             const ln = new Node('L'); ln.setParent(n);
             ln.addComponent(UITransform).setContentSize(width - 4, height);
             const lbl = ln.addComponent(Label);
-            lbl.string = text;
-            lbl.fontSize = this._touchMode ? 18 : 14;
+            lbl.string = text === '暂停' ? '' : text;
+            lbl.fontSize = this._touchMode ? 16 : 12;
+            lbl.lineHeight = 20;
             lbl.color = new Color(235, 246, 250, 255);
             styleLabel(lbl);
+            if (text === '暂停') {
+                const mark = new Node('PauseIcon'); mark.setParent(n);
+                const pg = mark.addComponent(Graphics);
+                const draw = () => {
+                    pg.clear(); pg.fillColor = new Color(223, 248, 255, 255);
+                    pg.fillRect(-7, -7, 5, 14); pg.fillRect(2, -7, 5, 14);
+                };
+                draw();
+                // 控件每次恢复战斗都重绘，避免暂停返回后图标透明。
+                attachEnableRedraw(mark, draw);
+            }
             n.on(Node.EventType.TOUCH_END, () => { this.onButtonSfx?.(); cb(); }, this);
             this._topRightBtns.push(n);
         };
-        mk('暂停', new Color(70, 90, 130, 255), () => this.onPausePressed?.());
-        mk('属性', new Color(40, 150, 190, 255), () => this.onStatsPressed?.());
+        mk('暂停', () => this.onPausePressed?.());
+        mk('属性', () => this.onStatsPressed?.());
     }
 
     /** 左半屏触摸区：按下处生成动态摇杆。 */
@@ -428,8 +444,7 @@ export class TouchControls extends Component {
     }
 
     /**
-     * 右下角 Q/E/R 技能按钮：左低右高的曲线弧（Q 最低靠左 → R 最高靠右），
-     * R 顶部不超过画布底部起约1/3屏高。位置按可见右缘锚定，见 SKILL_ANCHORS。
+     * 右下角技能按钮使用与 PC 相同的 A 图装甲框，位置按可见右缘锚定。
      */
     private _buildSkillButtons() {
         const defs: SkillSlot[] = ['q', 'e', 'r'];
@@ -437,10 +452,10 @@ export class TouchControls extends Component {
             const d = SKILL_ANCHORS[slot];
             const n = new Node(`Skill_${slot.toUpperCase()}`); n.setParent(this.node);
             n.setPosition(new Vec3(CANVAS_W / 2 + d.fromRight, d.y, 0));
-            n.addComponent(UITransform).setContentSize(d.r * 2, d.r * 2);
+            n.addComponent(UITransform).setContentSize(d.r * 2.68, d.r * 2.68 + 32);
 
             const iconN = new Node('Icon'); iconN.setParent(n);
-            const iconSize = d.r * 1.15;
+            const iconSize = 46;
             iconN.addComponent(UITransform).setContentSize(iconSize, iconSize);
             const icon = iconN.addComponent(Sprite);
             icon.sizeMode = Sprite.SizeMode.CUSTOM;
@@ -448,9 +463,16 @@ export class TouchControls extends Component {
             const cdN = new Node('Cd'); cdN.setParent(n);
             cdN.addComponent(UITransform).setContentSize(d.r * 2, d.r * 2);
             const cdLabel = cdN.addComponent(Label);
-            cdLabel.fontSize = Math.round(d.r * 0.55);
+            cdLabel.fontSize = 23; cdLabel.lineHeight = 28;
             cdLabel.color = new Color(255, 240, 200, 255);
             styleLabel(cdLabel);
+
+            const keyN = new Node('Key'); keyN.setParent(n);
+            keyN.setPosition(new Vec3(0, -d.r * 1.34 - 7, 0));
+            keyN.addComponent(UITransform).setContentSize(32, 23);
+            const keyLabel = keyN.addComponent(Label);
+            keyLabel.string = slot.toUpperCase(); keyLabel.fontSize = 18; keyLabel.lineHeight = 21;
+            keyLabel.color = new Color(238, 244, 250, 255); styleLabel(keyLabel);
 
             const view: SkillButtonView = {
                 slot, node: n, gfx: n.addComponent(Graphics),
@@ -526,7 +548,6 @@ export class TouchControls extends Component {
         if (!this._touchMode || !player) return;
         const states = player.getSkillStates?.();
         if (!states) return;
-        const charCol = Color.fromHEX(new Color(), player.color ?? '#00ffcc');
 
         for (let i = 0; i < this._skillBtns.length; i++) {
             const btn = this._skillBtns[i];
@@ -538,23 +559,7 @@ export class TouchControls extends Component {
 
             const ratio = sk.maxCd > 0 ? Math.max(0, Math.min(1, 1 - sk.cd / sk.maxCd)) : 1;
             const ready = ratio >= 1;
-            const r = btn.radius;
-
-            // 底盘
-            g.fillColor = ready ? new Color(14, 22, 34, 215) : new Color(10, 14, 22, 235);
-            g.circle(0, 0, r); g.fill();
-
-            // 冷却进度环：就绪亮角色色，未就绪暗金
-            g.lineWidth = 4.5;
-            g.strokeColor = ready
-                ? new Color(charCol.r, charCol.g, charCol.b, 255)
-                : new Color(185, 150, 70, 220);
-            g.arc(0, 0, r - 3, -Math.PI / 2, -Math.PI / 2 + ratio * Math.PI * 2, false);
-            g.stroke();
-
-            // 外沿
-            g.strokeColor = new Color(charCol.r, charCol.g, charCol.b, ready ? 200 : 90);
-            g.lineWidth = 2; g.circle(0, 0, r); g.stroke();
+            drawCombatSkill(g, btn.radius, ratio);
 
             // 未就绪：数字覆盖层（Q/E为剩余秒数，R为充能百分比）
             btn.cdLabel.string = ready ? '' : (btn.slot === 'r'
