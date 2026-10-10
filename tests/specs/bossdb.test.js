@@ -53,14 +53,16 @@ test('initBoss按全局章号投影图号读到对应BossDB行', () => {
 
 // ── 测试房间专属 Boss（文档 boss.docx） ──
 
-test('TEST_BOSSES含既有2只/设计文档3只/灭世机神,数值取对应档位', () => {
-    assert.equal(TEST_BOSSES.length, 6, '测试房应有6个专属大Boss');
+test('TEST_BOSSES含既有2只/设计文档3只/灭世机神/滑稽猴,数值取对应档位', () => {
+    assert.equal(TEST_BOSSES.length, 7, '测试房应有7个专属大Boss');
     const mech = TEST_BOSSES.find(t => t.kind === 'mech');
     const abyss = TEST_BOSSES.find(t => t.kind === 'abyss');
     const invader = TEST_BOSSES.find(t => t.kind === 'invader');
+    const joker = TEST_BOSSES.find(t => t.kind === 'joker');
     assert.equal(mech.label, '机械高达X-剑');
     assert.equal(abyss.label, '深海恐惧');
     assert.equal(invader.label, '灭世机神·天罚');
+    assert.equal(joker.label, '滑稽猴');
     assert.deepEqual([mech.maxHp, mech.damage, mech.speed, mech.armor], [5500, 66, 68, 20], 'mech取第二章档位');
     assert.deepEqual([abyss.maxHp, abyss.damage, abyss.speed, abyss.armor], [9000, 94, 74, 30], 'abyss取第三章档位');
     assert.equal(mech.tintColor, '#ffffff');
@@ -70,6 +72,9 @@ test('TEST_BOSSES含既有2只/设计文档3只/灭世机神,数值取对应档�
     assert.notEqual(mech.spriteKey, 'enemy_boss', '机械高达不得继续暴露通用占位素体');
     assert.notEqual(abyss.spriteKey, 'enemy_boss', '深海恐惧不得继续暴露通用占位素体');
     assert.deepEqual([invader.maxHp, invader.damage, invader.speed, invader.armor], [20000, 160, 65, 50], 'invader取第五章档位');
+    // 滑稽猴（彩蛋Boss）：HP800/移速300/伤害10/护甲50（用户设计稿逐字）
+    assert.deepEqual([joker.maxHp, joker.damage, joker.speed, joker.armor], [800, 10, 300, 50]);
+    assert.ok(joker.radius < 45, '滑稽猴是小体型Boss');
     for (const t of TEST_BOSSES) {
         assert.ok(t.tintColor && t.spriteKey, `${t.kind}应配贴图与染色`);
     }
@@ -215,7 +220,7 @@ test('余下四种炮灰严格使用设计文档数值与独立贴图', () => {
 test('UNIT_CATALOG覆盖首领10/小boss11/既有小兵7并追加文档新怪', () => {
     const groups = { boss: [], miniboss: [], grunt: [] };
     for (const u of UNIT_CATALOG) groups[u.category].push(u.id);
-    assert.deepEqual(groups.boss, ['boss_ch1', 'boss_ch2', 'boss_ch3', 'boss_ch4', 'boss_mech', 'boss_abyss', 'boss_vespa', 'boss_crucible_city', 'boss_manyfold', 'boss_invader']);
+    assert.deepEqual(groups.boss, ['boss_ch1', 'boss_ch2', 'boss_ch3', 'boss_ch4', 'boss_mech', 'boss_abyss', 'boss_vespa', 'boss_crucible_city', 'boss_manyfold', 'boss_invader', 'boss_joker']);
     assert.equal(groups.miniboss.length, 11, '小boss应来自MINI_BOSSES');
     assert.equal(groups.grunt.length, 7 + TEST_GRUNTS.length, '保留现有7种并追加文档新怪');
     assert.equal(new Set(UNIT_CATALOG.map(u => u.id)).size, UNIT_CATALOG.length, 'id全局唯一');

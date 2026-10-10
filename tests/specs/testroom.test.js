@@ -89,7 +89,7 @@ test('主页按钮直接进图,spawnTestUnit按目录生成/清场/无敌开关'
 test('停火观摩只禁用玩家普攻，不改动QER技能处理', () => {
     assert.match(gameSource, /testCeasefire = false/);
     assert.match(gameSource, /setTestCeasefire\(on: boolean\)/);
-    assert.match(playerSource, /!game\?\.testCeasefire && this\._shootTimer >= atkInterval/);
+    assert.match(playerSource, /!attackBlocked && this\._shootTimer >= atkInterval/);
 });
 
 test('英雄选择浮层实体面板阻断底层遮罩,点击角色卡不会只关闭不换人', () => {

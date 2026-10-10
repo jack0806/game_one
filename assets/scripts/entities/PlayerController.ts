@@ -106,6 +106,10 @@ export class PlayerController extends Component {
     private _thornPending: { enemy: any; game: any; dmg: number; timer: number }[] = [];
     /** 雷克双斧左右手交替计数，只影响表现，不参与伤害与攻速结算。 */
     private _reikSwingSide = 0;
+    /** 雷克E 血之护盾：减伤60%期间被减免的伤害储备（6秒后转为等量护盾）。 */
+    private _bloodShieldBank = 0;
+    /** 雷克E 血之护盾：施放起算的转换倒计时（6秒到点结算储备）。 */
+    private _bloodShieldConvertT = 0;
     /**
      * 形态切换（时空行者 E）：空=沿用角色默认攻击方式；
      * 'melee'/'ranged' 为当前形态。近战形态伤害+30%（附加到所有技能）、攻速+50%。
@@ -207,6 +211,8 @@ export class PlayerController extends Component {
         this._buffs = [];
         this._rCharge = 0;
         this._thornPending = [];
+        this._bloodShieldBank = 0;
+        this._bloodShieldConvertT = 0;
         // 方向动画状态重置（六帧矩阵由渲染层按朝向/步态切换）
         resetLocomotion(this.locomotion, this.x, this.y);
         resetDirectionalFacing(this.directionalFacing, 'side');
@@ -252,7 +258,8 @@ export class PlayerController extends Component {
 
     applyBuff(id: string, duration: number, mods: Record<string, any>): void {
         const existing = this._buffs.find(b => b.id === id);
-        if (existing) { existing.duration = duration; return; }
+        // 同名buff重挂时以新参数覆盖（时长+效果）：赃印层数靠刷新 mods 升档
+        if (existing) { existing.duration = duration; existing.mods = mods; return; }
         this._buffs.push({ id, duration, mods });
     }
 
@@ -305,6 +312,18 @@ export class PlayerController extends Component {
         // armor_up 词条/角色初始 armor 之前只写入 stats.armor 从未在这里读取，是死代码）。
         const mitigation = this.stats.armor / (this.stats.armor + 100);
         amount = Math.max(1, amount * (1 - mitigation));
+        // 雷克E 血之护盾：减伤期间被减免的部分计入储备，6秒后转为等量护盾。
+        // （吸血/无敌等其它减伤通道不走这里，只有显式 dmgReduction 的buff参与）
+        for (const b of this._buffs) {
+            if (!b.mods.dmgReduction) continue;
+            const saved = amount * b.mods.dmgReduction;
+            amount = Math.max(1, amount - saved);
+            if (b.id === 'blood_shield') this._bloodShieldBank += saved;
+        }
+        // 易伤（滑稽猴恶作剧等）：受到的伤害×150%
+        for (const b of this._buffs) {
+            if (b.mods.dmgTakenMult) amount = Math.max(1, amount * b.mods.dmgTakenMult);
+        }
         // 在无敌/护盾完全吸收的早退之后触发：统一补齐近战、普通弹的真实受伤反馈。
         game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
         // 海克斯12 不灭协议：受到致命伤或生命只剩 1 滴时触发——生成临时护盾、
@@ -386,6 +405,8 @@ export class PlayerController extends Component {
             this.facingX = mx / len;
             this.facingY = my / len;
         }
+        // 头晕目眩（滑稽猴恶作剧）：朝向仍按原始输入，实际位移方向反转
+        if (this._buffs.some(b => b.mods.reverseMove)) { mx = -mx; my = -my; }
         const spd = this.getSpeed();
         if (game?.moveInArena) {
             const next = game.moveInArena(this.x, this.y, mx * spd * dt, my * spd * dt, this.radius);
@@ -462,6 +483,19 @@ export class PlayerController extends Component {
             }
         }
 
+        // 雷克E 血之护盾：施放起6秒到点，把减伤期间储备的伤害转为等量护盾（10秒）
+        if (this._bloodShieldConvertT > 0) {
+            this._bloodShieldConvertT -= dt;
+            if (this._bloodShieldConvertT <= 0) {
+                const bank = Math.round(this._bloodShieldBank);
+                this._bloodShieldBank = 0;
+                if (bank > 0 && this.alive) {
+                    this.grantTempShield(bank, 10, game);
+                    game.floatingText?.spawn?.(this.x, this.y - 46, `血盾 ${bank}`, '#ff7a7a', 15, true);
+                }
+            }
+        }
+
         // 格雷夫被动·洞察：每2.5秒标记周围500码内可攻击的怪物
         // （与索敌规则一致：跳过隐身/飞空机制单位）。标记留在怪物身上直到
         // 被普攻/技能命中消耗；怪物复活重置见 EnemyBase.spawn。
@@ -490,29 +524,36 @@ export class PlayerController extends Component {
         // 跳跃使用独立的起跳/腾空/落地姿势，长按不会不断重置起跳帧。
         this.updateVisualAnimation(dt);
 
-        // 普攻
+        // 普攻（沉默/眩晕期间无法攻击：计时钳在就绪位，恢复后立即可打）
         this._shootTimer += dt;
         const atkInterval = 1 / Math.max(0.1, this.getAtkSpd());
-        if (!game?.testCeasefire && this._shootTimer >= atkInterval) {
+        const attackBlocked = game?.testCeasefire || this._buffs.some(b => b.mods.silence);
+        if (!attackBlocked && this._shootTimer >= atkInterval) {
             // 被受击/技能打断时保留一次待发机会，不能积累成恢复后的瞬间爆发。
             this._shootTimer = this._shoot(input, game)
                 ? Math.min(atkInterval, this._shootTimer - atkInterval) : atkInterval;
-        } else if (game?.testCeasefire) {
+        } else if (attackBlocked) {
             this._shootTimer = Math.min(this._shootTimer, atkInterval);
         }
 
         // 技能 Q（CD 可按角色定制：qCd ?? 默认SKILL_Q_CD=4秒）
-        // 盗神·薇娅：窃取成功时 deferQcd 挂起冷却，赃技释放后再启动
-        if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0) {
+        // 盗神·薇娅：窃取成功时 deferQcd 挂起冷却，赃技释放后再启动；
+        // 窃取失败时 qSkill 写入 qCdNext=5（失败冷却5秒），下次必定成功的
+        // 保底窗口用短CD兜底。眩晕（滑稽猴耳光）期间技能一并禁用。
+        if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0 && !this._buffs.some(b => b.mods.stun)) {
             if (this._requestSkill('q', () => {
                 game.audio?.playSfx?.('skill_q');
                 this._grantCastShield(game);
                 this._charDef.qSkill(this, game);
                 const qName = this._charDef.skills.q.split('—')[0].trim();
-                game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
+                game.floatingText?.spawn?.(this.x, this.y - 55, qName, this.color, 15, true);
                 game.augmentManager?.dispatchSkill(this, game);
             })) {
                 if (this.stats.deferQcd) { this._qCd = 0; }
+                else if (this.stats.qCdNext) {
+                    this._qCd = this.stats.qCdNext * (1 - this.stats.cdReduction);
+                    this.stats.qCdNext = 0;
+                }
                 else this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
             }
         }
@@ -520,7 +561,7 @@ export class PlayerController extends Component {
         // 黑洞引擎(black_hole)词条已重做为独立定时器自动施放，不再替换 E 技能。
         // 盗神·薇娅：进入截取状态时 deferEcd 挂起冷却，全部释放后再启动；
         // 亡灵法师：eCdFlatReduction（每20层灵魂-1秒）在标准冷却上做扁平缩减。
-        if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
+        if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0 && !this._buffs.some(b => b.mods.stun)) {
             if (this._requestSkill('e', () => {
                 game.audio?.playSfx?.('skill_e');
                 this._grantCastShield(game);
@@ -547,8 +588,8 @@ export class PlayerController extends Component {
             this._cosmosCd = 30;
             game.activateCosmos?.(this);
         }
-        // 终极 R
-        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1) {
+        // 终极 R（眩晕期间同样禁用）
+        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1 && !this._buffs.some(b => b.mods.stun)) {
             if (this._requestSkill('r', () => {
                 game.audio?.playSfx?.('skill_r');
                 this._grantCastShield(game);
@@ -639,6 +680,8 @@ export class PlayerController extends Component {
         const isCrit = Rng.chance(this.stats.critRate || 0);
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
+            // 大Boss威压：受到的暴击伤害减免25%
+            if (enemy.isBoss) dmg *= 0.75;
             game.floatingText?.spawn(enemy.x, enemy.y - 20, '暴击！', '#ffd700', 14, true);
         }
         if ((enemy.isElite || enemy.isBoss) && this.stats.eliteBonus) dmg *= 1 + this.stats.eliteBonus;

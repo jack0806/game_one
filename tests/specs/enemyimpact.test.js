@@ -14,7 +14,7 @@ const { BossController } = require('../dist/entities/BossController');
 const { PlayerController } = require('../dist/entities/PlayerController');
 const { makeMockGame } = require('./mockGame');
 
-test('35种攻击单位逐一拥有独立四帧命中图行，资源存在且不复用换色', () => {
+test('36种攻击单位逐一拥有独立四帧命中图行，资源存在且不复用换色', () => {
     const rows = new Set();
     for (const unit of UNIT_CATALOG.filter(u => !['gold_scavenger', 'drone_s'].includes(u.id))) {
         const art = ENEMY_HIT_ART[unit.id];
@@ -27,7 +27,7 @@ test('35种攻击单位逐一拥有独立四帧命中图行，资源存在且不
         rows.add(identity);
         assert.ok(fs.existsSync(path.join(__dirname, '../../assets/resources/art', clip.sheet + '.png')));
     }
-    assert.equal(rows.size, 35);
+    assert.equal(rows.size, 36);
     assert.equal(ENEMY_HIT_ART.gold_scavenger, undefined);
     assert.equal(ENEMY_HIT_ART.drone_s, undefined);
 });

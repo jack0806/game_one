@@ -557,6 +557,10 @@ export class EnemyBase {
         game.comboCount = (game.comboCount || 0) + 1;
         // v4 第 10 节：章节 Boss 击杀必掉 1 件装备（GameManager 负责入仓与提示）
         if (this.isBoss) game.dropBossEquipment?.(this);
+        // 滑稽猴：击杀后 20% 掉落玩偶猴（拾取解锁隐藏成就「这不是真的我哟」）
+        if ((this as any).bossKind === 'joker' && Rng.chance(0.2)) {
+            game.economy?.spawnDrop?.(this.x, this.y, 0, 'joker_doll');
+        }
         // 成就存档统计：Boss 击杀数、单局最高连击（GameManager 局末读取）
         if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
         if (game.comboCount > (game.maxCombo || 0)) game.maxCombo = game.comboCount;

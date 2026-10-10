@@ -53,6 +53,8 @@ export interface PlayerProfile {
     migratedV4?: boolean;
     /** v5：挑战星完成记录（全局章号 → 已完成挑战 id 列表，见提案 8.3）。 */
     questStars?: Record<number, string[]>;
+    /** 滑稽猴彩蛋：已拾取的玩偶猴数量（≥1 解锁隐藏成就「这不是真的我哟」）。 */
+    jokerDolls: number;
 }
 
 /** 存档槽概览（存档选择页渲染用；exists=false 即空槽）。 */
@@ -106,6 +108,9 @@ export const ACHIEVEMENTS: AchievementDef[] = [
       progress: p => p.bestKillsInRun },
     { id: 'all_chars',  name: '全明星',     desc: '使用过全部 6 名英雄',   icon: '🏆', artKey: 'heart', rarity: '传奇', category: '收集', reward: '称号「六芒星」', goal: 6,
       progress: p => p.charsPlayed.length },
+    // 隐藏成就：滑稽猴击杀后 20% 掉落玩偶猴，拾取即解锁（AchievementDef.hidden）
+    { id: 'joker_doll', name: '这不是真的我哟', desc: '获得滑稽猴掉落的玩偶猴', icon: '🐵', artKey: 'summon', rarity: '传奇', category: '收集', reward: '玩偶猴摆件', hidden: true, goal: 1,
+      progress: p => p.jokerDolls ?? 0 },
 ];
 
 function freshProfile(): PlayerProfile {
@@ -118,7 +123,7 @@ function freshProfile(): PlayerProfile {
         charsPlayed: [], achievements: [],
         coreCoins: 0, chaptersCleared: 0,
         equipments: [], equipLoadout: [null, null, null],
-        migratedV4: true, questStars: {},
+        migratedV4: true, questStars: {}, jokerDolls: 0,
     };
 }
 
@@ -264,6 +269,18 @@ export class SaveSystem {
                 fresh.push(a);
             }
         }
+        return fresh;
+    }
+
+    /**
+     * 滑稽猴彩蛋：拾取一只玩偶猴（局内即时调用，不等人局末结算——
+     * 测试房没有局末）。返回本次新解锁的成就（供浮字提示）。
+     */
+    static recordJokerDoll(): AchievementDef[] {
+        const p = this.load();
+        p.jokerDolls = (p.jokerDolls ?? 0) + 1;
+        const fresh = this.checkAchievements();
+        this.save();
         return fresh;
     }
 

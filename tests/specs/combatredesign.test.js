@@ -71,8 +71,8 @@ test('高频真实受伤仍逐次扣血，英雄闪光只保留一份并优先�
     assert.ok(!particles.spriteFx.some(f => f.key.startsWith('fx_damage_')));
 });
 
-test('37种单位均有明确攻击表现身份，掠金虫保留无攻击设计', () => {
-    assert.equal(UNIT_CATALOG.length, 37);
+test('38种单位均有明确攻击表现身份，掠金虫保留无攻击设计', () => {
+    assert.equal(UNIT_CATALOG.length, 38);
     for (const unit of UNIT_CATALOG) assert.ok(UNIT_ATTACK_ART[unit.id], unit.id);
     assert.equal(UNIT_ATTACK_ART.gold_scavenger, 'fx_hex_ring');
     assert.notEqual(UNIT_ATTACK_ART.shield, UNIT_ATTACK_ART.grunt);

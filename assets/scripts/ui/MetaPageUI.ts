@@ -37,6 +37,8 @@ interface AchievementCardView {
     def: AchievementDef;
     graphics: Graphics;
     name: Label;
+    /** 描述标签：隐藏成就未解锁时以占位文案遮掩。 */
+    desc?: Label;
     rarity: Label;
     progress: Label;
     progressGraphics: Graphics;
@@ -447,12 +449,12 @@ export class MetaPageUI {
             this._mkArt(card, `ui_icon_${def.artKey}`, 50, 50, -150, 17);
             const name = this._mkLabel(card, -24, 30, 200, 30, def.name, 19, WHITE, HorizontalTextAlignment.LEFT);
             const rarity = this._mkLabel(card, 146, 31, 62, 24, def.rarity, 14, GOLD, HorizontalTextAlignment.RIGHT);
-            this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
+            const desc = this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
             this._mkLabel(card, -38, -24, 200, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
             const progress = this._mkLabel(card, 145, -45, 70, 22, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
             const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-28, -47, 0));
             const pg = bar.addComponent(Graphics);
-            this._achievementCards.push({ def, graphics: g, name, rarity, progress, progressGraphics: pg });
+            this._achievementCards.push({ def, graphics: g, name, desc, rarity, progress, progressGraphics: pg });
         });
 
         this._refreshAchievements();
@@ -481,12 +483,16 @@ export class MetaPageUI {
 
             view.name.color = done ? WHITE : new Color(165, 179, 191, 255);
             view.rarity.color = c;
-            view.progress.string = done ? '已达成' : `${Math.floor(current)}/${view.def.goal}`;
+            // 隐藏成就（滑稽猴彩蛋等）：未解锁时以"？？？"遮掩名称/描述与进度
+            const secretPending = !!view.def.hidden && !done;
+            view.name.string = secretPending ? '？？？' : view.def.name;
+            if (view.desc) view.desc.string = secretPending ? '隐藏成就：达成后揭晓' : view.def.desc;
+            view.progress.string = done ? '已达成' : secretPending ? '?' : `${Math.floor(current)}/${view.def.goal}`;
             view.progress.color = done ? new Color(104, 230, 150, 255) : MUTED;
             const pg = view.progressGraphics; pg.clear();
             pg.fillColor = new Color(24, 33, 43, 255); pg.fillRect(-122, -3, 240, 6);
             pg.fillColor = done ? new Color(89, 222, 143, 255) : c;
-            pg.fillRect(-122, -3, 240 * Math.max(0, Math.min(1, ratio)), 6);
+            pg.fillRect(-122, -3, 240 * (secretPending ? 0 : Math.max(0, Math.min(1, ratio))), 6);
         }
         const legendary = ACHIEVEMENTS.filter(a => a.rarity === '传奇').length;
         this._achievementSummary.string = `已解锁 ${unlocked} / ${ACHIEVEMENTS.length}   ·   传奇成就 ${legendary}`;

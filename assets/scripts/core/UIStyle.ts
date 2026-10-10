@@ -5,6 +5,8 @@ import { Color, Component, Graphics, Node, UITransform } from 'cc';
 
 export interface HexButtonSkin {
     setDisabled(disabled: boolean): void;
+    /** 运行时更换强调色（固定页签"已固定"态高亮等），立即重绘。 */
+    setAccent(accent: Color): void;
 }
 type ButtonVisualState = 'normal' | 'hover' | 'pressed' | 'disabled';
 
@@ -211,13 +213,14 @@ function clippedRect(g: Graphics, w: number, h: number, cut: number, offsetY = 0
  * 视觉由 Graphics 绘制，文字仍是独立 Label，因此可本地化且点击热区永远一致。
  */
 export function applyHexButtonSkin(
-    node: Node, width: number, height: number, accent: Color, initiallyDisabled = false,
+    node: Node, width: number, height: number, baseAccent: Color, initiallyDisabled = false,
     options: HexButtonOptions = {},
 ): HexButtonSkin {
     const g = node.getComponent(Graphics) ?? node.addComponent(Graphics);
     let disabled = initiallyDisabled;
     let state: ButtonVisualState = disabled ? 'disabled' : 'normal';
     let focused = false;
+    let accent = baseAccent;
     const cut = Math.max(6, Math.min(10, height * 0.18));
 
     const draw = () => {
@@ -297,12 +300,16 @@ export function applyHexButtonSkin(
             if (disabled) focused = false;
             setState(value ? 'disabled' : 'normal');
         },
+        setAccent(next: Color) {
+            accent = next;
+            draw();
+        },
     };
 }
 
 /** 大尺寸选项卡沿用面板造型，鼠标与触摸状态由同一节点绘制。 */
 export function applyHexCardSkin(
-    node: Node, width: number, height: number, accent: Color, initiallyDisabled = false,
+    node: Node, width: number, height: number, baseAccent: Color, initiallyDisabled = false,
 ): HexButtonSkin {
     const g = node.getComponent(Graphics) ?? node.addComponent(Graphics);
     // 放在内容节点之后：缩略图和文字不再截走 MOUSE_ENTER，触摸仍冒泡到卡片。
@@ -311,6 +318,7 @@ export function applyHexCardSkin(
     let disabled = initiallyDisabled;
     let state: ButtonVisualState = disabled ? 'disabled' : 'normal';
     let focused = false;
+    let accent = baseAccent;
     const radius = Math.max(8, Math.min(18, height * 0.16));
     const draw = () => {
         g.clear();
@@ -359,6 +367,10 @@ export function applyHexCardSkin(
             disabled = value;
             if (disabled) focused = false;
             setState(value ? 'disabled' : 'normal');
+        },
+        setAccent(next: Color) {
+            accent = next;
+            draw();
         },
     };
 }

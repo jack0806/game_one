@@ -65,7 +65,7 @@ export function getBossDef(chapter0Based: number): BossDef {
 
 export interface TestBossDef extends BossDef {
     /** 技能集标识：BossController._useSkill 按此分支。 */
-    kind: 'mech' | 'abyss' | 'vespa' | 'crucible_city' | 'manyfold' | 'invader';
+    kind: 'mech' | 'abyss' | 'vespa' | 'crucible_city' | 'manyfold' | 'invader' | 'joker';
 }
 
 export const TEST_BOSSES: TestBossDef[] = [
@@ -76,6 +76,10 @@ export const TEST_BOSSES: TestBossDef[] = [
     { kind: 'crucible_city', chapter: 3, maxHp: 9800, damage: 60, speed: 50, armor: 30, goldValue: 680, radius: 50, color: '#38281f', glow: '#ff8b2c', label: '磁潮铸城兽·坩埚', spriteKey: 'enemy_boss_crucible_city', tintColor: '#ffffff', visualScale: 1.84, attackWindupMax: 0.70 },
     { kind: 'manyfold', chapter: 4, maxHp: 14500, damage: 82, speed: 64, armor: 38, goldValue: 920, radius: 48, color: '#271737', glow: '#c991ff', label: '折界裁缝·万相', spriteKey: 'enemy_boss_manyfold', tintColor: '#ffffff', visualScale: 1.88, attackWindupMax: 0.55 },
     { kind: 'invader', chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
+    // 滑稽猴（彩蛋Boss，用户设计稿）：HP800/移速300/伤害10/攻速1/护甲50/暴击0。
+    // 小体型+与玩家同速的贴脸恶作剧担当；击杀20%掉玩偶猴（隐藏成就）。
+    // 暂无专属贴图，复用 enemy_boss 素体+金黄染色（同 invader 先例），待美术补充。
+    { kind: 'joker', chapter: 1, maxHp: 800, damage: 10, speed: 300, armor: 50, goldValue: 120, radius: 34, color: '#c9963c', glow: '#ffd24d', label: '滑稽猴', spriteKey: 'enemy_boss', tintColor: '#ffcf4d', visualScale: 1.15, attackWindupMax: 0.42 },
 ];
 
 // ============================================================
@@ -239,6 +243,7 @@ export const UNIT_CATALOG: UnitEntry[] = [
     { id: 'boss_crucible_city', label: '磁潮铸城兽·坩埚', category: 'boss', color: '#ff8b2c' },
     { id: 'boss_manyfold', label: '折界裁缝·万相', category: 'boss', color: '#c991ff' },
     { id: 'boss_invader', label: '灭世机神·天罚', category: 'boss', color: '#ffaa33' },
+    { id: 'boss_joker', label: '滑稽猴', category: 'boss', color: '#ffd24d' },
     // 小 Boss（文档 6 个）
     ...MINI_BOSSES.map(m => ({ id: m.id, label: m.label, category: 'miniboss' as UnitCategory, color: m.color })),
     // 小兵：保留现有样例，新文档单位追加在后，便于并排对比验收。

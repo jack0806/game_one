@@ -33,6 +33,29 @@ export class AugmentManager {
     freeRefreshes = 0;
     /** 合理避税(hex30)：刷新费用乘区（0.5 = 费用减半）。 */
     refreshCostMult = 1;
+    /** 固定强化：已收过 +5% 附加费的海克斯 id（同一强化无论固定几次只收一次）。 */
+    private _pinCharged: Set<string> = new Set();
+    /** 固定强化的货架卡实例：跨波次保留，下次开页占前几张，直到购买或手动取消。 */
+    pinnedCards: AugmentDef[] = [];
+
+    /**
+     * 固定强化（商店卡片"固定"按钮）：刷新与后续波次开页都保留该卡，代价是
+     * 定价 +5%。附加费按海克斯 id 只收一次——反复固定/后续波次再固定同一强化
+     * 都不叠加；固定状态跨波次保存在 pinnedCards，直到购买（equip 自动解除）
+     * 或手动取消（unpinCard）。
+     */
+    pinCard(card: AugmentDef): void {
+        if (!this.pinnedCards.some(p => p.id === card.id)) this.pinnedCards.push(card);
+        if (this._pinCharged.has(card.id)) return;
+        this._pinCharged.add(card.id);
+        card._price = Math.round((card._price ?? 0) * 1.05);
+    }
+
+    /** 取消固定：解除跨波保留（已收的 +5% 附加费不退，防固定↔取消刷价）。 */
+    unpinCard(id: string): void {
+        const i = this.pinnedCards.findIndex(p => p.id === id);
+        if (i >= 0) this.pinnedCards.splice(i, 1);
+    }
 
     /** 全部持有（技能 + 功能），展示/统计/事件分发用。 */
     all(): AugmentDef[] {
@@ -135,6 +158,8 @@ export class AugmentManager {
                     : a.prices.length < level) continue;
                 if (results.find(r => r.id === a.id)) continue;
                 if (a.oneShot && this._oneShotUsed.has(a.id)) continue;
+                // 固定卡已由 shopOptions 前置占位（本页刷新由 UI 保留原实例），不再重复刷出
+                if (this.pinnedCards.some(p => p.id === a.id)) continue;
                 // 第一章第一轮：只刷功能性海克斯
                 if (opts?.firstWave && a.category !== '功能') continue;
                 // 元素暴击：未集齐四种元素海克斯时不进卡池（购买条件未解锁）
@@ -166,6 +191,29 @@ export class AugmentManager {
             results.push(this._makeCard(def, level, isUpgrade));
         }
         return results;
+    }
+
+    /**
+     * 开页货架（波间商店/开局战备/神秘强化共用）：固定的海克斯占前几张
+     * （跨波次保留，直到购买或取消固定，连同已上浮的定价），其余槽位现场
+     * 刷新。失效固定卡自动丢弃：一次性已用、技能卡已满档（买不进去）。
+     */
+    shopOptions(n = 3, wave = 1, opts?: { firstWave?: boolean; refresh?: boolean }): AugmentDef[] {
+        this.pinnedCards = this.pinnedCards.filter(p => this._pinStillValid(p));
+        const out = this.pinnedCards.slice(0, n);
+        // rollOptions 已排除固定卡 id，新刷出的不会与固定卡重复
+        for (const r of this.rollOptions(n - out.length, wave, opts)) {
+            if (out.length >= n) break;
+            out.push(r);
+        }
+        return out;
+    }
+
+    private _pinStillValid(p: AugmentDef): boolean {
+        const def = AUGMENT_DB.find(a => a.id === p.id) ?? p;
+        if (def.oneShot && this._oneShotUsed.has(def.id)) return false;
+        const owned = this.ownedOf(def.id);
+        return !(owned && def.category !== '功能' && (owned.level ?? 1) >= 3);
     }
 
     private _rollRarity(weights: Record<HexRarity, number>): HexRarity | null {
@@ -205,6 +253,13 @@ export class AugmentManager {
      * 返回是否成功（技能格满/技能已满级/一次性已用过返回 false）。
      */
     equip(card: AugmentDef, player: any, game: any, opts?: { force?: boolean }): boolean {
+        const ok = this._equip(card, player, game, opts);
+        // 买入即解除固定：持有后旧货架卡的档位/定价已过期，防低价囤卡
+        if (ok) this.unpinCard(card.id);
+        return ok;
+    }
+
+    private _equip(card: AugmentDef, player: any, game: any, opts?: { force?: boolean }): boolean {
         const def = AUGMENT_DB.find(a => a.id === card.id) ?? card;
 
         // 元素暴击解锁门槛：未集齐四元素时不可装备（测试房 force 绕过）
@@ -329,5 +384,7 @@ export class AugmentManager {
         this._oneShotUsed = new Set();
         this.freeRefreshes = 0;
         this.refreshCostMult = 1;
+        this._pinCharged = new Set();
+        this.pinnedCards = [];
     }
 }

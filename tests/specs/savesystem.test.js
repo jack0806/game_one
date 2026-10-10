@@ -161,8 +161,8 @@ test('旧单档案迁移:legacy档案在所有槽为空时迁入1号槽,且只�
     assert.equal(SaveSystem.listSlots()[0].exists, false, '已有槽位数据时旧档不再迁移');
 });
 
-test('成就全集12个且id唯一', () => {
-    assert.equal(ACHIEVEMENTS.length, 12);
+test('成就全集13个且id唯一(含滑稽猴隐藏成就)', () => {
+    assert.equal(ACHIEVEMENTS.length, 13);
     const ids = ACHIEVEMENTS.map(a => a.id);
     assert.equal(new Set(ids).size, ids.length);
     for (const a of ACHIEVEMENTS) {

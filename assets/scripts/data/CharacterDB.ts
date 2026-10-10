@@ -199,55 +199,75 @@ export const CHARACTERS: Record<string, CharDef> = {
     reik: {
         id: 'reik',
         name: '狂战士·雷克', icon: '⚔️', color: '#ff4444', unlocked: true,
-        attackType: 'melee', attackRange: 70, ultCd: 18,
-        desc: '每损失10% HP，伤害+8%（最高+80%）；攻击吸血5%',
-        skills: { q: '怒冲 — 向前冲刺200距离并击飞沿途敌人', e: '战吼 — 10秒攻速+50%/伤害+30%', r: '死亡意志 — 牺牲半血，4秒无敌+45%吸血+50%攻速' },
+        attackType: 'melee', attackRange: 70, ultCd: 20, eCd: 15,
+        desc: '每损失10% HP，伤害+8%（最高+80%）；攻击吸血0.5%',
+        skills: {
+            q: '怒冲 — 朝目标方向斩出锥形嗜血重击（半径220/张角100°），造成150%攻击伤害并挂上流血：5秒内每秒再造成15%攻击伤害',
+            e: '血之护盾 — 5秒内受到的伤害减伤60%，被减免的部分在6秒后全额转换为等量护盾（持续10秒）',
+            r: '死亡意志 — 牺牲当前80%生命值，换取3秒无敌与8秒攻速+30%',
+        },
         skillIcons: { q: 'skill_reik_q', e: 'skill_reik_e', r: 'skill_reik_r' },
-        stats: { maxHp: 200, speed: 300, damage: 40, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
-        passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.05; },
+        stats: { maxHp: 200, speed: 300, damage: 30, attackSpeed: 1.8, armor: 20, critRate: 0.1, critDmg: 0.5, pierce: 0 },
+        passive(p: any) { p.stats._reikPassive = true; p.stats.lifestealRate = 0.005; },
         qSkill(p: any, game: any) {
-            // 冲锋方向 = 角色朝向（不再追鼠标）
-            const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
-            const startX = p.x, startY = p.y;
-            const landing = game.dashInArena?.(p.x, p.y, nx * 200, ny * 200, p.radius)
-                ?? { x: clamp(p.x + nx * 200, p.radius, CANVAS_W - p.radius),
-                     y: clamp(p.y + ny * 200, p.radius, PLAYFIELD_BOTTOM - p.radius) };
-            p.x = landing.x; p.y = landing.y;
-            game.screenShake.shake(8, 0.25);
-            // 冲锋撕裂：三段双斧弧刃沿实际位移路径推进；旧 mock/兼容环境回落通用剑气。
-            if (game.particles.reikChargeCleave) game.particles.reikChargeCleave(startX, startY, p.x, p.y);
-            else game.particles.meleeSlash?.(startX, startY, Math.atan2(ny, nx), '#ff4444', 200, 1.35);
-            const mult = p.hp / p.stats.maxHp < 0.5 ? 2 : 1;
-            const pathDx = p.x - startX, pathDy = p.y - startY;
-            const pathLen2 = pathDx * pathDx + pathDy * pathDy || 1;
-            for (const e of game.enemies) {
-                if (!e.alive) continue;
-                // 路径命中：敌人到冲锋线段的最近点在刃宽内即算命中
-                // （旧版只判终点80半径圆，从敌人头顶冲过时不造成伤害）
-                const t = Math.max(0, Math.min(1, ((e.x - startX) * pathDx + (e.y - startY) * pathDy) / pathLen2));
-                const cx = startX + pathDx * t, cy = startY + pathDy * t;
-                if (Math.hypot(e.x - cx, e.y - cy) <= e.radius + 28 || Vec.dist(e.x, e.y, p.x, p.y) < 80 + e.radius) {
-                    if (p.applyAttackDamage) p.applyAttackDamage(e, game, p.stats.damage * mult);
-                    else e.takeDamage(p.stats.damage * mult, p, game);
-                    e.knockbackX += (e.x - startX) * 0.3;
-                    e.knockbackY += (e.y - startY) * 0.3;
+            // 锥形嗜血重击：以自身为顶点、朝目标方向（鼠标激活时朝鼠标）张开
+            // 半径220/半张角50°的扇形；命中造成150%攻击伤害并挂流血DoT。
+            const mouse = game.input?.mouse;
+            let nx: number, ny: number;
+            if (mouse?.active) {
+                [nx, ny] = Vec.normalize(mouse.x - p.x, mouse.y - p.y);
+                if (!nx && !ny) nx = 1;
+            } else {
+                [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            }
+            const RANGE = 220;
+            const HALF = (50 * Math.PI) / 180;
+            const atk = p.getDamage?.(game) ?? p.stats.damage;
+            const angle = Math.atan2(ny, nx);
+            if (game.particles.reikCleave) {
+                game.particles.reikCleave(p.x, p.y, angle, RANGE, 2, (p._reikSwingSide = ((p._reikSwingSide ?? 0) + 1) & 1));
+            } else {
+                game.particles.meleeSlash?.(p.x, p.y, angle, '#ff4444', RANGE, 1.6);
+            }
+            game.screenShake?.shake?.(6, 0.2);
+            for (const e of (game.enemies || [])) {
+                if (!e.alive || e.dead) continue;
+                const dx = e.x - p.x, dy = e.y - p.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > RANGE + (e.radius ?? 0)) continue;
+                // 贴身目标必中；其余按与锥形中轴的夹角判定（含半径容差）
+                let off: number;
+                if (dist <= (e.radius ?? 0) + (p.radius ?? 16)) off = 0;
+                else off = Math.abs(Math.acos(clamp((dx * nx + dy * ny) / dist, -1, 1)))
+                    - Math.asin(clamp((e.radius ?? 0) / dist, 0, 1));
+                if (off > HALF) continue;
+                if (p.applyAttackDamage) p.applyAttackDamage(e, game, atk * 1.5);
+                else e.takeDamage?.(atk * 1.5, p, game);
+                // 流血：5秒内每秒造成15%攻击伤害（敌方DoT通道，可与其他来源叠加）
+                if (Array.isArray(e.dots)) {
+                    e.dots.push({ type: 'bleed', dps: atk * 0.15, timeLeft: 5, color: '#ff3355' });
                 }
             }
         },
         eSkill(p: any, game: any) {
-            p.applyBuff('warcry', 10, { atkSpd: 1.5, dmgMult: 1.3 });
+            // 血之护盾：5秒减伤60%（takeDamage 内按 buffs.dmgReduction 结算），
+            // 被减免的部分计入 _bloodShieldBank，施放起6秒后由 PlayerController
+            // 转为等量护盾（持续10秒）。
+            p.applyBuff?.('blood_shield', 5, { dmgReduction: 0.6 });
+            p._bloodShieldConvertT = 6;
             if (game.particles.reikWarcry) game.particles.reikWarcry(p.x, p.y);
-            else game.particles.hexActivate(p.x, p.y, '#ff4444');
+            else game.particles.hexActivate?.(p.x, p.y, '#ff4444');
         },
         ultimate(p: any, game: any) {
-            // 大招改为4秒：无敌 + 45%伤害吸血 + 50%攻速（吸血由
-            // PlayerController.applyAttackLifesteal 累加 buffs 的 lifestealRate）
-            p.hp *= 0.5;
-            p.applyBuff('death_will', 4, { invincible: true, atkSpd: 1.5, lifestealRate: 0.45 });
-            if (game.particles.reikDeathWill) game.particles.reikDeathWill(p, 4);
-            else game.particles.hexActivate(p.x, p.y, '#ff0000');
-            game.floatingText.spawn(p.x, p.y - 50, '死亡意志！', '#ff0000', 22, true);
-            game.screenShake.shake(15, 0.5);
+            // 死亡意志：牺牲当前80%生命值，换取3秒无敌 + 8秒攻速+30%。
+            // 无敌与攻速分两条buff挂（时长不同），残血加伤被动顺势进入高增伤区。
+            p.hp *= 0.2;
+            p.applyBuff?.('death_will', 3, { invincible: true });
+            p.applyBuff?.('death_will_frenzy', 8, { atkSpd: 1.3 });
+            if (game.particles.reikDeathWill) game.particles.reikDeathWill(p, 3);
+            else game.particles.hexActivate?.(p.x, p.y, '#ff0000');
+            game.floatingText?.spawn?.(p.x, p.y - 50, '死亡意志！', '#ff0000', 22, true);
+            game.screenShake?.shake?.(15, 0.5);
         },
     },
     olia: {
@@ -585,23 +605,32 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'via',
         name: '盗神·薇娅', icon: '🎭', color: '#f0c04a', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 35, qCd: 15, eCd: 10,
-        desc: '失主还没发现：被盗技能的怪物下次施法只空放动作，并失措2秒（无法移动和攻击）',
+        desc: '贪得无厌：偷到技能或截获攻击时获得赃印（8秒/至多5层，每层伤害×1.06、移速×1.03）；被盗技能的怪物下次施放空放并失措2秒',
         skills: {
-            q: '窃神之手 — 盗取鼠标选中500码内怪物的技能（一/二/三技能概率30%/30%/10%），得一次性赃技；再按Q释放赃技后Q才开始冷却；失败恢复5点生命并立即冷却',
-            e: '这招我收下了 — 截取周围150码敌方普攻至多5份（弹幕保留特征/近战化斩击/范围化爆核），再按E向怪群释放；超过6秒自动释放，全部释放后才开始冷却',
-            r: '此刻，归我所有 — 展开450码掠夺领域5秒：夺取敌方子弹/陷阱/召唤物与近战攻击（化为残影反击），结束时释放收账冲击，造成30+夺取次数×10点伤害（上限150）',
+            q: '窃神之手 — 盗取鼠标选中500码内怪物的技能（一/二/三技能概率30%/30%/10%），赃技伤害取怪物原技能与攻击力×2的较高值；再按Q释放赃技后Q才开始15秒冷却；失败恢复8点生命、冷却5秒且下次对有效目标必定成功；无目标时不消耗赃技',
+            e: '这招我收下了 — 立即复制300码内至多5只怪物的普攻，之后6秒内继续截获攻击（共至多10份）；再按E释放，每份附加攻击力75%的伤害；6秒未释放自动释放，全部释放后才开始冷却',
+            r: '此刻，归我所有 — 展开450码掠夺领域5秒：开启时窃取范围内每只怪物5%最大生命（至多80/只）并回复总量的20%（至多60点），获得30+怪物数×10护盾（至多100，5秒）；夺取敌方子弹/召唤物/近战攻击，结束时收账冲击造成max(80,攻击力×3)+夺取次数×20点伤害（上限350）',
         },
         skillIcons: { q: 'skill_via_q', e: 'skill_via_e', r: 'skill_via_r' },
-        stats: { maxHp: 110, speed: 330, damage: 20, attackSpeed: 1.2, armor: 5, critRate: 0.1, critDmg: 0.5, pierce: 0 },
+        stats: { maxHp: 120, speed: 340, damage: 25, attackSpeed: 1.2, armor: 8, critRate: 0.1, critDmg: 0.5, pierce: 0 },
         passive(p: any) { p.stats.klepto = true; },
         qSkill(p: any, game: any) {
-            // 双模式：持有赃技→释放（一次性，之后Q才开始冷却）；否则→窃取
+            // 双模式：持有赃技→释放（一次性，之后Q才开始冷却）；否则→窃取。
+            // 可攻击目标 = 500码内可见存活怪物（释放/窃取共用同一判定）。
+            const valid = (game.enemies || []).filter((e: any) =>
+                e.alive && !e.dead && !e.invisible && Vec.dist(e.x, e.y, p.x, p.y) <= 500);
             const loaded = p.stats._stolenSkill;
             if (loaded) {
+                // 没有可攻击目标时不消耗赃技（保持冷却挂起）
+                if (!valid.length) {
+                    p.stats.deferQcd = true;
+                    game.announceSteal?.('没有可攻击目标：赃技保留');
+                    return;
+                }
                 const pool = game.bulletPool ?? game.bullets;
                 if (loaded.kind === 'volley') {
                     // 一技能：三发追踪弹，各带赃技伤害
-                    const targets = (game.enemies || []).filter((e: any) => e.alive && !e.dead && !e.invisible)
+                    const targets = [...valid]
                         .sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y))
                         .slice(0, 3);
                     for (const t of targets) {
@@ -627,59 +656,104 @@ export const CHARACTERS: Record<string, CharDef> = {
                 game.particles.hexActivate(p.x, p.y, '#f0c04a');
                 p.stats._stolenSkill = undefined;
                 p.stats.deferQcd = false;
-                // 使用赃技后 Q 才开始冷却
+                // 使用赃技后 Q 才开始冷却（15秒档）
                 p._qCd = (p._charDef?.qCd ?? 15) * (1 - (p.stats.cdReduction || 0));
                 return;
             }
             // 窃取模式：鼠标选中（距鼠标最近且在玩家500码内）的怪物
             const mouse = game.input?.mouse;
             const mx = mouse?.x ?? p.x, my = mouse?.y ?? p.y;
-            const cands = (game.enemies || []).filter((e: any) =>
-                e.alive && !e.dead && !e.invisible && Vec.dist(e.x, e.y, p.x, p.y) <= 500);
-            if (!cands.length) {
-                p.heal(5, false);
-                game.announceSteal?.('窃取失败：500码内无可窃目标，恢复5点生命');
+            if (!valid.length) {
+                p.heal(8, false);
+                p.stats._stealGuaranteed = true;
+                p.stats.qCdNext = 5;
                 p.stats.deferQcd = false;
-                return;   // PlayerController 按常规启动 Q 冷却
+                game.announceSteal?.('窃取失败：500码内无可窃目标，恢复8点生命（下次必定成功）');
+                return;   // PlayerController 读取 qCdNext 启动 5 秒失败冷却
             }
-            cands.sort((a: any, b: any) =>
+            valid.sort((a: any, b: any) =>
                 Vec.dist(a.x, a.y, mx, my) - Vec.dist(b.x, b.y, mx, my));
-            const target = cands[0];
+            const target = valid[0];
             const slots = target.isBoss || target.isElite ? 3 : 2;
             const roll = Rng.float(0, 1);
-            const slot = roll < 0.3 ? 1 : roll < 0.6 ? 2 : roll < 0.7 ? 3 : 0;   // 30/30/10，其余失败
+            // 上次失败的保底：对有效目标必定成功（取一技能·普攻）
+            const slot = p.stats._stealGuaranteed ? 1
+                : roll < 0.3 ? 1 : roll < 0.6 ? 2 : roll < 0.7 ? 3 : 0;   // 30/30/10，其余失败
             if (!slot || slot > slots) {
-                p.heal(5, false);
-                game.announceSteal?.('窃取失败：对方捂紧了技能，恢复5点生命');
-                game.particles.hexActivate(target.x, target.y, '#8a8f9a');
+                p.heal(8, false);
+                p.stats._stealGuaranteed = true;
+                p.stats.qCdNext = 5;
                 p.stats.deferQcd = false;
+                game.announceSteal?.('窃取失败：对方捂紧了技能，恢复8点生命（下次必定成功）');
+                game.particles.hexActivate(target.x, target.y, '#8a8f9a');
                 return;
             }
-            // 成功：怪物标记失措被动 + 获得一次性赃技（Q 挂起冷却直到赃技被使用）
+            // 成功：怪物标记失措被动 + 获得一次性赃技（Q 挂起冷却直到赃技被使用）。
+            // 赃技伤害 = max(怪物原技能伤害估值, 薇娅当前攻击力×2)。
+            p.stats._stealGuaranteed = false;
             target._skillStolen = true;
+            const atk2 = Math.round((p.getDamage?.(game) ?? p.stats.damage) * 2);
+            const orig = slot === 3
+                ? Math.max(60, Math.round((target.maxHp || 100) * (target.isBoss ? 0.02 : 0.06)))
+                : Math.round((target.damage || 10) * (slot === 1 ? 1 : 1.2));
             p.stats._stolenSkill = {
                 name: `${target.label || target.type || '怪物'}·${['普攻', '特技', '杀招'][slot - 1]}`,
                 kind: (['volley', 'nova', 'nuke'] as const)[slot - 1],
-                dmg: slot === 3
-                    ? Math.max(60, Math.round((target.maxHp || 100) * (target.isBoss ? 0.02 : 0.06)))
-                    : Math.max(15, Math.round((target.damage || 10) * (slot === 1 ? 2 : 1.2))),
+                dmg: Math.max(orig, atk2),
                 color: target.glowColor || target.color || '#ff9d5c',
             };
             p.stats.deferQcd = true;
+            kleptoGainMark(p, game);
             game.announceSteal?.(`窃取成功：${p.stats._stolenSkill.name}（再按Q释放）`);
             game.particles.hexActivate(target.x, target.y, '#f0c04a');
         },
         eSkill(p: any, game: any) {
-            // 双模式：无截取状态→进入截取（E冷却挂起）；有→立即释放全部
+            // 双模式：无截取状态→进入截取（E冷却挂起），立即复制300码内
+            // 至多5只怪物的普攻；有→立即释放全部（没截到东西时保持窗口）。
             if (!p.stats._intercept) {
                 p.stats._intercept = { stored: [], t: 6 };
                 p.stats.deferEcd = true;
+                const copies = (game.enemies || []).filter((e: any) =>
+                    e.alive && !e.dead && !e.invisible && Vec.dist(e.x, e.y, p.x, p.y) <= 300)
+                    .sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y))
+                    .slice(0, 5);
+                for (const e of copies) {
+                    const aoe = KLEPTO_AOE_TYPES.indexOf(e.type) >= 0;
+                    p.stats._intercept.stored.push({
+                        kind: aoe ? 'core' : 'bullet',
+                        dmg: e.damage || 10,
+                        color: e.glowColor || e.color || '#ff9d5c',
+                    });
+                    kleptoGainMark(p, game);
+                }
                 game.particles.hexActivate(p.x, p.y, '#f0c04a');
-            } else {
+                if (copies.length) game.announceSteal?.(`截获普攻×${copies.length}（6秒内继续截取）`);
+            } else if (p.stats._intercept.stored.length) {
                 fireStoredAttacks(p, game);
+            } else {
+                game.announceSteal?.('还没有截到攻击');
             }
         },
         ultimate(p: any, game: any) {
+            // 开启瞬间结算：窃取范围内每只怪物最大生命5%（每只至多80），
+            // 回复实际窃取总量的20%（至多60）；护盾 30+怪物数×10（至多100，5秒）。
+            let stolen = 0, count = 0;
+            for (const e of (game.enemies || [])) {
+                if (!e.alive || e.dead) continue;
+                if (Vec.dist(e.x, e.y, p.x, p.y) > 450 || !coverClear(game, p.x, p.y, e.x, e.y)) continue;
+                count++;
+                const take = Math.min(80, Math.round((e.maxHp || 100) * 0.05));
+                const actual = e.takeDamage?.(take, p, game);
+                stolen += typeof actual === 'number' ? actual : take;
+            }
+            const heal = Math.min(60, stolen * 0.2);
+            if (heal >= 1) p.heal(heal, false);
+            const shieldAmt = Math.min(100, 30 + count * 10);
+            if (p.grantTempShield) p.grantTempShield(shieldAmt, 5, game);
+            else p.shield = (p.shield || 0) + shieldAmt;
+            if (count > 0) {
+                game.floatingText?.spawn?.(p.x, p.y - 44, `窃取 ${Math.round(stolen)} 生命`, '#f0c04a', 15, true);
+            }
             // 掠夺领域：锚定施放位置（450码/5秒）。子弹与近战的截取在
             // BulletController/EnemyBase 挂点读取 _plunderDomain；陷阱/召唤物
             // 由领域自身周期性没收（计入夺取次数）。结束时释放收账冲击。
@@ -692,8 +766,9 @@ export const CHARACTERS: Record<string, CharDef> = {
                 if (domain._t <= 0) {
                     domain.alive = false;
                     if ((g as any)._plunderDomain === domain) (g as any)._plunderDomain = null;
-                    // 收账冲击：30 + 夺取次数×10（上限150），扩散波前逐个结算
-                    const dmg = Math.min(150, 30 + domain._captures * 10);
+                    // 收账冲击：max(80, 攻击力×3) + 夺取次数×20（上限350）
+                    const atk = p.getDamage?.(g) ?? p.stats.damage;
+                    const dmg = Math.min(350, Math.round(Math.max(80, atk * 3) + domain._captures * 20));
                     const wave: any = {
                         x: domain.x, y: domain.y, r: 10, alive: true, kind: 'debtWave',
                         _speed: 900, _maxR: 450, _hit: new Set(), _dmg: dmg, owner: p,
@@ -920,6 +995,28 @@ export function spawnSkeletonServant(game: any, player: any, x: number, y: numbe
 
 // ── 盗神·薇娅（via）共享辅助 ───────────────────────────────
 
+/** E截取半径：按下立即复制与后续截获共用的判定距离。 */
+const KLEPTO_INTERCEPT_RADIUS = 300;
+/** E截取储存上限：初始复制5份 + 后续截获，总共至多10份。 */
+const KLEPTO_STORE_CAP = 10;
+
+/**
+ * 被动·贪得无厌：偷到技能或截获攻击时获得一层"赃印"（持续8秒，至多5层，
+ * 获得新层刷新整段时长）。每层伤害×1.06、移速×1.03，经 loot_mark buff 生效
+ * （buff 到期层数自然清零）。mock 玩家无 applyBuff 时直接写 _buffs 数组。
+ */
+export function kleptoGainMark(p: any, game?: any): void {
+    if (!p?.stats?.klepto) return;
+    const buffs = p._buffs;
+    const prev = Array.isArray(buffs) ? buffs.find((b: any) => b.id === 'loot_mark') : null;
+    const n = Math.min(5, ((prev?.mods?._stacks ?? 0) + 1));
+    const mods: any = { _stacks: n, dmgMult: Math.pow(1.06, n), speed: Math.pow(1.03, n) };
+    if (p.applyBuff) p.applyBuff('loot_mark', 8, mods);
+    else if (prev) { prev.duration = 8; prev.mods = mods; }
+    else if (Array.isArray(buffs)) buffs.push({ id: 'loot_mark', duration: 8, mods });
+    game?.floatingText?.spawn?.(p.x, p.y - 46, `赃印×${n}`, '#f0c04a', 13, false);
+}
+
 /**
  * 被动·失主还没发现：被盗技能的怪物下次施法只空放动作——消耗标记并
  * 陷入2秒失措（stunned 跳过整个AI：无法移动和攻击）。
@@ -940,7 +1037,7 @@ const KLEPTO_AOE_TYPES = ['acid_sac', 'ember_acolyte', 'blast_tick'];
 /**
  * E 这招我收下了 / R 此刻归我所有：在敌人出手前截获其攻击。
  *  · melee：R掠夺领域内化为残影反击附近怪物（计入夺取次数）；
- *  · ranged/melee：E截取状态150码内收入囊中（近战→斩击，范围→爆核）。
+ *  · ranged/melee：E截取状态300码内收入囊中（近战→斩击，范围→爆核）。
  * 返回 true 表示攻击已被收走（调用方跳过本次出手）。
  */
 export function kleptoCaptureAttack(e: any, player: any, game: any, kind: 'ranged' | 'melee'): boolean {
@@ -954,15 +1051,17 @@ export function kleptoCaptureAttack(e: any, player: any, game: any, kind: 'range
         if (victims.length) (Rng.pick(victims) as any).takeDamage(e.damage || 10, player, game);
         return true;
     }
-    // E 截取状态：150码内普攻收入囊中（至多5份）
+    // E 截取状态：300码内普攻收入囊中（至多10份）
     const icpt = player?.stats?._intercept;
-    if (icpt && icpt.stored.length < 5 && Vec.dist(e.x, e.y, player.x, player.y) <= 150) {
+    if (icpt && icpt.stored.length < KLEPTO_STORE_CAP
+        && Vec.dist(e.x, e.y, player.x, player.y) <= KLEPTO_INTERCEPT_RADIUS) {
         const aoe = KLEPTO_AOE_TYPES.indexOf(e.type) >= 0;
         icpt.stored.push({
             kind: kind === 'melee' ? (aoe ? 'core' : 'slash') : (aoe ? 'core' : 'bullet'),
             dmg: e.damage || 10,
             color: e.glowColor || e.color || '#ff9d5c',
         });
+        kleptoGainMark(player, game);
         game?.particles?.hexActivate?.(e.x, e.y, '#f0c04a');
         return true;
     }
@@ -971,15 +1070,17 @@ export function kleptoCaptureAttack(e: any, player: any, game: any, kind: 'range
 
 /**
  * 敌方子弹的截取/掠夺（BulletController 敌弹循环逐发调用）：
- *  · E截取状态150码内：收入囊中（保留伤害/颜色特征）→ 'captured'（子弹销毁）；
+ *  · E截取状态300码内：收入囊中（保留伤害/颜色特征）→ 'captured'（子弹销毁）；
  *  · R掠夺领域内：夺取控制权——就地折转为射向最近怪物的玩家弹
  *    （保留伤害/速度/半径等原有特征）→ 'plundered'（原敌弹销毁）。
  * 返回 'pass' 表示不处理。
  */
 export function kleptoCaptureBullet(b: any, player: any, game: any): 'pass' | 'captured' | 'plundered' {
     const icpt = player?.stats?._intercept;
-    if (icpt && icpt.stored.length < 5 && Vec.dist(b.x, b.y, player.x, player.y) <= 150) {
+    if (icpt && icpt.stored.length < KLEPTO_STORE_CAP
+        && Vec.dist(b.x, b.y, player.x, player.y) <= KLEPTO_INTERCEPT_RADIUS) {
         icpt.stored.push({ kind: 'bullet', dmg: b.damage || 10, color: b.color || '#ff9d5c' });
+        kleptoGainMark(player, game);
         game?.particles?.hexActivate?.(b.x, b.y, '#f0c04a');
         return 'captured';
     }
@@ -1009,29 +1110,30 @@ export function kleptoCaptureBullet(b: any, player: any, game: any): 'pass' | 'c
 /**
  * 释放截取的全部攻击（E再按 / 6秒超时共用）：
  * 子弹保留特征射向最近怪物；斩击对近身怪结算；爆核在敌群中心引爆。
- * 释放完成后才启动 E 冷却（deferEcd 解除）。
+ * 每份额外附加薇娅当前攻击力75%的伤害。释放完成后才启动 E 冷却。
  */
 export function fireStoredAttacks(p: any, game: any): void {
     const icpt = p.stats?._intercept;
     if (!icpt) return;
     const pool = game.bulletPool ?? game.bullets;
     const target = game.getNearestEnemy?.(p.x, p.y);
+    const bonus = Math.round((p.getDamage?.(game) ?? p.stats?.damage ?? 0) * 0.75);
     for (const s of icpt.stored) {
         if (s.kind === 'bullet') {
             const a = target ? Math.atan2(target.y - p.y, target.x - p.x)
                 : Math.atan2(p.facingY ?? 0, p.facingX ?? 1);
             pool?.spawn?.({ x: p.x, y: p.y, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420,
-                damage: s.dmg, radius: 6, color: s.color, owner: 'player', lifeTime: 2.2,
+                damage: s.dmg + bonus, radius: 6, color: s.color, owner: 'player', lifeTime: 2.2,
                 pierceLeft: 0, charKey: 'via' });
         } else if (s.kind === 'slash') {
             const v = target && Vec.dist(target.x, target.y, p.x, p.y) <= 180 ? target : null;
             if (v) {
-                v.takeDamage(s.dmg, p, game);
+                v.takeDamage(s.dmg + bonus, p, game);
                 game.particles?.meleeSlash?.(v.x, v.y, Rng.float(0, Math.PI * 2), '#f0c04a', 70, 1.2);
             }
         } else {   // core：范围攻击转化为爆炸核心，在敌群中心引爆
             const c = game.getEnemyClusterPoint?.() ?? target;
-            if (c) game.spawnExplosion?.(p, c.x, c.y, s.dmg, 110, game);
+            if (c) game.spawnExplosion?.(p, c.x, c.y, s.dmg + bonus, 110, game);
         }
     }
     icpt.stored.length = 0;

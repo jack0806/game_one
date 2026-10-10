@@ -99,6 +99,10 @@ export class GameManager extends Component {
     private _bgFillLeft!:    Sprite;      // 宽屏两侧镜像延伸，接缝与世界底图一致
     private _bgFillRight!:   Sprite;
     private _bgToneGfx!:     Graphics;    // per-chapter desaturation/dimming overlay
+    /** 滑稽猴致盲暗角层（UILayer 之下）：以玩家为中心的径向渐暗，300码内清晰。 */
+    private _blindNode!: Node;
+    /** 致盲暗角画笔：每帧在玩家位置向外画由透明到不透明的同心圆环。 */
+    private _blindGfx!: Graphics;
     private _arenaLayer!:    Node;        // 世界坐标残骸，与角色同步震屏
     private _arenaGfx!:      Graphics;
     private _arena: ArenaLayout = EMPTY_ARENA;
@@ -398,6 +402,17 @@ export class GameManager extends Component {
         this._fxPool = new SpriteNodePool(this._particleLayer, 24, 'Fx', [64, 64]);
         this._contactFxPool = new SpriteNodePool(this._particleLayer, 3, 'PlayerContactFx', [64, 64]);
         this._enemyArtPool = new SpriteNodePool(this._gameLayer, 220, 'EnemyArt', [48, 48]);
+
+        // BlindLayer — 滑稽猴恶作剧·致盲：周围视野暗下去（玩家周围300码保持
+        // 清晰，向外径向渐暗至近乎全黑，随玩家移动）。用同心粗描边圆环实现，
+        // 不用引擎反向模板遮罩——该方案在 3.8.8 实机会渲染成盖住英雄的白色
+        // 圆盘。放在 UILayer 之下，HUD/虚拟摇杆保持可读。
+        const blind = new Node('BlindLayer');
+        blind.setParent(this.node);
+        blind.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+        this._blindNode = blind;
+        this._blindGfx = blind.addComponent(Graphics);
+        blind.active = false;
 
         // UILayer — HUD and panels
         this._uiLayer = new Node('UILayer');
@@ -765,7 +780,7 @@ export class GameManager extends Component {
         this._augOfferRefreshed = false;
         this._augMgr.freeRefreshes = 0;
         this._floatText.spawn(CANVAS_W / 2, 240, `开局战备 ×${left}`, '#ffd655', 20, true);
-        const options = this._augMgr.rollOptions(3, 1, {});
+        const options = this._augMgr.shopOptions(3, 1, {});
         this._augUI.show(options, this._buildAugShopCtx(() => this._openStarterPacks(left - 1)));
     }
 
@@ -1525,7 +1540,8 @@ export class GameManager extends Component {
             } else {
                 boss.x = boss.x < CANVAS_W / 2 ? CANVAS_W - 90 : 90;
                 const node = this._makeDocBossTarget(player.x, player.y, 450, 'vespa_shell', n => {
-                    this._economy.spawnDrop(n.x, n.y, 15); boss.frozen = Math.max(boss.frozen, 2);
+                    // 大Boss免疫外部冰冻：毒爆取消的定身奖励走自身机制通道 mechanicFrozen
+                    this._economy.spawnDrop(n.x, n.y, 15); boss.mechanicFrozen = Math.max(boss.mechanicFrozen, 2);
                     this._floatText.spawn(n.x, n.y - 35, '毒爆取消！ +15', '#b7ff74', 16, true);
                 });
                 add({ kind: 'vespa_shell', timer: 4, max: 4, nodes: [node], exploded: false });
@@ -2213,7 +2229,8 @@ export class GameManager extends Component {
         this._augMgr.freeRefreshes = this._augMgr.ownedOf('hex29') ? 5 : 0;
         // 每章 W1 开局送三张功能性银卡（一局一章后每局的 W1 都触发；
         // 10~50 银档=开局送卡，文档 9.4 检查点）
-        const options = this._augMgr.rollOptions(3, this._waveMgr.templateWave(),
+        // shopOptions：固定强化的卡占前置槽位（跨波次保留）
+        const options = this._augMgr.shopOptions(3, this._waveMgr.templateWave(),
             { firstWave: this._waveMgr.wave === 1 });
         this._augUI.show(options, this._buildAugShopCtx(() => {
             // v4：W8 清空后开一次关中商店（顺序：三选一 → 商店 → 开下一波）
@@ -2244,6 +2261,11 @@ export class GameManager extends Component {
                 // 卖出按各实例总额 75% 回收
                 return true;
             },
+            // 固定强化：+5% 一次性附加费（AugmentManager 按海克斯 id 去重）
+            pin: (card) => this._augMgr.pinCard(card),
+            // 取消固定 / 当前固定 id（开页回显"已固定"，跨波次保留）
+            unpin: (card) => this._augMgr.unpinCard(card.id),
+            pinnedIds: () => this._augMgr.pinnedCards.map(p => p.id),
             refreshCost: () => this._augMgr.freeRefreshes > 0 ? 0 : this._nextAugRefreshCost(),
             refresh: () => {
                 // 再来一次·强化版(hex29)：每次强化选择页附带5次免费刷新，先用完再付费
@@ -2476,10 +2498,35 @@ export class GameManager extends Component {
         this._drawEntities();
         this._drawParticles();
         this._drawSpriteFx();
+        this._updateBlindOverlay();
         if (this._inCombat()) {
             this._hud.refresh(this._buildHudData());
             this._touchUI.refresh(this._player);
             this._refreshFloatText();
+        }
+    }
+
+    /**
+     * 滑稽猴恶作剧·致盲：joker_blind 生效期间以玩家为中心画径向暗角——
+     * 300 码内完全清晰（英雄正常可见），300→500 码渐暗，更远处近乎全黑，
+     * 暗圈随玩家移动。纯 Graphics 同心环叠出径向渐变，不依赖引擎模板遮罩。
+     */
+    private _updateBlindOverlay(): void {
+        if (!this._blindNode) return;
+        const on = this._inCombat() && !!this._player?.alive
+            && !!this._player.hasBuff?.('joker_blind');
+        if (this._blindNode.active !== on) this._blindNode.active = on;
+        if (!on) return;
+        const [lx, ly] = this._toLocal(this._player.x, this._player.y);
+        const g = this._blindGfx;
+        g.clear();
+        // 屏幕对角线≈1469：环画到 1500，玩家贴任意角落时对角也能暗满
+        for (let r = 313; r <= 1500; r += 20) {
+            const t = clamp((r - 300) / 200, 0, 1);
+            g.lineWidth = 26;                        // 相邻环重叠6px，避免缝隙漏亮
+            g.strokeColor = new Color(4, 6, 14, Math.round(238 * t));
+            g.circle(lx, ly, r);
+            g.stroke();
         }
     }
 
@@ -2787,6 +2834,21 @@ export class GameManager extends Component {
         const crowdedCoins = this._economy.drops.length > 48;
         for (const drop of this._economy.drops) {
             const [dx, dy] = this._toLocal(drop.x, drop.y);
+            // 玩偶猴（滑稽猴彩蛋掉落）：不走金币池，画一只金棕小猴玩偶
+            if (drop.kind === 'joker_doll') {
+                const cy = dy + Math.sin(drop.age * 3) * 3;
+                g.fillColor = new Color(255, 210, 77, 255);
+                g.circle(dx - 11, cy + 8, 6); g.fill();   // 左耳
+                g.circle(dx + 11, cy + 8, 6); g.fill();   // 右耳
+                g.circle(dx, cy, 13); g.fill();           // 圆脸
+                g.fillColor = new Color(74, 50, 12, 255);
+                g.circle(dx - 4.5, cy + 3, 2); g.fill();  // 左眼
+                g.circle(dx + 4.5, cy + 3, 2); g.fill();  // 右眼
+                g.strokeColor = new Color(74, 50, 12, 255);
+                g.lineWidth = 2;
+                g.arc(dx, cy - 2, 6, Math.PI, Math.PI * 2, false); g.stroke();   // 咧嘴笑
+                continue;
+            }
             const coin = this._coinPool.acquire();
             if (!coin) continue;
             // 后期上百枚高亮金币会盖住近战角色与敌人轮廓。高密度时缩小远处
@@ -4778,6 +4840,16 @@ export class GameManager extends Component {
         this._audio?.playSfx?.('skill_q', 0.6);
     }
 
+    /** 滑稽猴彩蛋：拾取玩偶猴 → 写入档案并解锁隐藏成就「这不是真的我哟」。 */
+    onJokerDollPicked(x: number, y: number): void {
+        this._floatText.spawn(x, Math.max(70, y - 30), '玩偶猴？这不是真的我哟……', '#ffd24d', 18, true);
+        const unlocked = SaveSystem.recordJokerDoll();
+        for (const a of unlocked) {
+            this._floatText.spawn(CANVAS_W / 2, 180, `成就解锁：${a.icon} ${a.name}`, '#ffd655', 22, true);
+            this._audio.playSfx('augment_pick', 0.9);
+        }
+    }
+
     /**
      * 宇宙法则(cosmos_law)：激活后5s内所有敌人变色（标记为"友方"），
      * 5s后统一对全场造成各自最大HP×60%的AoE伤害并还原颜色。
@@ -4953,7 +5025,7 @@ export class GameManager extends Component {
             case 'speed':  p.moveSpeed *= 1 + (item.value ?? 0.1); break;
             case 'damage': p.damageMulti *= 1 + (item.value ?? 0.15); break;
             case 'augment':
-                const opts = this._augMgr.rollOptions(3, Math.max(1, this._waveMgr.templateWave()));
+                const opts = this._augMgr.shopOptions(3, Math.max(1, this._waveMgr.templateWave()));
                 // 商店与强化选择都是全屏模态层。两者同时 active 时，创建顺序较早
                 // 的强化卡会透过商店半透明底板显示，形成“售罄后商店突然透明”的
                 // 视觉穿帮。购买神秘强化时暂停商店，选完再原样恢复售罄状态。

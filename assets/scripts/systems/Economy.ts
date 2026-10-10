@@ -13,6 +13,8 @@ interface GoldDrop {
     life: number;
     age: number;
     collected: boolean;
+    /** 掉落类型：gold=金币（默认）；joker_doll=滑稽猴的玩偶猴（拾取走成就回调）。 */
+    kind?: 'gold' | 'joker_doll';
 }
 
 const DROP_FLOOR = PLAYFIELD_BOTTOM;
@@ -95,7 +97,7 @@ export class Economy {
         return true;
     }
 
-    spawnDrop(x: number, y: number, amount: number): void {
+    spawnDrop(x: number, y: number, amount: number, kind: 'gold' | 'joker_doll' = 'gold'): void {
         // 二维平面：金币直接固定在敌人死亡坐标（仅做一次合法范围校正），
         // 不再生成随机速度，也不在 update 中做重力/横向漂移。
         const safe = this.dropPlacement?.(x, y) ?? { x, y };
@@ -108,6 +110,7 @@ export class Economy {
             life: 30,
             age: 0,
             collected: false,
+            kind,
         });
     }
 
@@ -119,6 +122,14 @@ export class Economy {
             d.life -= dt;
             if (d.life <= 0 || d.collected) { this._drops.splice(i, 1); continue; }
             if (Vec.dist(d.x, d.y, player.x, player.y) < pickupR) {
+                if (d.kind === 'joker_doll') {
+                    // 玩偶猴：不算金币，拾取交给 GameManager 的成就回调
+                    d.collected = true;
+                    game?.audio?.playSfx?.('augment_pick', 0.8);
+                    game?.particles?.hexActivate?.(d.x, d.y, '#ffd24d');
+                    game?.onJokerDollPicked?.(d.x, d.y);
+                    continue;
+                }
                 this.addGold(this._capGate(d.amount));
                 d.collected = true;
                 game?.audio?.playSfx?.('gold');

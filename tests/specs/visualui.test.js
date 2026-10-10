@@ -469,3 +469,28 @@ test('暂停与属性页清理上一帧浮字但不销毁持续战斗特效', ()
     assert.match(gameSource, /if \(s === 'paused' \|\| s === 'stats'\) \{[\s\S]*this\._floatText\?\.clear\(\)/);
     assert.doesNotMatch(gameSource, /if \(s === 'paused' \|\| s === 'stats'\) \{[\s\S]{0,180}this\._particles\?\.clear\(\)/);
 });
+
+test('海克斯商店固定强化:页签按钮阻断冒泡,刷新保留固定卡,+5%一次性', () => {
+    const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
+    // 点击固定页签不能连带触发整卡购买
+    assert.match(augSource, /ev\.propagationStopped = true;\s*this\._togglePin\(idx\)/);
+    // 刷新时固定卡保持原槽位
+    assert.match(augSource, /const pinnedKeep = this\._options\.map\(a => \(a && this\._pinned\.has\(a\.id\)\) \? a : null\)/);
+    // 定价+5%走管理器按id去重（同一强化只收一次）
+    assert.match(augSource, /this\._ctx\?\.pin\?\.\(aug\)/);
+    assert.match(gameSource, /pin: \(card\) => this\._augMgr\.pinCard\(card\)/);
+});
+
+test('固定强化跨波次保留:开页恢复固定状态,取消走unpin,三处开页带出固定卡', () => {
+    const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
+    // 开页从管理器恢复"已固定"回显与刷新保留
+    assert.match(augSource, /this\._pinned\s*=\s*new Set\(ctx\.pinnedIds\(\)\)/);
+    // 取消固定回写管理器（解除跨波保留）
+    assert.match(augSource, /this\._ctx\?\.unpin\?\.\(aug\)/);
+    assert.match(gameSource, /unpin: \(card\) => this\._augMgr\.unpinCard\(card\.id\)/);
+    assert.match(gameSource, /pinnedIds: \(\) => this\._augMgr\.pinnedCards\.map\(p => p\.id\)/);
+    // 波间商店/开局战备/神秘强化开页都走 shopOptions 带出固定卡
+    assert.match(gameSource, /this\._augMgr\.shopOptions\(3, this\._waveMgr\.templateWave\(\)/);
+    assert.match(gameSource, /this\._augMgr\.shopOptions\(3, 1, \{\}\)/);
+    assert.match(gameSource, /this\._augMgr\.shopOptions\(3, Math\.max\(1, this\._waveMgr\.templateWave\(\)\)\)/);
+});

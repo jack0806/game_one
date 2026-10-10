@@ -52,10 +52,10 @@ function recordingGame() {
 
 // ---- 吸血 ----------------------------------------------------
 
-test('狂战士(reik)被动设置攻击吸血5% (lifestealRate=0.05)', () => {
+test('狂战士(reik)被动设置攻击吸血0.5% (lifestealRate=0.005)', () => {
     const player = makeReik();
     CHARACTERS.reik.passive(player, makeMockGame());
-    assert.equal(player.stats.lifestealRate, 0.05);
+    assert.equal(player.stats.lifestealRate, 0.005);
     assert.equal(player.stats._reikPassive, true, '残血加伤被动应同时保留');
 });
 
@@ -216,38 +216,74 @@ test('Boss接触攻击前摇结束时触发大幅剑气(强度1.8)', () => {
     assert.equal(game.meleeCalls[0][5], 1.8);
 });
 
-test('狂战士Q冲锋从起点斩出长刃剑气(长度200,强度1.35)', () => {
+test('狂战士Q怒冲击出220码锥形剑气(重做后不再位移,表现回落通用剑气)', () => {
     const player = makeReik();
     player.x = 100; player.y = 100;
-    player.facingX = 0; player.facingY = 1; // 朝+y方向冲锋（技能沿角色朝向释放）
+    player.facingX = 0; player.facingY = 1; // 朝+y方向斩出（技能沿角色朝向释放）
     const game = recordingGame();
     game.enemies = [];
     CHARACTERS.reik.qSkill(player, game);
     assert.equal(game.meleeCalls.length, 1);
-    const [sx, sy, angle, , reach, strength] = game.meleeCalls[0];
-    assert.equal(sx, 100, '剑气应从冲锋起点斩出');
+    const [sx, sy, angle, , reach] = game.meleeCalls[0];
+    assert.equal(sx, 100, '剑气以自身为顶点斩出');
     assert.equal(sy, 100);
     assert.ok(Math.abs(angle - Math.PI / 2) < 0.01);
-    assert.equal(reach, 200);
-    assert.equal(strength, 1.35);
+    assert.equal(reach, 220, '锥形半径220');
+    assert.equal(player.x, 100, 'Q不再冲刺位移');
+    assert.equal(player.y, 100);
 });
 
-// ---- Q冲锋路径伤害 -------------------------------------------
+// ---- Q锥形伤害+流血 -----------------------------------------
 
-test('狂战士Q冲锋:路径中点旁的敌人也受伤(旧版只判终点圆,冲过头顶不伤害)', () => {
-    const player = makeReik();
+function coneEnemy(x, y) {
+    return {
+        x, y, radius: 10, alive: true, dead: false, hp: 1000, maxHp: 1000, dots: [],
+        takeDamage(dmg) { this.hp -= dmg; return dmg; },
+    };
+}
+
+test('狂战士Q怒冲:锥形内150%攻击伤害并挂流血(5秒每秒15%攻击),范围外不打', () => {
+    const player = makeReik();   // damage=30 → getDamage=30
     player.x = 0; player.y = 0;
-    player.facingX = 1; player.facingY = 0; // 朝+x冲200（技能沿角色朝向释放）
+    player.facingX = 1; player.facingY = 0; // 朝+x斩出±50°锥形
     const game = makeMockGame();
-    const mid = makeEnemy();
-    mid.x = 100; mid.y = 30; // 路径中点旁,垂直距离30 ≤ radius+28
-    const far = makeEnemy();
-    far.x = 400; far.y = 400; // 完全不在路径上
-    game.enemies = [mid, far];
+    const inCone = coneEnemy(150, 40);      // 夹角约15°，距离155
+    const edge = coneEnemy(150, 160);       // 夹角约47°，贴锥形边缘(半径容差内)
+    const behind = coneEnemy(-150, 0);      // 身后180°
+    const outOfRange = coneEnemy(400, 0);   // 距离400 > 220
+    game.enemies = [inCone, edge, behind, outOfRange];
     CHARACTERS.reik.qSkill(player, game);
-    assert.ok(mid.hp < 1000, '路径旁敌人应受伤');
-    assert.equal(far.hp, 1000, '不在路径上的敌人不应受伤');
-    assert.equal(player.x, 200, '冲锋位移应正常执行');
+    assert.equal(1000 - inCone.hp, 45, '锥形内造成150%攻击伤害(30×1.5)');
+    assert.equal(inCone.dots.length, 1, '命中挂上流血');
+    assert.ok(Math.abs(inCone.dots[0].dps - 30 * 0.15) < 1e-9, '流血每秒15%攻击');
+    assert.equal(inCone.dots[0].timeLeft, 5, '流血持续5秒');
+    assert.equal(behind.hp, 1000, '身后的敌人不打');
+    assert.equal(outOfRange.hp, 1000, '射程外的敌人不打');
+    assert.ok(edge.hp < 1000, '锥形边缘(半径容差内)可命中');
+});
+
+test('狂战士E血之护盾:5秒减伤60%,被减免部分6秒后转为等量护盾(10秒)', () => {
+    const player = makeReik();
+    player.stats.armor = 0;
+    player.stats.maxHp = 200;
+    player.hp = 200;
+    const game = makeMockGame();
+    const input = {
+        moveX: 0, moveY: 0, mouse: { x: 0, y: 0 },
+        isKeyQPressed: () => false, isKeyEPressed: () => false, isKeyRPressed: () => false,
+    };
+    CHARACTERS.reik.eSkill(player, game);
+    assert.ok(player.hasBuff('blood_shield'), '5秒减伤buff挂载');
+    player.takeDamage(100, game);
+    assert.equal(player.hp, 160, '减伤60%：100只实扣40');
+    player.tick(5.5, input, game);   // 减伤窗口结束，转换还差0.5秒
+    assert.ok(!player.hasBuff('blood_shield'), '5秒后减伤结束');
+    player.takeDamage(100, game);
+    assert.equal(player.hp, 60, '减伤结束后全额承伤');
+    player.tick(0.6, input, game);   // 施放起6秒到点
+    assert.equal(player.shield, 60, '被减免的60转为等量护盾');
+    player.tick(10, input, game);
+    assert.equal(player.shield, 0, '血盾10秒后回收未消耗部分');
 });
 
 // ---- boss弹种标签/敌弹尾迹 -----------------------------------
@@ -325,4 +361,23 @@ test('玩家子弹在战斗区底边反弹/回收,不再以720为界', () => {
     assert.ok(b.active, '有反弹次数的子弹不应被回收');
     assert.ok(b.y <= 643, `反弹后应夹回战斗区底边内,实际y=${b.y}`);
     assert.ok(b.vy < 0, '越底后vy应翻转向上');
+});
+
+// ---- 大Boss暴击受伤减免 --------------------------------------
+
+test('大Boss受到的暴击伤害减免25%(近战/技能命中链路)', () => {
+    const mk = (isBoss) => ({
+        x: 40, y: 0, radius: 10, alive: true, isElite: false, isBoss,
+        hp: 1000, maxHp: 1000, frozen: 0,
+        takeDamage(dmg) { this.hp -= dmg; return dmg; },
+    });
+    const boss = mk(true);
+    const mob = mk(false);
+    const player = makeReik();
+    player.stats.critRate = 1;
+    player.stats.critDmg = 0.5;
+    player.applyAttackDamage(boss, makeMockGame(), 100);
+    assert.ok(Math.abs((1000 - boss.hp) - 112.5) < 1e-9, '大Boss: 100×1.5×0.75=112.5');
+    player.applyAttackDamage(mob, makeMockGame(), 100);
+    assert.equal(1000 - mob.hp, 150, '普通怪不吃暴击减免: 100×1.5');
 });

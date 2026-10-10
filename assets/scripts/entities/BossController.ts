@@ -84,6 +84,17 @@ export class BossController extends EnemyBase {
     private _invLaserCd = 8;
     private _invMissileCd = 14;
     private _invHomingCd = 6;
+    // 滑稽猴（joker，彩蛋Boss）状态：加速/恶作剧/耳光三技能独立冷却
+    /** 技能1·上蹿下跳：移速+50% 剩余时间（>0 时 buffSpeedMult=1.5）。 */
+    jokerSprintT = 0;
+    private _jokerSprintCd = 5;
+    private _jokerTrickCd = 3;
+    private _jokerSlapCd = 4;
+    /**
+     * 自身机制施加的冰冻（如维斯帕毒爆取消奖励）：绕过大Boss负面免疫。
+     * 与 frozen 同样定身不出手，但不会被每帧的免疫清空吞掉。
+     */
+    mechanicFrozen = 0;
 
     override init(type: string, wave: number, game: any): void {
         this.isBoss = true;
@@ -105,6 +116,8 @@ export class BossController extends EnemyBase {
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
         this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
+        this.jokerSprintT = 0; this._jokerSprintCd = 5; this._jokerTrickCd = 3; this._jokerSlapCd = 4;
+        this.mechanicFrozen = 0;
         this.bossKind = undefined;   // initBossKind 会在 init 之后再写入
         // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
         // 进场约6秒才有第一发追踪弹，网格激光/导弹依次排开；循环冷却保持原值
@@ -203,6 +216,21 @@ export class BossController extends EnemyBase {
     // ── 每帧更新 ──────────────────────────────────────────
     override update(dt: number, player: any, game: any): void {
         if (!this.alive) return;
+        // 大Boss负面免疫（2026-10-10 用户调整）：中毒/流血/灼烧等持续伤害与
+        // 冰冻/减速一律无效——挂上即在本帧结算前清空，DoT 永远不跳伤害。
+        // 维斯帕毒爆取消奖励走 mechanicFrozen（自身机制），不受免疫影响。
+        if (this.dots.length) {
+            game.floatingText?.spawn?.(this.x, this.y - 60, '负面免疫', this.glowColor, 14, false);
+            this.dots.length = 0;
+        }
+        if (this.frozen > 0) {
+            game.floatingText?.spawn?.(this.x, this.y - 60, '免疫冰冻', '#8eeaff', 14, false);
+            this.frozen = 0;
+        }
+        if (this.slowMult < 1 || this._slowTimer > 0) {
+            this.slowMult = 1;
+            this._slowTimer = 0;
+        }
         this._animTime += dt;
         this.flashTimer = Math.max(0, this.flashTimer - dt);
         this.actionRecoil = Math.max(0, this.actionRecoil - dt);
@@ -229,7 +257,12 @@ export class BossController extends EnemyBase {
         // 减速计时衰减（对齐 hexblast-py：EnemyBase同款逻辑之前被BossController的
         // override完全吞掉，导致boss身上的减速一旦生效就永远不会恢复到slowMult=1）
         if (this._slowTimer > 0) { this._slowTimer -= dt; if (this._slowTimer <= 0) { this._slowTimer = 0; this.slowMult = 1; } }
-        if (this.frozen > 0) { this.frozen -= dt; if (this.frozen <= 0) this.frozen = 0; return; }
+        // 外部冰冻已免疫清零；这里只处理自身机制冰冻（mechanicFrozen，同效定身）
+        if (this.frozen > 0 || this.mechanicFrozen > 0) {
+            if (this.frozen > 0) { this.frozen -= dt; if (this.frozen <= 0) this.frozen = 0; }
+            if (this.mechanicFrozen > 0) { this.mechanicFrozen -= dt; if (this.mechanicFrozen <= 0) this.mechanicFrozen = 0; }
+            return;
+        }
 
         // 阶段判断（灭世机神不走 66%/33% 通用阶段，改用 20% 血最终形态切换）
         const pct = this.hp / this.maxHp;
@@ -243,6 +276,7 @@ export class BossController extends EnemyBase {
         else if (this.bossKind === 'abyss') this._updateAbyssSkills(dt, player, game);
         else if (this._isDocBoss()) this._updateDocBossSkills(dt, player, game);
         else if (this._usesInvaderSkills()) this._updateInvaderSkills(dt, player, game);
+        else if (this.bossKind === 'joker') this._updateJokerSkills(dt, player, game);
 
         // Boss技能先给出能量环前摇，再发射弹幕，避免子弹凭空出现。
         if (this.skillWindup > 0) {
@@ -343,9 +377,10 @@ export class BossController extends EnemyBase {
         this.enraged = true;
         this.visualPhaseT = 0.8;
         // 新设计Boss不靠无提示叠伤或通用20%加速制造难度：只让维斯帕在第三阶段
-        // 按文档获得15%移速，其余通过技能组合与节奏变化升级。
+        // 按文档获得15%移速，其余通过技能组合与节奏变化升级。滑稽猴基础移速已
+        // 与玩家同档(300)，不吃通用阶段加速，只靠自己的加速技能冲刺。
         if (this.bossKind === 'vespa' && phase === 3) this.speed *= 1.15;
-        else if (!this._isDocBoss()) this.speed *= 1.2;
+        else if (!this._isDocBoss() && this.bossKind !== 'joker') this.speed *= 1.2;
         if (this._isDocBoss()) {
             game.clearDocBossMechanics?.(this);
             game.clearTaggedEnemyBullets?.(`doc_${this.bossKind}`);
@@ -734,6 +769,70 @@ export class BossController extends EnemyBase {
             });
         }
         game.audio?.playSfx?.('skill_e', 0.7);
+    }
+
+    // ── 滑稽猴（joker，彩蛋Boss，用户设计稿） ──────────────────
+
+    /**
+     * 技能2·滑稽恶作剧的四种玩家恶作剧（各3秒），随机取一：
+     *  blind 致盲（视野只剩玩家周围300码）/ silence 沉默（无法攻击）/
+     *  vulnerable 易伤（受伤×150%）/ dizzy 头晕目眩（移动方向反转）。
+     * mods 消费点见 PlayerController：silence→普攻禁用、reverseMove→
+     * tickMovement 反向、dmgTakenMult→takeDamage 乘区、blind→GameManager
+     * 径向暗角（玩家周围300码清晰，向外渐暗，英雄本体不遮挡）。
+     */
+    private _updateJokerSkills(dt: number, player: any, game: any): void {
+        // 技能1·上蹿下跳：3秒移速+50%（走到 EnemyBase 的 buffSpeedMult 乘区）
+        if (this.jokerSprintT > 0) {
+            this.jokerSprintT -= dt;
+            if (this.jokerSprintT <= 0) {
+                this.jokerSprintT = 0;
+                this.buffSpeedMult = 1;
+            }
+        }
+        this._jokerSprintCd -= dt;
+        if (!this.bossSkillCut && this._jokerSprintCd <= 0) {
+            this._jokerSprintCd = 9;
+            this.jokerSprintT = 3;
+            this.buffSpeedMult = 1.5;
+            this.visualSkillT = 0.65;
+            game.floatingText?.spawn?.(this.x, this.y - 90, '上蹿下跳！', this.glowColor, 18, true);
+            game.particles?.hexActivate?.(this.x, this.y, this.glowColor);
+        }
+        if (!player?.alive) return;
+        // 技能2·滑稽恶作剧：玩家进入自身150码内才有几率施放（60%），随机一种恶作剧3秒
+        this._jokerTrickCd -= dt;
+        if (!this.bossSkillCut && this._jokerTrickCd <= 0) {
+            this._jokerTrickCd = 6;
+            if (Vec.dist(this.x, this.y, player.x, player.y) <= 150 && Rng.chance(0.6)) {
+                const tricks = [
+                    { name: '致盲！',     buff: 'joker_blind',     mods: { blind: true } },
+                    { name: '沉默！',     buff: 'joker_silence',   mods: { silence: true } },
+                    { name: '易伤！',     buff: 'joker_vulnerable', mods: { dmgTakenMult: 1.5 } },
+                    { name: '头晕目眩！', buff: 'joker_dizzy',     mods: { reverseMove: true } },
+                ];
+                const t = tricks[Rng.int(0, tricks.length - 1)];
+                player.applyBuff?.(t.buff, 3, t.mods);
+                this.visualSkillT = 0.65;
+                game.floatingText?.spawn?.(player.x, player.y - 50, `恶作剧·${t.name}`, this.glowColor, 18, true);
+                game.particles?.hexActivate?.(player.x, player.y, this.glowColor);
+            }
+        }
+        // 技能3·滑稽耳光：玩家贴脸（50码内）时一巴掌，2.5倍伤害+1.5秒眩晕
+        this._jokerSlapCd -= dt;
+        if (!this.bossSkillCut && this._jokerSlapCd <= 0
+            && Vec.dist(this.x, this.y, player.x, player.y) <= 50 + (player.radius ?? 16)) {
+            this._jokerSlapCd = 5;
+            const ang = Math.atan2(player.y - this.y, player.x - this.x);
+            game.particles?.meleeSlash?.(this.x, this.y, ang, this.glowColor, 90, 1.4, 'boss_joker');
+            player.takeDamage(this.damage * this.buffDmgMult * 2.5, game,
+                { impact: { source: 'boss_joker', angle: ang } });
+            player.applyBuff?.('joker_stun', 1.5, { stun: true, noMove: true, silence: true });
+            this.actionRecoil = 0.3;
+            this.visualSkillT = 0.65;
+            game.floatingText?.spawn?.(player.x, player.y - 50, '滑稽耳光！', this.glowColor, 20, true);
+            game.screenShake?.shake?.(6, 0.2);
+        }
     }
 
     override getVisualFacing(player: any, movementX = 1, movementY = 0): [number, number] {

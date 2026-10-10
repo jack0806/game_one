@@ -337,3 +337,60 @@ test('v4章节金币乘数:一局一章温和上调 1.0~1.75（原5.5倍通胀�
     assert.equal(GOLD_STAGE_MULT[1], 1.15, '第二章 1.15');
     assert.equal(GOLD_STAGE_MULT[GOLD_STAGE_MULT.length - 1], 1.75, '第6章封顶 1.75');
 });
+
+test('固定强化:定价+5%按海克斯id只收一次,反复固定不叠加', () => {
+    const am = new AugmentManager();
+    const cardA = { id: 'hex01', _price: 100 };
+    am.pinCard(cardA);
+    assert.equal(cardA._price, 105, '首次固定+5%');
+    am.pinCard(cardA);
+    assert.equal(cardA._price, 105, '同一张反复固定不叠加');
+    const cardB = { id: 'hex01', _price: 100 };
+    am.pinCard(cardB);
+    assert.equal(cardB._price, 100, '后续波次同id再固定不再收费');
+    const other = { id: 'hex02', _price: 60 };
+    am.pinCard(other);
+    assert.equal(other._price, 63, '不同强化各自收一次');
+    am.reset();
+    const fresh = { id: 'hex01', _price: 100 };
+    am.pinCard(fresh);
+    assert.equal(fresh._price, 105, 'reset后新一局重新计费');
+});
+
+test('固定强化:跨波次保留——下次开页占前置槽位,购买后解除,满档卡自动失效', () => {
+    const am = new AugmentManager();
+    const game = wireAm(makeMockGame(), am);
+    const p = makeStatsPlayer();
+    const def = byId('hex01');                          // 功能性海克斯
+    const card = { ...def, level: 1, _price: 100 };
+    am.pinCard(card);
+    assert.equal(card._price, 105, '首次固定+5%');
+
+    // 下次开页（shopOptions）：固定卡占前置槽位，保留含附加费的定价，
+    // 新刷出的卡不与固定卡同 id 重复
+    const shelf = am.shopOptions(3, 3);
+    assert.equal(shelf[0].id, 'hex01', '固定卡下次开页仍在首位');
+    assert.equal(shelf[0]._price, 105, '保留已上浮定价');
+    assert.equal(new Set(shelf.map(a => a.id)).size, shelf.length, '同卡不出现两张');
+
+    // 取消固定：立即移除保留
+    am.unpinCard('hex01');
+    assert.equal(am.pinnedCards.length, 0, '取消固定后不再保留');
+
+    // 购买后自动解除固定（持有后旧货架卡定价/档位已过期，防低价囤卡）
+    am.pinCard({ ...def, level: 1, _price: 100 });
+    am.equip({ id: 'hex01' }, p, game);
+    assert.equal(am.pinnedCards.length, 0, '购买后解除固定');
+
+    // 技能卡已满档后固定失效：开页自动丢弃，不再占货架位
+    const skill = byId('hex20');                        // 技能型，3 档
+    am.equip({ id: skill.id }, p, game);
+    am.equip({ id: skill.id }, p, game);
+    am.equip({ id: skill.id }, p, game);                // Lv3 满档
+    am.pinCard({ ...skill, level: 1, _price: 100 });
+    const shelf2 = am.shopOptions(3, 3);
+    assert.ok(!shelf2.some(a => a.id === skill.id), '已满档技能的固定卡自动失效');
+
+    am.reset();
+    assert.equal(am.pinnedCards.length, 0, 'reset 清空固定列表');
+});

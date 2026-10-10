@@ -24,24 +24,48 @@ function interceptGame() {
 
 test('薇娅/莫提斯基础数值按设计稿', () => {
     const v = CHARACTERS.via.stats, m = CHARACTERS.mortis.stats;
-    assert.deepEqual([v.maxHp, v.speed, v.damage, v.attackSpeed, v.armor], [110, 330, 20, 1.2, 5]);
+    assert.deepEqual([v.maxHp, v.speed, v.damage, v.attackSpeed, v.armor], [120, 340, 25, 1.2, 8]);
     assert.equal(v.critRate, 0.10);
     assert.deepEqual([m.maxHp, m.speed, m.damage, m.attackSpeed, m.armor], [100, 300, 45, 0.6, 5]);
     assert.equal(m.critRate, 0.15);
     assert.equal(m.critDmg, 0.6);
     assert.equal(CHARACTERS.via.ultCd, 35);
+    assert.equal(CHARACTERS.via.qCd, 15, '成功释放赃技后Q冷却15秒');
+    assert.equal(CHARACTERS.via.eCd, 10);
     assert.equal(CHARACTERS.mortis.ultCd, 30);
     assert.equal(CHARACTERS.mortis.qCd, 3);
 });
 
+// ── 薇娅·被动 贪得无厌 ───────────────────────────────────────
+
+test('贪得无厌:偷技/截获得得赃印(8秒,至多5层,每层伤害×1.06移速×1.03)', () => {
+    const { kleptoGainMark } = require('../dist/data/CharacterDB');
+    const game = makeMockGame();
+    const p = makePlayer({ x: 0, y: 0, stats: { ...CHARACTERS.via.stats, klepto: true }, _buffs: [] });
+    kleptoGainMark(p, game);
+    kleptoGainMark(p, game);
+    let mark = p._buffs.find(b => b.id === 'loot_mark');
+    assert.equal(mark.mods._stacks, 2, '两层赃印');
+    assert.ok(Math.abs(mark.mods.dmgMult - 1.06 * 1.06) < 1e-9, '伤害×1.06²');
+    assert.ok(Math.abs(mark.mods.speed - 1.03 * 1.03) < 1e-9, '移速×1.03²');
+    for (let i = 0; i < 6; i++) kleptoGainMark(p, game);
+    mark = p._buffs.find(b => b.id === 'loot_mark');
+    assert.equal(mark.mods._stacks, 5, '赃印至多5层');
+    assert.equal(mark.duration, 8, '获得新层刷新8秒时长');
+    // 非薇娅不获得赃印
+    const other = makePlayer({ stats: { ...CHARACTERS.kai.stats } });
+    kleptoGainMark(other, game);
+    assert.equal(other._buffs, undefined, '无klepto被动不吃赃印');
+});
+
 // ── 薇娅·Q 窃神之手 ──────────────────────────────────────────
 
-test('窃神之手:成功窃取挂失措标记并挂起Q冷却,再按Q释放赃技', () => {
+test('窃神之手:成功窃取挂失措标记+赃印并挂起Q冷却,赃技伤害取原技能与攻击×2较高值', () => {
     const { game, bullets } = interceptGame();
-    const p = makePlayer({ x: 100, y: 100, stats: { ...CHARACTERS.via.stats, klepto: true } });
+    const p = makePlayer({ x: 100, y: 100, stats: { ...CHARACTERS.via.stats, klepto: true }, _buffs: [] });
     game.announceSteal = () => {};
     const e = makeEnemy(game, 200, 100);
-    e.label = '小兵';
+    e.label = '小兵'; e.damage = 12; e.armor = 0;
     game.enemies.push(e);
     for (let i = 1; i <= 2; i++) game.enemies.push(makeEnemy(game, 220 + i * 40, 100));   // 3个目标
     // 固定随机：roll=0.1 → 一技能(30%档)
@@ -54,16 +78,20 @@ test('窃神之手:成功窃取挂失措标记并挂起Q冷却,再按Q释放赃�
     assert.equal(e._skillStolen, true, '被动失措标记应挂在怪物身上');
     assert.equal(p.stats.deferQcd, true, '窃取成功后Q冷却挂起');
     assert.equal(p.stats._stolenSkill.kind, 'volley');
-    // 再按Q释放赃技：3发追踪弹 + Q冷却启动
+    // 赃技伤害 = max(怪物原技能12, 攻击25×2=50) = 50
+    assert.equal(p.stats._stolenSkill.dmg, 50, '赃技伤害取原技能与攻击力×2的较高值');
+    assert.equal(p._buffs.find(b => b.id === 'loot_mark').mods._stacks, 1, '偷到技能获得一层赃印');
+    // 再按Q释放赃技：3发追踪弹 + Q冷却启动（15秒档）
     const before = bullets.length;
     CHARACTERS.via.qSkill(p, game);
     assert.equal(bullets.length - before, 3, '一技能赃技=3发追踪弹');
-    assert.equal(bullets[0].damage, Math.max(15, (e.damage || 10) * 2), '赃技伤害=怪物攻击×2');
+    assert.equal(bullets[0].damage, 50);
     assert.equal(p.stats._stolenSkill, undefined, '赃技一次性');
     assert.equal(p.stats.deferQcd, false, '释放后解除冷却挂起');
+    assert.equal(p._qCd, 15, '使用赃技后Q才开始15秒冷却');
 });
 
-test('窃神之手:失败恢复5点生命且不挂起冷却', () => {
+test('窃神之手:失败恢复8点生命,冷却5秒且下次对有效目标必定成功', () => {
     const { game } = interceptGame();
     const p = makePlayer({ x: 100, y: 100, stats: { ...CHARACTERS.via.stats, klepto: true }, hp: 50 });
     game.announceSteal = () => {};
@@ -75,9 +103,30 @@ test('窃神之手:失败恢复5点生命且不挂起冷却', () => {
     try {
         CHARACTERS.via.qSkill(p, game);
     } finally { Rng.float = origFloat; }
-    assert.equal(p.hp, 55, '失败恢复5点生命');
+    assert.equal(p.hp, 58, '失败恢复8点生命');
     assert.equal(e._skillStolen, false, '失败不挂失措标记');
-    assert.equal(p.stats.deferQcd, false, '失败不挂起冷却(PlayerController按常规启动)');
+    assert.equal(p.stats.deferQcd, false, '失败不挂起冷却');
+    assert.equal(p.stats.qCdNext, 5, '失败冷却5秒(PlayerController读取)');
+    assert.equal(p.stats._stealGuaranteed, true, '下次必定成功标记');
+    // 保底：随机仍在失败区间，本次必定成功
+    Rng.float = () => 0.99;
+    try {
+        CHARACTERS.via.qSkill(p, game);
+    } finally { Rng.float = origFloat; }
+    assert.equal(p.stats._stolenSkill?.kind, 'volley', '保底窃取必定成功');
+    assert.equal(p.stats._stealGuaranteed, false, '保底一次性');
+});
+
+test('窃神之手:没有可攻击目标时不消耗已持有的赃技', () => {
+    const { game, bullets } = interceptGame();
+    const p = makePlayer({ x: 100, y: 100, stats: { ...CHARACTERS.via.stats, klepto: true } });
+    game.announceSteal = () => {};
+    p.stats._stolenSkill = { name: '小兵·普攻', kind: 'volley', dmg: 50, color: '#fff' };
+    p.stats.deferQcd = true;
+    CHARACTERS.via.qSkill(p, game);   // 场上无怪
+    assert.equal(p.stats._stolenSkill?.kind, 'volley', '赃技保留不消耗');
+    assert.equal(bullets.length, 0, '不释放弹体');
+    assert.equal(p.stats.deferQcd, true, '冷却保持挂起');
 });
 
 test('失主还没发现:被盗技能的怪物施法完成帧空放并失措2秒', () => {
@@ -92,36 +141,34 @@ test('失主还没发现:被盗技能的怪物施法完成帧空放并失措2秒
 
 // ── 薇娅·E 这招我收下了 ──────────────────────────────────────
 
-test('E截取:敌弹/近战入囊(上限5),释放后冷却启动', () => {
+test('E截取:按下立即复制300码内至多5只普攻+赃印,后续截获至10份,释放附攻击75%', () => {
     const { game, bullets } = interceptGame();
     const p = makePlayer({
         x: 100, y: 100, facingX: 1, facingY: 0,
         stats: { ...CHARACTERS.via.stats, klepto: true },
-        getNearestEnemy: () => null,
+        _buffs: [],
     });
-    CHARACTERS.via.eSkill(p, game);   // 进入截取
+    game.announceSteal = () => {};
+    // 300码内3只 + 复制范围外1只
+    const n1 = makeEnemy(game, 250, 100); n1.damage = 12;
+    const n2 = makeEnemy(game, 100, 350); n2.damage = 14;
+    const n3 = makeEnemy(game, 350, 100); n3.damage = 16;
+    const far = makeEnemy(game, 500, 100); far.damage = 30;
+    game.enemies.push(n1, n2, n3, far);
+    CHARACTERS.via.eSkill(p, game);   // 进入截取：立即复制3份
     assert.equal(p.stats.deferEcd, true, '进入截取时E冷却挂起');
-    // 截取两发敌弹 + 一次近战
-    kleptoCaptureBullet({ x: 150, y: 100, damage: 12, color: '#5cff5c', vx: -100, vy: 0, radius: 5 }, p, game);
-    kleptoCaptureBullet({ x: 130, y: 100, damage: 20, color: '#ff5544', vx: -80, vy: 0, radius: 5 }, p, game);
-    const e = makeEnemy(game, 150, 100);
-    kleptoCaptureAttack(e, p, game, 'melee');
-    assert.equal(p.stats._intercept.stored.length, 3);
-    assert.equal(p.stats._intercept.stored[0].kind, 'bullet');
-    assert.equal(p.stats._intercept.stored[2].kind, 'slash', '近战化为斩击');
-    // 上限5：第6份拒收
-    for (let i = 0; i < 3; i++) {
-        kleptoCaptureBullet({ x: 140, y: 100, damage: 5, color: '#fff', vx: 0, vy: 0, radius: 5 }, p, game);
+    assert.equal(p.stats._intercept.stored.length, 3, '立即复制300码内3只普攻');
+    assert.equal(p._buffs.find(b => b.id === 'loot_mark').mods._stacks, 3, '复制3份=3层赃印');
+    // 后续截获敌弹：补到10份上限后拒收
+    for (let i = 0; i < 8; i++) {
+        kleptoCaptureBullet({ x: 200, y: 100, damage: 5, color: '#fff', vx: 0, vy: 0, radius: 5 }, p, game);
     }
-    assert.equal(p.stats._intercept.stored.length, 5, '至多储存5份');
-    kleptoCaptureBullet({ x: 140, y: 100, damage: 5, color: '#fff', vx: 0, vy: 0, radius: 5 }, p, game);
-    assert.equal(p.stats._intercept.stored.length, 5, '超出不截取');
-    // 释放：子弹份按储存特征射出
+    assert.equal(p.stats._intercept.stored.length, 10, '总共至多储存10份');
+    // 释放：每份附加攻击力75%（25×0.75=18.75→19）
     CHARACTERS.via.eSkill(p, game);
-    assert.equal(bullets.length, 4, '两个子弹份释放为玩家弹(斩击份不生成弹体)');
-    assert.equal(bullets[0].damage, 12);
-    assert.equal(bullets[0].color, '#5cff5c', '保留原有攻击特征');
-    assert.equal(bullets[2].damage, 5, '后两份子弹份紧随释放');
+    assert.equal(bullets.length, 10, '全部子弹份释放为玩家弹');
+    assert.equal(bullets[0].damage, 12 + 19, '复制份伤害=怪物普攻+攻击75%');
+    assert.equal(bullets[3].damage, 5 + 19, '截获份同样附加攻击75%');
     assert.equal(p.stats._intercept, undefined, '释放后状态清空');
     assert.equal(p.stats.deferEcd, false, '全部释放后冷却启动');
 });
@@ -130,29 +177,36 @@ test('E截取:6秒超时自动释放(PlayerController tick驱动)', () => {
     const { PlayerController } = require('../dist/entities/PlayerController');
     const { game, bullets } = interceptGame();
     const p = new PlayerController();
-    p.stats = { maxHp: 110, armor: 0, critRate: 0, _coreOverflow: false,
+    p.stats = { maxHp: 120, armor: 0, critRate: 0, _coreOverflow: false, damage: 25,
         klepto: true, _intercept: { stored: [{ kind: 'bullet', dmg: 15, color: '#fff' }], t: 0.2 } };
-    p.hp = 110;
+    p.hp = 120;
     p.x = 100; p.y = 100;
     p._tickIntercept(0.3, game);
     assert.equal(bullets.length, 1, '超时自动释放');
+    assert.equal(bullets[0].damage, 15 + 19, '超时释放同样附加攻击75%');
     assert.equal(p.stats._intercept, undefined);
 });
 
 // ── 薇娅·R 此刻归我所有 ──────────────────────────────────────
 
-test('掠夺领域:敌弹折转+近战残影+没收召唤物,收账冲击30+10×次数(上限150)', () => {
+test('掠夺领域:开启窃血+护盾,敌弹折转+近战残影+没收召唤物,收账max(80,攻击×3)+20×次数(上限350)', () => {
     const { game, bullets } = interceptGame();
     const p = makePlayer({
-        x: 300, y: 300,
+        x: 300, y: 300, hp: 60,
         stats: { ...CHARACTERS.via.stats, klepto: true },
         applyAttackDamage(enemy, g, base) { enemy.hp -= base; return base; },
     });
     game.announceSteal = () => {};
+    const victim = makeEnemy(game, 300, 450);   // 距离150：范围内窃血目标
+    victim.armor = 0;
+    game.enemies.push(victim);
     CHARACTERS.via.ultimate(p, game);
     const domain = game.turrets[0];
     assert.equal(domain.kind, 'plunderDomain');
     assert.equal(game._plunderDomain, domain, '领域登记到game供挂点读取');
+    assert.equal(1000 - victim.hp, 50, '开启窃取5%最大生命(1000×5%=50,未触80上限)');
+    assert.equal(p.hp, 70, '回复窃取总量20%(50×0.2=10,未触60上限)');
+    assert.equal(p.shield, 40, '护盾=30+怪物数1×10=40(至多100)');
     const monster = makeEnemy(game, 450, 300);   // 近战残影的唯一反击目标
     const far = makeEnemy(game, 300, 600);   // 距波心300:首跳(190)外、450圈内
     game.enemies.push(monster, far);
@@ -174,7 +228,7 @@ test('掠夺领域:敌弹折转+近战残影+没收召唤物,收账冲击30+10×
     domain.update(0.5, game);   // 没收节流到点
     assert.equal(clone.alive, false, '敌方召唤物被没收');
     assert.equal(domain._captures, 3);
-    // 领域结束→收账冲击：30 + 3×10 = 60
+    // 领域结束→收账冲击：max(80, 25×3=75)=80 + 3×20=60 → 140
     domain.update(6, game);
     assert.equal(domain.alive, false);
     assert.equal(game._plunderDomain, null, '领域结束注销');
@@ -184,7 +238,7 @@ test('掠夺领域:敌弹折转+近战残影+没收召唤物,收账冲击30+10×
     wave.update(0.2, game);      // r=190: monster(150)命中, far(600)不命中
     assert.equal(farHp0 - far.hp, 0, '波前未到不受伤');
     wave.update(0.2, game);
-    assert.equal(farHp0 - far.hp, 60, '收账冲击=30+3×10=60');
+    assert.equal(farHp0 - far.hp, 140, '收账冲击=max(80,攻击×3)+3×20=140');
     wave.update(1.0, game);
     assert.equal(wave.alive, false, '波扩散到上限消散');
 });

@@ -1,5 +1,7 @@
 # 现有美术资源清单（assets/resources/art/）
 
+> 2026-10-10：新增 `anim_hit_units_10.png`（滑稽猴命中四帧，程序化金色调占位，1254×1254 RGBA，附手写 meta）。当前目录共 558 张 PNG。
+
 > 2026-10-09 战斗重做：新增 24 个技能图标、32 个海克斯图标；同名替换 12 张敌方特效、6 张动画特效图集、薇娅/莫提斯 2 张弹丸。当前目录 546 张 PNG。本批范围、实机证据和验证见[战斗重做验收](combat-redesign-2026-10-09.md)。
 
 > 2026-10-09：薇娅（女性）、莫提斯（男性）静态形象已替换色块：`char_via` / `char_mortis` 为介绍半身立绘，`char_token_via` / `char_token_mortis` 为战场静态全身像；新增 `ui_portrait_via` / `ui_portrait_mortis` 用于选人列表与战斗 HUD。六张均为 1254×1254 RGBA，保留内置 image_gen 原始透明通道；原有四张资源 UUID 保留。战斗动作动画暂缓；弹丸已在同日战斗特效重做中替换为正式钥矢/骨矛。详见[本批交付记录](via-mortis-static-2026-10-09.md)。

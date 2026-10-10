@@ -432,3 +432,15 @@ test('keepLock(凯尔E弱点弹):锁定目标死亡后不重锁,直飞耗尽—�
     pool.update(0.016, enemies, player, game);
     assert.equal(b2._homingTarget, other, '普通追踪弹重锁最近存活敌人');
 });
+
+test('大Boss受到的暴击伤害减免25%(弹体命中链路)', () => {
+    const pool = new BulletPool(2);
+    const game = makeMockGame();
+    const player = makePlayer();
+    player.stats.critDmg = 0.5;
+    const boss = { x: 20, y: 0, radius: 10, alive: true, isElite: false, isBoss: true, takeDamage(dmg) { this.lastDmg = dmg; } };
+    const b = pool.spawn({ x: 10, y: 0, vx: 0, vy: 0, damage: 20, radius: 5, pierceLeft: 0, hitEnemies: new Set() });
+    b.isCrit = true;
+    pool.update(0.016, [boss], player, game);
+    assert.ok(Math.abs(boss.lastDmg - 22.5) < 1e-9, '大Boss暴击弹: 20×1.5×0.75=22.5');
+});

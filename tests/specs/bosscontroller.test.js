@@ -11,43 +11,53 @@ function makeBoss(game) {
     return boss;
 }
 
-test('DoT把boss血量打到<=0时应触发死亡(_die),而不是让boss带负血继续存活', () => {
+test('大Boss负面免疫:中毒/流血/灼烧等DoT挂上即清空,永远不跳伤害', () => {
     const game = makeMockGame();
     const boss = makeBoss(game);
+    const player = makePlayer({ x: 1000, y: 1000 });
+    const hp0 = boss.hp;
     boss.dots.push({ type: 'burn', dps: boss.maxHp, timeLeft: 5, color: '#f80' });
-    const player = makePlayer();
+    boss.dots.push({ type: 'poison', dps: 500, timeLeft: 3, color: '#4f4' });
+    boss.dots.push({ type: 'bleed', dps: 100, timeLeft: 5, color: '#f35' });
     boss.update(1, player, game);
-    assert.equal(boss.alive, false, 'DoT把hp打到<=0后boss应标记为死亡');
-    assert.equal(boss.hp, 0, '死亡时hp应被夹到0(EnemyBase._die的行为)');
+    assert.equal(boss.dots.length, 0, '全部DoT在结算前被清空');
+    assert.equal(boss.hp, hp0, 'DoT不再对大Boss造成伤害');
+    assert.equal(boss.alive, true, '即使DoT总伤害超过血量也不致死');
 });
 
-test('slowMult在_slowTimer到期后应自动恢复为1(之前override update后完全没有衰减逻辑)', () => {
+test('大Boss负面免疫:冰冻/减速一律无效,自身机制冰冻mechanicFrozen照常生效', () => {
     const game = makeMockGame();
     const boss = makeBoss(game);
+    const player = makePlayer({ x: 1000, y: 1000 });
+    boss.frozen = 5;
     boss.slowMult = 0.3;
-    boss._slowTimer = 0.5;
-    const player = makePlayer({ x: 1000, y: 1000 }); // 远离boss,避免近战伤害分支干扰
-    boss.update(0.6, player, game); // dt > _slowTimer,应触发恢复
-    assert.equal(boss.slowMult, 1, '_slowTimer耗尽后slowMult应恢复为1');
+    boss._slowTimer = 2;
+    boss.update(0.1, player, game);
+    assert.equal(boss.frozen, 0, '外部冰冻被免疫清零');
+    assert.equal(boss.slowMult, 1, '减速立即复位');
     assert.equal(boss._slowTimer, 0);
+    // 维斯帕毒爆取消奖励走 mechanicFrozen：不受免疫影响，期间定身不出手
+    const frozenBoss = makeBoss(game);
+    frozenBoss.x = 100; frozenBoss.y = 100;
+    frozenBoss.mechanicFrozen = 0.5;
+    const x0 = frozenBoss.x;
+    frozenBoss.update(0.25, makePlayer({ x: 500, y: 100 }), game);
+    assert.equal(frozenBoss.x, x0, '机制冰冻期间不移动');
+    assert.ok(Math.abs(frozenBoss.mechanicFrozen - 0.25) < 1e-9, '机制冰冻正常倒计时');
+    frozenBoss.update(0.25, makePlayer({ x: 500, y: 100 }), game);
+    assert.equal(frozenBoss.mechanicFrozen, 0, '机制冰冻到期解除');
 });
 
-test('boss追逐移动速度应受slowMult影响(之前减速对boss完全无效)', () => {
+test('大Boss免疫减速:定身级slowMult不再生效,照常追逐', () => {
     const game = makeMockGame();
     const bossSlowed = makeBoss(game);
-    bossSlowed.slowMult = 0; // 完全定身
     bossSlowed.x = 100; bossSlowed.y = 100;
+    bossSlowed.slowMult = 0;   // 旧版可定身；现在挂上即被免疫清回1
     const player = makePlayer({ x: 500, y: 100 });
     const x0 = bossSlowed.x;
     bossSlowed.update(1, player, game);
-    assert.equal(bossSlowed.x, x0, 'slowMult=0(定身)时boss不应发生位移');
-
-    const bossNormal = makeBoss(game);
-    bossNormal.x = 100; bossNormal.y = 100;
-    bossNormal.slowMult = 1;
-    const x1 = bossNormal.x;
-    bossNormal.update(1, player, game);
-    assert.notEqual(bossNormal.x, x1, 'slowMult=1时boss应正常追逐移动');
+    assert.notEqual(bossSlowed.x, x0, '减速定身对大Boss无效,应正常追逐移动');
+    assert.equal(bossSlowed.slowMult, 1);
 });
 
 test('boss接触攻击先进入前摇,不会贴脸瞬间扣血', () => {

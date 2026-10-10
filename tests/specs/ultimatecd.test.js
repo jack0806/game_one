@@ -34,7 +34,7 @@ function noInput() {
 test('大招R随时间冷却:半程半充能,充满ultCd秒后充满并就绪(冷却按角色强度分档)', () => {
     const p = makeRealPlayer();
     const game = makeMockGame();
-    const ultCd = CHARACTERS.reik.ultCd; // 雷克:死亡意志(功能型)=18s
+    const ultCd = CHARACTERS.reik.ultCd; // 雷克:死亡意志(功能型)=20s
     assert.ok(ultCd >= 15 && ultCd <= 20, '角色ultCd应落在15-20秒分档内');
     p.tick(ultCd / 2, noInput(), game);
     assert.ok(Math.abs(p.getUltChargeRatio() - 0.5) < 1e-9, '半程应充能一半');

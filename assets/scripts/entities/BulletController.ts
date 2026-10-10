@@ -287,6 +287,8 @@ export class BulletPool {
                     let dmg = b.damage;
                     if (b.isCrit) {
                         dmg *= (1 + (player.stats.critDmg || 0.5));
+                        // 大Boss威压：受到的暴击伤害减免25%
+                        if (e.isBoss) dmg *= 0.75;
                         game.floatingText?.spawn(e.x, e.y - 20, '暴击！', '#ffd700', 14, true);
                     }
                     if ((e.isElite || e.isBoss) && player.stats.eliteBonus) dmg *= (1 + player.stats.eliteBonus);

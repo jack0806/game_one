@@ -21,6 +21,10 @@ interface CardSlot {
     descLabel:   Label;
     rarityLabel: Label;
     priceLabel:  Label;
+    /** 固定按钮（卡片左上角小页签）：刷新时保留该卡，定价+5%（一次性）。 */
+    pinBtn:      Node;
+    pinSkin:     HexButtonSkin;
+    pinLabel:    Label;
 }
 
 interface ChipSlot {
@@ -30,10 +34,16 @@ interface ChipSlot {
     id:    string;
 }
 
-/** 商店上下文： GameManager 提供（金币/购买/刷新/卖出/继续）。 */
+/** 商店上下文： GameManager 提供（金币/购买/固定/刷新/卖出/继续）。 */
 export interface AugShopCtx {
     gold(): number;
     buy(card: AugDef): boolean;
+    /** 固定强化：收取一次性 +5% 附加费（同一强化只收一次），刷新与下次开页都保留。 */
+    pin(card: AugDef): void;
+    /** 取消固定：解除跨波保留（附加费不退）。 */
+    unpin(card: AugDef): void;
+    /** 当前固定中的海克斯 id（开页回显"已固定"状态）。 */
+    pinnedIds(): string[];
     refreshCost(): number;
     refresh(): AugDef[] | null;
     owned(): AugDef[];
@@ -47,6 +57,9 @@ export interface AugShopCtx {
  * AugSelectUI — 每波清场后的海克斯商店（《海克斯.docx》）。
  * 三张卡按稀有度定价，可花钱刷新（首次 5 金币，3 次后每次溢价 75%），
  * 也可卖出已持有海克斯（回收购买价 75%）。跳过则直接进入下一波。
+ * 卡片左上角"固定 +5%"页签：刷新与后续波次开页都保留该卡（占前几张，
+ * 见 AugmentManager.pinCard/shopOptions），代价是该卡定价 +5%
+ * （同一强化无论固定几次只收一次附加费）；购买后自动解除固定。
  */
 @ccclass('AugSelectUI')
 export class AugSelectUI extends Component {
@@ -65,6 +78,8 @@ export class AugSelectUI extends Component {
     private _refreshSkin!: HexButtonSkin;
     private _options:  AugDef[]  = [];
     private _bought:   Set<string> = new Set();
+    /** 固定中的强化 id：本页刷新不被替换，且跨波次保留（show 时从 ctx 恢复）。 */
+    private _pinned:   Set<string> = new Set();
     private _ctx?:     AugShopCtx;
     private _dimNode!: Node;
     private _drawDim!: () => void;
@@ -90,6 +105,8 @@ export class AugSelectUI extends Component {
         this._options = options;
         this._ctx     = ctx;
         this._bought  = new Set();
+        // 固定状态跨波次保留：从管理器恢复"已固定"回显与刷新保留逻辑
+        this._pinned  = new Set(ctx.pinnedIds());
         this._chipPage = 0;
         // 三选一是模态弹窗，必须盖在商店等后创建的面板之上：每次显示都把本节点
         // 移到 UI 层末尾（绘制顺序最顶），否则会被商店商品压在下面。
@@ -238,7 +255,27 @@ export class AugSelectUI extends Component {
             },
         });
 
-        return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel };
+        // 固定页签：贴在卡片左上角边框外，避免与稀有度/档位文字争位。
+        // 命中后必须阻断冒泡——否则同一触摸会先固定再触发整卡购买。
+        const pinBtn = new Node('PinBtn'); pinBtn.setParent(root);
+        pinBtn.setPosition(new Vec3(-this.CARD_W / 2 + 48, this.CARD_H / 2 + 15, 0));
+        pinBtn.addComponent(UITransform).setContentSize(92, 28);
+        const pinSkin = applyHexButtonSkin(pinBtn, 92, 28, new Color(110, 92, 40, 255));
+        const pl = new Node('L'); pl.setParent(pinBtn);
+        pl.addComponent(UITransform).setContentSize(88, 28);
+        const pinLabel = pl.addComponent(Label);
+        pinLabel.fontSize = 13;
+        pinLabel.color = new Color(240, 236, 220, 255);
+        styleLabel(pinLabel);
+        pinBtn.on(Node.EventType.TOUCH_END, (ev: any) => {
+            ev.propagationStopped = true;
+            this._togglePin(idx);
+        }, this);
+        registerKeyboardFocus(pinBtn, 92, 28, {
+            isDisabled: () => !this._options[idx] || this._bought.has(this._options[idx].id),
+        });
+
+        return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel, pinBtn, pinSkin, pinLabel };
     }
 
     /** 刷新 / 跳过 按钮。 */
@@ -400,6 +437,11 @@ export class AugSelectUI extends Component {
         c.priceLabel.color  = afford ? new Color(255, 210, 50, 255) : new Color(255, 96, 96, 255);
         c.iconSprite.color  = sold ? new Color(120, 120, 120, 160) : Color.WHITE;
         applyArtSprite(c.iconSprite, `ui_icon_${aug.icon}`);
+        // 固定页签：已固定金色调；固定过的卡片售价已含一次性 +5% 附加费
+        const pinned = this._pinned.has(aug.id);
+        c.pinLabel.string = pinned ? '已固定' : '固定 +5%';
+        c.pinSkin.setAccent(pinned ? new Color(176, 138, 44, 255) : new Color(110, 92, 40, 255));
+        c.pinBtn.active = !sold;
     }
 
     private _refreshChips() {
@@ -462,9 +504,33 @@ export class AugSelectUI extends Component {
         const next = this._ctx?.refresh();
         this.onButtonSfx?.();
         if (next) {
+            // 固定的强化不被刷新替换：保持原槽位（连同已上浮的定价）。
+            const pinnedKeep = this._options.map(a => (a && this._pinned.has(a.id)) ? a : null);
+            for (let i = 0; i < pinnedKeep.length && i < next.length; i++) {
+                if (pinnedKeep[i]) next[i] = pinnedKeep[i]!;
+            }
             this._options = next;
             this._bought = new Set();
         }
+        this._populate();
+    }
+
+    /**
+     * 固定强化：刷新与后续波次开页都保留该卡。首次固定通过 ctx.pin 收取
+     * 一次性 +5% 附加费（同一强化反复固定/后续波次再固定都不叠加）；
+     * 取消固定只解除保留，已收的附加费不退（防固定↔取消刷价）。
+     */
+    private _togglePin(idx: number) {
+        const aug = this._options[idx];
+        if (!aug || this._bought.has(aug.id)) { this.onButtonSfx?.(); return; }
+        if (this._pinned.has(aug.id)) {
+            this._pinned.delete(aug.id);
+            this._ctx?.unpin?.(aug);
+        } else {
+            this._pinned.add(aug.id);
+            this._ctx?.pin?.(aug);
+        }
+        this.onButtonSfx?.();
         this._populate();
     }
 

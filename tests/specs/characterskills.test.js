@@ -43,26 +43,30 @@ test('薇薇安被动砍掉永久炮台,只保留炮台词条加成×1.5', () =>
     assert.equal(vivian.desc, '炮台类词条效果×1.5', '描述同步更新');
 });
 
-test('狂战士基础伤害为40,大招4秒无敌+45%吸血+50%攻速且仍牺牲半血', () => {
+test('狂战士基础伤害为30,大招牺牲当前80%生命换3秒无敌+8秒攻速30%', () => {
     const reik = CHARACTERS.reik;
-    assert.equal(reik.stats.damage, 40, '基础伤害加到40');
+    assert.equal(reik.stats.damage, 30, '基础伤害调整为30');
+    assert.equal(reik.ultCd, 20, '死亡意志冷却20秒');
+    assert.equal(reik.eCd, 15, '血之护盾冷却15秒');
 
     const game = makeMockGame();
-    let buff = null;
+    const buffs = [];
     const p = makePlayer({
         charId: 'reik',
         hp: 200,
         stats: { ...reik.stats, lifestealRate: 0 },
-        applyBuff(id, dur, mods) { buff = { id, dur, mods }; },
+        applyBuff(id, dur, mods) { buffs.push({ id, dur, mods }); },
     });
     reik.ultimate(p, game);
-    assert.ok(buff, '应施加死亡意志buff');
-    assert.equal(buff.id, 'death_will');
-    assert.equal(buff.dur, 4, '大招时长4秒');
-    assert.equal(buff.mods.invincible, true, '保留无敌');
-    assert.equal(buff.mods.lifestealRate, 0.45, '增加45%伤害吸血');
-    assert.equal(buff.mods.atkSpd, 1.5, '增加50%攻速');
-    assert.equal(p.hp, 100, '仍牺牲半血');
+    const will = buffs.find(b => b.id === 'death_will');
+    const frenzy = buffs.find(b => b.id === 'death_will_frenzy');
+    assert.ok(will && frenzy, '无敌与攻速增益分两条buff挂载');
+    assert.equal(will.dur, 3, '无敌3秒');
+    assert.equal(will.mods.invincible, true, '保留无敌');
+    assert.equal(frenzy.dur, 8, '攻速增益8秒');
+    assert.equal(frenzy.mods.atkSpd, 1.3, '攻速+30%');
+    assert.equal(frenzy.mods.lifestealRate, undefined, '大招不再附带吸血');
+    assert.equal(p.hp, 40, '牺牲当前80%生命值(200→40)');
 });
 
 test('Q/E冷却常量与技能文案拆分：选人介绍与实际战斗共用一套数值', () => {
