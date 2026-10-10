@@ -423,7 +423,7 @@ test('英雄朝移动输入转身，敌人按行为状态选择合理朝向', ()
     assert.match(enemySource, /const usesSingleTopdownSprite = true/);
     assert.match(enemySource, /this\.directionalFrames = !usesSingleTopdownSprite/);
     assert.match(bossSource, /if \(this\.isCharging\)[\s\S]*this\._chargeVx, this\._chargeVy/);
-    assert.match(bossSource, /const standDistance = Math\.max\(1, contactDistance - 2\)/);
+    assert.match(bossSource, /const standDistance = contactDistance\(this, player\)/);
     assert.match(bossSource, /bossHeavy/);
     assert.match(bossSource, /bossHover/);
 });

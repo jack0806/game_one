@@ -11,13 +11,14 @@ class EnemyReview(ReviewHandler):
     def do_GET(self):
         route = self.path.split('?',1)[0]
         files = {'/enemy-review':ROOT/'tools/enemy-review.html',
+                 '/collision-review':ROOT/'tools/collision-review.html',
                  '/animation-data.json':WORK/'animation-data.json',
                  '/coverage.json':WORK/'coverage.json'}
         if route not in files:
             return super().do_GET()
         data = files[route].read_bytes()
         self.send_response(200)
-        self.send_header('Content-Type','text/html; charset=utf-8' if route=='/enemy-review' else 'application/json')
+        self.send_header('Content-Type','text/html; charset=utf-8' if route in ('/enemy-review','/collision-review') else 'application/json')
         self.send_header('Cache-Control','no-store')
         self.send_header('Content-Length',str(len(data)))
         self.end_headers();self.wfile.write(data)
@@ -29,7 +30,8 @@ class EnemyReview(ReviewHandler):
         name = data.get('name','')
         if not re.fullmatch(r'[a-z0-9_-]{1,70}',name):
             return self.send_error(400)
-        out = WORK/'browser';out.mkdir(exist_ok=True)
+        out = ROOT/'docs/qa/contact-collision' if name.startswith('collision-') else WORK/'browser'
+        out.mkdir(parents=True,exist_ok=True)
         if 'image' in data:
             binary = base64.b64decode(data['image'].split(',',1)[1],validate=True)
             if not binary.startswith(b'\x89PNG\r\n\x1a\n'): return self.send_error(400)

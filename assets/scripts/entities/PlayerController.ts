@@ -387,7 +387,10 @@ export class PlayerController extends Component {
             this.facingY = my / len;
         }
         const spd = this.getSpeed();
-        if (game?.moveInArena) {
+        if (game?.movePlayerBody) {
+            const next = game.movePlayerBody(mx * spd * dt, my * spd * dt);
+            this.x = next.x; this.y = next.y;
+        } else if (game?.moveInArena) {
             const next = game.moveInArena(this.x, this.y, mx * spd * dt, my * spd * dt, this.radius);
             this.x = next.x; this.y = next.y;
         } else {

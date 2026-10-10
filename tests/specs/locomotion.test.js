@@ -233,8 +233,9 @@ test('全部正式与测试Boss接近后稳定停在接触距离，不穿过英�
             assert.ok(boss.x < player.x, `${item.label}不得穿过英雄中心`);
         }
         const distance = Math.hypot(player.x - boss.x, player.y - boss.y);
-        assert.ok(distance >= boss.radius + player.radius - 2.6, `${item.label}停步距离过近`);
-        assert.ok(distance <= boss.radius + player.radius + 0.6, `${item.label}未进入接触距离`);
+        const contact = require('../dist/core/CombatCollision').contactDistance(boss, player);
+        assert.ok(distance >= contact - 0.01, `${item.label}停步距离过近`);
+        assert.ok(distance <= contact + 0.6, `${item.label}未进入接触距离`);
         assert.equal(mirrorChanges, 0, `${item.label}接近过程不应反复翻面`);
     }
 });

@@ -8,6 +8,7 @@ import { getBossDefById, TEST_BOSSES } from '../data/BossDB';
 import { mapDef, mapOf } from '../data/LevelIndex';
 import { resetLocomotion } from '../core/Locomotion';
 import { resetDirectionalFacing } from '../core/DirectionalFacing';
+import { contactDistance } from '../core/CombatCollision';
 
 export class BossController extends EnemyBase {
     override get hitSource(): string {
@@ -286,20 +287,16 @@ export class BossController extends EnemyBase {
             const distance = Math.hypot(toPlayerX, toPlayerY);
             const route = game.arenaSteerTarget?.(this.x, this.y, player.x, player.y, this.radius) ?? player;
             const [dx, dy] = Vec.normalize(route.x - this.x, route.y - this.y);
-            // 旧逻辑无条件穿过英雄中心，Boss 会在目标点两侧来回越界并每帧
-            // 翻转前/背或左右帧，视觉上就是“一闪一闪”。现在在接触判定内沿
-            // 稳定停步；冲锋结束若重叠，则以较慢速度后撤恢复合理间距。
-            const contactDistance = this.radius + (player.radius ?? 16);
-            const standDistance = Math.max(1, contactDistance - 2);
+            // 停在真实身体边界，近身时不再靠后撤修补穿透。
+            const standDistance = contactDistance(this, player);
             const moveSpeed = this.speed * this.slowMult;
             let step = 0;
             if (distance > standDistance + 0.5) {
                 step = Math.min(moveSpeed * dt, distance - standDistance);
-            } else if (distance < standDistance - 6 && distance > 0.0001) {
-                step = -Math.min(moveSpeed * 0.35 * dt, standDistance - distance);
             }
-            this.x += dx * step;
-            this.y += dy * step;
+            const next = game.moveEnemyBody?.(this, dx * step, dy * step);
+            this.x = next ? next.x : this.x + dx * step;
+            this.y = next ? next.y : this.y + dy * step;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
@@ -335,7 +332,7 @@ export class BossController extends EnemyBase {
                 }
                 this.actionRecoil = 0.28;
             }
-        } else if (!airborne && Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
+        } else if (!airborne && Vec.dist(this.x, this.y, player.x, player.y) <= contactDistance(this, player) + 0.5 && this._contactCd <= 0) {
             this._contactCd = 0.65;
             this.attackWindup = this.attackWindupMax;
             this.attackTargetX = player.x;

@@ -1122,8 +1122,15 @@ export class EnemyBase {
                 this._rangedCd = 2.2;
             }
         }
-        this.x += (mvx * spd + this.knockbackX) * dt;
-        this.y += (mvy * spd + this.knockbackY) * dt;
+        const moveX = (mvx * spd + this.knockbackX) * dt;
+        const moveY = (mvy * spd + this.knockbackY) * dt;
+        if (game.moveEnemyBody && Math.abs(this.knockbackX) + Math.abs(this.knockbackY) < 0.01) {
+            const next = game.moveEnemyBody(this, moveX, moveY);
+            this.x = next.x; this.y = next.y;
+        } else {
+            // 技能击退与冲锋仍由原技能规则控制，普通走路不产生这类位移。
+            this.x += moveX; this.y += moveY;
+        }
         this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
         this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
 

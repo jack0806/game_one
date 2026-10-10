@@ -1,5 +1,5 @@
 import { ENEMY_PROJECTILE_ART, enemyProjectileSize, UNIT_ATTACK_ART } from '../data/CombatArtDB';
-import { separatePlayerBodies } from './CombatCollision';
+import { separatePlayerBodies, moveCombatBody, moveEnemyBody } from './CombatCollision';
 import { drawAttackSector, drawChargeLane, drawEnergyBeam, drawEnergyArc, localSectorBounds, sectorPath } from './CombatVfx';
 import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
@@ -3950,6 +3950,16 @@ export class GameManager extends Component {
 
     moveInArena(x: number, y: number, dx: number, dy: number, radius: number) {
         return moveInArena(this._arena, x, y, dx, dy, radius);
+    }
+
+    movePlayerBody(dx: number, dy: number) {
+        return moveCombatBody(this._player, dx, dy, this._enemies, (x, y, mx, my, radius) =>
+            moveInArena(this._arena, x, y, mx, my, radius));
+    }
+
+    moveEnemyBody(enemy: EnemyBase, dx: number, dy: number) {
+        return moveEnemyBody(enemy, this._player, this._enemies, dx, dy, (x, y, mx, my, radius) =>
+            moveInArena(this._arena, x, y, mx, my, radius));
     }
 
     dashInArena(x: number, y: number, dx: number, dy: number, radius: number) {
