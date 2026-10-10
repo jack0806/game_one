@@ -45,8 +45,14 @@ export interface CharDef {
     stats: CharStats;
     passive?: (p: any, game: any) => void;
     qSkill: (p: any, game: any) => void;
-    eSkill: (p: any, game: any) => void;
+    /** E 技能；targetedE 角色由 PlayerController 传入确认后的放置点 target，
+     *  非瞄准角色保持原"按下即放"语义（target 恒为 undefined）。 */
+    eSkill: (p: any, game: any, target?: { x: number; y: number }) => void;
     ultimate: (p: any, game: any) => void;
+    /** Q 方向性投射技的瞄准线射程（>0 时 Q 就绪且鼠标模式下画虚线瞄准线）。 */
+    qAimRange?: number;
+    /** E 为"按 E 进入放置瞄准 → 鼠标选点 → 点击释放"型技能（radius=预览圈半径）。 */
+    targetedE?: { radius: number };
 }
 
 export const CHARACTERS: Record<string, CharDef> = {
@@ -751,10 +757,12 @@ export const CHARACTERS: Record<string, CharDef> = {
         id: 'mortis',
         name: '亡灵法师·莫提斯', icon: '💀', color: '#a8e06e', unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 30, qCd: 3, eCd: 10,
+        qAimRange: 700,
+        targetedE: { radius: 350 },
         desc: '骸骨军团：600码内死亡的怪物25%化为仆从(至多8具)挡刀；灵魂收割：击杀吸1层灵魂，每层技能伤害+1%(上限60层)，每满20层E冷却-1秒，被怪物命中损失2层',
         skills: {
-            q: '白骨之矛 — 向鼠标方向刺出白骨长矛，穿透700码直线上所有怪物，造成45点伤害并减速30%持续1.5秒；每命中1个怪物吸取1个灵魂',
-            e: '腐雾领域 — 在鼠标位置生成半径350码的死亡腐雾，存在5秒：雾内怪物每秒受12点伤害并减速20%；骸骨仆从在雾内攻速+50%且每秒回复5点生命',
+            q: '骨刺 — 向鼠标方向激射骨刺，穿透700码直线上所有怪物，造成45点伤害并减速30%持续1.5秒；每命中1个怪物吸取1个灵魂',
+            e: '腐雾领域 — 按 E 后鼠标选点、点击释放：在选定位置生成半径350码的死亡腐雾，存在5秒：雾内怪物每秒受12点伤害并减速20%；骸骨仆从在雾内攻速+50%且每秒回复5点生命',
             r: '亡者天灾 — 引爆场上所有骸骨仆从，每具造成一次半径300码的尸爆(60点伤害，可叠加)，随后立即从周围复苏8具仆从(可超上限，持续15秒)，并触发所有已装备词条的击杀效果',
         },
         skillIcons: { q: 'pierce', e: 'poison', r: 'summon' },
@@ -766,7 +774,9 @@ export const CHARACTERS: Record<string, CharDef> = {
             p.stats.eCdFlatReduction = 0;
         },
         qSkill(p: any, game: any) {
-            // 白骨之矛：鼠标/朝向方向的穿透长矛，命中减速30%并各吸1个灵魂
+            // 骨刺（2026-10-10 玩家定名）：鼠标/朝向方向的穿透骨刺，命中减速30%并各吸1个灵魂。
+            // 不传 charKey → 走 GameManager 程序化定向尖刺渲染（骨白色），
+            // 方向天然与弹道一致，不依赖贴图定向。
             const mouse = game.input?.mouse;
             let nx: number, ny: number;
             if (mouse?.active) {
@@ -778,8 +788,8 @@ export const CHARACTERS: Record<string, CharDef> = {
             const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
             const b = game.bulletPool.spawn({
                 x: mx, y: my, vx: nx * 800, vy: ny * 800,
-                damage: 45 * soulMult(p), radius: 9, color: '#e8e2d0',
-                pierceLeft: 999, lifeTime: 0.9, owner: 'player', charKey: p.charId,
+                damage: 45 * soulMult(p), radius: 13, color: '#e8e2d0',
+                pierceLeft: 999, lifeTime: 0.9, owner: 'player',
                 isCrit: Rng.chance(p.stats.critRate || 0),
             });
             b.onHitCb = (_bullet: any, enemy: any) => {
@@ -788,13 +798,19 @@ export const CHARACTERS: Record<string, CharDef> = {
                 game.grantSoul?.(p);
             };
             game.particles.hexActivate(mx, my, '#e8e2d0');
+            // 穿刺闪线：0.28 秒骨白渐隐直线，把"骨刺往哪飞"打在屏幕上
+            if (game.turrets) game.turrets.push({
+                x: mx, y: my, alive: true, kind: 'boneSpearFlash', _t: 0.28,
+                _dx: nx, _dy: ny, _len: 700,
+                update(dt: number, _g: any) { this._t -= dt; if (this._t <= 0) this.alive = false; },
+            });
         },
-        eSkill(p: any, game: any) {
-            // 腐雾领域：鼠标位置（无鼠标回落敌群中心），雾内怪物持续掉血减速
+        eSkill(p: any, game: any, target?: { x: number; y: number }) {
+            // 腐雾领域：放置瞄准确认点（target）> 鼠标即时位置 > 敌群中心（触屏回退）
             const mouse = game.input?.mouse;
             const cluster = game.getEnemyClusterPoint?.();
-            const fx = mouse?.active ? mouse.x : (cluster?.x ?? p.x);
-            const fy = mouse?.active ? mouse.y : (cluster?.y ?? p.y);
+            const fx = target?.x !== undefined ? target.x : (mouse?.active ? mouse.x : (cluster?.x ?? p.x));
+            const fy = target?.y !== undefined ? target.y : (mouse?.active ? mouse.y : (cluster?.y ?? p.y));
             const fog: any = {
                 x: fx, y: fy, r: 350, alive: true, kind: 'rotFog', _t: 5, _tick: 0, owner: p,
             };
@@ -820,15 +836,36 @@ export const CHARACTERS: Record<string, CharDef> = {
         },
         ultimate(p: any, game: any) {
             // 亡者天灾：引爆所有骸骨仆从（每具300码尸爆60点，可叠加），
-            // 随后立即复苏8具（可超上限，持续15秒），并触发全部词条击杀效果
+            // 随后立即复苏8具（可超上限，持续15秒），并触发全部词条击杀效果。
+            // 视觉三件套：每具尸爆叠毒环、本体灵魂冲击波扩散环、复苏法阵+浮现。
             const bones = (game.turrets || []).filter((t: any) => t.kind === 'skeleton' && t.alive);
             for (const sk of bones) {
                 sk.alive = false;
                 game.spawnExplosion?.(p, sk.x, sk.y, 60 * soulMult(p), 300, game);
+                // 尸爆毒环：瘟绿毒雾圈与爆炸火球区分开（亡灵系=毒绿而非橙火）
+                game.particles?.spawnSpriteFx?.(sk.x, sk.y, 'fx_poison', 0.5, 2.2, '#a8e06e');
             }
+            // 本体灵魂冲击波：双层扩散环 40→560，0.7 秒扫过全场
+            if (game.turrets) game.turrets.push({
+                x: p.x, y: p.y, alive: true, kind: 'plagueWave', _t: 0.7, r: 40, _maxR: 560,
+                update(dt: number, _g: any) {
+                    this._t -= dt;
+                    this.r = 40 + (1 - Math.max(0, this._t) / 0.7) * (this._maxR - 40);
+                    if (this._t <= 0) this.alive = false;
+                },
+            });
             for (let i = 0; i < 8; i++) {
                 const a = (i / 8) * Math.PI * 2;
-                spawnSkeletonServant(game, p, p.x + Math.cos(a) * 60, p.y + Math.sin(a) * 60, 15, true);
+                const sx = p.x + Math.cos(a) * 60, sy = p.y + Math.sin(a) * 60;
+                const sk = spawnSkeletonServant(game, p, sx, sy, 15, true);
+                sk._spawnT = 0.6;
+                // 复苏法阵 + 自地而升的灵魂微粒
+                game.particles?.spawnSpriteFx?.(sx, sy, 'fx_hex_ring', 0.5, 1.1, '#a8e06e');
+                game.particles?.emit?.({
+                    x: sx, y: sy, count: 9, color: '#a8e06e', glow: true,
+                    speedMin: 40, speedMax: 130, lifeMin: 0.3, lifeMax: 0.7,
+                    angleMin: -Math.PI / 2 - 0.7, angleMax: -Math.PI / 2 + 0.7,
+                });
             }
             game.augmentManager?.dispatchKill?.(p, { x: p.x, y: p.y, alive: false }, p.stats.damage * 3, game);
             game.particles.hexActivate(p.x, p.y, '#a8e06e');
@@ -863,7 +900,8 @@ export function soulMult(p: any): number {
 }
 
 /**
- * 骸骨仆从：HP50/移速350/伤害15/攻速1.0，存在 duration 秒。
+ * 骸骨仆从：HP150/移速350/伤害15/攻速1.0，存在 duration 秒。
+ * 2026-10-10 玩家反馈"太脆要能抗"：HP 50→150（三倍），围堵磨损系数 0.35→0.3。
  * 追击最近怪物（伤害走 takeDamage 正常结算→击杀计灵魂/词条）；
  * 围堵它的敌人每秒造成接触磨损（让 HP 有意义）；身处腐雾内攻速+50%、
  * 每秒回5血。noCap=true（亡者天灾复苏的）不计入8具上限。
@@ -872,10 +910,13 @@ export function spawnSkeletonServant(game: any, player: any, x: number, y: numbe
                                      duration = 25, noCap = false): any {
     const sk: any = {
         x, y, r: 12, alive: true, kind: 'skeleton',
-        hp: 50, maxHp: 50, _t: duration, _atkCd: 0, _frenzyT: 0, _noCap: noCap, owner: player,
+        hp: 150, maxHp: 150, _t: duration, _atkCd: 0, _frenzyT: 0, _noCap: noCap, owner: player,
+        // 复苏浮现动画剩余秒（0.6→0：透明度上升 + 从地面升起；普通被动复生为 0）
+        _spawnT: 0,
     };
     sk.update = (dt: number, g: any) => {
         sk._t -= dt;
+        if (sk._spawnT > 0) sk._spawnT = Math.max(0, sk._spawnT - dt);
         if (sk._t <= 0 || sk.hp <= 0 || !player.alive) { sk.alive = false; return; }
         sk._atkCd = Math.max(0, sk._atkCd - dt);
         sk._frenzyT = Math.max(0, sk._frenzyT - dt);
@@ -887,14 +928,14 @@ export function spawnSkeletonServant(game: any, player: any, x: number, y: numbe
                 break;
             }
         }
-        // 围堵磨损：邻接敌人按攻击力累计接触伤害（系数0.35，围3只约3秒磨掉一具）
+        // 围堵磨损：邻接敌人按攻击力累计接触伤害（系数0.3，2026-10-10 玩家反馈调低）
         let wear = 0;
         for (const e of (g.enemies || [])) {
             if (e.alive && !e.dead && Vec.dist(e.x, e.y, sk.x, sk.y) <= (e.radius ?? 12) + sk.r + 6) {
                 wear += e.damage || 10;
             }
         }
-        if (wear > 0) sk.hp -= wear * 0.35 * dt;
+        if (wear > 0) sk.hp -= wear * 0.3 * dt;
         // 追击最近怪物并攻击
         let best: any = null, bd = 1e9;
         for (const e of (g.enemies || [])) {

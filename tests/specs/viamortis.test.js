@@ -224,7 +224,7 @@ test('骸骨军团:死亡钩子25%几率复苏(600码内/上限8具)', () => {
         const near = makeEnemy(game, 200, 100);
         game.tryRaiseSkeleton(near);
         assert.equal(spawns.length, 1, '25%几率判定通过即复苏');
-        assert.equal(spawns[0].hp, 50);
+        assert.equal(spawns[0].hp, 150, '2026-10-10 加厚：骷髅HP 50→150');
         // 上限8：已复苏8具后再击杀不再复苏
         for (let i = 0; i < 8; i++) spawnSkeletonServant(game, p, 150, 150, 25);
         const another = makeEnemy(game, 200, 120);
@@ -263,9 +263,9 @@ test('骸骨仆从:追击怪物攻击15伤,雾内攻速+50%回血,围堵磨损�
     assert.ok(sk.hp < 50, '围堵怪物造成接触磨损');
 });
 
-// ── 莫提斯·Q 白骨之矛 / E 腐雾领域 ────────────────────────────
+// ── 莫提斯·Q 骨刺 / E 腐雾领域 ────────────────────────────
 
-test('白骨之矛:穿透长矛,命中减速30%并各吸1个灵魂', () => {
+test('骨刺:穿透尖刺,命中减速30%并各吸1个灵魂', () => {
     const { game, bullets } = interceptGame();
     const p = makePlayer({ x: 100, y: 100, stats: { ...CHARACTERS.mortis.stats, _souls: 0 } });
     game.grantSoul = (pp) => { pp.stats._souls = (pp.stats._souls || 0) + 1; };
@@ -274,7 +274,8 @@ test('白骨之矛:穿透长矛,命中减速30%并各吸1个灵魂', () => {
     CHARACTERS.mortis.qSkill(p, game);
     assert.equal(bullets.length, 1);
     assert.equal(bullets[0].damage, 45, '0层=45点伤害');
-    assert.ok(bullets[0].pierceLeft >= 999, '穿透长矛');
+    assert.ok(bullets[0].pierceLeft >= 999, '穿透骨刺');
+    assert.equal(bullets[0].charKey, undefined, '骨刺走程序化尖刺渲染，不用弹体贴图');
     bullets[0].onHitCb(null, a);   // 命中：减速+吸魂
     assert.equal(a.slowMult, 0.7, '减速30%');
     assert.equal(p.stats._souls, 1, '命中吸取1个灵魂');
@@ -347,4 +348,85 @@ test('灵魂层数折算E冷却:每满20层-1秒(60层=-3秒)', () => {
     p.stats._souls = 60;
     p.stats.eCdFlatReduction = Math.floor(60 / 20);
     assert.equal(Math.max(1, (10 - p.stats.eCdFlatReduction)), 7, '满层60=E冷却7秒');
+});
+
+// ── E 腐雾领域·放置瞄准（2026-10-09 玩家反馈：先按 E 再用鼠标选点） ──
+
+const { PlayerController } = require('../dist/entities/PlayerController');
+
+function makeMortisController() {
+    const p = new PlayerController();
+    p.x = 100; p.y = 100; p.radius = 16; p.alive = true;
+    p.charId = 'mortis';
+    p._charDef = CHARACTERS.mortis;
+    p.stats = {
+        ...CHARACTERS.mortis.stats,
+        critRate: 0, critDmg: 0, eliteBonus: 0, goldPickupRange: 60, cdReduction: 0,
+    };
+    return p;
+}
+
+function targetingInput(mouse, opts = {}) {
+    return {
+        getAxis: () => [0, 0],
+        isDashPressed: () => false,
+        isKeyQPressed: () => false,
+        isKeyEPressed: () => !!opts.eEdge,
+        isKeyE: () => !!opts.eHeld,
+        isKeyRPressed: () => false,
+        mouse,
+    };
+}
+
+test('腐雾领域:按E进入放置瞄准(预览圈350),未点击不放雾不进冷却,再按E取消', () => {
+    const p = makeMortisController();
+    const game = makeMockGame({ turrets: [], input: {
+        mouse: { x: 400, y: 300, active: true },
+        consumeMouseClick: () => false,
+    } });
+    // 第一次 tick：按下 E 沿 → 进入瞄准
+    p.tick(0.05, targetingInput(game.input.mouse, { eEdge: true }), game);
+    assert.deepEqual(p.eTargetPreview(game), { x: 400, y: 300, r: 350 }, '进入瞄准态并给出350预览圈');
+    assert.equal(game.turrets.filter(t => t.kind === 'rotFog').length, 0, '瞄准期间不放雾');
+    assert.equal(p._eCd, 0, '瞄准期间不启动冷却');
+    // 第二次 tick：无按键无点击 → 保持瞄准
+    p.tick(0.05, targetingInput(game.input.mouse), game);
+    assert.ok(p.eTargetPreview(game), '无操作保持瞄准');
+    // 第三次 tick：再按 E → 取消
+    p.tick(0.05, targetingInput(game.input.mouse, { eEdge: true }), game);
+    assert.equal(p.eTargetPreview(game), null, '再按 E 取消放置');
+    assert.equal(game.turrets.filter(t => t.kind === 'rotFog').length, 0, '取消后仍无雾');
+});
+
+test('腐雾领域:鼠标点击确认→在点击位置放雾并启动冷却', () => {
+    const p = makeMortisController();
+    let clickQueued = false;
+    const game = makeMockGame({ turrets: [], input: {
+        mouse: { x: 520, y: 260, active: true },
+        consumeMouseClick: () => { const c = clickQueued; clickQueued = false; return c; },
+    } });
+    p.tick(0.05, targetingInput(game.input.mouse, { eEdge: true }), game);
+    assert.ok(p.eTargetPreview(game), '已进入瞄准');
+    // 点击确认：落点应为点击时的鼠标位置 (520, 260)
+    clickQueued = true;
+    p.tick(0.05, targetingInput(game.input.mouse), game);
+    // 裸 PlayerController 不播动画，施法停在 cast 帧——手动触发（正式局由动画驱动）
+    if (p._pendingSkill?.slot === 'e') p._pendingSkill.run();
+    const fog = game.turrets.find(t => t.kind === 'rotFog');
+    assert.ok(fog, '点击后应生成腐雾');
+    assert.deepEqual([fog.x, fog.y], [520, 260], '雾生成在确认点击的位置');
+    assert.equal(p.eTargetPreview(game), null, '释放后退出瞄准态');
+    assert.equal(p._eCd, 10, '确认释放后才启动E冷却(10秒)');
+});
+
+test('腐雾领域:触屏(无鼠标)保持旧行为——按E立即在敌群中心放雾', () => {
+    const p = makeMortisController();
+    const game = makeMockGame({ turrets: [], input: { mouse: { x: 0, y: 0, active: false } } });
+    game.getEnemyClusterPoint = () => ({ x: 640, y: 300 });
+    p.tick(0.05, targetingInput(game.input.mouse, { eEdge: true, eHeld: true }), game);
+    if (p._pendingSkill?.slot === 'e') p._pendingSkill.run();
+    const fog = game.turrets.find(t => t.kind === 'rotFog');
+    assert.ok(fog, '触屏模式按 E 立即放雾（不进入瞄准）');
+    assert.deepEqual([fog.x, fog.y], [640, 300], '落点回落敌群中心');
+    assert.equal(p._eCd, 10, '触屏路径冷却同样启动');
 });

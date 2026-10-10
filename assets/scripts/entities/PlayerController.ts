@@ -514,22 +514,35 @@ export class PlayerController extends Component {
         // 黑洞引擎(black_hole)词条已重做为独立定时器自动施放，不再替换 E 技能。
         // 盗神·薇娅：进入截取状态时 deferEcd 挂起冷却，全部释放后再启动；
         // 亡灵法师：eCdFlatReduction（每20层灵魂-1秒）在标准冷却上做扁平缩减。
-        if ((input.isKeyEPressed?.() ?? input.isKeyE()) && this._eCd <= 0) {
-            if (this._requestSkill('e', () => {
-                game.audio?.playSfx?.('skill_e');
-                this._grantCastShield(game);
-                this._charDef.eSkill(this, game);
-                // Q/E 名称统一只由控制器显示一次。角色数据层只负责效果，避免
-                // “网络连接/连接网络”这类同义文案在英雄头顶叠两遍。
-                const eName = this._charDef.skills.e.split('—')[0].trim();
-                game.floatingText?.spawn(this.x, this.y - 55, eName, this.color, 15, true);
-                game.augmentManager?.dispatchSkill(this, game);
-            })) {
-                if (this.stats.deferEcd) { this._eCd = 0; }
-                else {
-                    this._eCd = Math.max(1, ((this._charDef.eCd ?? SKILL_E_CD)
-                        - (this.stats.eCdFlatReduction || 0)) * (1 - this.stats.cdReduction));
+        // 放置型 E（targetedE，如腐雾领域）：按 E 进入瞄准（鼠标选点+预览圈），
+        // 点击确认释放（冷却此时才启动），再按 E 取消；触屏无鼠标回落旧行为。
+        const eEdge = input.isKeyEPressed?.() ?? false;
+        if (this._eTargeting) {
+            if (!this.alive) {
+                this._eTargeting = false;
+            } else if (eEdge) {
+                this._eTargeting = false;   // 再按 E 取消放置
+                game.floatingText?.spawn(this.x, this.y - 70, '已取消', '#9aa8b4', 13, false);
+            } else if (game.input?.consumeMouseClick?.()) {
+                // 捕获点击瞬间的落点值：施法可能排队到动画 cast 帧才执行，
+                // 引用 mouse 对象会被后续移动污染
+                const tx = game.input.mouse.x, ty = game.input.mouse.y;
+                if (this._requestSkill('e', () => this._castESkill(game, { x: tx, y: ty }))) {
+                    this._eTargeting = false;
+                    this._startECd();
                 }
+            }
+        } else if ((eEdge || (input.isKeyE?.() ?? false)) && this._eCd <= 0) {
+            const targeted = this._charDef.targetedE;
+            if (targeted && game.input?.mouse?.active) {
+                // 进入放置瞄准：清掉按下 E 前 250ms 内的旧点击，防止误放
+                game.input.consumeMouseClick?.();
+                this._eTargeting = true;
+                game.floatingText?.spawn(this.x, this.y - 70,
+                    `${this._charDef.skills.e.split('—')[0].trim()}：点击放置 · 再按 E 取消`,
+                    '#a8e06e', 14, true);
+            } else if (this._requestSkill('e', () => this._castESkill(game))) {
+                this._startECd();
             }
         }
         // 宇宙法则(cosmos_law)：R 键触发（独立于大招 R，走独立30s CD）。
@@ -559,6 +572,51 @@ export class PlayerController extends Component {
         const v = this.stats.castShield || 0;
         if (v <= 0) return;
         this.grantTempShield(v, 2, game);
+    }
+
+    /** E 技能统一施放入口：音效/施法盾/效果/名称浮字/词条分发。
+     *  target 为放置型 E（targetedE）确认后的落点。 */
+    private _castESkill(game: any, target?: { x: number; y: number }): void {
+        game.audio?.playSfx?.('skill_e');
+        this._grantCastShield(game);
+        this._charDef.eSkill(this, game, target);
+        // Q/E 名称统一只由控制器显示一次。角色数据层只负责效果，避免
+        // “网络连接/连接网络”这类同义文案在英雄头顶叠两遍。
+        const eName = this._charDef.skills.e.split('—')[0].trim();
+        game.floatingText?.spawn(this.x, this.y - 55, eName, this.color, 15, true);
+        game.augmentManager?.dispatchSkill(this, game);
+    }
+
+    /** E 冷却启动（盗神 deferEcd 挂起；亡灵法师灵魂层数扁平缩减）。 */
+    private _startECd(): void {
+        if (this.stats.deferEcd) { this._eCd = 0; }
+        else {
+            this._eCd = Math.max(1, ((this._charDef.eCd ?? SKILL_E_CD)
+                - (this.stats.eCdFlatReduction || 0)) * (1 - this.stats.cdReduction));
+        }
+    }
+
+    /** 放置型 E（腐雾领域）当前是否处于"鼠标选点"瞄准态。 */
+    private _eTargeting = false;
+
+    /** E 放置瞄准预览（GameManager 世界层画预览圈）：未瞄准返回 null。 */
+    eTargetPreview(game: any): { x: number; y: number; r: number } | null {
+        if (!this._eTargeting) return null;
+        const targeted = this._charDef.targetedE;
+        const m = game?.input?.mouse;
+        if (!targeted || !m?.active) return null;
+        return { x: m.x, y: m.y, r: targeted.radius };
+    }
+
+    /** Q 方向性投射技的瞄准线预览：Q 就绪 + 鼠标模式 + 角色声明 qAimRange。 */
+    qAimPreview(game: any): { x: number; y: number; dx: number; dy: number; len: number } | null {
+        const range = this._charDef.qAimRange;
+        const m = game?.input?.mouse;
+        if (!range || !m?.active || this._qCd > 0 || !this.alive) return null;
+        let [nx, ny] = Vec.normalize(m.x - this.x, m.y - this.y);
+        if (!nx && !ny) nx = 1;
+        const [mx, my] = this.getMuzzlePosition?.() ?? [this.x, this.y];
+        return { x: mx, y: my, dx: nx, dy: ny, len: range };
     }
 
     /**
