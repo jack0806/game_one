@@ -1,0 +1,85 @@
+{
+  "id": "frost_acolyte",
+  "actualArtKey": "enemy_frost_acolyte",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 180,
+      "delta": 0,
+      "arena": "ch1-random-slot-7-wall-slot-9-barrier-slot-11-wreck",
+      "enemy": [
+        640,
+        170,
+        22,
+        true,
+        48
+      ],
+      "player": [
+        820,
+        170
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 560.7999999999997,
+      "delta": -19.200000000000273,
+      "arena": "ch1-random-slot-7-wall-slot-9-barrier-slot-11-wreck",
+      "enemy": [
+        259.2000000000003,
+        170,
+        22,
+        true,
+        48
+      ],
+      "player": [
+        820,
+        170
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 55.616000000000014,
+  "aiMaxSeconds": 10,
+  "movementPixels": 0,
+  "aiActions": [
+    "run",
+    "idle",
+    "attack"
+  ],
+  "pass": true
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "key": "anim_fx_ground_residue",
+    "prompt": "Production transparent game VFX atlas, exact 4 columns x 4 rows uniform square grid. Each row 4 consecutive looping frames, subtle organic flow. Row1 low flat irregular moss green acid puddle with tiny lime bubbles and wisps of very low toxic vapor, desaturated translucent center and broken darker olive edges; NOT slime icon or giant droplets. Row2 charred dark cracked scorch patch with few orange glowing coals and low licking fire tufts. Row3 low shallow teal water wash with broken foamy crest, liquid curves and transparent inner space, no ice or crystals. Row4 dusty fractured earth impact stain with tan angular chips. Top-down ground decals, matching stylized cartoon reference A, bold crisp cel shaded small shapes but subdued darkness, no huge opaque surface. Every effect centered exactly in each equal grid cell, fits inside cell 80 percent, transparent margin. No circles, rings, halos, symbols, borders, labels, frame, text, backgrounds or characters. Entire background true alpha transparent. Stable centered silhouettes per row across four frames.",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a12000-a7c2-7bd1-9251-db3424759d78\\exec-10bac14d-8d09-4144-ba77-0917d0782c3e.png"
+  },
+  {
+    "key": "anim_fx_enemy_payloads",
+    "prompt": "Production transparent cartoon projectile sprite atlas, exact uniform 4 columns x4 rows. Each row four consecutive animation frames pointing RIGHT. Row1 fluid teal water lance, curved splash tail, white foam, absolutely no ice crystals or geometric diamonds. Row2 orange brass mechanical guided missile, dark metal pointed nose and amber exhaust flicker, stubby fins. Row3 hot coral red plasma bolt, white yellow hot core with branching red flame stream, no blue. Row4 curved magenta venom stinger, purple barbed carapace tip and short dripping violet trail. Distinct solid silhouettes, bright focal core and dark navy crisp outlines like cartoon topdown game reference A. Center every cell at exact 12.5,37.5,62.5,87.5 percent x/y canvas, entire projectile within cell80percent with transparent gutters, centered consistent size across frames, rows distinct, no characters, labels, background, grid, halos, circles. True alpha transparency.",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a12000-a7c2-7bd1-9251-db3424759d78\\exec-a76057c7-6cf5-4189-b3e0-3b66ce3c7b91.png"
+  }
+]

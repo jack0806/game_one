@@ -1,3 +1,4 @@
+import { UNIT_ATTACK_ART, enemyHitArt, EnemyHitContext } from '../data/CombatArtDB';
 // ============================================================
 //  ParticleManager.ts — 粒子特效管理器（纯逻辑，与渲染解耦）
 // ============================================================
@@ -35,10 +36,14 @@ export interface SpriteFx {
     rotationDeg?: number;
     /** 跟随战斗实体（持续光环），只读取 x/y/alive，不引入任何 cc.* 类型。 */
     follow?: { x: number; y: number; alive?: boolean };
+    followOffsetY?: number;
+    playerContact?: boolean;
     /** 不同特效需要不同时间曲线：爆发、挥斩、持续光环。 */
     motion?: 'burst' | 'slash' | 'aura';
     /** 持续光环不应像爆炸一样满不透明遮住角色。 */
     baseAlpha?: number;
+    /** 范围/持续效果在角色下方，命中碎屑保留在上方。 */
+    layer?: 'ground' | 'impact';
     /** 已绘制的逐帧特效，画布大小固定，不再靠缩放/旋转冒充动画。 */
     animation?: ActorClip;
 }
@@ -68,7 +73,7 @@ export class ParticleManager {
         life = 0.5,
         scale = 1,
         color?: string,
-        opts?: Pick<SpriteFx, 'rotationDeg' | 'follow' | 'motion' | 'baseAlpha'>,
+        opts?: Pick<SpriteFx, 'rotationDeg' | 'follow' | 'motion' | 'baseAlpha' | 'layer'>,
     ): void {
         if (key === 'fx_explosion') {
             // 连锁爆炸可能在同一帧请求几十张高覆盖率火球。伤害与粒子仍全部结算，
@@ -83,7 +88,10 @@ export class ParticleManager {
             }
             if (activeExplosions >= 8) return;
         }
-        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color, animation: EFFECT_ANIMATIONS[key], ...opts });
+        const ground = ['fx_explosion', 'fx_frost_aura', 'fx_poison', 'fx_hex_ring', 'fx_reik_warcry', 'fx_reik_death_will'].indexOf(key) >= 0;
+        const wide = 64 * scale > 80;
+        this.spriteFx.push({ x, y, key, life, maxLife: life, scale, color, animation: EFFECT_ANIMATIONS[key],
+            layer: ground || wide ? 'ground' : 'impact', baseAlpha: ground ? 0.6 : wide ? 0.72 : 0.85, ...opts });
     }
 
     /** 每次真实开火调用一次，爆发散射共享枪口，不为每一发叠一张火焰。 */
@@ -127,6 +135,35 @@ export class ParticleManager {
         this.spawnSpriteFx(x, y, 'fx_hit', 0.245, 0.55);
     }
 
+    /** 真实受伤才播放来源独立的四帧碎裂动画；同源连击合并，异源最多两份。 */
+    playerHit(x: number, y: number, hit: EnemyHitContext = {}, target?: { x: number; y: number; alive?: boolean }): void {
+        const art = enemyHitArt(hit);
+        const existing = this.spriteFx.find(fx => fx.playerContact && fx.key === art.key);
+        if (existing && existing.life > 0.18) return;
+        if (existing) this.spriteFx.splice(this.spriteFx.indexOf(existing), 1);
+        const hits = this.spriteFx.filter(fx => fx.playerContact);
+        if (hits.length >= 2) this.spriteFx.splice(this.spriteFx.indexOf(hits[hits.length - 1]), 1);
+        this.spawnSpriteFx(x, y - 6, art.key, 0.4, art.size / 64, undefined, {
+            layer: 'impact', baseAlpha: 1, rotationDeg: -(hit.angle ?? 0) * 180 / Math.PI,
+        });
+        const created = this.spriteFx[this.spriteFx.length - 1];
+        created.follow = target; created.followOffsetY = -6; created.playerContact = true;
+        // 渲染池按数组顺序分配；玩家受击优先，不能被敌群的命中火花挤掉。
+        this.spriteFx.unshift(this.spriteFx.pop()!);
+    }
+
+    /** 敌方水/酸/金属范围释放：材质爆发加贴地残留，不套火球或通用圆环。 */
+    enemyBurst(x: number, y: number, material: 'water' | 'acid' | 'metal', radius = 60): void {
+        const source = material === 'water' ? 'boss_abyss' : material === 'acid' ? 'acid_sac' : 'boss_mech';
+        const color = material === 'water' ? '#78cabe' : material === 'acid' ? '#a5c54c' : '#e2b784';
+        this.emit({ x, y, count: 12, color, speedMin: 35, speedMax: radius * 1.7,
+            lifeMin: 0.14, lifeMax: 0.36, sizeMin: 1, sizeMax: 3, glow: false });
+        this.spawnSpriteFx(x, y, enemyHitArt({ source }).key, 0.4,
+            Math.min(1.8, Math.max(0.7, radius / 55)), undefined, { layer: 'ground' });
+        this.spawnSpriteFx(x, y, material === 'water' ? 'fx_ground_water' : material === 'acid' ? 'fx_ground_acid' : 'fx_ground_dust',
+            0.55, Math.min(2.6, Math.max(0.8, radius / 35)), undefined, { layer: 'ground', baseAlpha: 0.6 });
+    }
+
     // ── 爆炸 ─────────────────────────────────────────────
     explode(x: number, y: number, color: string, radius = 40): void {
         this.emit({ x, y, count: 20, color, speedMin: 50, speedMax: radius * 2, lifeMin: 0.3, lifeMax: 0.7, glow: true });
@@ -158,14 +195,16 @@ export class ParticleManager {
 
     // ── 毒液溅射 ─────────────────────────────────────────
     toxin(x: number, y: number): void {
-        this.emit({ x, y, count: 8, color: '#44ff00', speedMin: 30, speedMax: 100, lifeMin: 0.3, lifeMax: 0.6, sizeMin: 3, sizeMax: 6, glow: true });
-        this.emit({ x, y, count: 5, color: '#00aa00', speedMin: 10, speedMax: 50, lifeMin: 0.2, lifeMax: 0.4 });
-        this.spawnSpriteFx(x, y, 'fx_poison', 0.45, 1);
+        // 持续中毒高频触发：只在脚边冒少量毒泡，不能堆成盖住英雄的云团。
+        this.emit({ x, y: y + 12, count: 4, color: '#91cf58', speedMin: 8, speedMax: 28,
+            lifeMin: 0.12, lifeMax: 0.22, sizeMin: 1, sizeMax: 2, glow: false });
+        this.spawnSpriteFx(x, y + 12, 'fx_poison', 0.22, 0.4, undefined, { baseAlpha: 0.55, layer: 'ground' });
     }
 
     toxicImpact(x: number, y: number, vx: number, vy: number): void {
-        this.spawnSpriteFx(x, y, 'fx_toxic_impact', 0.255, 0.5, undefined, {
+        this.spawnSpriteFx(x, y, 'fx_toxic_impact', 0.20, 0.4, undefined, {
             rotationDeg: -Math.atan2(vy, vx) * 180 / Math.PI,
+            baseAlpha: 0.7,
         });
     }
 
@@ -178,7 +217,7 @@ export class ParticleManager {
 
     // ── 寒冰打击（冻结命中/冰弹） ──────────────────────────
     coldImpact(x: number, y: number): void {
-        this.spawnSpriteFx(x, y, 'fx_cold_arrow', 0.4, 1);
+        this.spawnSpriteFx(x, y, 'fx_cold_arrow', 0.28, 0.6);
     }
 
     frostField(x: number, y: number, radius: number): void {
@@ -224,10 +263,7 @@ export class ParticleManager {
             const life  = Rng.float(0.15, 0.4);
             this.particles.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life, maxLife: life, size: Rng.float(2, 5 + visualRatio * 4), color, fade: true, gravity: true, glow: visualRatio > 0.1, type: 'dot', alpha: 1 });
         }
-        // 高伤害时额外爆光环
-        if (visualRatio > 0.15) {
-            this.particles.push({ x, y, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, size: 2, color, fade: true, gravity: false, glow: true, type: 'ring', radius: 5, maxRadius: 20 + visualRatio * 40, alpha: 1 });
-        }
+        // 命中只保留方向碎屑；完整圆环曾让各类攻击都像同一种法阵。
     }
 
     // ── 暴击飞溅 ─────────────────────────────────────────
@@ -250,44 +286,19 @@ export class ParticleManager {
     }
 
     // ── 近战剑气（玩家/怪物近战攻击共用） ──────────────────
-    /**
-     * 挥斩特效：3 条平行刃线沿攻击方向扫出 + 前方扩散光环 + 扇形火花。
-     * @param x,y      挥斩者坐标
-     * @param angle    攻击方向（弧度）
-     * @param color    主体色（中线固定白色提亮）
-     * @param reach    攻击距离（决定刃长与光环半径）
-     * @param strength 强度：玩家=1，小怪=0.85，Boss=1.8，放大宽度/寿命
-     */
-    meleeSlash(x: number, y: number, angle: number, color: string, reach = 70, strength = 1): void {
-        const len = Math.max(40, reach * 1.1);
-        // 主体使用带厚度、火花与破口的正式斩痕贴图；程序线只作为短暂运动残影，
-        // 不再让近战技能看起来像调试线段。
-        const centerX = x + Math.cos(angle) * reach * 0.42;
-        const centerY = y + Math.sin(angle) * reach * 0.42;
-        this.spawnSpriteFx(centerX, centerY, 'fx_enemy_claw_slash', 0.26, 0.72 + strength * 0.48, color, {
+    /** 挥斩主体是弧刃美术，火花沿出手方向飞散，不叠加直线/圆环。 */
+    meleeSlash(x: number, y: number, angle: number, color: string, reach = 70, strength = 1, unit?: string): void {
+        const centerX = x + Math.cos(angle) * reach * 0.48;
+        const centerY = y + Math.sin(angle) * reach * 0.48;
+        const art = unit ? (UNIT_ATTACK_ART[unit] ?? 'fx_enemy_claw_slash') : 'fx_enemy_claw_slash';
+        this.spawnSpriteFx(centerX, centerY, art, 0.24, Math.min(2, Math.max(0.45, reach / 80)), undefined, {
             rotationDeg: -angle * 180 / Math.PI,
-            motion: 'slash',
-            baseAlpha: 0.92,
+            motion: art === 'fx_hit' ? 'burst' : 'slash', baseAlpha: 0.78,
         });
-        for (let i = -1; i <= 1; i++) {
-            const off = i * (5 + strength * 3);   // 垂直于攻击方向错开，模拟刃宽
-            const ox = Math.cos(angle + Math.PI / 2) * off;
-            const oy = Math.sin(angle + Math.PI / 2) * off;
-            const a2 = angle + i * 0.12;          // 外侧两线略张开成扇形
-            const life = 0.16 + strength * 0.06;
-            this.particles.push({
-                x: x + ox, y: y + oy, vx: 0, vy: 0,
-                life, maxLife: life,
-                size: 2, color: i === 0 ? '#ffffff' : color,
-                fade: true, gravity: false, glow: true, type: 'line',
-                x2: x + ox + Math.cos(a2) * len, y2: y + oy + Math.sin(a2) * len,
-                alpha: 0.46, lineWidth: Math.max(1, 2 + strength * 1.2 - Math.abs(i) * 0.8),
-            });
-        }
-        const ringR = Math.max(18, reach) * (0.72 + strength * 0.18);
-        const rLife = 0.18 + strength * 0.05;
-        this.particles.push({ x, y, vx: 0, vy: 0, life: rLife, maxLife: rLife, size: 2, color, fade: true, gravity: false, glow: true, type: 'ring', radius: ringR * 0.35, maxRadius: ringR, alpha: 1 });
-        this.emit({ x, y, count: 4 + Math.floor(strength * 3), color, speedMin: 80, speedMax: 200 + strength * 60, lifeMin: 0.1, lifeMax: 0.3, sizeMin: 2, sizeMax: 4, glow: true, angleMin: angle - 0.45, angleMax: angle + 0.45 });
+        this.emit({ x: centerX, y: centerY, count: 3 + Math.floor(strength * 2), color,
+            speedMin: 60, speedMax: 150, lifeMin: 0.08, lifeMax: 0.19,
+            sizeMin: 1.5, sizeMax: 3, glow: false,
+            angleMin: angle - 0.65, angleMax: angle + 0.65 });
     }
 
     /** 时间刃从挥刃命中帧的武器挂点展开，范围判定仍由攻击者负责。 */
@@ -445,80 +456,19 @@ export class ParticleManager {
     enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'toxin_dart' | 'gear' | 'homing' | 'chaos' |
         'needle' | 'frost' | 'arc' | 'rail' | 'water_bomb' | 'water_spike' |
         'shrimp_spike' | 'venom_sting' | 'sonic' | 'beam' | 'blade', vx: number, vy: number, color = '#fff', radius = 6): void {
-        switch (fx) {
-            case 'poison':
-                this.emit({ x, y, count: 3, color: '#44ff00', speedMin: 10, speedMax: 40, lifeMin: 0.25, lifeMax: 0.5, sizeMin: 2, sizeMax: 5, glow: true });
-                break;
-            case 'toxin_dart': {
-                const spd = Math.hypot(vx, vy) || 1;
-                this.particles.push({
-                    x, y, vx: 0, vy: 0, life: 0.11, maxLife: 0.11, size: 1,
-                    color: '#9cff45', fade: true, gravity: false, glow: true,
-                    type: 'line', x2: x - vx / spd * 12, y2: y - vy / spd * 12,
-                    alpha: 0.8, lineWidth: 1.25,
-                });
-                break;
-            }
-            case 'gear':
-                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.3, maxLife: 0.3, size: 2, color: '#66aaff', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.8, maxRadius: radius * 2.2, alpha: 1 });
-                break;
-            case 'homing': {
-                const spd = Math.hypot(vx, vy) || 1;
-                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.2, maxLife: 0.2, size: 2, color: '#00ffcc', fade: true, gravity: false, glow: true, type: 'line', x2: x - vx / spd * 16, y2: y - vy / spd * 16, alpha: 1, lineWidth: 2 });
-                break;
-            }
-            case 'chaos':
-                this.emit({ x, y, count: 2, color: '#cc44ff', speedMin: 5, speedMax: 30, lifeMin: 0.2, lifeMax: 0.4, sizeMin: 2, sizeMax: 4, glow: true });
-                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.25, maxLife: 0.25, size: 2, color: '#aa33ee', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.5, maxRadius: radius * 1.6, alpha: 1 });
-                break;
-            case 'needle': {
-                const spd = Math.hypot(vx, vy) || 1;
-                this.particles.push({
-                    x, y, vx: 0, vy: 0, life: 0.13, maxLife: 0.13, size: 1,
-                    color: '#fff3a0', fade: true, gravity: false, glow: true,
-                    type: 'line', x2: x - vx / spd * 22, y2: y - vy / spd * 22,
-                    alpha: 1, lineWidth: 1.4,
-                });
-                break;
-            }
-            case 'frost': {
-                const spd = Math.hypot(vx, vy) || 1;
-                this.particles.push({
-                    x, y, vx: 0, vy: 0, life: 0.16, maxLife: 0.16, size: 1,
-                    color: '#bff6ff', fade: true, gravity: false, glow: true,
-                    type: 'line', x2: x - vx / spd * 18, y2: y - vy / spd * 18,
-                    alpha: 1, lineWidth: 2.5,
-                });
-                break;
-            }
-            case 'arc':
-                this.emit({ x, y, count: 2, color: '#7df4ff', speedMin: 5, speedMax: 24, lifeMin: 0.12, lifeMax: 0.25, sizeMin: 1, sizeMax: 3, glow: true });
-                break;
-            case 'water_bomb':
-                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.24, maxLife: 0.24, size: 2, color: '#55dfff', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.45, maxRadius: radius * 1.45, alpha: 0.75 });
-                break;
-            case 'water_spike':
-            case 'beam':
-            case 'blade':
-            case 'rail': {
-                const spd = Math.hypot(vx, vy) || 1;
-                const lengths: Record<string, number> = { water_spike: 16, beam: 26, blade: 22, rail: 30 };
-                const widths: Record<string, number> = { water_spike: 1.8, beam: 2.4, blade: 2.8, rail: 2.2 };
-                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.14, maxLife: 0.14, size: 1,
-                    color, fade: true, gravity: false, glow: true, type: 'line',
-                    x2: x - vx / spd * lengths[fx], y2: y - vy / spd * lengths[fx], alpha: 0.8, lineWidth: widths[fx] });
-                break;
-            }
-            case 'shrimp_spike':
-                this.emit({ x, y, count: 2, color: '#ff9a4c', speedMin: 8, speedMax: 34, lifeMin: 0.12, lifeMax: 0.25, sizeMin: 1, sizeMax: 2.5, glow: true });
-                break;
-            case 'venom_sting':
-                this.emit({ x, y, count: 1, color: '#d36bff', speedMin: 4, speedMax: 16, lifeMin: 0.18, lifeMax: 0.32, sizeMin: 1.5, sizeMax: 2.5, glow: true });
-                break;
-            case 'sonic':
-                this.particles.push({ x, y, vx: 0, vy: 0, life: 0.18, maxLife: 0.18, size: 2, color: '#ff7777', fade: true, gravity: false, glow: true, type: 'ring', radius: radius * 0.6, maxRadius: radius * 2.0, alpha: 0.7 });
-                break;
-        }
+        // 短寿命离散碎屑留在真实飞行路径；弹体本身由 Sprite 表达。
+        // 不发出 line 粒子，避免高速弹再次拼成长方形条带。
+        const angle = Math.atan2(-vy, -vx);
+        const colors: Record<string, string> = {
+            poison: '#91d84a', toxin_dart: '#b7ef69', gear: '#ffc078', homing: '#ffba70',
+            chaos: '#be91ef', needle: '#ffda83', frost: '#bff6ff', arc: '#85eaff',
+            water_bomb: '#70d6ef', water_spike: '#b8efff', shrimp_spike: '#ffc780',
+            venom_sting: '#d895e8', sonic: '#efbf7d', beam: '#ffab81', blade: '#cfa6ff', rail: '#ffacd9',
+        };
+        this.emit({ x, y, count: fx === 'poison' ? 2 : 1, color: colors[fx] ?? color,
+            speedMin: 8, speedMax: 26, lifeMin: 0.09, lifeMax: 0.18,
+            sizeMin: 1, sizeMax: Math.min(3.5, radius * 0.4), glow: false,
+            angleMin: angle - 0.35, angleMax: angle + 0.35 });
     }
 
     // ── 每帧更新 ─────────────────────────────────────────

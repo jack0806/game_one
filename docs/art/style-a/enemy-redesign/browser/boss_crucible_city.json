@@ -1,0 +1,100 @@
+{
+  "id": "boss_crucible_city",
+  "actualArtKey": "enemy_boss_crucible_city",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 159.9999999999991,
+      "delta": -20.00000000000091,
+      "arena": "ch1-random-slot-5-wreck-slot-14-wreck-slot-2-wreck",
+      "enemy": [
+        660.0000000000009,
+        370,
+        50,
+        true,
+        50
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 559.9999999999999,
+      "delta": -20.000000000000114,
+      "arena": "ch1-random-slot-5-wreck-slot-14-wreck-slot-2-wreck",
+      "enemy": [
+        260.0000000000001,
+        370,
+        50,
+        true,
+        50
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "boss",
+  "framesChecked": 288,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "front/skill3",
+    "front/skill4",
+    "front/skill5",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "side/skill3",
+    "side/skill4",
+    "side/skill5",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2",
+    "back/skill3",
+    "back/skill4",
+    "back/skill5"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 147.20000000000002,
+  "aiMaxSeconds": 10,
+  "movementPixels": 370.89,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill",
+    "idle",
+    "attack",
+    "skill2"
+  ],
+  "pass": true
+}

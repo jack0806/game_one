@@ -1,0 +1,287 @@
+{
+  "date": "2026-10-09",
+  "reference": "docs/art/style-a/references/reference-a.png",
+  "generator": "built-in image_gen",
+  "jobs": [
+    {
+      "key": "ui_icon_skill_kai_q",
+      "name": "高爆射击",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: cyan armored cannon shell flying diagonally, a piercing bright nose. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_kai_e",
+      "name": "弱点狙击",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: cyan four-part targeting reticle focused on a cracked red armor plate. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_kai_r",
+      "name": "核心过载",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three chunky cyan warheads fanning out with orange rocket flames. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_vivian_q",
+      "name": "部署炮台",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one squat blue armored twin barrel turret with cyan core. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_vivian_e",
+      "name": "超频指令",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: blue power capacitor gear with bold yellow lightning inside. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_vivian_r",
+      "name": "炮台风暴",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three blue miniature turrets orbiting a cyan power core. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_reik_q",
+      "name": "怒冲",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: red armored shoulder and broad axe lunging with an orange swoosh. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_reik_e",
+      "name": "战吼",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: red armored roaring helmet with two broad orange sound arcs. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_reik_r",
+      "name": "死亡意志",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: crimson heart protected between two crossed heavy axes. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_olia_q",
+      "name": "时空切割",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: icy blue curved time blade slicing through two separated clock fragments. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_olia_e",
+      "name": "切换形态",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one blue energy pistol and one short curved blade joined by two broad swap arrows. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_olia_r",
+      "name": "时空奇点",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: bright ice-blue sphere with two chunky orbiting dark clock fragments pulled inward. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_graf_q",
+      "name": "混沌脉冲",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: thick purple segmented energy whip opening a jagged violet rift. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_graf_e",
+      "name": "混沌冲击",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: purple armored fist with three blunt radial shock sparks. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_graf_r",
+      "name": "混沌爆发",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: purple faceted chaos core bursting into four large violet fragments. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_liana_q",
+      "name": "冰晶穿刺",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: single thick ice-blue crystal spear piercing two frosted armor plates. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_liana_e",
+      "name": "冰场领域",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: cluster of three short cyan ice crystals growing from a snowy base. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_liana_r",
+      "name": "绝对零度",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: large six-armed ice crystal enclosing a dark frozen core. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_via_q",
+      "name": "窃神之手",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: golden gloved hand pinching a purple magical jewel. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_via_e",
+      "name": "这招我收下了",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: golden curved catching claw cradling a captured cyan projectile. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_via_r",
+      "name": "此刻归我所有",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: golden open treasure lock surrounded by three stolen colored power shards. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_mortis_q",
+      "name": "白骨之矛",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: ivory broad bone spear with a lime green soul flame. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_mortis_e",
+      "name": "腐雾领域",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: dark cracked skull emitting two rounded lime green fog curls. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_skill_mortis_r",
+      "name": "亡者天灾",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three ivory skeleton heads rising beneath a lime green spectral crown. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex01",
+      "name": "加速齿轮",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: chunky blue steel gear with two cyan speed wings. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex02",
+      "name": "力量核心",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: orange faceted power core gripped by two armored clamps. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex03",
+      "name": "生命涌泉",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: emerald heart floating above a little white healing fountain. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex04",
+      "name": "裂变脉冲",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: orange core splitting into three golden explosive lobes. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex05",
+      "name": "幻影特效",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one blue projectile splitting into two translucent purple echoes. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex06",
+      "name": "死神之瞳",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: ivory skull with a single large magenta eye. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex07",
+      "name": "精准仪轨",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: gold crosshair mounted over a red crystal. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex08",
+      "name": "弱点透视",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: cyan scanner lens revealing a glowing red crack in gray armor. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex09",
+      "name": "破甲重铸",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: broken blue shield transforming into an orange blade. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex10",
+      "name": "制导蜂群",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three yellow miniature guided rockets in a tight fan. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex11",
+      "name": "延展力场",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: cyan power core between two broad outward pointing arrows. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex12",
+      "name": "不灭协议",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: white heart enclosed by a gold and cyan armored shield. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex13",
+      "name": "猎杀无人机",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one squat blue quadrotor drone with red cannon lens. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex14",
+      "name": "支援无人机",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one white and teal medical drone carrying a green cross core. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex15",
+      "name": "进阶蓝图",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: rolled blue schematic with a single gold upgrade chevron. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex16",
+      "name": "点金手",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: golden gloved fingers touching one hexagonal gold coin. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex17",
+      "name": "战争红利",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: open blue supply crate containing three large gold coins. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex18",
+      "name": "应急壁垒",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: blue folding armor shield with a green medical cross. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex19",
+      "name": "元素暴击",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: four chunky fire water earth wind gems converging on a bright white impact. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex20",
+      "name": "风元素",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: two broad mint-green wind curls cradling a pale teal crystal. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex21",
+      "name": "火元素",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one rounded three-tongued orange flame with yellow core. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex22",
+      "name": "土元素",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three ocher stone plates rising around amber crystal. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex23",
+      "name": "水元素",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one plump blue droplet with two chunky curling waves. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex24",
+      "name": "闪电网链",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three cyan power nodes connected by thick angular yellow lightning. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex25",
+      "name": "天雷",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one white thundercloud firing a broad cyan bolt into a gold impact. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex26",
+      "name": "化气为剑",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: three ivory flying swords orbiting a cyan energy pearl. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex27",
+      "name": "实习刺客",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: purple hood with a single short emerald dagger. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex28",
+      "name": "boss精英",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: broken red armored boss crown pierced by a golden blade. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex29",
+      "name": "再来一次强化版",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: two chunky purple circular arrows around five small gold pips. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex30",
+      "name": "合理避税",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: gold coin slipping underneath a blue protective umbrella. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex31",
+      "name": "加速",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: cyan stopwatch with two broad golden forward chevrons. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    },
+    {
+      "key": "ui_icon_hex32",
+      "name": "保命分身",
+      "prompt": "Use case: stylized-concept. ONE production game UI icon, square transparent PNG. Match reference A's chunky clean sci-fi cartoon, bold dark navy outer contour, simple 3-tone cel shading, rounded sturdy machinery, broad readable shapes, upper-left highlights. Subject: one blue armored silhouette beside its translucent purple decoy and red heart. Centered isolated silhouette fills 78% of square, transparent margin. Instantly recognizable at 32px. No background, badge, frame, letters, text, grid, photo texture, thin filigree or glow haze. Reference image is style guidance only; generate the subject as one icon."
+    }
+  ]
+}

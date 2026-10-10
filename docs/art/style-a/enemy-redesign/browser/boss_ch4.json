@@ -1,0 +1,97 @@
+{
+  "id": "boss_ch4",
+  "actualArtKey": "enemy_boss_ch4",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 147.9999999999991,
+      "delta": -32.00000000000091,
+      "arena": "ch1-random-slot-5-wreck-slot-14-wreck-slot-2-wreck",
+      "enemy": [
+        672.0000000000009,
+        370,
+        45,
+        true,
+        80
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 548.0000000000001,
+      "delta": -31.999999999999886,
+      "arena": "ch1-random-slot-5-wreck-slot-14-wreck-slot-2-wreck",
+      "enemy": [
+        271.9999999999999,
+        370,
+        45,
+        true,
+        80
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "boss",
+  "framesChecked": 264,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "front/skill3",
+    "front/skill4",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "side/skill3",
+    "side/skill4",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2",
+    "back/skill3",
+    "back/skill4"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 144,
+  "aiMaxSeconds": 10,
+  "movementPixels": 321.22,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill",
+    "idle",
+    "skill3",
+    "skill2"
+  ],
+  "pass": true
+}

@@ -25,6 +25,7 @@
     "assets/scripts/data/ArenaCollisionMasks.ts",
     "assets/scripts/data/ChapterArenaDB.ts",
     "assets/scripts/data/ActorAnimationDB.ts",
+    "assets/scripts/data/EnemyRigAnimationDB.ts",
     "assets/scripts/data/AnimationBoundsDB.ts",
     "assets/scripts/data/BossDB.ts",
     "assets/scripts/data/CharacterDB.ts",
@@ -45,6 +46,9 @@
     "assets/scripts/systems/InputManager.ts",
     "assets/scripts/systems/ParticleManager.ts",
     "assets/scripts/systems/SaveSystem.ts",
-    "assets/scripts/systems/WaveManager.ts"
+    "assets/scripts/systems/WaveManager.ts",
+    "assets/scripts/core/CombatVfx.ts",
+    "assets/scripts/core/CombatCollision.ts",
+    "assets/scripts/data/CombatArtDB.ts"
   ]
 }

@@ -23,6 +23,8 @@ for (const clip of allClips) {
         const file = path.join(art, clip.sheet + '.png');
         if (!fs.existsSync(file)) throw new Error('缺少动画素材：' + file);
         const existing = fs.existsSync(file + '.meta') ? fs.readFileSync(file + '.meta', 'utf8') : undefined;
+        // 已有图集由 Creator 保留真实裁边和顶点；预览导出不能改写已验收特效的 meta。
+        if (existing && !clip.sheet.startsWith('anim_stylea_')) continue;
         const meta = existing ? JSON.parse(existing)
             : JSON.parse(templateText.replaceAll(templateUuid, randomUUID()).replaceAll('anim_kai_side', clip.sheet));
         const data = meta.subMetas.f9941.userData;
@@ -36,7 +38,9 @@ for (const clip of allClips) {
         if (existing !== next) fs.writeFileSync(file + '.meta', next);
 }
 fs.writeFileSync(path.join(root, 'docs/art/animation-qa/preview-data.json'), JSON.stringify(ACTOR_ANIMATIONS, null, 2) + '\n');
-fs.writeFileSync(path.join(root, 'docs/art/animation-qa/preview-effects.json'), JSON.stringify(EFFECT_ANIMATIONS, null, 2) + '\n');
+if (!process.argv.includes('--bodies-only')) {
+    fs.writeFileSync(path.join(root, 'docs/art/animation-qa/preview-effects.json'), JSON.stringify(EFFECT_ANIMATIONS, null, 2) + '\n');
+}
 const sizes = {}, coverage = [];
 function register(id, category, key, size) {
     sizes[key] = size;
@@ -48,13 +52,13 @@ function register(id, category, key, size) {
 for (const id of Object.keys(CHARACTERS)) register(id, 'hero', 'char_token_' + id, 82);
 for (const unit of UNIT_CATALOG) {
     const e = unit.category === 'boss' ? new BossController() : new EnemyBase();
-    if (unit.id.startsWith('boss_ch')) e.initBoss(Number(unit.id.slice(7)) - 1, makeMockGame());
+    if (unit.id.startsWith('boss_ch')) e.initBoss((Number(unit.id.slice(7)) - 1) * 5 + 1, makeMockGame());
     else if (unit.category === 'boss') e.initBossKind(unit.id.slice(5), makeMockGame());
     else e.init(unit.id, 1, makeMockGame());
     register(unit.id, unit.category, e.spriteKey, e.radius * 2 * e.visualScale);
 }
 fs.writeFileSync(path.join(root, 'docs/art/animation-qa/preview-sizes.json'), JSON.stringify(sizes, null, 2) + '\n');
 fs.writeFileSync(path.join(root, 'docs/art/animation-qa/coverage.json'), JSON.stringify({
-    note: '6英雄与36目录敌人；召唤物还须单独审计。素材/动作登记不表示通过视觉或技能特效验收。', units: coverage,
+    note: '英雄与37目录敌人；召唤物还须单独审计。素材/动作登记不表示通过视觉或技能特效验收。', units: coverage,
 }, null, 2) + '\n');
 console.warn(`[动画预览] 已导出 ${handled.size} 张图集；既有资源uuid保持不变`);

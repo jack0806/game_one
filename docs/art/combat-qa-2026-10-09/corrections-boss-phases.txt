@@ -1,0 +1,144 @@
+vespa 技能0 0.30秒 |
+vespa 技能0 1.20秒 |
+vespa 技能0 3.20秒 |
+vespa 技能0 5.20秒 |
+vespa 技能1 0.30秒 |
+vespa 技能1 1.20秒 |
+vespa 技能1 3.20秒 |
+vespa 技能1 5.20秒 |
+vespa 技能2 0.30秒 |
+vespa 技能2 1.20秒 | fx_damage_acid_sac,fx_ground_acid
+vespa 技能2 3.20秒 |
+vespa 技能2 5.20秒 |
+vespa 技能3 0.30秒 |
+vespa 技能3 1.20秒 |
+vespa 技能3 3.20秒 |
+vespa 技能3 5.20秒 |
+vespa 技能4 0.30秒 |
+vespa 技能4 1.20秒 |
+vespa 技能4 3.20秒 |
+vespa 技能4 5.20秒 |
+crucible_city 技能0 0.30秒 |
+crucible_city 技能0 1.20秒 |
+crucible_city 技能0 3.20秒 |
+crucible_city 技能0 5.20秒 |
+crucible_city 技能1 0.30秒 |
+crucible_city 技能1 1.20秒 |
+crucible_city 技能1 3.20秒 |
+crucible_city 技能1 5.20秒 |
+crucible_city 技能2 0.30秒 |
+crucible_city 技能2 1.20秒 |
+crucible_city 技能2 3.20秒 |
+crucible_city 技能2 5.20秒 |
+crucible_city 技能3 0.30秒 |
+crucible_city 技能3 1.20秒 |
+crucible_city 技能3 3.20秒 |
+crucible_city 技能3 5.20秒 |
+crucible_city 技能4 0.30秒 |
+crucible_city 技能4 1.20秒 | fx_damage_boss_crucible_city
+crucible_city 技能4 3.20秒 |
+crucible_city 技能4 5.20秒 | fx_damage_boss_crucible_city
+manyfold 技能0 0.30秒 |
+manyfold 技能0 1.20秒 |
+manyfold 技能0 3.20秒 |
+manyfold 技能0 5.20秒 |
+manyfold 技能1 0.30秒 |
+manyfold 技能1 1.20秒 |
+manyfold 技能1 3.20秒 |
+manyfold 技能1 5.20秒 |
+manyfold 技能2 0.30秒 |
+manyfold 技能2 1.20秒 |
+manyfold 技能2 3.20秒 | fx_damage_boss_manyfold
+manyfold 技能2 5.20秒 |
+manyfold 技能3 0.30秒 |
+manyfold 技能3 1.20秒 | fx_damage_boss_manyfold
+manyfold 技能3 3.20秒 |
+manyfold 技能3 5.20秒 |
+manyfold 技能4 0.30秒 |
+manyfold 技能4 1.20秒 |
+manyfold 技能4 3.20秒 |
+manyfold 技能4 5.20秒 |
+triune_priest 追加阶段1 0.30秒 | fx_hex_ring
+triune_priest 追加阶段1 1.20秒 |
+triune_priest 追加阶段1 3.20秒 |
+triune_priest 追加阶段1 5.20秒 |
+triune_priest 追加阶段2 0.30秒 | fx_hex_ring
+triune_priest 追加阶段2 1.20秒 |
+triune_priest 追加阶段2 3.20秒 |
+triune_priest 追加阶段2 5.20秒 |
+rail_butcher 追加阶段1 0.30秒 |
+rail_butcher 追加阶段1 1.20秒 |
+rail_butcher 追加阶段1 3.20秒 |
+rail_butcher 追加阶段1 5.20秒 |
+rail_butcher 追加阶段2 0.30秒 |
+rail_butcher 追加阶段2 1.20秒 |
+rail_butcher 追加阶段2 3.20秒 |
+rail_butcher 追加阶段2 5.20秒 |
+bell_devourer 追加阶段1 0.30秒 | fx_hex_ring
+bell_devourer 追加阶段1 1.20秒 |
+bell_devourer 追加阶段1 3.20秒 |
+bell_devourer 追加阶段1 5.20秒 |
+bell_devourer 追加阶段2 0.30秒 | fx_hex_ring
+bell_devourer 追加阶段2 1.20秒 |
+bell_devourer 追加阶段2 3.20秒 |
+bell_devourer 追加阶段2 5.20秒 |
+bell_devourer 追加阶段3 0.30秒 | fx_hex_ring
+bell_devourer 追加阶段3 1.20秒 |
+bell_devourer 追加阶段3 3.20秒 |
+bell_devourer 追加阶段3 5.20秒 |
+bell_devourer 追加阶段4 0.30秒 | fx_hex_ring
+bell_devourer 追加阶段4 1.20秒 |
+bell_devourer 追加阶段4 3.20秒 |
+bell_devourer 追加阶段4 5.20秒 |
+prism_snail 追加阶段1 0.30秒 |
+prism_snail 追加阶段1 1.20秒 |
+prism_snail 追加阶段1 3.20秒 | fx_explosion
+prism_snail 追加阶段1 5.20秒 |
+boss_invader 追加阶段1 0.30秒 | fx_heal,fx_hex_ring
+boss_invader 追加阶段1 1.20秒 |
+boss_invader 追加阶段1 3.20秒 |
+boss_invader 追加阶段1 5.20秒 | fx_explosion
+boss_ch1 冲锋/召唤 0.30秒 |
+boss_ch1 冲锋/召唤 1.20秒 |
+boss_ch1 冲锋/召唤 3.20秒 |
+boss_ch1 冲锋/召唤 5.20秒 | fx_damage_acid_sac,fx_ground_acid,fx_explosion
+boss_ch2 冲锋/召唤 0.30秒 |
+boss_ch2 冲锋/召唤 1.20秒 | fx_explosion
+boss_ch2 冲锋/召唤 3.20秒 | fx_explosion
+boss_ch2 冲锋/召唤 5.20秒 | fx_explosion
+boss_ch3 冲锋/召唤 0.30秒 |
+boss_ch3 冲锋/召唤 1.20秒 |
+boss_ch3 冲锋/召唤 3.20秒 |
+boss_ch3 冲锋/召唤 5.20秒 | fx_damage_boss_ch3
+boss_ch4 冲锋/召唤 0.30秒 |
+boss_ch4 冲锋/召唤 1.20秒 | fx_explosion
+boss_ch4 冲锋/召唤 3.20秒 |
+boss_ch4 冲锋/召唤 5.20秒 | fx_explosion
+深海 pillar 0.30秒 |
+深海 pillar 1.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 pillar 3.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 pillar 5.20秒 | fx_ground_water
+深海 zone 0.30秒 |
+深海 zone 1.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 zone 3.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 zone 5.20秒 |
+深海 clone 0.30秒 |
+深海 clone 1.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 clone 3.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 clone 5.20秒 |
+深海 squid 0.30秒 | fx_cold_arrow
+深海 squid 1.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 squid 3.20秒 | fx_damage_boss_abyss,fx_ground_water
+深海 squid 5.20秒 |
+机械 storm 0.30秒 |
+机械 storm 1.20秒 |
+机械 storm 3.20秒 | fx_explosion
+机械 storm 5.20秒 |
+机械 sky 0.30秒 | fx_hex_ring
+机械 sky 1.20秒 |
+机械 sky 3.20秒 | fx_damage_boss_invader,fx_damage_boss_mech,fx_ground_dust
+机械 sky 5.20秒 |
+机械 buff 0.30秒 |
+机械 buff 1.20秒 |
+机械 buff 3.20秒 |
+机械 buff 5.20秒 |

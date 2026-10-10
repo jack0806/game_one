@@ -1,0 +1,177 @@
+[
+  {
+    "id": "grunt",
+    "contact": "fx_damage_grunt",
+    "hpUnchanged": true
+  },
+  {
+    "id": "shield",
+    "contact": "fx_damage_shield",
+    "hpUnchanged": true
+  },
+  {
+    "id": "exploder",
+    "contact": "fx_damage_exploder",
+    "hpUnchanged": true
+  },
+  {
+    "id": "golem",
+    "contact": "fx_damage_golem",
+    "hpUnchanged": true
+  },
+  {
+    "id": "elite_grunt",
+    "contact": "fx_damage_elite_grunt",
+    "hpUnchanged": true
+  },
+  {
+    "id": "archer",
+    "contact": "fx_damage_archer",
+    "hpUnchanged": true
+  },
+  {
+    "id": "miniboss",
+    "contact": "fx_damage_miniboss",
+    "hpUnchanged": true
+  },
+  {
+    "id": "rust_biter",
+    "contact": "fx_damage_rust_biter",
+    "hpUnchanged": true
+  },
+  {
+    "id": "needle_gunner",
+    "contact": "fx_damage_needle_gunner",
+    "hpUnchanged": true
+  },
+  {
+    "id": "ember_acolyte",
+    "contact": "fx_damage_ember_acolyte",
+    "hpUnchanged": true
+  },
+  {
+    "id": "frost_acolyte",
+    "contact": "fx_damage_frost_acolyte",
+    "hpUnchanged": true
+  },
+  {
+    "id": "acid_sac",
+    "contact": "fx_damage_acid_sac",
+    "hpUnchanged": true
+  },
+  {
+    "id": "rivet_beast",
+    "contact": "fx_damage_rivet_beast",
+    "hpUnchanged": true
+  },
+  {
+    "id": "arc_leech",
+    "contact": "fx_damage_arc_leech",
+    "hpUnchanged": true
+  },
+  {
+    "id": "blast_tick",
+    "contact": "fx_damage_blast_tick",
+    "hpUnchanged": true
+  },
+  {
+    "id": "squid",
+    "contact": "fx_damage_squid",
+    "hpUnchanged": true
+  },
+  {
+    "id": "turtle",
+    "contact": "fx_damage_turtle",
+    "hpUnchanged": true
+  },
+  {
+    "id": "shrimp",
+    "contact": "fx_damage_shrimp",
+    "hpUnchanged": true
+  },
+  {
+    "id": "jelly",
+    "contact": "fx_damage_jelly",
+    "hpUnchanged": true
+  },
+  {
+    "id": "drone_a",
+    "contact": "fx_damage_bell_devourer",
+    "hpUnchanged": true
+  },
+  {
+    "id": "chain_hound",
+    "contact": "fx_damage_chain_hound",
+    "hpUnchanged": true
+  },
+  {
+    "id": "prism_snail",
+    "contact": "fx_damage_prism_snail",
+    "hpUnchanged": true
+  },
+  {
+    "id": "triune_priest",
+    "contact": "fx_damage_ember_acolyte",
+    "hpUnchanged": true
+  },
+  {
+    "id": "rail_butcher",
+    "contact": "fx_damage_rail_butcher",
+    "hpUnchanged": true
+  },
+  {
+    "id": "bell_devourer",
+    "contact": "fx_damage_bell_devourer",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_ch1",
+    "contact": "fx_damage_acid_sac",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_ch2",
+    "contact": "fx_damage_boss_ch2",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_ch3",
+    "contact": "fx_damage_boss_ch3",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_ch4",
+    "contact": "fx_damage_grunt",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_mech",
+    "contact": "fx_damage_boss_mech",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_abyss",
+    "contact": "fx_damage_boss_abyss",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_vespa",
+    "contact": "fx_damage_boss_vespa",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_crucible_city",
+    "contact": "fx_damage_boss_crucible_city",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_manyfold",
+    "contact": "fx_damage_boss_manyfold",
+    "hpUnchanged": true
+  },
+  {
+    "id": "boss_invader",
+    "contact": "fx_damage_boss_invader",
+    "hpUnchanged": true
+  }
+]

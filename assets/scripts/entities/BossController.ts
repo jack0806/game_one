@@ -8,8 +8,12 @@ import { getBossDefById, TEST_BOSSES } from '../data/BossDB';
 import { mapDef, mapOf } from '../data/LevelIndex';
 import { resetLocomotion } from '../core/Locomotion';
 import { resetDirectionalFacing } from '../core/DirectionalFacing';
+import { contactDistance } from '../core/CombatCollision';
 
 export class BossController extends EnemyBase {
+    override get hitSource(): string {
+        return this.bossKind ? 'boss_' + this.bossKind : this.chapter === 5 ? 'boss_mech' : this.chapter === 6 ? 'boss_invader' : 'boss_ch' + this.chapter;
+    }
     phase        = 1;
     enraged      = false;
     _animTime    = 0;
@@ -78,6 +82,9 @@ export class BossController extends EnemyBase {
      * 由 GameManager._invGrid 的 fire 阶段置 2，与本类 update 同源递减。
      */
     invLaserT = 0;
+    /** 只驱动新身体姿势，不改变导弹/激光的结算或特效时间。 */
+    visualInvaderSkillT = 0;
+    visualInvaderSkillIndex = 0;
     private _invLaserCd = 8;
     private _invMissileCd = 14;
     private _invHomingCd = 6;
@@ -102,6 +109,7 @@ export class BossController extends EnemyBase {
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
         this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
+        this.visualInvaderSkillT = 0; this.visualInvaderSkillIndex = 0;
         this.bossKind = undefined;   // initBossKind 会在 init 之后再写入
         // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
         // 进场约6秒才有第一发追踪弹，网格激光/导弹依次排开；循环冷却保持原值
@@ -210,6 +218,7 @@ export class BossController extends EnemyBase {
         this.visualMechBuffT = Math.max(0, this.visualMechBuffT - dt);
         this.visualMechSkyLandT = Math.max(0, this.visualMechSkyLandT - dt);
         this.visualAbyssSkillT = Math.max(0, this.visualAbyssSkillT - dt);
+        this.visualInvaderSkillT = Math.max(0, this.visualInvaderSkillT - dt);
         this.visualDocSkillT = Math.max(0, this.visualDocSkillT - dt);
         this._contactCd = Math.max(0, this._contactCd - dt);
 
@@ -278,20 +287,16 @@ export class BossController extends EnemyBase {
             const distance = Math.hypot(toPlayerX, toPlayerY);
             const route = game.arenaSteerTarget?.(this.x, this.y, player.x, player.y, this.radius) ?? player;
             const [dx, dy] = Vec.normalize(route.x - this.x, route.y - this.y);
-            // 旧逻辑无条件穿过英雄中心，Boss 会在目标点两侧来回越界并每帧
-            // 翻转前/背或左右帧，视觉上就是“一闪一闪”。现在在接触判定内沿
-            // 稳定停步；冲锋结束若重叠，则以较慢速度后撤恢复合理间距。
-            const contactDistance = this.radius + (player.radius ?? 16);
-            const standDistance = Math.max(1, contactDistance - 2);
+            // 停在真实身体边界，近身时不再靠后撤修补穿透。
+            const standDistance = contactDistance(this, player);
             const moveSpeed = this.speed * this.slowMult;
             let step = 0;
             if (distance > standDistance + 0.5) {
                 step = Math.min(moveSpeed * dt, distance - standDistance);
-            } else if (distance < standDistance - 6 && distance > 0.0001) {
-                step = -Math.min(moveSpeed * 0.35 * dt, standDistance - distance);
             }
-            this.x += dx * step;
-            this.y += dy * step;
+            const next = game.moveEnemyBody?.(this, dx * step, dy * step);
+            this.x = next ? next.x : this.x + dx * step;
+            this.y = next ? next.y : this.y + dy * step;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
@@ -319,15 +324,15 @@ export class BossController extends EnemyBase {
         // 接触攻击也必须经过可见前摇；玩家在结算前离开碰撞范围即可躲避。
         if (!airborne && this.attackWindup > 0) {
             this.attackWindup = Math.max(0, this.attackWindup - dt);
-            if (this.attackWindup <= 0 &&
-                Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius + 12) {
+            if (this.attackWindup <= 0) {
                 const angle = Math.atan2(player.y - this.y, player.x - this.x);
-                game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.radius + player.radius, 1.8);
-                game.particles?.impact(player.x, player.y, angle, 0.7, this.glowColor);
-                player.takeDamage(this.damage * this.buffDmgMult, game);
+                game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.radius + player.radius, 1.8, this.bossKind ? 'boss_' + this.bossKind : this.chapter === 5 ? 'boss_mech' : this.chapter === 6 ? 'boss_invader' : 'boss_ch' + this.chapter);
+                if (Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius + 12) {
+                    player.takeDamage(this.damage * this.buffDmgMult, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
+                }
                 this.actionRecoil = 0.28;
             }
-        } else if (!airborne && Vec.dist(this.x, this.y, player.x, player.y) < this.radius + player.radius && this._contactCd <= 0) {
+        } else if (!airborne && Vec.dist(this.x, this.y, player.x, player.y) <= contactDistance(this, player) + 0.5 && this._contactCd <= 0) {
             this._contactCd = 0.65;
             this.attackWindup = this.attackWindupMax;
             this.attackTargetX = player.x;
@@ -414,28 +419,28 @@ export class BossController extends EnemyBase {
         this.visualSkillT = 0.65;
         switch (kind) {
             case 'ch1': // 废土：毒液 DOT 圆
-                game.particles?.explode(this.x, this.y, '#44ff00', 100);
+                game.particles?.enemyBurst?.(this.x, this.y, 'acid', 100);
                 for (const e of (game.enemies || [])) { /* friendly fire */ }
                 // 向玩家发射3发毒球
                 for (let i = -1; i <= 1; i++) {
                     const a = Math.atan2(player.y - this.y, player.x - this.x) + i * 0.3;
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, damage: this.damage * this.buffDmgMult * 0.6, radius: 10, color: '#44ff00', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison' });
+                    game.enemyBullets?.push({ hitSource: this.hitSource, x: this.x, y: this.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, damage: this.damage * this.buffDmgMult * 0.6, radius: 10, color: '#44ff00', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'poison' });
                 }
                 break;
             case 'ch2': // 钢铁：齿轮弹
                 for (let i = 0; i < 8; i++) {
                     const a = (i / 8) * Math.PI * 2 + this._animTime;
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, damage: this.damage * this.buffDmgMult * 0.5, radius: 10, color: '#ffad42', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'gear' });
+                    game.enemyBullets?.push({ hitSource: this.hitSource, x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, damage: this.damage * this.buffDmgMult * 0.5, radius: 10, color: '#ffad42', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'gear' });
                 }
                 break;
             case 'ch3': // 海克斯：追踪弹
                 { const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
-                  game.enemyBullets?.push({ x: this.x, y: this.y, vx: dx * 300, vy: dy * 300, damage: this.damage * this.buffDmgMult * 0.8, radius: 13, color: '#ff4da6', life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'homing' }); }
+                  game.enemyBullets?.push({ hitSource: this.hitSource, x: this.x, y: this.y, vx: dx * 300, vy: dy * 300, damage: this.damage * this.buffDmgMult * 0.8, radius: 13, color: '#ff4da6', life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true, homing: true, enemyFx: 'homing' }); }
                 break;
             case 'ch4': // 混沌：随机多弹
                 for (let i = 0; i < 12; i++) {
                     const a = Rng.float(0, Math.PI * 2);
-                    game.enemyBullets?.push({ x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * this.buffDmgMult * 0.7, radius: 11, color: '#ffe066', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos' });
+                    game.enemyBullets?.push({ hitSource: this.hitSource, x: this.x, y: this.y, vx: Math.cos(a) * Rng.float(150, 350), vy: Math.sin(a) * Rng.float(150, 350), damage: this.damage * this.buffDmgMult * 0.7, radius: 11, color: '#ffe066', life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'chaos' });
                 }
                 break;
             case 'mech':
@@ -482,12 +487,12 @@ export class BossController extends EnemyBase {
             if (this.mechSkyT <= 0) {
                 this.invulnerable = false;
                 this.visualMechSkyLandT = 0.65;
-                game.particles?.explode?.(this.mechSkyTargetX, this.mechSkyTargetY, '#88ccff', 90);
+                game.particles?.enemyBurst?.(this.mechSkyTargetX, this.mechSkyTargetY, 'metal', 90);
                 game.screenShake?.shake?.(14, 0.35);
                 game.hitStop?.trigger?.(90);
                 game.audio?.playSfx?.('explode', 0.9);
                 if (player.alive && Vec.dist(this.mechSkyTargetX, this.mechSkyTargetY, player.x, player.y) < 170) {
-                    player.takeDamage(this.damage * this.buffDmgMult * 0.53, game); // 35/66
+                    player.takeDamage(this.damage * this.buffDmgMult * 0.53, game, { impact: { source: this.hitSource, kind: 'explosion', angle: Math.atan2(player.y - this.y, player.x - this.x) } }); // 35/66
                 }
             }
             return; // 空中不移动/不攻击/不调度新技能
@@ -498,13 +503,13 @@ export class BossController extends EnemyBase {
             this.mechSlashT -= dt;
             if (this.mechSlashT <= 0) {
                 this.visualMechSlashReleaseT = 0.65;
-                game.particles?.meleeSlash?.(this.x, this.y, this.mechSlashAngle, this.glowColor, 260, 1.6);
+                game.particles?.meleeSlash?.(this.x, this.y, this.mechSlashAngle, this.glowColor, 260, 1.6, this.bossKind ? 'boss_' + this.bossKind : this.chapter === 5 ? 'boss_mech' : this.chapter === 6 ? 'boss_invader' : 'boss_ch' + this.chapter);
                 game.screenShake?.shake?.(8, 0.25);
                 game.audio?.playSfx?.('skill_r', 0.8);
                 const ang = Math.atan2(player.y - this.y, player.x - this.x);
                 const diff = Math.abs(Math.atan2(Math.sin(ang - this.mechSlashAngle), Math.cos(ang - this.mechSlashAngle)));
                 if (diff < 1.05 && Vec.dist(this.x, this.y, player.x, player.y) < 280) {
-                    player.takeDamage(this.damage * this.buffDmgMult * 0.45, game); // 30/66
+                    player.takeDamage(this.damage * this.buffDmgMult * 0.45, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } }); // 30/66
                     game.floatingText?.spawn?.(player.x, player.y - 50, '横劈！', '#aaddff', 20, true);
                 }
             }
@@ -547,7 +552,7 @@ export class BossController extends EnemyBase {
         const base = Rng.float(0, Math.PI * 2);
         for (let i = 0; i < count; i++) {
             const a = base + (i / count) * Math.PI * 2 + this._animTime * 0.4;
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: this.x, y: this.y,
                 vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
                 damage: this.damage * this.buffDmgMult * 0.076, // 5/66
@@ -615,13 +620,13 @@ export class BossController extends EnemyBase {
 
     /** 大水刺：向 6 个均匀方向（整体随机旋转）各释放 3 发水刺，每发 20 伤，遇屏幕边缘反弹 2 次。 */
     private _abyssWaterSpikes(player: any, game: any): void {
-        game.particles?.explode(this.x, this.y, '#33ccff', 90);
+        game.particles?.enemyBurst?.(this.x, this.y, 'water', 90);
         const baseAngle = Rng.float(0, Math.PI * 2 / 6); // 整体随机旋转
         for (let s = 0; s < 6; s++) {
             const base = baseAngle + (s / 6) * Math.PI * 2;
             for (let i = -1; i <= 1; i++) {
                 const a = base + i * 0.22;
-                game.enemyBullets?.push({
+                game.enemyBullets?.push({ hitSource: this.hitSource,
                     x: this.x, y: this.y,
                     vx: Math.cos(a) * 260, vy: Math.sin(a) * 260,
                     damage: this.damage * this.buffDmgMult * 0.21, // 20/94
@@ -691,6 +696,7 @@ export class BossController extends EnemyBase {
         if (this._invLaserCd <= 0) {
             this._invLaserCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderLaserGrid?.(this);
+            this.visualInvaderSkillT = 2; this.visualInvaderSkillIndex = 1;
         }
 
         // 技能2：集束导弹 —— 上天后落地，落地前区域高亮（GameManager._missileZones 维护）
@@ -698,6 +704,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._invMissileCd <= 0) {
             this._invMissileCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderMissiles?.(this);
+            this.visualInvaderSkillT = 0.8; this.visualInvaderSkillIndex = 2;
         }
 
         // 技能3：追踪导弹（基础1发 / 最终2发）
@@ -705,6 +712,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._invHomingCd <= 0) {
             this._invHomingCd = (this.finalForm ? 4.5 : 6) + Rng.float(0, 1.5);
             this._invaderHomingFire(player, game);
+            this.visualInvaderSkillT = 0.6; this.visualInvaderSkillIndex = 3;
         }
     }
 
@@ -719,7 +727,7 @@ export class BossController extends EnemyBase {
             // 双发时两枚朝主角方向略微错开，避免完全重叠
             const offset = count > 1 ? (i === 0 ? -0.22 : 0.22) : 0;
             const a = Math.atan2(player.y - this.y, player.x - this.x) + offset;
-            game.enemyBullets?.push({
+            game.enemyBullets?.push({ hitSource: this.hitSource,
                 x: this.x, y: this.y,
                 vx: Math.cos(a) * 280, vy: Math.sin(a) * 280,
                 damage: dmg, radius: 13, color: '#ffaa33',

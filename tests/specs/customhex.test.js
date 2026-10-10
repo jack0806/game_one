@@ -17,8 +17,7 @@ function makeEnemy(game, x, y, hp = 1000) {
 // ── 基础完整性 ───────────────────────────────────────────────
 
 test('自定义强化包9个全部注册(hex24~32)，图标均在现有素材集合内', () => {
-    const KNOWN_ICONS = new Set(['pierce', 'lightning', 'explosion', 'fire', 'poison', 'crit', 'speed',
-        'lifesteal', 'bounce', 'heart', 'shield', 'combo', 'gold', 'summon', 'ice', 'chaos']);
+    const KNOWN_ICONS = new Set(require('node:fs').readdirSync(require('node:path').resolve(__dirname, '../../assets/resources/art')).filter(name => /^ui_icon_.+\.png$/.test(name)).map(name => name.slice(8, -4)));
     const names = ['闪电网链', '天雷', '化气为剑', '实习刺客', 'boss精英',
         '再来一次（强化版）', '合理避税', '加速', '保命分身'];
     for (let i = 24; i <= 32; i++) {

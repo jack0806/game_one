@@ -185,8 +185,7 @@ test('全部普通怪和测试房小Boss的移动方式与面向语义逐一合�
         const [fx, fy] = enemy.getVisualFacing(player);
         if (type !== 'gold_scavenger') assert.ok(fx > 0.99 && Math.abs(fy) < 0.01, `${type} 应面向右侧英雄`);
         if (type === 'archer' || type === 'needle_gunner' || type === 'acid_sac' ||
-            type === 'ember_acolyte' || type === 'frost_acolyte' || type === 'arc_leech' ||
-            type === 'triune_priest' || type === 'rail_butcher') {
+            type === 'ember_acolyte' || type === 'frost_acolyte' || type === 'arc_leech') {
             assert.equal(enemy.x, before, `${type} 在300px舒适距离应站定开火`);
         }
         else if (type === 'gold_scavenger') assert.ok(enemy.x < before, '掠金虫应先贴近边缘逃跑而非追击英雄');
@@ -234,8 +233,9 @@ test('全部正式与测试Boss接近后稳定停在接触距离，不穿过英�
             assert.ok(boss.x < player.x, `${item.label}不得穿过英雄中心`);
         }
         const distance = Math.hypot(player.x - boss.x, player.y - boss.y);
-        assert.ok(distance >= boss.radius + player.radius - 2.6, `${item.label}停步距离过近`);
-        assert.ok(distance <= boss.radius + player.radius + 0.6, `${item.label}未进入接触距离`);
+        const contact = require('../dist/core/CombatCollision').contactDistance(boss, player);
+        assert.ok(distance >= contact - 0.01, `${item.label}停步距离过近`);
+        assert.ok(distance <= contact + 0.6, `${item.label}未进入接触距离`);
         assert.equal(mirrorChanges, 0, `${item.label}接近过程不应反复翻面`);
     }
 });

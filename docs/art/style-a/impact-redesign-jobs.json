@@ -1,0 +1,146 @@
+[
+  {
+    "sheet": "anim_hit_units_1",
+    "ids": [
+      "grunt",
+      "shield",
+      "exploder",
+      "golem"
+    ],
+    "descriptions": [
+      "two ivory claw tears with orange toothlike chips",
+      "blue steel shield-bash angular metal shards and golden sparks",
+      "orange cartoon fireball with jagged cream core and black soot chunks",
+      "heavy tan rock impact with flying stone slabs and short dust wedges"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: two ivory claw tears with orange toothlike chips. Row 2: blue steel shield-bash angular metal shards and golden sparks. Row 3: orange cartoon fireball with jagged cream core and black soot chunks. Row 4: heavy tan rock impact with flying stone slabs and short dust wedges. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_2",
+    "ids": [
+      "elite_grunt",
+      "archer",
+      "miniboss",
+      "rust_biter"
+    ],
+    "descriptions": [
+      "three broad crimson claw gouges crossed with ivory chips",
+      "lime venom dart bursting in pointed liquid splash with dark green drops",
+      "violet scythe impact: ONE jagged split fissure with purple crystalline splinters",
+      "rusty serrated bite: paired copper fang wedges with corroded chips"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: three broad crimson claw gouges crossed with ivory chips. Row 2: lime venom dart bursting in pointed liquid splash with dark green drops. Row 3: violet scythe impact: ONE jagged split fissure with purple crystalline splinters. Row 4: rusty serrated bite: paired copper fang wedges with corroded chips. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_3",
+    "ids": [
+      "needle_gunner",
+      "ember_acolyte",
+      "frost_acolyte",
+      "acid_sac"
+    ],
+    "descriptions": [
+      "needle puncture with yellow narrow piercing flash and tiny silver needles fanning out",
+      "ember spell bursting into three red-orange licking flames and coal fragments",
+      "ice spear shattering into sharp pale blue crystals",
+      "acid sac bursting with chunky yellow-green splash and suspended bubbles"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: needle puncture with yellow narrow piercing flash and tiny silver needles fanning out. Row 2: ember spell bursting into three red-orange licking flames and coal fragments. Row 3: ice spear shattering into sharp pale blue crystals. Row 4: acid sac bursting with chunky yellow-green splash and suspended bubbles. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_4",
+    "ids": [
+      "rivet_beast",
+      "arc_leech",
+      "blast_tick",
+      "squid"
+    ],
+    "descriptions": [
+      "rivet hammer collision with gray steel bolt heads and ochre hot sparks",
+      "forked cyan electric discharge with white branching lightning and blue chips",
+      "compact red explosive detonation with yellow pointed star core and charcoal shrapnel",
+      "deep blue water bomb splashing in chunky turquoise water tongues and droplets"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: rivet hammer collision with gray steel bolt heads and ochre hot sparks. Row 2: forked cyan electric discharge with white branching lightning and blue chips. Row 3: compact red explosive detonation with yellow pointed star core and charcoal shrapnel. Row 4: deep blue water bomb splashing in chunky turquoise water tongues and droplets. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_5",
+    "ids": [
+      "turtle",
+      "shrimp",
+      "jelly",
+      "drone_a"
+    ],
+    "descriptions": [
+      "heavy jade turtle slam with plate-shaped green stone fragments and dust",
+      "coral shrimp pincer impact: crossed curved salmon blades and pearl chips",
+      "jellyfish venom stinger with magenta thorn splash and small violet droplets",
+      "mechanical drone electric shot: angular cyan-white plasma fragmentation and small steel scraps"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: heavy jade turtle slam with plate-shaped green stone fragments and dust. Row 2: coral shrimp pincer impact: crossed curved salmon blades and pearl chips. Row 3: jellyfish venom stinger with magenta thorn splash and small violet droplets. Row 4: mechanical drone electric shot: angular cyan-white plasma fragmentation and small steel scraps. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_6",
+    "ids": [
+      "chain_hound",
+      "prism_snail",
+      "triune_priest",
+      "rail_butcher"
+    ],
+    "descriptions": [
+      "chain hound ripping strike with red jagged claw marks and broken chain links",
+      "prismatic snail crystal impact: asymmetric cyan lavender yellow sharp crystal cluster breaking",
+      "triune priest holy spark: three interlocked orange cyan violet bolt forks breaking apart",
+      "rail butcher saw cutting impact: silver toothed semicircular slash and orange metal sparks"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: chain hound ripping strike with red jagged claw marks and broken chain links. Row 2: prismatic snail crystal impact: asymmetric cyan lavender yellow sharp crystal cluster breaking. Row 3: triune priest holy spark: three interlocked orange cyan violet bolt forks breaking apart. Row 4: rail butcher saw cutting impact: silver toothed semicircular slash and orange metal sparks. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_7",
+    "ids": [
+      "bell_devourer",
+      "boss_ch1",
+      "boss_ch2",
+      "boss_ch3"
+    ],
+    "descriptions": [
+      "bell sonic impact: shattered gold bell metal chips with uneven zigzag sound fractures, NO rings",
+      "boss flesh lord crushing claw: large ivory fang slashes with crimson angular splinters",
+      "boss furnace gear blow: orange gear-tooth shrapnel and fiery wedges",
+      "boss storm machine strike: three jagged magenta-white electric bolts with dark steel fragments"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: bell sonic impact: shattered gold bell metal chips with uneven zigzag sound fractures, NO rings. Row 2: boss flesh lord crushing claw: large ivory fang slashes with crimson angular splinters. Row 3: boss furnace gear blow: orange gear-tooth shrapnel and fiery wedges. Row 4: boss storm machine strike: three jagged magenta-white electric bolts with dark steel fragments. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_8",
+    "ids": [
+      "boss_ch4",
+      "boss_mech",
+      "boss_abyss",
+      "boss_vespa"
+    ],
+    "descriptions": [
+      "boss void rift strike: black split with jagged violet edges and gold crystal flecks, NO circle",
+      "mechanical god energy sword strike: cobalt sharp X cleave with white blade fragments",
+      "abyss ruler strike: aqua crashing crest split into sharp foamy splash and navy drops",
+      "vespa queen sting: golden spearhead puncture with pointed amber venom splash and black chips"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: boss void rift strike: black split with jagged violet edges and gold crystal flecks, NO circle. Row 2: mechanical god energy sword strike: cobalt sharp X cleave with white blade fragments. Row 3: abyss ruler strike: aqua crashing crest split into sharp foamy splash and navy drops. Row 4: vespa queen sting: golden spearhead puncture with pointed amber venom splash and black chips. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  },
+  {
+    "sheet": "anim_hit_units_9",
+    "ids": [
+      "boss_crucible_city",
+      "boss_manyfold",
+      "boss_invader",
+      "physical"
+    ],
+    "descriptions": [
+      "crucible city magma impact: red molten chunks with branching orange flames and gray slag",
+      "manyfold dimensional cut: three offset violet triangular rifts with hot pink splinters",
+      "invader missile impact: yellow-white pointed explosion plume with red flames and dark missile fragments",
+      "neutral blunt physical hit: compact cream jagged impact burst with warm brown stone chips"
+    ],
+    "prompt": "Use case: stylized-concept. Create ONE production game VFX sprite atlas, transparent background. Reference image supplies ONLY art style: bold dark navy outlines, crisp large cel shaded color shapes, readable stylized cartoon action. No scene, no characters. EXACT uniform 4 columns x 4 rows grid, square canvas, no visible grid. Each row is a DIFFERENT impact animation, each column is a consecutive frame: 1 small ignition/contact 40% size, 2 strong irregular burst 80% size, 3 separating debris 70% size, 4 few isolated fading debris 40% size. Center each cell at exactly 12.5%,37.5%,62.5%,87.5% canvas width/height. Entire effect fits within 80% of its cell, transparent gutters, consistent contact center. Row 1: crucible city magma impact: red molten chunks with branching orange flames and gray slag. Row 2: manyfold dimensional cut: three offset violet triangular rifts with hot pink splinters. Row 3: invader missile impact: yellow-white pointed explosion plume with red flames and dark missile fragments. Row 4: neutral blunt physical hit: compact cream jagged impact burst with warm brown stone chips. Draw materially different shapes for all rows, not recolored same stars. These are brief hit explosions/splashes on a hero in top-down combat, not icons. No circles, no complete rings, no halos, no targeting marks, no regular rectangles, no frames, no text, no ground shadows, no painted background, no checkerboard. True alpha transparency."
+  }
+]

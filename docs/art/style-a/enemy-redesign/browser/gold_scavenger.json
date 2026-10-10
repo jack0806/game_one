@@ -1,0 +1,85 @@
+{
+  "id": "gold_scavenger",
+  "actualArtKey": "enemy_gold_scavenger",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 184.83506160899236,
+      "delta": 4.835061608992362,
+      "arena": "ch1-random-slot-12-barrier-slot-1-wall-slot-3-barrier",
+      "enemy": [
+        640,
+        412,
+        20,
+        true,
+        105
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 622,
+      "delta": 42,
+      "arena": "ch1-random-slot-12-barrier-slot-1-wall-slot-3-barrier",
+      "enemy": [
+        198,
+        370,
+        20,
+        true,
+        105
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 51.84000000000001,
+  "aiMaxSeconds": 10,
+  "movementPixels": 141.36,
+  "aiActions": [
+    "run",
+    "walk",
+    "idle"
+  ],
+  "pass": true
+}

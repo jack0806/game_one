@@ -305,7 +305,7 @@ test('毒射手三方向和镜像在击退结算后从开火帧枪尖瞄准锁�
         assert.equal(game.enemyBullets.length, 0);
         e.update(0.05, player, game); e.updateVisualAnimation(0.05, player);
         const clip = actorClip(e.spriteKey, view, 'attack');
-        const expected = animationSocket(clip.frames[1], e.x, e.y, e.radius * 2 * e.visualScale * clip.displayScale, mirror);
+        const expected = animationSocket(clip.frames.find(f=>f.event==='fire'), e.x, e.y, e.radius * 2 * e.visualScale * clip.displayScale, mirror);
         assert.equal(game.enemyBullets.length, 1);
         const b = game.enemyBullets[0];
         assert.deepEqual([b.x,b.y], expected);
@@ -314,7 +314,7 @@ test('毒射手三方向和镜像在击退结算后从开火帧枪尖瞄准锁�
         assert.equal(flashes[0][4], 'toxic');
         assert.equal(e.animationView, view);
         assert.equal(e.animationMirror, mirror);
-        assert.equal(e.actorAnimation.frame, 1, '本帧身体必须仍在对应开火姿势');
+        assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event==='fire'), '本帧身体必须仍在对应开火姿势');
         assert.ok(Math.abs((locked[0]-b.x)*b.vy-(locked[1]-b.y)*b.vx)<1e-7);
         for (let i=0;i<20;i++) {e.update(0.016,player,game);e.updateVisualAnimation(0.016,player);}
         assert.equal(game.enemyBullets.length, 1, '收招只播放，不重复产生弹体');
@@ -346,13 +346,13 @@ test('断针射手三方向和镜像的三连针从当帧磁轨炮针尖发射',
         assert.equal(flashes[0][4], 'charged');
         assert.equal(e.animationView, view);
         assert.equal(e.animationMirror, mirror);
-        assert.equal(e.actorAnimation.frame, 1);
+        assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event==='fire'));
         assert.equal(e.actorAnimation.currentFrame.event, 'fire');
         assert.ok(Math.abs((e.rangedAimTargetX-b.x)*b.vy-(e.rangedAimTargetY-b.y)*b.vx)<1e-7);
     }
 });
 
-test('酸囊投手三方向和镜像从第三帧机械爪抛出酸球', () => {
+test('酸囊投手三方向和镜像从释放帧抛出酸球', () => {
     const { actorClip } = require('../dist/data/ActorAnimationDB');
     const { animationSocket } = require('../dist/core/ActorAnimation');
     for (const [dx, dy, view, mirror] of [[300,0,'side',1],[-300,0,'side',-1],[0,250,'front',1],[0,-250,'back',1]]) {
@@ -375,7 +375,7 @@ test('酸囊投手三方向和镜像从第三帧机械爪抛出酸球', () => {
         assert.deepEqual(toxins[0].slice(0, 2), expected);
         assert.equal(e.animationView, view);
         assert.equal(e.animationMirror, mirror);
-        assert.equal(e.actorAnimation.frame, 2);
+        assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event==='fire'));
         assert.equal(e.actorAnimation.currentFrame.event, 'fire');
     }
 });

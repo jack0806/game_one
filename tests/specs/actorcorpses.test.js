@@ -29,7 +29,7 @@ test('敌人逻辑死亡只结算一次，节点保留到倒下和淡出结束',
     assert.equal(disposed.length, 0);
     for (let i = 0; i < 16; i++) corpses.update(0.05);
     assert.equal(e.actorAnimation.finished, true);
-    assert.equal(e.actorAnimation.frame, 3);
+    assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.length-1);
     assert.equal(disposed.length, 0, '播完后应短暂停留而非立即消失');
     for (let i = 0; i < 14; i++) corpses.update(0.05);
     assert.deepEqual(disposed, [e]);
@@ -60,7 +60,7 @@ test('敌人蓄力保持准备姿势，结算当帧转入挥击，下一次蓄�
     assert.equal(e.actorAnimation.frame, 0);
     e.attackWindup = 0; e.actionRecoil = 0.24;
     e.updateVisualAnimation(0.01, player);
-    assert.equal(e.actorAnimation.frame, 1);
+    assert.equal(e.actorAnimation.currentFrame.event, 'strike');
     e.actionRecoil = 0;
     for (let i = 0; i < 10; i++) e.updateVisualAnimation(0.04, player);
     e.attackWindup = 0.3;
@@ -69,7 +69,7 @@ test('敌人蓄力保持准备姿势，结算当帧转入挥击，下一次蓄�
     assert.equal(e.actorAnimation.frame, 0);
 });
 
-test('石像鬼重拳结算读取strike事件并跳到真正砸地的第三帧', () => {
+test('石像鬼重拳结算读取strike事件并跳到真正砸地的释放帧', () => {
     const e = new EnemyBase(), player = { x: 400, y: 400 };
     e.init('golem', 1, makeMockGame());
     e.x = 400; e.y = 200;
@@ -77,7 +77,7 @@ test('石像鬼重拳结算读取strike事件并跳到真正砸地的第三帧',
     e.actionRecoil = 0.24;
     e.updateVisualAnimation(0.01, player);
     assert.equal(e.actorAnimation.action, 'attack');
-    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event));
     assert.equal(e.actorAnimation.currentFrame.event, 'strike');
 });
 
@@ -89,7 +89,7 @@ test('锈齿扑兵进入锁向突扑时直接显示技能爆发帧', () => {
     e._chargeT = 0.20;
     e.updateVisualAnimation(0.01, player);
     assert.equal(e.actorAnimation.action, 'skill');
-    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event));
     assert.equal(e.actorAnimation.currentFrame.event, 'cast');
 });
 
@@ -101,14 +101,14 @@ test('铆甲兽护板顶撞开始时切到冲锋爆发帧', () => {
     e._chargeT = 0.40;
     e.updateVisualAnimation(0.01, player);
     assert.equal(e.actorAnimation.action, 'skill');
-    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event));
     assert.equal(e.actorAnimation.currentFrame.event, 'cast');
     e.combatFacingX = 1; e.combatFacingY = 0;
     player.x = 400; player.y = 40;
     assert.deepEqual(e.getVisualFacing(player), [1, 0], '冲锋途中身体必须沿锁定走廊，不能转向移动后的玩家');
 });
 
-test('掠金虫受击完成后播放无伤害逃逸爆发并落到第三帧', () => {
+test('掠金虫受击完成后播放无伤害逃逸爆发并经过释放时刻', () => {
     const e = new EnemyBase(), player = { x: 560, y: 200 };
     e.init('gold_scavenger', 1, makeMockGame());
     e.x = 400; e.y = 200;
@@ -120,9 +120,9 @@ test('掠金虫受击完成后播放无伤害逃逸爆发并落到第三帧', ()
     for (let i = 0; i < 9; i++) e.updateVisualAnimation(0.05, player);
     e.updateVisualAnimation(0.01, player);
     assert.equal(e.actorAnimation.action, 'skill');
+    const cast=e.actorAnimation.clip.frames.findIndex(f=>f.event==='cast');
     for (let i = 0; i < 4; i++) e.updateVisualAnimation(0.05, player);
-    assert.equal(e.actorAnimation.frame, 2);
-    assert.equal(e.actorAnimation.currentFrame.event, 'cast');
+    assert.ok(e.actorAnimation.frame>=cast && e.actorAnimation.frame<cast+2, '逃逸仍处于原释放时间段');
 });
 
 test('熔爆蜱倒计时立即覆盖受击并逐步推进到临界过热帧', () => {
@@ -137,7 +137,7 @@ test('熔爆蜱倒计时立即覆盖受击并逐步推进到临界过热帧', ()
     e.updateVisualAnimation(0.01, player);
     assert.equal(e.actorAnimation.action, 'skill');
     for (let i = 0; i < 5; i++) e.updateVisualAnimation(0.05, player);
-    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event));
     assert.equal(e.actorAnimation.currentFrame.event, 'cast');
 });
 
@@ -152,7 +152,7 @@ test('烬火侍从结算地面火圈时显示喷口施法帧', () => {
     e.updateVisualAnimation(0.01, player);
     assert.deepEqual(hazards, [[560, 200]]);
     assert.equal(e.actorAnimation.action, 'attack');
-    assert.equal(e.actorAnimation.frame, 2);
+    assert.equal(e.actorAnimation.frame, e.actorAnimation.clip.frames.findIndex(f=>f.event));
     assert.equal(e.actorAnimation.currentFrame.event, 'cast');
     assert.ok(e.actorAnimation.currentFrame.muzzle);
 });

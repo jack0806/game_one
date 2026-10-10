@@ -1,0 +1,90 @@
+{
+  "id": "prism_snail",
+  "actualArtKey": "enemy_prism_snail",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 161.60000000000036,
+      "delta": -18.399999999999636,
+      "arena": "ch1-random-slot-15-barrier-slot-11-wreck-slot-4-wall",
+      "enemy": [
+        578.3999999999996,
+        220,
+        32,
+        true,
+        46
+      ],
+      "player": [
+        740,
+        220
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 561.5999999999997,
+      "delta": -18.40000000000032,
+      "arena": "ch1-random-slot-15-barrier-slot-11-wreck-slot-4-wall",
+      "enemy": [
+        178.40000000000032,
+        220,
+        32,
+        true,
+        46
+      ],
+      "player": [
+        740,
+        220
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "miniboss",
+  "framesChecked": 216,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 101.376,
+  "aiMaxSeconds": 10,
+  "movementPixels": 228.1,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill",
+    "attack",
+    "idle"
+  ],
+  "pass": true
+}

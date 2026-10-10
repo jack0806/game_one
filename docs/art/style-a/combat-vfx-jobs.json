@@ -1,0 +1,50 @@
+[
+  {
+    "key": "fx_enemy_needle",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one chunky amber steel needle projectile pointing RIGHT with a bright ivory nose and two short detached sparks, horizontal silhouette. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_frost",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one broad cyan ice spear projectile pointing RIGHT with three large crisp facets and two tiny ice chips behind, horizontal silhouette. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_toxic",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one compact asymmetrical lime acid glob with a glossy cream highlight, three rounded droplets and a dark green core. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_water_bomb",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one rounded blue pressurized water bomb with two broad curling wave fins and pale core. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_saw",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one chunky steel circular saw with eight broad blunt teeth, orange central bearing, readable top down. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_void_blade",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one thick purple crescent blade projectile pointing RIGHT with lilac sharp leading edge and three broad dark violet facets. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_bell_wave",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: three separated thick golden crescent sound ripples opening toward RIGHT, fading amber outer tips, no complete circle. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_ember_brand",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one orange molten eruption with five broad flame tongues spreading outward from small cream hot core, top down explosion. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_claw_slash",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: three short sweeping scarlet crescent claw slashes as a single arcing attack opening RIGHT, broad ivory leading edges, scarlet body and tapered ends. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_web",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: a top-down organic spider web with six curved sticky strands and thick lime drops at intersections, transparent holes. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_arc",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one compact white-hot cyan lightning comet pointing RIGHT, three jagged thick electric branches around core, no ring. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  },
+  {
+    "key": "fx_enemy_rail",
+    "prompt": "Use case: stylized-concept. Generate ONE transparent production game VFX sprite. Reference A is STYLE ONLY: clean cartoon cel shaded broad shapes, minimal detail, solid high contrast silhouette, bright readable midtones. Subject: one magenta railgun bolt pointing RIGHT with broad white-hot spear nose, two separated violet plasma fins at back. Centered with 12% transparent margin on all sides. NO text, frame, background, grid, UI badge, photorealistic texture, blurry glow or long straight rectangle. Make the shape physical and easy to read at 40 pixels. Square transparent RGBA canvas."
+  }
+]

@@ -1,3 +1,4 @@
+import type { EnemyHitContext } from '../data/CombatArtDB';
 // ============================================================
 //  PlayerController.ts — 玩家控制器（Cocos Creator 3.x 组件）
 // ============================================================
@@ -268,20 +269,19 @@ export class PlayerController extends Component {
     }
 
     /** 挂持续伤害（毒刺/高能光束等），同一来源可叠加。 */
-    applyDot(dps: number, dur: number, color = '#cc66ff'): void {
-        this.dots.push({ type: 'dot', dps, timeLeft: dur, color });
+    applyDot(dps: number, dur: number, color = '#cc66ff', type = 'dot'): void {
+        this.dots.push({ type, dps, timeLeft: dur, color });
     }
 
-    takeDamage(amount: number, game: any, opts?: { ignoreIframe?: boolean }): void {
+    takeDamage(amount: number, game: any, opts?: { ignoreIframe?: boolean; impact?: EnemyHitContext }): void {
         // !alive 守卫：测试房间死亡后到重生前，场上敌人仍会持续攻击，
         // 不守卫会反复触发 onPlayerDeath 重复调度重生定时器。
-        if (!this.alive || this.godMode) return;
-        // buff 无敌（重生/切换英雄/技能无敌帧）始终生效
-        if (this._invincible > 0) return;
-        // 受击无敌帧只挡常规受击；ignoreIframe（测试房敌弹）跳过——
-        // 0.5s 无敌帧会吞掉逐发水刺(0.35s)/剑气风暴(一次性10~20道)的后续命中，
-        // 表现为"有些攻击对主角不生效"。
-        if (!opts?.ignoreIframe && this._iframeTimer > 0) return;
+        if (!this.alive) return;
+        // 无敌只免伤，命中接触仍应可见；否则测试房和连续弹幕会像穿过身体。
+        if (this.godMode || this._invincible > 0 || (!opts?.ignoreIframe && this._iframeTimer > 0)) {
+            game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
+            return;
+        }
         // 核心溢出保护
         if (this.stats._coreOverflow && !this.stats._coreUsed && this.hp / this.stats.maxHp < 0.2) {
             this.stats._coreUsed = true;
@@ -305,6 +305,8 @@ export class PlayerController extends Component {
         // armor_up 词条/角色初始 armor 之前只写入 stats.armor 从未在这里读取，是死代码）。
         const mitigation = this.stats.armor / (this.stats.armor + 100);
         amount = Math.max(1, amount * (1 - mitigation));
+        // 在无敌/护盾完全吸收的早退之后触发：统一补齐近战、普通弹的真实受伤反馈。
+        game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
         // 海克斯12 不灭协议：受到致命伤或生命只剩 1 滴时触发——生成临时护盾、
         // 25% 吸血 10 秒，本次伤害保底剩 1 滴血（冷却 75 秒，tick 内递减）。
         if (this.stats.hasHexGuard && (this.stats._hexGuardCd ?? 0) <= 0 && this.hp - amount <= 1) {
@@ -354,13 +356,16 @@ export class PlayerController extends Component {
      * 仍受 godMode（测试房无敌开关）与 buff 无敌（重生/技能保护）约束，避免沙盒失效。
      * quiet 模式（激光连续伤害逐帧结算用）：跳过浮字/粒子/震屏/受击钩子，由调用方节流反馈。
      */
-    takeTrueDamage(amount: number, game: any, opts?: { quiet?: boolean }): void {
-        if (!this.alive || this.godMode || amount <= 0) return;
-        if (this._invincible > 0) return;
+    takeTrueDamage(amount: number, game: any, opts?: { quiet?: boolean; impact?: EnemyHitContext }): void {
+        if (!this.alive || amount <= 0) return;
+        if (this.godMode || this._invincible > 0) {
+            if (!opts?.quiet) game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
+            return;
+        }
         this.hp -= amount;
         if (!opts?.quiet) {
             game.floatingText?.spawn?.(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff6655', 16, false);
-            game.particles?.hit?.(this.x, this.y, '#ff5544');
+            game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
             game.screenShake?.shake?.(3, 0.12);
             game.onPlayerHit?.(this, game);
         }
@@ -382,7 +387,10 @@ export class PlayerController extends Component {
             this.facingY = my / len;
         }
         const spd = this.getSpeed();
-        if (game?.moveInArena) {
+        if (game?.movePlayerBody) {
+            const next = game.movePlayerBody(mx * spd * dt, my * spd * dt);
+            this.x = next.x; this.y = next.y;
+        } else if (game?.moveInArena) {
             const next = game.moveInArena(this.x, this.y, mx * spd * dt, my * spd * dt, this.radius);
             this.x = next.x; this.y = next.y;
         } else {
@@ -412,7 +420,8 @@ export class PlayerController extends Component {
                 fx._fxT = 0.5;
                 this._game?.floatingText?.spawn?.(this.x, this.y - 34, `-${Math.max(1, Math.round(fx._acc))}`, d.color ?? '#cc66ff', 12, false);
                 fx._acc = 0;
-                this._game?.particles?.toxin?.(this.x, this.y);
+                if (d.type === 'fire') game?.particles?.ignite?.(this.x, this.y);
+                else game?.particles?.toxin?.(this.x, this.y);
             }
             if (this.hp <= 0 && this.alive) {
                 this.hp = 0; this.alive = false;

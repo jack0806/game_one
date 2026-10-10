@@ -1,0 +1,375 @@
+{
+  "date": "2026-10-10",
+  "style": "参考图A的粗轮廓与简化分块明暗；各单位体态由名称、器官和技能决定，保留细长、空心、几何和低伏结构，不统一堆成圆胖装甲。攻击特效独立保留。",
+  "baselineTests": "596/596",
+  "status": "complete",
+  "units": [
+    {
+      "id": "grunt",
+      "rig": "biped",
+      "design": "Brick-red squat mutant goblin, orange eyes, navy scavenged chest harness, one rounded shoulder pad, ivory claw hands and digitigrade feet.",
+      "attack": "低身蓄力、单爪横扫、肩臂回收",
+      "motion": "前倾交替踏步"
+    },
+    {
+      "id": "shield",
+      "rig": "biped",
+      "design": "Short sturdy navy-blue security robot, square rounded helmet with ONE cyan rectangular visor, dark segmented chest armor, giant tall rounded riot shield on NEAR ARM, stubby free mechanical far hand, sturdy short boots. Shield is the entire near-arm component.",
+      "attack": "收盾蓄力、向前盾击、回守",
+      "motion": "重盾稳定、短步承重"
+    },
+    {
+      "id": "exploder",
+      "rig": "crawler",
+      "design": "Round orange volatile reactor crab robot, bright amber glass dome with simple molten blobs, dark navy metal lower collar, six short sturdy curved mechanical legs, small fuse knob on dome. No face, no humanoid torso. Legs have rounded mechanical joints and blunt pointed toes.",
+      "attack": "收足压低、核心抬起、外壳失稳",
+      "motion": "六足交替承重"
+    },
+    {
+      "id": "golem",
+      "rig": "biped",
+      "design": "Broad squat stone-and-industrial armored golem, rounded slate gray slabs, cyan narrow eyes, one large cyan chest inset, huge chunky forearms, very short heavy block feet; clean rounded armor, no intricate stone texture or spikes.",
+      "attack": "双拳收紧、重拳砸落",
+      "motion": "低频重步"
+    },
+    {
+      "id": "elite_grunt",
+      "rig": "biped",
+      "design": "Heavy magenta-red mutant captain with rounded violet shoulder armor, a single short ivory forehead horn, golden eyes, broad claw gauntlets, navy belt and chunky boots. Wider chest and confident upright posture distinct from basic red grunt.",
+      "attack": "双爪张开后交叉切入",
+      "motion": "强力大步"
+    },
+    {
+      "id": "archer",
+      "rig": "biped",
+      "design": "Compact olive-green toxic mutant ranger, rounded respirator snout, yellow eyes, navy short hood and chest harness, NEAR ARM holds a thick short green bio-crossbow with visible round muzzle, far arm a supporting claw, two short clawed legs. No arrows or effects.",
+      "attack": "托弩瞄准、扳机后坐",
+      "motion": "侧移时稳定弩身"
+    },
+    {
+      "id": "miniboss",
+      "rig": "quadruped",
+      "design": "紫黑低伏四足猎手、窄躯与长月牙前爪，扑咬横扫；与现行四足步态和图鉴一致",
+      "attack": "四足压低蓄势、前爪扑击、落地回收",
+      "motion": "细腰低伏、四足交替奔袭",
+      "revisionDesign": "紫黑低伏四足猎手、窄躯与长月牙前爪，扑咬横扫；与现行四足步态和图鉴一致",
+      "previousRig": "biped",
+      "previousDesign": "Compact violet shadow hunter, broad short navy hood hiding a pale cyan mask with two violet eyes, rounded dark purple armored tunic, each arm holds one thick curved short blade, sturdy segmented greaves; no flowing full-length robe, no fine spikes."
+    },
+    {
+      "id": "rust_biter",
+      "rig": "quadruped",
+      "design": "窄躯宽锯臂、红色六角下颌齿，短促蹒跚后扑咬",
+      "attack": "锯齿前臂收拢、头身前扑撕咬",
+      "motion": "前臂与后足分相位支撑",
+      "revisionDesign": "窄躯宽锯臂、红色六角下颌齿，短促蹒跚后扑咬",
+      "previousRig": "quadruped",
+      "previousDesign": "Rust-red armored rat-hyena mutant, low broad head with blunt ivory biting teeth, one orange eye, rounded navy back plates, compact horizontal quadruped torso, four powerful short claw legs, tiny armored tail. Clearly animal, never human."
+    },
+    {
+      "id": "needle_gunner",
+      "rig": "tripod",
+      "design": "细长机械昆虫，背负断裂磁轨针管，三条低矮支腿，针管后坐",
+      "attack": "长枪管前瞄、后坐回收",
+      "motion": "三脚磁足交替，枪身保持稳定",
+      "revisionDesign": "细长机械昆虫，背负断裂磁轨针管，三条低矮支腿，针管后坐",
+      "previousRig": "biped",
+      "previousDesign": "Short cobalt-blue scrap robot gunner, rounded rectangular helmet and single yellow eye, chunky navy torso and ammo backpack, NEAR ARM integrated short thick three-barrel nailgun, small far mechanical hand, stocky boots. Muzzle clearly readable, no bullets."
+    },
+    {
+      "id": "ember_acolyte",
+      "rig": "ember",
+      "design": "悬浮六角炉芯头、焦黑电缆短斗篷、橙端法杖，抬杖烙印",
+      "attack": "悬浮六角头上抬、持杖前引、披缆回摆",
+      "motion": "独立浮头轻起伏、焦黑披缆与短足交替",
+      "revisionDesign": "悬浮六角炉芯头、焦黑电缆短斗篷、橙端法杖，抬杖烙印",
+      "previousRig": "biped",
+      "previousDesign": "Squat furnace cultist robot with round burnt-orange helmet, glowing amber slit face and circular chest furnace, dark brown rounded short coat armor, large mitten-like brass casting hands, sturdy short boots. No flames or floating particles."
+    },
+    {
+      "id": "frost_acolyte",
+      "rig": "crystal",
+      "design": "空心晶体躯干、三枚冰棱绕行，雪花轮廓，三棱共同瞄准",
+      "attack": "三棱片围空心核心合拢、展开释能",
+      "motion": "三棱片独立环绕悬浮",
+      "revisionDesign": "空心晶体躯干、三枚冰棱绕行，雪花轮廓，三棱共同瞄准",
+      "previousRig": "biped",
+      "previousDesign": "Squat frost cultist robot with rounded ice-blue helmet and white shoulder cowl, dark teal chest armor and broad pale cyan chest crystal, rounded mitten casting hands with compact ice cuffs, sturdy short boots. Soft broad shapes, no icicle spikes or snow effects."
+    },
+    {
+      "id": "acid_sac",
+      "rig": "quadruped",
+      "design": "半身透明酸囊、四足低伏、前足弹簧骨臂抛投",
+      "attack": "投臂后拉、躯干抬起、酸囊随抛投压缩",
+      "motion": "后足踏步、骨架投臂随步摆动",
+      "revisionDesign": "半身透明酸囊、四足低伏、前足弹簧骨臂抛投",
+      "previousRig": "quadruped",
+      "previousDesign": "Low squat olive-green amphibian acid lobber, huge rounded translucent lime acid sac on upper back with simple light blobs, tiny navy harness and orange goggle eyes, broad blunt snout, four stout frog legs with webbed toes. No acid spray."
+    },
+    {
+      "id": "rivet_beast",
+      "rig": "crawler",
+      "design": "六足负载、梯形铆钉护板城墙、两侧管线，沉重顶撞",
+      "attack": "壁板低压蓄力、六足撑地前冲",
+      "motion": "六足交替，梯形重甲保持低重心",
+      "revisionDesign": "六足负载、梯形铆钉护板城墙、两侧管线，沉重顶撞",
+      "previousRig": "quadruped",
+      "previousDesign": "Broad low steel-gray armored rhinoceros, rounded overlapping navy armor plates and large simple rivets, short blunt steel horn, cyan visor eyes, four thick mechanical hooves, broad back and neck. No realistic scratches or sharp spikes."
+    },
+    {
+      "id": "arc_leech",
+      "rig": "leech",
+      "design": "扁平菱形电眼、两条长导电触须，悬浮与电缆滞后",
+      "attack": "单眼核心前倾、双长缆张开牵引",
+      "motion": "菱形主体悬浮、长缆反相位摆动",
+      "revisionDesign": "扁平菱形电眼、两条长导电触须，悬浮与电缆滞后",
+      "previousRig": "hover",
+      "previousDesign": "Floating compact cyan-and-navy electric parasite, rounded capsule body with pale cyan segmented belly, two simple luminous eyes, two thick curved electrode prongs as arms and two short rubbery trailing cable tentacles. No lightning or aura."
+    },
+    {
+      "id": "gold_scavenger",
+      "rig": "crawler",
+      "design": "六足拾荒机、透明鼓胀金囊内六角金币，迅速逃逸",
+      "attack": "收足护住透明金币囊、前足拾取",
+      "motion": "六足快速爬行、背囊随逃跑轻颠",
+      "revisionDesign": "六足拾荒机、透明鼓胀金囊内六角金币，迅速逃逸",
+      "previousRig": "crawler",
+      "previousDesign": "Small round gold scavenger beetle robot, warm brass domed shell with a chunky square loot box strapped on back, navy face and two teal eyes, six short thick mechanical legs, two little scooping foreclaws. No coins outside body."
+    },
+    {
+      "id": "blast_tick",
+      "rig": "crawler",
+      "design": "扁平贴地机械蜱、裂纹炸芯、小头快足，原地钉足过载",
+      "attack": "扁壳压低、短足钉地、反应堆裂缝倒计时展开",
+      "motion": "低伏短足快爬",
+      "revisionDesign": "扁平贴地机械蜱、裂纹炸芯、小头快足，原地钉足过载",
+      "previousRig": "crawler",
+      "previousDesign": "Small squat molten tick, round red-orange ceramic reactor abdomen with one big amber window, dark brown faceplate with two orange eyes, six short chunky hooked navy legs, compact warning cap; distinct from the orange smooth exploder robot through red shell and front biting jaws."
+    },
+    {
+      "id": "squid",
+      "rig": "tentacle",
+      "design": "长锥形蓝色鱿鱼外套膜、缠绕长腕足、喙口放水刺",
+      "attack": "锥形外套膜上提、长触腕前甩，水弹与地刺抬身幅度不同",
+      "motion": "六条触腕交替卷曲推进",
+      "revisionDesign": "长锥形蓝色鱿鱼外套膜、缠绕长腕足、喙口放水刺",
+      "previousRig": "tentacle",
+      "previousDesign": "Stout blue armored squid, large rounded teal-blue mantle with navy crown plate, two expressive cyan eyes, short ivory beak, thick curled blue tentacles with minimal pale suckers, compact orange chest valve. Friendly-readable sci-fi enemy, no watery aura."
+    },
+    {
+      "id": "turtle",
+      "rig": "quadruped",
+      "design": "Heavy green mechanical shield turtle, huge rounded segmented moss-green dome shell with navy rim and small cyan shield socket, blunt green head with amber eyes, four short armored flipper legs, broad low stance.",
+      "attack": "缩颈收腿、盾壳前撞",
+      "motion": "四足缓慢承重"
+    },
+    {
+      "id": "shrimp",
+      "rig": "crawler",
+      "design": "流线分节剑虾，长锯剑前肢、轻型步足，灵活横切",
+      "attack": "长锯钳后收、单侧刺出、双钳张开",
+      "motion": "分节长腹随步摆动、多足交替",
+      "revisionDesign": "流线分节剑虾，长锯剑前肢、轻型步足，灵活横切",
+      "previousRig": "crawler",
+      "previousDesign": "Orange armored mantis shrimp, curved broad segmented shell, compact blue goggle eyes, two huge thick saw-sword foreclaws with only three broad teeth each, four short sturdy walking legs, rounded navy joints. Not a humanoid."
+    },
+    {
+      "id": "jelly",
+      "rig": "tentacle",
+      "design": "轻薄半透明伞体与细长刺须，浮游收伞后射刺",
+      "attack": "薄伞收缩、长须束拢后展开",
+      "motion": "伞膜起伏、飘带长须交错摆动",
+      "revisionDesign": "轻薄半透明伞体与细长刺须，浮游收伞后射刺",
+      "previousRig": "tentacle",
+      "previousDesign": "Round lavender ghost jellyfish, broad translucent lilac bell with thick dark outline, navy lower collar, two simple bright mint eyes, six thick short violet ribbon tentacles and two stinging front tentacles. No smoke, no magical glow outside silhouette."
+    },
+    {
+      "id": "drone_a",
+      "rig": "drone",
+      "design": "Compact red attack drone, rounded triangular navy fuselage with red armor panels and one amber camera eye, two short rounded side engine pods, two underslung thick red gun pods, short antenna module. No propeller blur or exhaust.",
+      "attack": "炮舱锁定、双炮交替后坐",
+      "motion": "机身轻倾、舱翼稳定"
+    },
+    {
+      "id": "drone_s",
+      "rig": "drone",
+      "design": "Compact mint-green support drone, rounded navy central medical capsule with bright mint plus-shaped inset, two broad mint side engine pods, two articulated repair manipulators under body, small white sensor module. No beams or auras.",
+      "attack": "维修臂展开、双臂支援姿势",
+      "motion": "平稳悬停、支架微调"
+    },
+    {
+      "id": "chain_hound",
+      "rig": "quadruped",
+      "design": "细长低伏猎犬、外露铆链脊柱、长捕兽夹尾，冲刺伸展",
+      "attack": "长身后压、陷阱链尾甩动、前爪扑咬",
+      "motion": "细腰长腿四足奔袭、链脊跟随",
+      "revisionDesign": "细长低伏猎犬、外露铆链脊柱、长捕兽夹尾，冲刺伸展",
+      "previousRig": "quadruped",
+      "previousDesign": "Powerful squat red-brown mechanical bulldog, blunt square jaw with ivory teeth, navy armored back with a chunky chain winch spool, orange visor eyes, four broad articulated paws, short thick collar chain integrated in body. No loose chain trails."
+    },
+    {
+      "id": "prism_snail",
+      "rig": "prism",
+      "design": "六面硬切探照灯棱壳、深青软体足，转镜与缩壳",
+      "attack": "硬质六面壳偏转折射、核心收回闭壳",
+      "motion": "蜗足前后收缩、棱镜壳缓慢起伏",
+      "revisionDesign": "六面硬切探照灯棱壳、深青软体足，转镜与缩壳",
+      "previousRig": "crawler",
+      "previousDesign": "Low teal prism snail machine, huge rounded spiral glass shell containing a pale cyan hexagonal lens, navy brass shell rim, two short thick eye stalks, broad segmented foot and four small stabilizer feet, compact side prism lamp module. No light beams."
+    },
+    {
+      "id": "triune_priest",
+      "rig": "triune",
+      "design": "三块不接触六边装甲、橙冰蓝青白三核，无脸仪式机器",
+      "attack": "三块独立六角盘切换，当前施法核心向前突出",
+      "motion": "三核独立浮动、法杖随核心转向",
+      "revisionDesign": "三块不接触六边装甲、橙冰蓝青白三核，无脸仪式机器",
+      "previousRig": "hover",
+      "previousDesign": "Compact floating three-aspect sci-fi priest, rounded white-and-navy mask helmet, broad slate short robe armor with THREE large inset circles orange cyan violet, chunky gloved casting arms, two hanging segmented robe tails and a small tri-color halo collar attached to back. No floating magic effects."
+    },
+    {
+      "id": "rail_butcher",
+      "rig": "biped",
+      "design": "Stocky industrial rail butcher robot, broad burgundy and slate armor, small white face visor, NEAR ARM a huge thick rectangular magenta railgun with visible front bore, FAR ARM thick round industrial saw, chunky mechanical boots. Simple clean panels, no sparks.",
+      "attack": "架轨炮后坐、锯臂横扫、牵引架势",
+      "motion": "低重心重步"
+    },
+    {
+      "id": "bell_devourer",
+      "rig": "bell",
+      "design": "中空黑曜悬钟、四短肢、锁链悬心核；钟体稳定心核摆动",
+      "attack": "空心钟体倾斜、下缘短肢开合、链锤独立摆动",
+      "motion": "倒钟悬浮，链心与钟体反相摆动",
+      "revisionDesign": "中空黑曜悬钟、四短肢、锁链悬心核；钟体稳定心核摆动",
+      "previousRig": "biped",
+      "previousDesign": "Massive squat purple bell devourer monster, large rounded bronze bell fused with upper torso, a dark grinning maw under bell lip, two ivory-yellow eyes, violet rounded shoulder armor, heavy mitten claw arms, short thick dark legs. Attached clapper visible, no sonic rings."
+    },
+    {
+      "id": "boss_ch1",
+      "rig": "biped",
+      "design": "Huge squat red wasteland mutant lord matching reference A boss: horned rounded red face, massive torso, amber round chest reactor, green glass chemical tank strapped to upper back, NEAR ARM gigantic ivory bone claw with THREE thick blunt talons, FAR ARM red fist with navy cuff, short broad red feet and navy kneepads.",
+      "attack": "骨爪横扫、肩撞、举臂召唤、抬胸狂暴",
+      "motion": "沉重前倾交替步"
+    },
+    {
+      "id": "boss_ch2",
+      "rig": "biped",
+      "design": "Huge squat industrial furnace king robot, rounded charcoal-blue iron boiler torso with a big orange furnace door, small square brass face visor, broad rounded shoulder armor, enormous hammer-like gauntlets, thick short piston boots, two stubby chimney stacks. No flame or smoke effects.",
+      "attack": "炉拳砸击、锅炉冲撞、展臂召唤、炉门开合",
+      "motion": "活塞驱动重步"
+    },
+    {
+      "id": "boss_ch3",
+      "rig": "hover",
+      "design": "Large floating hex mutation core: rounded teal glass hex-crystal heart enclosed in white-and-navy chunky mechanical rib armor, one cyan central eye, two big detached-but-socketed crystal claw arms and two short segmented cable tendrils, small orbit collar physically attached. No rings or effects outside body.",
+      "attack": "晶爪内聚、展臂放射、抬核变相",
+      "motion": "悬核微移、肢体延迟"
+    },
+    {
+      "id": "boss_ch4",
+      "rig": "tentacle",
+      "design": "Large squat void gate creature: thick rounded navy-purple mechanical portal ring as torso, lilac inner eye and dark interior, chunky horn-like curved rim tabs, two large purple claw tentacles and four thick lower tentacles, ivory collar locks. Readable circular silhouette, no vortex or magic effects.",
+      "attack": "门环倾斜、腕足卷起、展触召唤、张门变相",
+      "motion": "多腕支撑推进"
+    },
+    {
+      "id": "boss_mech",
+      "rig": "biped",
+      "design": "Broad squat heroic enemy sword mech, rounded steel-blue and white armor, small cyan visor helmet, large navy chest with cyan hex inset, each arm holds a WIDE short ivory-blue energy sword with dark border and no glow outside silhouette, thick articulated boots. 3.5 heads tall, no thin Gundam spikes.",
+      "attack": "双剑横斩、举剑蓄力、护胸强化、屈膝落地",
+      "motion": "机甲承重踏步"
+    },
+    {
+      "id": "boss_abyss",
+      "rig": "tentacle",
+      "design": "Huge rounded deep-sea dread creature, dark cobalt-blue squid mantle with pale cyan belly, broad monstrous blunt jaw with four ivory teeth, orange eyes, two massive thick tentacle claws and four lower curved tentacles, navy salvage armor plates. No water splash or particles.",
+      "attack": "触腕横甩、抬头吐息、腕足合围与砸地",
+      "motion": "多腕错相游行"
+    },
+    {
+      "id": "boss_vespa",
+      "rig": "spider",
+      "design": "小型窄腹母毒囊、品红复眼、四晶矛前足四液压后足，八芒星轻盈轮廓",
+      "attack": "晶矛前足刺出、液压后足压缩起跳、窄腹上提吐丝",
+      "motion": "八条长足交替撑地，身体轻盈低伏",
+      "revisionDesign": "小型窄腹母毒囊、品红复眼、四晶矛前足四液压后足，八芒星轻盈轮廓",
+      "previousRig": "crawler",
+      "previousDesign": "Large squat plague crystal jumping spider, rounded navy abdomen with THREE broad lime-green crystal plates, small ivory face mask and yellow-green eyes, two thick front stabbing claws and six thick short navy legs with green armor cuffs. Not spindly, no needle-thin spikes or webs."
+    },
+    {
+      "id": "boss_crucible_city",
+      "rig": "foundry",
+      "design": "六活塞足移动铸城、三层六角炉环、三条不等长起重臂",
+      "attack": "三层炉环错动、三条不同长度吊臂展开、六活塞足撑地",
+      "motion": "六活塞足承重，炉环与吊臂分层起伏",
+      "revisionDesign": "六活塞足移动铸城、三层六角炉环、三条不等长起重臂",
+      "previousRig": "quadruped",
+      "previousDesign": "Huge low armored foundry beast, broad brown-bronze rectangular rounded fortress torso with big amber furnace window, compact squat head with white visor, four massive navy mechanical pillar legs, two short thick mortar chimneys and a large compact magnetic shoulder plate. No cityscape detail, smoke or projectiles."
+    },
+    {
+      "id": "boss_manyfold",
+      "rig": "spool",
+      "design": "无头脸黑曜线轴、金色纵瞳、六条镜片针肢，星形与断环折叠",
+      "attack": "六镜针肢开合裁切、星形展开、断环收拢防守",
+      "motion": "黑曜线轴悬浮，六针肢独立折叠",
+      "revisionDesign": "无头脸黑曜线轴、金色纵瞳、六条镜片针肢，星形与断环折叠",
+      "previousRig": "hover",
+      "previousDesign": "Large compact void seamstress robot, rounded violet navy cloak armor, pale ivory featureless mask with purple slit eyes, short gold collar, two thick articulated arms with giant blunt silver shears as hands, two segmented flowing violet robe tails, small angular folding collar. No long slender human silhouette or portal effects."
+    },
+    {
+      "id": "boss_invader",
+      "rig": "biped",
+      "design": "Unique massive final judgment war machine, broad rounded charcoal-and-ivory armored mechanical body, small orange T-shaped visor, huge amber HEXAGON chest reactor, two distinct rounded missile shoulder boxes, FAR ARM heavy armored fist, NEAR ARM thick triple-bore cannon, very heavy short piston legs. Clearly MACHINE, no flesh, not a recolored wasteland monster. Simple A-style chunky panels, no missiles or effects.",
+      "attack": "炮臂架设、肩舱启闭、胸核抬升、双臂展开终形",
+      "motion": "稳定重型活塞步态"
+    }
+  ],
+  "sizeHierarchy": {
+    "grunt": [
+      34,
+      57
+    ],
+    "miniboss": [
+      82,
+      105
+    ],
+    "boss": [
+      140,
+      155
+    ],
+    "measure": "三方向待机最大不透明边长，1280×720逻辑像素，不修改碰撞半径"
+  },
+  "previousAcceptance": {
+    "units": 37,
+    "forms": 38,
+    "bodyAtlases": 114,
+    "framesChecked": 8640,
+    "testsPassed": 602,
+    "testsFailed": 0,
+    "typecheck": "passed",
+    "cocosBuild": "Finished in 41 s",
+    "protectedAssetsUnchanged": 117,
+    "existingBodyUuidsPreserved": 82,
+    "browser": "Codex in-app browser; all three views, eight frames per action, side mirror, AI simulation up to 10 seconds per form",
+    "evidence": "browser/summary.json"
+  },
+  "acceptance": {
+    "status": "passed",
+    "reviewedUnits": 37,
+    "redesignedUnits": 20,
+    "retainedUnits": 17,
+    "forms": 38,
+    "bodyAtlases": 114,
+    "framesChecked": 8640,
+    "testsPassed": 606,
+    "testsFailed": 0,
+    "typecheck": "passed",
+    "cocosBuild": "Finished in 39 s",
+    "protectedAssetsUnchanged": 117,
+    "existingBodyUuidsPreserved": 82,
+    "browser": "Codex in-app browser; three views, eight frames per action, side mirror, actual spawn identity, near/far movement on collision-checked lanes, real AI simulation up to 10 seconds per form",
+    "verifiedAt": "2026-10-10T06:13:30.114Z",
+    "evidence": "browser/summary.json",
+    "visualEvidence": "browser/visual-review-1.png through visual-review-7.png"
+  }
+}

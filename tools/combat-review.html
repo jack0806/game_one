@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>Hexblast 战斗逐帧验收</title><style>body{margin:0;background:#101924;color:#e9f4ff;font:14px system-ui}header{min-height:72px;box-sizing:border-box;padding:7px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}button,select{background:#263b50;color:inherit;border:1px solid #68869b;padding:5px}iframe{width:1280px;height:720px;border:0;display:block}#status{font-size:12px;white-space:pre-wrap}#gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px}figure{margin:0;min-width:0}figure img{width:100%}figcaption{font-size:13px}.crop{height:150px;overflow:hidden}.crop img{width:896px;max-width:none;margin-left:-245px;margin-top:-120px}</style><header><select aria-label="测试用例" id="cases"></select><button id="start">准备</button><button data-step="0.12">前摇 +0.12秒</button><button data-step="0.25">+0.25秒</button><button data-step="1">+1秒</button><button data-step="4">+4秒</button><button data-step="12">消散 +12秒</button><button id="cast">英雄释放</button><button id="cycle">完整阶段采样</button><button id="hitreview">命中细查</button><button id="allhits">全单位命中验收</button><button id="moving">移动碰撞验收</button><button id="immune">无敌命中验收</button><button id="live">连续实战20秒</button><button id="mixed">混合实战20秒</button><button id="phases">首领追加阶段验收</button><select id="inspect" aria-label="查看全幅"><option value="">阶段总览</option><option value="0">全幅阶段 0</option><option value="1">全幅阶段 1</option><option value="2">全幅阶段 2</option><option value="3">全幅阶段 3</option><option value="4">全幅阶段 4</option><option value="5">全幅阶段 5</option><option value="6">全幅阶段 6</option><option value="7">全幅阶段 7</option></select><span id="status">载入中</span></header><iframe id="game" src="/game/"></iframe><div id="gallery"></div><script>
+const units=['grunt','shield','exploder','golem','elite_grunt','archer','miniboss','rust_biter','needle_gunner','ember_acolyte','frost_acolyte','acid_sac','rivet_beast','arc_leech','gold_scavenger','blast_tick','squid','turtle','shrimp','jelly','drone_a','drone_s','chain_hound','prism_snail','triune_priest','rail_butcher','bell_devourer','boss_ch1','boss_ch2','boss_ch3','boss_ch4','boss_mech','boss_abyss','boss_vespa','boss_crucible_city','boss_manyfold','boss_invader'];
+const choices=[...units.map(id=>['unit:'+id,id]),...['vespa','crucible_city','manyfold'].flatMap(id=>Array.from({length:5},(_,s)=>['doc:'+id+':'+s,id+' 技能'+s])),...['kai','vivian','reik','olia','graf','liana','via','mortis'].flatMap(id=>['q','e','r'].map(s=>['hero:'+id+':'+s,id+' '+s.toUpperCase()]))];
+choices.push(...[['triune_priest',1],['triune_priest',2],['rail_butcher',1],['rail_butcher',2],['bell_devourer',1],['bell_devourer',2],['bell_devourer',3],['bell_devourer',4],['prism_snail',1],['boss_invader',1]].map(([id,phase])=>['unit:'+id+':'+phase,id+' 追加阶段'+phase]));choices.push(...['boss_ch1','boss_ch2','boss_ch3','boss_ch4'].map(id=>['unit:'+id+':charge',id+' 冲锋/召唤']),...['pillar','zone','clone','squid'].map(id=>['unit:boss_abyss:'+id,'深海 '+id]),...['storm','sky','buff'].map(id=>['unit:boss_mech:'+id,'机械 '+id]),...['volley','nova','blast'].map(id=>['hero:via:q:'+id,'薇娅赃技 '+id]));for(const [v,t]of choices)cases.add(new Option(t,v)); let g,elapsed=0,shots=[]; const statusEl=document.querySelector('#status');
+const paint=()=>{g._renderFrame();statusEl.textContent=cases.selectedOptions[0].text+' '+elapsed.toFixed(2)+'s | 弹体 '+g._bullets.active.length+' | 特效 '+[...new Set(g._particles.spriteFx.map(f=>f.key+':'+Math.round(64*f.scale)+'px/'+f.layer))].join(', ');};
+async function prepare(){statusEl.textContent="采样中";game.style.display="block";const w=game.contentWindow;for(let wait=0;wait<100&&!w.cc?.director?.getScene()?.getChildByName('Canvas')?.getChildByName('GameRoot');wait++)await new Promise(r=>setTimeout(r,100));g=w.cc.director.getScene().getChildByName('Canvas').getChildByName('GameRoot').getComponent('GameManager');if(g.state!=='testRoom')g._startTestRoom();g.enabled=false;g.input.setStick(0,0);g.input._keys.clear();g.clearTestField();g._testInvincible=false;g._testTargetPaused=false;g.testCeasefire=true;elapsed=0;shots=[];gallery.innerHTML='';inspect.value='';gallery.style.gridTemplateColumns='';const[k,id,s,variant]=cases.value.split(':');if(k==='hero'){g.selectTestHero(id);g._particles.clear();}const p=g._player;p.dots=[];p._buffs=[];p._iframeTimer=0;p._invincible=0;p.shield=0;p.godMode=false;p.hp=p.maxHp=10000;p.x=720;p.y=320;p.facingX=-1;p.facingY=0;g.input.mouse.x=520;g.input.mouse.y=320;g.input.mouse.active=true;
+if(k!=='hero'){p.stats.damage=0;g.spawnTestUnit(k==='doc'?'boss_'+id:id,1);const e=g._enemies[0];e.x=520;e.y=320;e._miniTimer=.1;e._miniCd1=.1;e._miniCd2=4.6;e._rangedCd=.1;e._skillTimer=.1;e.docSkillTimer=.1;e.bossSkillCut=0;e._invLaserCd=.1;e._invMissileCd=.1;e._invHomingCd=.1;if(k==='unit'&&s!==undefined){e._miniSkillCount=Number.isFinite(+s)?+s:0;p.x=900;if(id==='bell_devourer'&&s==='4')e.hp=e.maxHp*.4;if(id==='prism_snail'){e._miniCd1=4;e._miniCd2=.1;}if(id==='boss_invader')e.hp=e.maxHp*.15;if(s==='charge'){e._chargeCd=.1;e._summonTimer=.1;}if(id==='boss_abyss'){e['_abyss'+s[0].toUpperCase()+s.slice(1)+'Cd']=.1;}if(id==='boss_mech'){e._skillTimer=99;e._mechSlashCd=99;if(s==='storm'){e.skillWindup=e.skillWindupMax=1.5;}if(s==='sky')e._mechSkyDive(p,g);if(s==='buff'){e.mechBuffT=15;e.visualMechBuffT=.65;}}}
+if(k==='unit'&&s===undefined&&!['archer','needle_gunner','ember_acolyte','frost_acolyte','acid_sac','arc_leech','squid','jelly','drone_a','prism_snail','triune_priest','rail_butcher','bell_devourer'].includes(id))p.x=520+e.radius+22;
+if(id==='drone_s'){g.spawnTestUnit('golem',1);let a=g._enemies[1];a.x=600;a.y=360;a.hp=a.maxHp*.3;}
+if(k==='doc'){g._testTargetPaused=true;g._docPlayerTrail=Array.from({length:40},(_,i)=>({x:520+i*5,y:320+40*Math.sin(i/8)}));g.startDocBossSkill(id,+s,e,p);}}
+else {g._testTargetPaused=true;g.spawnTestUnit('golem',5);g._enemies.forEach((e,i)=>{e.x=510+20*(i%2);e.y=270+30*i;e.hp=e.maxHp=100000});}if(k==='hero'&&variant)p.stats._stolenSkill={kind:variant,dmg:40,color:'#ffd358',name:variant};paint();await new Promise(r=>setTimeout(r,1000));for(let i=0;i<30&&!p.sprite?.spriteFrame;i++){await new Promise(r=>setTimeout(r,400));paint();}paint();}
+function step(sec){const[k]=cases.value.split(':');for(let t=0;t<Math.ceil(sec*60);t++){if(k==='doc'){g._updateDocBossMechanics(1/60);g._particles.update(1/60);}else g._updatePlaying(1/60);g._visualTime+=1/60;elapsed+=1/60;}paint();}
+function cast(){const s=cases.value.split(':')[2];g._player._charDef[s==='r'?'ultimate':s+'Skill'](g._player,g);paint();}
+function shot(label){const canvas=game.contentDocument.querySelector('canvas');const f=document.createElement('figure');const img=document.createElement('img');img.src=canvas.toDataURL();const box=document.createElement('div');box.className='crop';box.append(img);f.append(box);const c=document.createElement('figcaption');c.textContent=label+' '+statusEl.textContent;f.append(c);gallery.append(f);shots.push({label,time:elapsed,bullets:g._bullets.active.length,effects:g._particles.spriteFx.map(f=>({key:f.key,width:64*f.scale,layer:f.layer}))});}
+const capture=(label)=>new Promise(r=>game.contentWindow.cc.director.once('director_after_draw',()=>{shot(label);r();}));
+inspect.onchange=()=>{const full=inspect.value!=='';gallery.style.gridTemplateColumns=full?'1fr':'';gallery.querySelectorAll('figure').forEach((f,i)=>{f.style.display=full&&i!==+inspect.value?'none':'';f.firstChild.style.cssText=full?'height:auto;overflow:visible':'';f.querySelector('img').style.cssText=full?'width:100%;max-width:100%;margin:0':'';});};start.onclick=prepare;document.querySelector('#cast').onclick=cast;document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>step(+b.dataset.step));cycle.onclick=async()=>{await prepare();await capture('攻击前');if(cases.value.startsWith('hero:'))cast();for(const t of [.12,.78,.25,1.95,.92,1.5,10.5]){if(t===10.5&&cases.value.startsWith('unit:')){g._testTargetPaused=false;g._enemies.forEach(e=>{if(e.node)e.node.active=false;});g._enemies=[];}step(t);await new Promise(r=>setTimeout(r,120));await capture('阶段');}statusEl.textContent+=' | 完成8帧';game.style.display='none';};hitreview.onclick=async()=>{await prepare();const before=g._player.hp;await capture('出手前');let hit=false;for(let i=0;i<600;i++){step(1/60);if(g._player.hp<before){hit=true;break;}}if(!hit){statusEl.textContent+=' | 10秒未命中';return;}g._testTargetPaused=true;await new Promise(r=>setTimeout(r,120));await capture('命中瞬间');for(const dt of [.035,.065,.08,.1,.12,.2]){step(dt);await new Promise(r=>setTimeout(r,120));await capture('命中后');}statusEl.textContent+=' | 完成8帧';game.style.display='none';};game.onload=()=>statusEl.textContent='已载入，请选择用例并准备';start.addEventListener('click',()=>game.style.display='block');
+
+allhits.onclick=async()=>{
+    const results=[];
+    for(const id of units.filter(id=>!['gold_scavenger','drone_s'].includes(id))){
+        cases.value='unit:'+id; await prepare();
+        const before=g._player.hp; let hit=false;
+        for(let n=0;n<900;n++){step(1/60);if(g._player.hp<before){hit=true;break;}}
+        const effect=g._particles.spriteFx.find(f=>f.playerContact);
+        if(hit){g._testTargetPaused=true;g._particles.update(.055);paint();for(let ready=0;ready<50&&!g._contactFxPool._pool[0].getComponent(game.contentWindow.cc.Sprite).spriteFrame;ready++){await new Promise(r=>setTimeout(r,100));paint();}}await new Promise(r=>setTimeout(r,120));
+        await new Promise(r=>game.contentWindow.cc.director.once('director_after_draw',r));
+        const canvas=game.contentDocument.querySelector('canvas'),crop=document.createElement('canvas');crop.width=220;crop.height=150;
+        const sx=canvas.width/1280,sy=canvas.height/720;
+        crop.getContext('2d').drawImage(canvas,Math.max(0,g._player.x-110)*sx,Math.max(0,g._player.y-85)*sy,220*sx,150*sy,0,0,220,150);
+        results.push({id,hit,key:effect?.key??'',time:elapsed,hp:before-g._player.hp,image:crop.toDataURL()});
+        statusEl.textContent='全单位验收 '+results.length+'/35：'+id+' '+(effect?.key??'未命中');
+    }
+    game.style.display='none';gallery.style.gridTemplateColumns='repeat(5,minmax(0,1fr))';gallery.innerHTML='';
+    for(const row of results){const f=document.createElement('figure'),img=document.createElement('img'),c=document.createElement('figcaption');img.src=row.image;c.textContent=row.id+' | '+row.key+' | HP -'+row.hp.toFixed(1);f.append(img,c);gallery.append(f);}
+    statusEl.textContent='全单位验收完成 '+results.filter(r=>r.hit&&r.key).length+'/35';
+};
+
+function resultsTable(rows,title){game.style.display='none';gallery.innerHTML='';gallery.style.gridTemplateColumns='1fr';const pre=document.createElement('pre');pre.style.whiteSpace='pre-wrap';pre.textContent=JSON.stringify(rows,null,2);gallery.append(pre);statusEl.textContent=title;}
+moving.onclick=async()=>{
+    const results=[];
+    for(const id of units){
+        cases.value='unit:'+id;await prepare();const p=g._player;p.godMode=true;let minGap=Infinity,contacts=0,moved=0;const startX=p.x,startY=p.y;
+        for(let n=0;n<1200;n++){
+            // 通过正式虚拟摇杆输入来回走动，并持续向敌人挤压，检查每一帧。
+            const e=g._enemies[0];if(e){const a=Math.atan2(e.y-p.y,e.x-p.x)+(n%240<120?0:Math.PI/2);g.input.setStick(Math.cos(a),Math.sin(a));}
+            step(1/60);if(g._particles.spriteFx.some(f=>f.playerContact))contacts++;
+            moved=Math.max(moved,Math.hypot(p.x-startX,p.y-startY));
+            for(const enemy of g._enemies)if(enemy.alive&&!enemy.dead&&!(enemy.mechSkyT>0))minGap=Math.min(minGap,Math.hypot(p.x-enemy.x,p.y-enemy.y)-p.radius-enemy.radius*(enemy.isBoss?1.15:1)-3);
+            if(n%240===0)await new Promise(r=>setTimeout(r,0));
+        }
+        g.input.setStick(0,0);results.push({id,seconds:20,moved:Math.round(moved),minGap:Number.isFinite(minGap)?+minGap.toFixed(2):null,contactFrames:contacts});statusEl.textContent='移动检查 '+results.length+'/37';
+    }
+    resultsTable(results,'移动检查完成 '+results.filter(r=>r.minGap===null||r.minGap>=-.05).length+'/37 身体不重叠');
+};
+immune.onclick=async()=>{
+    const results=[];
+    for(const id of units.filter(id=>!['gold_scavenger','drone_s'].includes(id))){
+        cases.value='unit:'+id;await prepare();g._player.godMode=true;const hp=g._player.hp;let fx;
+        for(let n=0;n<1200;n++){step(1/60);fx=g._particles.spriteFx.find(f=>f.playerContact);if(fx)break;}
+        results.push({id,contact:fx?.key??null,hpUnchanged:g._player.hp===hp});statusEl.textContent='无敌检查 '+results.length+'/35';
+    }
+    resultsTable(results,'无敌检查完成 '+results.filter(r=>r.contact&&r.hpUnchanged).length+'/35');
+};
+live.onclick=async()=>{
+    await prepare();const p=g._player;p.godMode=true;g.enabled=true;g._testTargetPaused=false;const start=performance.now();
+    const loop=setInterval(()=>{const t=(performance.now()-start)/1000;g.input.setStick(Math.cos(t*1.3)*.6,Math.sin(t*1.3)*.6);if(t>=20){clearInterval(loop);g.input.setStick(0,0);g.enabled=false;paint();statusEl.textContent+=' | 连续20秒完成';}},16);
+};
+
+mixed.onclick=async()=>{
+    cases.value='unit:grunt';await prepare();g.clearTestField();const p=g._player;p.x=640;p.y=310;p.godMode=true;p.stats.damage=20;g.testCeasefire=false;
+    const mix=['grunt','shield','archer','needle_gunner','acid_sac','rivet_beast','squid','shrimp','drone_a','boss_abyss','boss_ch2','boss_vespa'];
+    mix.forEach((id,i)=>{g.spawnTestUnit(id,1);const e=g._enemies[g._enemies.length-1],a=i*Math.PI*2/mix.length;e.x=640+Math.cos(a)*220;e.y=310+Math.sin(a)*170;});
+    g.enabled=true;const begun=performance.now();let contacts=0,minGap=Infinity,frames=0,worst=null;const timer=setInterval(()=>{
+        const t=(performance.now()-begun)/1000;g.input.setStick(Math.cos(t*1.2)*.7,Math.sin(t*1.2)*.7);frames++;
+        if(g._particles.spriteFx.some(f=>f.playerContact))contacts++;
+        for(const e of g._enemies)if(e.alive&&!e.dead&&!(e.mechSkyT>0)){const gap=Math.hypot(p.x-e.x,p.y-e.y)-p.radius-e.radius*(e.isBoss?1.15:1)-3;if(gap<minGap){minGap=gap;worst={id:e.hitSource,time:t,player:[p.x,p.y],enemy:[e.x,e.y],hitStop:g._hitStop.active};}}
+        if(t>=20){clearInterval(timer);g.input.setStick(0,0);g.enabled=false;paint();statusEl.textContent='混合实战完成 20秒 | 采样 '+frames+' | 接触 '+contacts+' | 最小间隙 '+minGap.toFixed(2);const pre=document.createElement('pre');pre.textContent=JSON.stringify({seconds:20,samples:frames,contacts,minGap,worst},null,2);gallery.append(pre);}
+    },16);
+};
+
+phases.onclick=async()=>{
+    const rows=[],variants=choices.filter(([v])=>v.startsWith('doc:')||(v.startsWith('unit:')&&v.split(':').length>2));
+    for(const [value,label]of variants){
+        cases.value=value;await prepare();const samples=[];
+        for(const dt of [.3,.9,2,2]){
+            step(dt);await new Promise(r=>setTimeout(r,80));paint();await new Promise(r=>game.contentWindow.cc.director.once('director_after_draw',r));
+            const canvas=game.contentDocument.querySelector('canvas'),crop=document.createElement('canvas');crop.width=640;crop.height=280;
+            crop.getContext('2d').drawImage(canvas,300*canvas.width/1280,100*canvas.height/720,900*canvas.width/1280,390*canvas.height/720,0,0,640,280);
+            samples.push({time:elapsed,image:crop.toDataURL(),effects:[...new Set(g._particles.spriteFx.map(f=>f.key))]});
+        }
+        rows.push({label,samples});statusEl.textContent='首领追加阶段 '+rows.length+'/'+variants.length;
+    }
+    game.style.display='none';gallery.innerHTML='';gallery.style.gridTemplateColumns='repeat(4,minmax(0,1fr))';
+    for(const row of rows)for(const sample of row.samples){const f=document.createElement('figure'),img=document.createElement('img'),c=document.createElement('figcaption');img.src=sample.image;c.textContent=row.label+' '+sample.time.toFixed(2)+'秒 | '+sample.effects.join(',');f.append(img,c);gallery.append(f);}
+    statusEl.textContent='首领追加阶段完成 '+rows.length+'组 × 4帧';
+};
+</script></html>
