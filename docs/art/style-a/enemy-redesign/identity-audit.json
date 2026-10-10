@@ -1,0 +1,385 @@
+{
+  "date": "2026-10-10",
+  "sources": [
+    "docs/怪物设计与数值.md",
+    "docs/怪物与Boss图鉴.md",
+    "assets/scripts/data/BossDB.ts",
+    "assets/scripts/entities/EnemyBase.ts",
+    "assets/scripts/entities/BossController.ts"
+  ],
+  "units": [
+    {
+      "id": "grunt",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "红色腐肉近战群体，弯腰骨爪扑击符合参考A",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/grunt.json"
+    },
+    {
+      "id": "shield",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "高盾单眼安保机兵，盾击与短承重步符合防线",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/shield.json"
+    },
+    {
+      "id": "exploder",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "暴露橙色炸芯与快爬足，自爆身份清楚",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/exploder.json"
+    },
+    {
+      "id": "golem",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "宽石甲重拳慢步，与高护甲坦克一致",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/golem.json"
+    },
+    {
+      "id": "elite_grunt",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "强化同族红肉体与更重装甲，爪击身份成立",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/elite_grunt.json"
+    },
+    {
+      "id": "archer",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "防毒面具、绿色生化弩和后坐，保留明确远程拉扯",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "kite",
+      "evidence": "browser/archer.json"
+    },
+    {
+      "id": "miniboss",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "现行图鉴与Locomotion均指定四足；原兜帽双刃人形不符，改为紫黑低伏四足掠食体",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/miniboss.json"
+    },
+    {
+      "id": "rust_biter",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "窄躯宽锯臂、红色六角下颌齿，短促蹒跚后扑咬",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/rust_biter.json"
+    },
+    {
+      "id": "needle_gunner",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "细长机械昆虫，背负断裂磁轨针管，三条低矮支腿，针管后坐",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "kite",
+      "evidence": "browser/needle_gunner.json"
+    },
+    {
+      "id": "ember_acolyte",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "悬浮六角炉芯头、焦黑电缆短斗篷、橙端法杖，抬杖烙印",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-hold",
+      "evidence": "browser/ember_acolyte.json"
+    },
+    {
+      "id": "frost_acolyte",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "空心晶体躯干、三枚冰棱绕行，雪花轮廓，三棱共同瞄准",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-hold",
+      "evidence": "browser/frost_acolyte.json"
+    },
+    {
+      "id": "acid_sac",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "半身透明酸囊、四足低伏、前足弹簧骨臂抛投",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-hold",
+      "evidence": "browser/acid_sac.json"
+    },
+    {
+      "id": "rivet_beast",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "六足负载、梯形铆钉护板城墙、两侧管线，沉重顶撞",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/rivet_beast.json"
+    },
+    {
+      "id": "arc_leech",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "扁平菱形电眼、两条长导电触须，悬浮与电缆滞后",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-hold",
+      "evidence": "browser/arc_leech.json"
+    },
+    {
+      "id": "gold_scavenger",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "六足拾荒机、透明鼓胀金囊内六角金币，迅速逃逸",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "escape",
+      "evidence": "browser/gold_scavenger.json"
+    },
+    {
+      "id": "blast_tick",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "扁平贴地机械蜱、裂纹炸芯、小头快足，原地钉足过载",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/blast_tick.json"
+    },
+    {
+      "id": "squid",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "长锥形蓝色鱿鱼外套膜、缠绕长腕足、喙口放水刺",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/squid.json"
+    },
+    {
+      "id": "turtle",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "背盾覆盖四足、缩颈冲撞，对应盾龟机制",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/turtle.json"
+    },
+    {
+      "id": "shrimp",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "流线分节剑虾，长锯剑前肢、轻型步足，灵活横切",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/shrimp.json"
+    },
+    {
+      "id": "jelly",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "轻薄半透明伞体与细长刺须，浮游收伞后射刺",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/jelly.json"
+    },
+    {
+      "id": "drone_a",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "红色摄像眼与双炮舱、悬浮俯冲，攻击平台明确",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/drone_a.json"
+    },
+    {
+      "id": "drone_s",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "绿色医疗核与维修臂，对应治疗护盾支援",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/drone_s.json"
+    },
+    {
+      "id": "chain_hound",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "细长低伏猎犬、外露铆链脊柱、长捕兽夹尾，冲刺伸展",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/chain_hound.json"
+    },
+    {
+      "id": "prism_snail",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "六面硬切探照灯棱壳、深青软体足，转镜与缩壳",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/prism_snail.json"
+    },
+    {
+      "id": "triune_priest",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "三块不接触六边装甲、橙冰蓝青白三核，无脸仪式机器",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/triune_priest.json"
+    },
+    {
+      "id": "rail_butcher",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "磁轨炮和回转锯的非对称工业身体成立，强化武器分离与后坐",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/rail_butcher.json"
+    },
+    {
+      "id": "bell_devourer",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "中空黑曜悬钟、四短肢、锁链悬心核；钟体稳定心核摆动",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/bell_devourer.json"
+    },
+    {
+      "id": "boss_ch1",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "参考A红色肉体、绿毒罐、巨骨爪，毒扇与冲撞成立",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_ch1.json"
+    },
+    {
+      "id": "boss_ch2",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "独立黑钢锅炉、橙炉门、烟囱和重拳成立；实机同貌原因为测试房编号错误",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_ch2.json"
+    },
+    {
+      "id": "boss_ch3",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "悬浮无限核与分离晶爪，追踪弹和核相变化成立",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_ch3.json"
+    },
+    {
+      "id": "boss_ch4",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "有眼门环与触腕，混沌散射和召唤成立",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_ch4.json"
+    },
+    {
+      "id": "boss_mech",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "白蓝剑机甲辨识成立；加长剑臂伸展与落地屈膝以强化剑术",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_mech.json"
+    },
+    {
+      "id": "boss_abyss",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "深蓝掠食外套膜与巨腕，水刺和分身成立，与细长鱿鱼拉开形态",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_abyss.json"
+    },
+    {
+      "id": "boss_vespa",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "小型窄腹母毒囊、品红复眼、四晶矛前足四液压后足，八芒星轻盈轮廓",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_vespa.json"
+    },
+    {
+      "id": "boss_crucible_city",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "六活塞足移动铸城、三层六角炉环、三条不等长起重臂",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_crucible_city.json"
+    },
+    {
+      "id": "boss_manyfold",
+      "reviewed": true,
+      "decision": "redesign",
+      "reason": "无头脸黑曜线轴、金色纵瞳、六条镜片针肢，星形与断环折叠",
+      "bodyStatus": "redesigned-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_manyfold.json"
+    },
+    {
+      "id": "boss_invader",
+      "reviewed": true,
+      "decision": "retain-refine-motion",
+      "reason": "机械重炮、肩弹仓与胸核，符合激光导弹及终形",
+      "bodyStatus": "reviewed-verified",
+      "browserStatus": "passed",
+      "movement": "approach-skill",
+      "evidence": "browser/boss_invader.json"
+    }
+  ],
+  "redesignCount": 20,
+  "browserVerified": true,
+  "verifiedAt": "2026-10-10T06:13:30.114Z"
+}

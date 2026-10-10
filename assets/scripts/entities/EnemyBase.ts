@@ -35,6 +35,11 @@ export class EnemyBase {
     glowColor   = '#ff0000';
     /** 美术资源key（走 ArtRemap.artPath() 解析真实文件名），按敌人类型在 _applyTypeDef() 里设置。 */
     spriteKey   = 'enemy_grunt';
+    /** 最终机神的开甲形态共用战斗实体，仅切换身体动作稿。 */
+    get animationSpriteKey(): string {
+        return this.spriteKey === 'enemy_boss' && (this as any).finalForm && (this as any)._invFormT <= 0
+            ? 'enemy_boss_final' : this.spriteKey;
+    }
     /** 旧素材单位的程序化轮廓附件；随主体节点移动、转向、步态与显隐同步。 */
     /** 与静止帧成对的真实动作帧。 */
     moveSpriteKey = 'enemy_grunt_move';
@@ -591,8 +596,8 @@ export class EnemyBase {
         const [dx, dy] = this.getVisualFacing(player, 0, 0);
         const facing = resolveFacingView(dx, dy, this.animationView);
         const play = (action: ActorAction, restart = false) => {
-            const clip = actorClip(this.spriteKey, facing.view, action);
-            if (!this.actorAnimation.play(action, clip, restart)) return false;
+            const clip = actorClip(this.animationSpriteKey, facing.view, action);
+            if (!this.actorAnimation.play(action, clip, restart, true)) return false;
             this.animationView = facing.view; this.animationMirror = facing.mirror;
             return true;
         };
@@ -607,7 +612,9 @@ export class EnemyBase {
             this.type === 'rail_butcher' || this.type === 'bell_devourer'
             ? this.miniSkillState : '';
         const boss: any = this;
-        const bossVisualState = this.isBoss && !boss.bossKind
+        const bodyKind = boss.bossKind || (this.isBoss && boss.chapter === 5 ? 'mech'
+            : this.isBoss && boss.chapter === 6 ? 'invader' : '');
+        const bossVisualState = this.isBoss && !bodyKind
             ? boss.visualPhaseT > 0 ? 'boss_phase'
                 : boss.visualSummonT > 0 ? 'boss_summon'
                 : boss.chargeWindup > 0 ? 'boss_charge_windup'
@@ -615,7 +622,7 @@ export class EnemyBase {
                 : boss.skillWindup > 0 ? 'boss_skill_windup'
                 : boss.visualSkillT > 0 ? 'boss_skill_fire' : ''
             : '';
-        const mechVisualState = boss.bossKind === 'mech'
+        const mechVisualState = bodyKind === 'mech'
             ? boss.visualMechSkyLandT > 0 ? 'mech_sky_land'
                 : boss.visualMechBuffT > 0 ? 'mech_buff'
                 : boss.visualSkillT > 0 ? 'mech_blade_fire'
@@ -631,7 +638,12 @@ export class EnemyBase {
         const docVisualState = (boss.bossKind === 'vespa' || boss.bossKind === 'crucible_city' ||
             boss.bossKind === 'manyfold') && boss.visualDocSkillT > 0
             ? `doc_skill_${boss.visualDocSkillIndex}` : '';
-        const mechanismVisualState = miniVisualState || bossVisualState || mechVisualState || abyssVisualState || docVisualState;
+        const invaderVisualState = bodyKind === 'invader'
+            ? boss._invFormT > 0 ? 'invader_form'
+                : boss.invLaserT > 0 ? 'invader_laser'
+                : boss.visualInvaderSkillT > 0 ? `invader_skill_${boss.visualInvaderSkillIndex}` : ''
+            : '';
+        const mechanismVisualState = miniVisualState || bossVisualState || mechVisualState || abyssVisualState || docVisualState || invaderVisualState;
         let miniVisualAction: ActorAction | undefined;
         if (this.type === 'prism_snail') {
             miniVisualAction = miniVisualState === 'prism_shell' ? 'skill2'
@@ -662,6 +674,10 @@ export class EnemyBase {
         } else if (docVisualState) {
             const index = Math.max(1, Math.min(5, Number(docVisualState.match(/\d+/)?.[0]) || 1));
             miniVisualAction = (index === 1 ? 'skill' : `skill${index}`) as ActorAction;
+        } else if (invaderVisualState) {
+            miniVisualAction = invaderVisualState === 'invader_form' ? 'skill4'
+                : invaderVisualState === 'invader_laser' ? 'skill'
+                : boss.visualInvaderSkillIndex === 2 ? 'skill2' : boss.visualInvaderSkillIndex === 3 ? 'skill3' : 'skill';
         } else if (bossVisualState) {
             miniVisualAction = bossVisualState === 'boss_phase' ? 'skill4'
                 : bossVisualState === 'boss_summon' ? 'skill3'
@@ -718,6 +734,14 @@ export class EnemyBase {
             }
         } else if (winding) {
             if (play('attack', !this._visualWasWinding)) this.actorAnimation.seekFrame(0);
+            if (this.actorAnimation.action === 'attack') {
+                const release = this.actorAnimation.clip?.frames.findIndex(frame => !!frame.event) ?? -1;
+                const remaining = this.rangedAimWindup > 0 ? this.rangedAimWindup : this.attackWindup;
+                const maximum = this.rangedAimWindup > 0 ? this.rangedAimWindupMax : this.attackWindupMax;
+                const progress = Math.max(0, Math.min(1, 1 - remaining / Math.max(0.001, maximum)));
+                // 身体预备帧跟随战斗前摇，不提前跨入实际释放帧。
+                if (release > 0) this.actorAnimation.seekFrame(Math.min(release - 1, Math.floor(progress * release)));
+            }
         } else if (hurt && !this.actorAnimation.locked) play('hit', true);
         else if (this.type === 'gold_scavenger' && this.scavengerHitBoost > 0) {
             // 受击优先完整播放；随后用逃逸爆发动作覆盖剩余加速时段。
@@ -727,19 +751,24 @@ export class EnemyBase {
         else if (!this.actorAnimation.locked) {
             const action: ActorAction = moved < 0.015 ? 'idle'
                 : moved / Math.max(0.001, dt) > Math.max(120, this.speed * 1.2) ? 'run' : 'walk';
-            if (!actorClip(this.spriteKey, facing.view, action)) this.actorAnimation.reset();
+            if (!actorClip(this.animationSpriteKey, facing.view, action)) this.actorAnimation.reset();
             else play(action);
             this.animationView = facing.view; this.animationMirror = facing.mirror;
         }
         // 前摇由战斗计时器决定；命中姿势在actionRecoil触发当帧直接切入。
-        if (!winding || this.actorAnimation.action !== 'attack') this.actorAnimation.update(dt);
+        if (!winding || this.actorAnimation.action !== 'attack') {
+            const gait = this.actorAnimation.action === 'walk' || this.actorAnimation.action === 'run';
+            const rate = gait ? Math.max(0.2, Math.min(2.8, moved / Math.max(0.001, dt) / Math.max(1, this.speed))) : 1;
+            const justReleased = struck || (this._visualWasWinding && !winding);
+            this.actorAnimation.update(justReleased ? 0 : dt, rate);
+        }
         this._visualWasWinding = winding;
         this._visualMiniSkillState = mechanismVisualState;
         this.actorAnimation.takeEvents();
     }
 
     beginDefeat(): boolean {
-        const clip = actorClip(this.spriteKey, this.animationView, 'defeated');
+        const clip = actorClip(this.animationSpriteKey, this.animationView, 'defeated');
         if (!clip) return false;
         this.actorAnimation.play('defeated', clip);
         return true;
@@ -997,8 +1026,13 @@ export class EnemyBase {
             }
             const dist = game.arenaLineClear?.(this.x, this.y, player.x, player.y) === false
                 ? Infinity : Math.hypot(player.x - this.x, player.y - this.y);
-            if (dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }      // 太近 → 后撤
-            else if (dist <= this.rangedKeepDist + 40) { mvx = 0; mvy = 0; }    // 舒适区 → 停步开火
+            // 只有明确设定为拉扯射手的单位主动后撤。射程不等于逃跑距离：
+            // 咒仆、投手和寄生体接近施法位置后驻足；带近战机制的小Boss继续推进。
+            const kite = this.type === 'archer' || this.type === 'needle_gunner';
+            const holdCaster = this.type === 'ember_acolyte' || this.type === 'frost_acolyte'
+                || this.type === 'acid_sac' || this.type === 'arc_leech';
+            if (kite && dist < this.rangedKeepDist - 60) { mvx = -dx; mvy = -dy; }
+            else if ((kite || holdCaster) && dist <= this.rangedKeepDist + 40) { mvx = 0; mvy = 0; }
             else if (this.type === 'needle_gunner') {
                 // 太远时斜向靠近，避免所有射手在同一条半径线上堆成一团。
                 mvx = dx * 0.72 - dy * 0.42;
@@ -1105,7 +1139,7 @@ export class EnemyBase {
         if (arcShot) {
             const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
             const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
-            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const clip = actorClip(this.animationSpriteKey, facing.view, 'attack');
             const frame = clip?.frames.find(frame => frame.event === 'cast');
             let origin: [number, number] = [this.x, this.y];
             if (frame && this.actorAnimation.play('attack', clip, true)) {
@@ -1127,7 +1161,7 @@ export class EnemyBase {
         if (frostShot) {
             const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
             const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
-            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const clip = actorClip(this.animationSpriteKey, facing.view, 'attack');
             const frame = clip?.frames.find(frame => frame.event === 'cast');
             let origin: [number, number] = [this.x, this.y];
             if (frame && this.actorAnimation.play('attack', clip, true)) {
@@ -1153,7 +1187,7 @@ export class EnemyBase {
         if (archerShot) {
             const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
             const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
-            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const clip = actorClip(this.animationSpriteKey, facing.view, 'attack');
             const frame = clip?.frames.find(frame => frame.event === 'fire');
             this.actionRecoil = 0.16;
             let origin: [number, number] = [this.x, this.y];
@@ -1177,7 +1211,7 @@ export class EnemyBase {
         if (needleShot) {
             const tx = this.rangedAimTargetX, ty = this.rangedAimTargetY;
             const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
-            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const clip = actorClip(this.animationSpriteKey, facing.view, 'attack');
             const frame = clip?.frames.find(frame => frame.event === 'fire');
             this.actionRecoil = 0.13;
             let origin: [number, number] = [this.x, this.y];
@@ -1200,7 +1234,7 @@ export class EnemyBase {
         if (acidShot) {
             const [tx, ty] = acidShot;
             const facing = resolveFacingView(tx - this.x, ty - this.y, this.animationView);
-            const clip = actorClip(this.spriteKey, facing.view, 'attack');
+            const clip = actorClip(this.animationSpriteKey, facing.view, 'attack');
             const frame = clip?.frames.find(frame => frame.event === 'fire');
             this.actionRecoil = 0.20;
             let origin: [number, number] = [this.x, this.y];
@@ -1251,7 +1285,7 @@ export class EnemyBase {
     /** 立即落到技能结算帧，并返回该方向图上绑定的真实释放挂点。 */
     private _miniSkillOrigin(action: ActorAction, targetX: number, targetY: number): [number, number] {
         const facing = resolveFacingView(targetX - this.x, targetY - this.y, this.animationView);
-        const clip = actorClip(this.spriteKey, facing.view, action);
+        const clip = actorClip(this.animationSpriteKey, facing.view, action);
         const frame = clip?.frames.find(candidate => candidate.event === 'cast');
         if (!clip || !frame || !this.actorAnimation.play(action, clip, true)) return [this.x, this.y];
         this.animationView = facing.view; this.animationMirror = facing.mirror;

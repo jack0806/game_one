@@ -81,6 +81,9 @@ export class BossController extends EnemyBase {
      * 由 GameManager._invGrid 的 fire 阶段置 2，与本类 update 同源递减。
      */
     invLaserT = 0;
+    /** 只驱动新身体姿势，不改变导弹/激光的结算或特效时间。 */
+    visualInvaderSkillT = 0;
+    visualInvaderSkillIndex = 0;
     private _invLaserCd = 8;
     private _invMissileCd = 14;
     private _invHomingCd = 6;
@@ -105,6 +108,7 @@ export class BossController extends EnemyBase {
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
         this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
+        this.visualInvaderSkillT = 0; this.visualInvaderSkillIndex = 0;
         this.bossKind = undefined;   // initBossKind 会在 init 之后再写入
         // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
         // 进场约6秒才有第一发追踪弹，网格激光/导弹依次排开；循环冷却保持原值
@@ -213,6 +217,7 @@ export class BossController extends EnemyBase {
         this.visualMechBuffT = Math.max(0, this.visualMechBuffT - dt);
         this.visualMechSkyLandT = Math.max(0, this.visualMechSkyLandT - dt);
         this.visualAbyssSkillT = Math.max(0, this.visualAbyssSkillT - dt);
+        this.visualInvaderSkillT = Math.max(0, this.visualInvaderSkillT - dt);
         this.visualDocSkillT = Math.max(0, this.visualDocSkillT - dt);
         this._contactCd = Math.max(0, this._contactCd - dt);
 
@@ -694,6 +699,7 @@ export class BossController extends EnemyBase {
         if (this._invLaserCd <= 0) {
             this._invLaserCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderLaserGrid?.(this);
+            this.visualInvaderSkillT = 2; this.visualInvaderSkillIndex = 1;
         }
 
         // 技能2：集束导弹 —— 上天后落地，落地前区域高亮（GameManager._missileZones 维护）
@@ -701,6 +707,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._invMissileCd <= 0) {
             this._invMissileCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderMissiles?.(this);
+            this.visualInvaderSkillT = 0.8; this.visualInvaderSkillIndex = 2;
         }
 
         // 技能3：追踪导弹（基础1发 / 最终2发）
@@ -708,6 +715,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._invHomingCd <= 0) {
             this._invHomingCd = (this.finalForm ? 4.5 : 6) + Rng.float(0, 1.5);
             this._invaderHomingFire(player, game);
+            this.visualInvaderSkillT = 0.6; this.visualInvaderSkillIndex = 3;
         }
     }
 

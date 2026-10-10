@@ -25,6 +25,7 @@
     "assets/scripts/data/ArenaCollisionMasks.ts",
     "assets/scripts/data/ChapterArenaDB.ts",
     "assets/scripts/data/ActorAnimationDB.ts",
+    "assets/scripts/data/EnemyRigAnimationDB.ts",
     "assets/scripts/data/AnimationBoundsDB.ts",
     "assets/scripts/data/BossDB.ts",
     "assets/scripts/data/CharacterDB.ts",

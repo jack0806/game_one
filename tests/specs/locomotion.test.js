@@ -185,8 +185,7 @@ test('全部普通怪和测试房小Boss的移动方式与面向语义逐一合�
         const [fx, fy] = enemy.getVisualFacing(player);
         if (type !== 'gold_scavenger') assert.ok(fx > 0.99 && Math.abs(fy) < 0.01, `${type} 应面向右侧英雄`);
         if (type === 'archer' || type === 'needle_gunner' || type === 'acid_sac' ||
-            type === 'ember_acolyte' || type === 'frost_acolyte' || type === 'arc_leech' ||
-            type === 'triune_priest' || type === 'rail_butcher') {
+            type === 'ember_acolyte' || type === 'frost_acolyte' || type === 'arc_leech') {
             assert.equal(enemy.x, before, `${type} 在300px舒适距离应站定开火`);
         }
         else if (type === 'gold_scavenger') assert.ok(enemy.x < before, '掠金虫应先贴近边缘逃跑而非追击英雄');

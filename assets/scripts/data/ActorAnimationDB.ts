@@ -1,6 +1,7 @@
 // ============================================================
 //  ActorAnimationDB.ts — 逐帧动作、固定枢轴与逐帧武器挂点
 // ============================================================
+import { STYLE_A_ENEMY_ANIMATIONS } from './EnemyRigAnimationDB';
 export type ActorAction = 'idle' | 'walk' | 'run' | 'jump' | 'attack' | 'attackMelee' |
     'hit' | 'defeated' | 'skill' | 'skill2' | 'skill3' | 'skill4' | 'skill5';
 export type ActorView = 'front' | 'side' | 'back';
@@ -1791,6 +1792,9 @@ for (const key in ACTOR_ANIMATIONS) {
         if (clips) delete clips.jump;
     }
 }
+
+// A 风格身体采用分层关节离线烘焙，沿用同一个时钟和事件来源。
+Object.assign(ACTOR_ANIMATIONS, STYLE_A_ENEMY_ANIMATIONS);
 
 export function actorClip(key: string, view: ActorView, action: ActorAction): ActorClip | undefined {
     return ACTOR_ANIMATIONS[key]?.[view]?.[action];

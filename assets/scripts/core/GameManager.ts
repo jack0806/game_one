@@ -1032,7 +1032,7 @@ export class GameManager extends Component {
             if (id.startsWith('boss_') && id !== 'boss_ch1' && id !== 'boss_ch2' && id !== 'boss_ch3' && id !== 'boss_ch4') {
                 this.spawnEnemy('boss', sx, sy, id.slice('boss_'.length));
             } else if (id.startsWith('boss_ch')) {
-                const ch = Number(id.slice('boss_ch'.length)) - 1;
+                const ch = Number(id.slice('boss_ch'.length));
                 this.spawnEnemy('boss', sx, sy, ch);
             } else if (id === 'squid') {
                 // 深海鱿鱼与水柱/水分身共享 12 上限（工具条直出也不超发）
@@ -3972,7 +3972,7 @@ export class GameManager extends Component {
 
     /**
      * Spawn an enemy of the given type. If x/y omitted, spawns just outside a random edge.
-     * bossKey 仅对 type==='boss' 生效：number=0-based 章节（正式局/测试房章节 Boss），
+     * bossKey 仅对 type==='boss' 生效：number=1-based 图号（测试房章节 Boss），省略则用正式局全局章号，
      * 'mech' | 'abyss' = 测试房文档专属 Boss（TEST_BOSSES）。
      */
     spawnEnemy(type: string, x?: number, y?: number, bossKey?: string | number): EnemyBase {

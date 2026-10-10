@@ -1,0 +1,91 @@
+{
+  "id": "shrimp",
+  "actualArtKey": "enemy_shrimp",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 135,
+      "delta": -45,
+      "arena": "ch1-random-slot-15-barrier-slot-11-wreck-slot-4-wall",
+      "enemy": [
+        605,
+        220,
+        30,
+        true,
+        75
+      ],
+      "player": [
+        740,
+        220
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 535,
+      "delta": -45,
+      "arena": "ch1-random-slot-15-barrier-slot-11-wreck-slot-4-wall",
+      "enemy": [
+        205,
+        220,
+        30,
+        true,
+        75
+      ],
+      "player": [
+        740,
+        220
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "miniboss",
+  "framesChecked": 216,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 82,
+  "aiMaxSeconds": 10,
+  "movementPixels": 367.18,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill",
+    "attack",
+    "skill2",
+    "idle"
+  ],
+  "pass": true
+}

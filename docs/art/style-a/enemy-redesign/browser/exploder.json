@@ -1,0 +1,86 @@
+{
+  "id": "exploder",
+  "actualArtKey": "enemy_exploder",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 146.0000000000009,
+      "delta": -33.99999999999909,
+      "arena": "ch1-random-slot-14-wreck-slot-2-wreck-slot-10-wall",
+      "enemy": [
+        673.9999999999991,
+        370,
+        20,
+        true,
+        85
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 545.9999999999999,
+      "delta": -34.000000000000114,
+      "arena": "ch1-random-slot-14-wreck-slot-2-wreck-slot-10-wall",
+      "enemy": [
+        274.0000000000001,
+        370,
+        20,
+        true,
+        85
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/defeated",
+    "front/skill",
+    "front/hit",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/defeated",
+    "side/skill",
+    "side/hit",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/defeated",
+    "back/skill",
+    "back/hit"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 38.400000000000006,
+  "aiMaxSeconds": 10,
+  "movementPixels": 350.55,
+  "aiActions": [
+    "run",
+    "walk",
+    "attack",
+    "idle"
+  ],
+  "pass": true
+}

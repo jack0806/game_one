@@ -37,8 +37,8 @@ export const BOSSES: BossDef[] = [
     // 第5章机械高达X-剑（2026-09-21 玩家调整：由测试房转正，数值取第五章档位，
     // 复用测试房专属俯视立绘 enemy_boss_mech）
 	{ id: 'ch5', chapter: 5, maxHp: 20000, damage: 160, speed: 68, armor: 50, goldValue: 550, radius: 45, color: '#99c4ff', glow: '#88ccff', label: '机械高达X-剑', spriteKey: 'enemy_boss_mech', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
-    // 第6章灭世机神·天罚：暂无独立贴图，复用 enemy_boss 素体+橙红染色。
-	{ id: 'ch6', chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 650, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
+    // 第6章灭世机神·天罚：独立机甲造型，保留原资源键和白色原图。
+	{ id: 'ch6', chapter: 6, maxHp: 24000, damage: 170, speed: 65, armor: 55, goldValue: 650, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
 /** 按显式 id 取图末大 Boss 定义（v5：LevelIndex.MapDef.bossId 的查询入口）。 */
@@ -59,7 +59,7 @@ export function getBossDef(chapter0Based: number): BossDef {
 // 5500/66/68/20，abyss 取第三章 9000/94/74/30）。两者使用专属俯视立绘，
 // 不再借用章节 Boss 后依赖程序线框补轮廓。
 // 《怪物设计与数值》5.2~5.4：维斯帕/坩埚/万相（独立贴图，逐字使用文档数值）。
-// 用户设计稿：「灭世机神·天罚」（invader，复用 enemy_boss 素体+染色，
+// 用户设计稿：「灭世机神·天罚」（invader，使用独立机甲与终形动作，
 // 数值取第五章档位 20000/160/65/50）。已转正为第六章正式 Boss（BOSSES 表），
 // 测试房条目的基准章仍为 5，技能集按 bossKind='invader' 判定。
 
@@ -75,7 +75,7 @@ export const TEST_BOSSES: TestBossDef[] = [
     { kind: 'vespa', chapter: 3, maxHp: 6800, damage: 42, speed: 78, armor: 14, goldValue: 480, radius: 46, color: '#132b4c', glow: '#69ff4a', label: '疫晶跳蛛·维斯帕', spriteKey: 'enemy_boss_vespa', tintColor: '#ffffff', visualScale: 1.85, attackWindupMax: 0.50 },
     { kind: 'crucible_city', chapter: 3, maxHp: 9800, damage: 60, speed: 50, armor: 30, goldValue: 680, radius: 50, color: '#38281f', glow: '#ff8b2c', label: '磁潮铸城兽·坩埚', spriteKey: 'enemy_boss_crucible_city', tintColor: '#ffffff', visualScale: 1.84, attackWindupMax: 0.70 },
     { kind: 'manyfold', chapter: 4, maxHp: 14500, damage: 82, speed: 64, armor: 38, goldValue: 920, radius: 48, color: '#271737', glow: '#c991ff', label: '折界裁缝·万相', spriteKey: 'enemy_boss_manyfold', tintColor: '#ffffff', visualScale: 1.88, attackWindupMax: 0.55 },
-    { kind: 'invader', chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ff8844', visualScale: 2.0, attackWindupMax: 0.42 },
+    { kind: 'invader', chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
 ];
 
 // ============================================================
