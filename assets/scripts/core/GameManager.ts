@@ -790,7 +790,11 @@ export class GameManager extends Component {
 
     /** v4 2.3：战备包三选一连抽（选完次数才开 W1，不进战斗）。 */
     private _openStarterPacks(left: number): void {
-        if (left <= 0) { this._waveMgr.startWave(this); return; }
+        if (left <= 0) {
+            this._setState('playing');
+            this._waveMgr.startWave(this);
+            return;
+        }
         this._setState('augSelect');
         this._augRefreshCount = 0;
         this._augOfferRefreshed = false;
