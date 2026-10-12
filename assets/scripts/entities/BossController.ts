@@ -91,6 +91,9 @@ export class BossController extends EnemyBase {
     // 滑稽猴（joker，彩蛋Boss）状态：加速/恶作剧/耳光三技能独立冷却
     /** 技能1·上蹿下跳：移速+50% 剩余时间（>0 时 buffSpeedMult=1.5）。 */
     jokerSprintT = 0;
+    /** 仅驱动滑稽猴本体动作；1加速、2恶作剧、3耳光。 */
+    visualJokerSkillT = 0;
+    visualJokerSkillIndex = 0;
     private _jokerSprintCd = 5;
     private _jokerTrickCd = 3;
     private _jokerSlapCd = 4;
@@ -121,6 +124,7 @@ export class BossController extends EnemyBase {
         this.attackWindup = 0; this._chargeTime = 0;
         this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
         this.jokerSprintT = 0; this._jokerSprintCd = 5; this._jokerTrickCd = 3; this._jokerSlapCd = 4;
+        this.visualJokerSkillT = 0; this.visualJokerSkillIndex = 0;
         this.mechanicFrozen = 0;
         this.visualInvaderSkillT = 0; this.visualInvaderSkillIndex = 0;
         this.bossKind = undefined;   // initBossKind 会在 init 之后再写入
@@ -247,6 +251,7 @@ export class BossController extends EnemyBase {
         this.visualMechSkyLandT = Math.max(0, this.visualMechSkyLandT - dt);
         this.visualAbyssSkillT = Math.max(0, this.visualAbyssSkillT - dt);
         this.visualInvaderSkillT = Math.max(0, this.visualInvaderSkillT - dt);
+        this.visualJokerSkillT = Math.max(0, this.visualJokerSkillT - dt);
         this.visualDocSkillT = Math.max(0, this.visualDocSkillT - dt);
         this._contactCd = Math.max(0, this._contactCd - dt);
 
@@ -800,9 +805,9 @@ export class BossController extends EnemyBase {
             this._jokerSprintCd = 9;
             this.jokerSprintT = 3;
             this.buffSpeedMult = 1.5;
-            this.visualSkillT = 0.65;
+            this.visualJokerSkillT = 0.65; this.visualJokerSkillIndex = 1;
             game.floatingText?.spawn?.(this.x, this.y - 90, '上蹿下跳！', this.glowColor, 18, true);
-            game.particles?.hexActivate?.(this.x, this.y, this.glowColor);
+            game.particles?.spawnSpriteFx?.(this.x, this.y, 'fx_joker_trick', 0.33, 0.8);
         }
         if (!player?.alive) return;
         // 技能2·滑稽恶作剧：玩家进入自身150码内才有几率施放（60%），随机一种恶作剧3秒
@@ -818,9 +823,9 @@ export class BossController extends EnemyBase {
                 ];
                 const t = tricks[Rng.int(0, tricks.length - 1)];
                 player.applyBuff?.(t.buff, 3, t.mods);
-                this.visualSkillT = 0.65;
+                this.visualJokerSkillT = 0.65; this.visualJokerSkillIndex = 2;
                 game.floatingText?.spawn?.(player.x, player.y - 50, `恶作剧·${t.name}`, this.glowColor, 18, true);
-                game.particles?.hexActivate?.(player.x, player.y, this.glowColor);
+                game.particles?.spawnSpriteFx?.(player.x, player.y, 'fx_joker_trick', 0.33, 0.7);
             }
         }
         // 技能3·滑稽耳光：玩家贴脸（50码内）时一巴掌，2.5倍伤害+1.5秒眩晕
@@ -834,7 +839,7 @@ export class BossController extends EnemyBase {
                 { impact: { source: 'boss_joker', angle: ang } });
             player.applyBuff?.('joker_stun', 1.5, { stun: true, noMove: true, silence: true });
             this.actionRecoil = 0.3;
-            this.visualSkillT = 0.65;
+            this.visualJokerSkillT = 0.65; this.visualJokerSkillIndex = 3;
             game.floatingText?.spawn?.(player.x, player.y - 50, '滑稽耳光！', this.glowColor, 20, true);
             game.screenShake?.shake?.(6, 0.2);
         }

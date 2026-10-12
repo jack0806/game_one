@@ -34,6 +34,8 @@ function collectAllArtKeys() {
     for (const t of [
         'enemy_grunt', 'enemy_shield', 'enemy_exploder', 'enemy_golem',
         'enemy_boss', 'enemy_boss_ch1', 'enemy_boss_ch2', 'enemy_boss_ch3', 'enemy_boss_ch4',
+        'enemy_boss_joker', 'anim_stylea_boss_joker_front', 'anim_stylea_boss_joker_side',
+        'anim_stylea_boss_joker_back', 'anim_fx_joker_slap', 'anim_fx_joker_trick',
         // 亡灵法师技能专属贴图（2026-10-10 入库）
         'fx_rot_fog', 'fx_plague_wave', 'unit_skeleton',
     ]) keys.add(t);

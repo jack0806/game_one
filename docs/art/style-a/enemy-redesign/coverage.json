@@ -1308,5 +1308,40 @@
     "displayScale": 1.150561797752809,
     "generated": true,
     "browserVerified": true
+  },
+  {
+    "id": "boss_joker",
+    "key": "enemy_boss_joker",
+    "rig": "joker",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3"
+    ],
+    "calibration": {
+      "scale": 0.8391608391608392,
+      "dy": {
+        "front": -17,
+        "side": -17,
+        "back": -17
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 90,
+    "displayScale": 1.2549019607843137,
+    "generated": true,
+    "browserVerified": false
   }
 ]

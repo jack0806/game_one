@@ -13306,6 +13306,15 @@
       "clips": {}
     },
     {
+      "id": "boss_joker",
+      "label": "滑稽猴",
+      "category": "boss",
+      "color": "#ffd24d",
+      "key": "enemy_boss_joker",
+      "size": 102,
+      "clips": {}
+    },
+    {
       "id": "squid",
       "label": "深海鱿鱼",
       "category": "miniboss",

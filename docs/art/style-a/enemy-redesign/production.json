@@ -322,6 +322,13 @@
       "design": "Unique massive final judgment war machine, broad rounded charcoal-and-ivory armored mechanical body, small orange T-shaped visor, huge amber HEXAGON chest reactor, two distinct rounded missile shoulder boxes, FAR ARM heavy armored fist, NEAR ARM thick triple-bore cannon, very heavy short piston legs. Clearly MACHINE, no flesh, not a recolored wasteland monster. Simple A-style chunky panels, no missiles or effects.",
       "attack": "炮臂架设、肩舱启闭、胸核抬升、双臂展开终形",
       "motion": "稳定重型活塞步态"
+    },
+    {
+      "id": "boss_joker",
+      "rig": "joker",
+      "design": "赭棕小体型废土猴，奶油色口鼻与夸张掌面，深蓝束带、青色背部装置和卷钩尾；三方向同体形，不做小丑服饰",
+      "attack": "掌面后撤、躯干侧倾、快速横扫与收臂；恶作剧则指向目标并触碰背带装置",
+      "motion": "弹簧式屈膝与快速交替跳步，尾巴滞后摆动"
     }
   ],
   "sizeHierarchy": {

@@ -27,8 +27,8 @@ test('已优化的攻击特效、弹体与技能图标逐文件哈希保持不�
         assert.equal(current,hash,name);
     }
 });
-test('37种敌人三方向动作全部换成新身体，保留原有释放时刻', () => {
-    assert.equal(baseline.units.length, 37);
+test('38种敌人三方向动作全部换成新身体，保留原有释放时刻', () => {
+    assert.equal(baseline.units.length, 38);
     for (const unit of baseline.units) for (const view of ['front','side','back']) {
         for (const action of new Set(['idle','walk','run','attack','hit','defeated', ...Object.keys(unit.clips[view] || {})])) {
             const clip = actorClip(unit.key, view, action);
@@ -42,7 +42,9 @@ test('37种敌人三方向动作全部换成新身体，保留原有释放时刻
 test('按可见轮廓区分小兵、小Boss和首领体形，透明留白不影响层级', () => {
     const extent = tier => coverage.filter(u => u.category === tier).map(u => u.visibleExtent);
     assert.ok(Math.min(...extent('miniboss')) > Math.max(...extent('grunt')) * 1.4);
-    assert.ok(Math.min(...extent('boss')) > Math.max(...extent('miniboss')) * 1.3);
+    assert.ok(Math.min(...coverage.filter(u => u.category === 'boss' && u.id !== 'boss_joker').map(u => u.visibleExtent)) > Math.max(...extent('miniboss')) * 1.3);
+    const joker = coverage.find(u => u.id === 'boss_joker');
+    assert.ok(joker.visibleExtent >= 90 && joker.visibleExtent <= 105, '滑稽猴是小体形彩蛋首领');
 });
 test('转向与走跑切换保留承重相位，攻击仍从起点播放', () => {
     const clock = new ActorAnimation();

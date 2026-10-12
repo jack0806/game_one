@@ -647,7 +647,9 @@ export class EnemyBase {
                 : boss.invLaserT > 0 ? 'invader_laser'
                 : boss.visualInvaderSkillT > 0 ? `invader_skill_${boss.visualInvaderSkillIndex}` : ''
             : '';
-        const mechanismVisualState = miniVisualState || bossVisualState || mechVisualState || abyssVisualState || docVisualState || invaderVisualState;
+        const jokerVisualState = bodyKind === 'joker' && boss.visualJokerSkillT > 0
+            ? `joker_skill_${boss.visualJokerSkillIndex}` : '';
+        const mechanismVisualState = miniVisualState || bossVisualState || mechVisualState || abyssVisualState || docVisualState || invaderVisualState || jokerVisualState;
         let miniVisualAction: ActorAction | undefined;
         if (this.type === 'prism_snail') {
             miniVisualAction = miniVisualState === 'prism_shell' ? 'skill2'
@@ -682,6 +684,9 @@ export class EnemyBase {
             miniVisualAction = invaderVisualState === 'invader_form' ? 'skill4'
                 : invaderVisualState === 'invader_laser' ? 'skill'
                 : boss.visualInvaderSkillIndex === 2 ? 'skill2' : boss.visualInvaderSkillIndex === 3 ? 'skill3' : 'skill';
+        } else if (jokerVisualState) {
+            miniVisualAction = boss.visualJokerSkillIndex === 2 ? 'skill2'
+                : boss.visualJokerSkillIndex === 3 ? 'skill3' : 'skill';
         } else if (bossVisualState) {
             miniVisualAction = bossVisualState === 'boss_phase' ? 'skill4'
                 : bossVisualState === 'boss_summon' ? 'skill3'
@@ -714,6 +719,9 @@ export class EnemyBase {
                     const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
                     this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
                 } else if (docVisualState) {
+                    const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
+                    this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
+                } else if (jokerVisualState) {
                     const cast = this.actorAnimation.clip?.frames.findIndex(frame => frame.event === 'cast') ?? -1;
                     this.actorAnimation.seekFrame(cast >= 0 ? cast : 2);
                 }

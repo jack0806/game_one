@@ -1,5 +1,7 @@
 # 现有美术资源清单（assets/resources/art/）
 
+> 2026-10-12：新增滑稽猴静态本体 `enemy_boss_joker`、三方向动作图集 `anim_stylea_boss_joker_front/side/back`、两组四帧特效 `anim_fx_joker_slap/trick`，共 6 张 PNG 及对应 meta；当前目录共 682 张 PNG。制作和动作总览见[滑稽猴记录](style-a/joker-design/joker-design-v1.md)。
+
 > 2026-10-10：新增 `anim_hit_units_10.png`（滑稽猴命中四帧，程序化金色调占位，1254×1254 RGBA，附手写 meta）。当前目录共 558 张 PNG。
 
 > 2026-10-09 战斗重做：新增 24 个技能图标、32 个海克斯图标；同名替换 12 张敌方特效、6 张动画特效图集、薇娅/莫提斯 2 张弹丸。当前目录 546 张 PNG。本批范围、实机证据和验证见[战斗重做验收](combat-redesign-2026-10-09.md)。

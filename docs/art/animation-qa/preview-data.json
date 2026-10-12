@@ -89933,5 +89933,2248 @@
         ]
       }
     }
+  },
+  "enemy_boss_joker": {
+    "front": {
+      "idle": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 0,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 1,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 2,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 3,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 4,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 5,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 6,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 7,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          }
+        ]
+      },
+      "walk": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 8,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 9,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 10,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 11,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 12,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 13,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 14,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 15,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "run": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 16,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 17,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 18,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 19,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 20,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 21,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 22,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 23,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "jump": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 24,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 25,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 26,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 27,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 28,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 29,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 30,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "land"
+          },
+          {
+            "index": 31,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "attack": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 32,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 33,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 34,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "strike"
+          },
+          {
+            "index": 35,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 36,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 37,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 38,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 39,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "hit": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 40,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 41,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 42,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 43,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 44,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 45,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 46,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 47,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "defeated": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 48,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 49,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 50,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 51,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 52,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 53,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 54,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 55,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          }
+        ]
+      },
+      "skill": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 56,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 57,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 58,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 59,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 60,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 61,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 62,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 63,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "skill2": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 64,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 65,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 66,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 67,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 68,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 69,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 70,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 71,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "skill3": {
+        "sheet": "anim_stylea_boss_joker_front",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 72,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 73,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 74,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 75,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 76,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 77,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 78,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 79,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      }
+    },
+    "side": {
+      "idle": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 0,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 1,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 2,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 3,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 4,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 5,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 6,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 7,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          }
+        ]
+      },
+      "walk": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 8,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 9,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 10,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 11,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 12,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 13,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 14,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 15,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "run": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 16,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 17,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 18,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 19,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 20,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 21,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 22,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 23,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "jump": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 24,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 25,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 26,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 27,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 28,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 29,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 30,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "land"
+          },
+          {
+            "index": 31,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "attack": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 32,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 33,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 34,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "strike"
+          },
+          {
+            "index": 35,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 36,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 37,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 38,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 39,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "hit": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 40,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 41,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 42,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 43,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 44,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 45,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 46,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 47,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "defeated": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 48,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 49,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 50,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 51,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 52,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 53,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 54,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 55,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          }
+        ]
+      },
+      "skill": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 56,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 57,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 58,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 59,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 60,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 61,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 62,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 63,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "skill2": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 64,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 65,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 66,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 67,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 68,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 69,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 70,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 71,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "skill3": {
+        "sheet": "anim_stylea_boss_joker_side",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 72,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 73,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 74,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 75,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 76,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 77,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 78,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 79,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      }
+    },
+    "back": {
+      "idle": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 0,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 1,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 2,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 3,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 4,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 5,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 6,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 7,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          }
+        ]
+      },
+      "walk": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 8,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 9,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 10,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 11,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 12,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 13,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 14,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 15,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "run": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": true,
+        "frames": [
+          {
+            "index": 16,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 17,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 18,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 19,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 20,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 21,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 22,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 23,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "jump": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 24,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 25,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 26,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 27,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 28,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 29,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 30,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "land"
+          },
+          {
+            "index": 31,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "attack": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 32,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 33,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 34,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "strike"
+          },
+          {
+            "index": 35,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 36,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 37,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 38,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 39,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "hit": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 40,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 41,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 42,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 43,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 44,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 45,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 46,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 47,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "defeated": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 48,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 49,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 50,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 51,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 52,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 53,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 54,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          },
+          {
+            "index": 55,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.1
+          }
+        ]
+      },
+      "skill": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 56,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 57,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 58,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 59,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 60,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 61,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 62,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 63,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "skill2": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 64,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 65,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 66,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 67,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 68,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 69,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 70,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 71,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      },
+      "skill3": {
+        "sheet": "anim_stylea_boss_joker_back",
+        "columns": 8,
+        "rows": 10,
+        "cellSize": 256,
+        "displayScale": 1.2549019607843137,
+        "loop": false,
+        "frames": [
+          {
+            "index": 72,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 73,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 74,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 75,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 76,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06,
+            "event": "cast"
+          },
+          {
+            "index": 77,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 78,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          },
+          {
+            "index": 79,
+            "pivot": [
+              0.5,
+              0.54125
+            ],
+            "seconds": 0.06
+          }
+        ]
+      }
+    }
   }
 }

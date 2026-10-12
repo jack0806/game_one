@@ -78,8 +78,8 @@ export const TEST_BOSSES: TestBossDef[] = [
     { kind: 'invader', chapter: 5, maxHp: 20000, damage: 160, speed: 65, armor: 50, goldValue: 1000, radius: 45, color: '#ff5522', glow: '#ffaa33', label: '灭世机神·天罚', spriteKey: 'enemy_boss', tintColor: '#ffffff', visualScale: 2.0, attackWindupMax: 0.42 },
     // 滑稽猴（彩蛋Boss，用户设计稿）：HP800/移速300/伤害10/攻速1/护甲50/暴击0。
     // 小体型+与玩家同速的贴脸恶作剧担当；击杀20%掉玩偶猴（隐藏成就）。
-    // 暂无专属贴图，复用 enemy_boss 素体+金黄染色，待美术补充。
-    { kind: 'joker', chapter: 1, maxHp: 800, damage: 10, speed: 300, armor: 50, goldValue: 120, radius: 34, color: '#c9963c', glow: '#ffd24d', label: '滑稽猴', spriteKey: 'enemy_boss', tintColor: '#ffcf4d', visualScale: 1.15, attackWindupMax: 0.42 },
+    // 专属三方向本体与动作图集；小体形是彩蛋首领的有意例外。
+    { kind: 'joker', chapter: 1, maxHp: 800, damage: 10, speed: 300, armor: 50, goldValue: 120, radius: 34, color: '#c9963c', glow: '#ffd24d', label: '滑稽猴', spriteKey: 'enemy_boss_joker', tintColor: '#ffffff', visualScale: 1.5, attackWindupMax: 0.42 },
 ];
 
 // ============================================================

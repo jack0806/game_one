@@ -26,7 +26,7 @@ def save_png(picture, path, **options):
 
 
 def calibrate(parts,unit):
-    grounded = unit['rig'] in ('biped','quadruped','crawler','spider','tripod','ember','foundry','prism')
+    grounded = unit['rig'] in ('biped','joker','quadruped','crawler','spider','tripod','ember','foundry','prism')
     dy={}
     scale=1.0
     for view in VIEWS:
@@ -105,7 +105,7 @@ def main():
         extent = max(max(b[2]-b[0], b[3]-b[1]) for b in idle_boxes)
         # 按不透明身体而非图集留白制定体形层级，碰撞半径和伤害数值保持原样。
         tier = base['category']
-        low,high = {'grunt':(34,57),'miniboss':(82,105),'boss':(140,155)}[tier]
+        low,high = (90,105) if uid == 'boss_joker' else {'grunt':(34,57),'miniboss':(82,105),'boss':(140,155)}[tier]
         target = max(low,min(high,base['size']*.8))
         display_scale = target/(base['size']*extent/SIZE)
         sheets = {}
@@ -114,6 +114,7 @@ def main():
             old = base['clips'].get(view,{})
             actions = list(old) or ['idle','walk','run','jump','attack','hit','defeated','skill']
             if uid.startswith('boss_invader'): actions += ['skill2','skill3','skill4','skill5']
+            if uid == 'boss_joker': actions += ['skill2','skill3']
             clips = {}
             sheet_name = f'anim_stylea_{uid}_{view}'
             sheet = Image.new('RGBA',(SIZE*8,SIZE*len(actions)))
@@ -166,6 +167,12 @@ def main():
             for ai,(action,t) in enumerate([('idle',0),('walk',.25),('attack',.5),('defeated',1)]):
                 contact.alpha_composite(framed_pose(parts[view],view,action,t,unit,calibration),(ai*SIZE,vi*SIZE))
         contact.save(out/f'{uid}-contact.png')
+        if uid == 'boss_joker':
+            skills = Image.new('RGBA',(SIZE*3,SIZE*3),'#354454')
+            for vi,view in enumerate(VIEWS):
+                for ai,action in enumerate(('skill','skill2','skill3')):
+                    skills.alpha_composite(framed_pose(parts[view],view,action,.5,unit,calibration),(ai*SIZE,vi*SIZE))
+            skills.save(out/'boss_joker-skills.png')
         roster.alpha_composite(framed_pose(parts['front'],'front','idle',0,unit,calibration),(n%6*256,n//6*256))
         if args.publish:
             # 既有静态/方向回退资源同名覆盖，防止刚生成或异步载入时闪回旧形象。

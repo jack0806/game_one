@@ -15,6 +15,14 @@ function effectRow(sheet: string, row: number, pivot: [number, number], seconds:
 
 /** 语义key可沿用旧特效调用；实际只加载clip.sheet，不加载不存在的独立PNG。 */
 export const EFFECT_ANIMATIONS: Record<string, ActorClip> = {
+    fx_joker_slap: {
+        sheet: 'anim_fx_joker_slap', columns: 4, rows: 1, cellSize: 543, cellHeight: 724, loop: false,
+        frames: [0, 1, 2, 3].map((index) => ({ index, pivot: [0.5, 0.5], seconds: [0.035, 0.07, 0.08, 0.055][index] })),
+    },
+    fx_joker_trick: {
+        sheet: 'anim_fx_joker_trick', columns: 4, rows: 1, cellSize: 543, cellHeight: 724, loop: false,
+        frames: [0, 1, 2, 3].map((index) => ({ index, pivot: [0.5, 0.5], seconds: [0.05, 0.09, 0.10, 0.09][index] })),
+    },
     fx_ground_acid: { ...effectRow('anim_fx_ground_residue', 0, [0.5, 0.5], [.16, .16, .16, .16]), cellSize: 315.25, cellHeight: 311.75, loop: true },
     fx_ground_ember: { ...effectRow('anim_fx_ground_residue', 1, [0.5, 0.5], [.16, .16, .16, .16]), cellSize: 315.25, cellHeight: 311.75, loop: true },
     fx_ground_water: { ...effectRow('anim_fx_ground_residue', 2, [0.5, 0.5], [.16, .16, .16, .16]), cellSize: 315.25, cellHeight: 311.75, loop: true },

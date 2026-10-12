@@ -11,6 +11,9 @@ const { Economy } = require('../dist/systems/Economy');
 const { SaveSystem, ACHIEVEMENTS } = require('../dist/systems/SaveSystem');
 const { makeMockGame } = require('./mockGame');
 const { Rng } = require('../dist/core/MathUtils');
+const { actorClip } = require('../dist/data/ActorAnimationDB');
+const { EFFECT_ANIMATIONS } = require('../dist/data/EffectAnimationDB');
+const { UNIT_ATTACK_ART } = require('../dist/data/CombatArtDB');
 
 function makeJoker(game) {
     const boss = new BossController();
@@ -65,6 +68,8 @@ test('滑稽猴:设计稿数值逐字落地且进入测试房目录', () => {
     assert.ok(def, '滑稽猴必须进入TEST_BOSSES');
     assert.deepEqual([def.maxHp, def.speed, def.damage, def.armor], [800, 300, 10, 50]);
     assert.equal(def.radius, 34, '小体型Boss(radius<常规45)');
+    assert.equal(def.spriteKey, 'enemy_boss_joker', '使用专属本体');
+    assert.equal(def.tintColor, '#ffffff', '原图不再被金黄色染色');
     const entry = UNIT_CATALOG.find(u => u.id === 'boss_joker');
     assert.ok(entry && entry.category === 'boss', '工具条目录含 boss_joker');
     const game = makeMockGame();
@@ -75,6 +80,58 @@ test('滑稽猴:设计稿数值逐字落地且进入测试房目录', () => {
     assert.equal(boss.damage, 10);
     assert.equal(boss.armor, 50);
     assert.equal(boss.hitSource, 'boss_joker');
+});
+
+test('滑稽猴:三方向身体动画和三技能使用专属图集与特效', () => {
+    for (const view of ['front', 'side', 'back']) {
+        for (const action of ['idle', 'walk', 'run', 'attack', 'hit', 'defeated', 'skill', 'skill2', 'skill3']) {
+            const clip = actorClip('enemy_boss_joker', view, action);
+            assert.ok(clip, `${view}/${action}有独立身体动作`);
+            assert.equal(clip.frames.length, 8);
+            assert.equal(clip.cellSize, 256);
+            assert.equal(clip.sheet, `anim_stylea_boss_joker_${view}`);
+        }
+    }
+    assert.equal(UNIT_ATTACK_ART.boss_joker, 'fx_joker_slap');
+    assert.equal(EFFECT_ANIMATIONS.fx_joker_slap.sheet, 'anim_fx_joker_slap');
+    assert.equal(EFFECT_ANIMATIONS.fx_joker_trick.sheet, 'anim_fx_joker_trick');
+});
+
+test('滑稽猴:三招结算时切到各自动作并触发对应特效', () => {
+    const effects = [];
+    const game = makeMockGame({ particles: {
+        spawnSpriteFx: (_x, _y, key) => effects.push(key),
+        meleeSlash: (_x, _y, _angle, _color, _reach, _strength, source) => effects.push(UNIT_ATTACK_ART[source]),
+    } });
+    const origChance = Rng.chance, origInt = Rng.int;
+    try {
+        const sprint = makeJoker(game);
+        sprint._jokerSprintCd = 0.01;
+        const far = makeVictim(900, 300);
+        sprint.update(0.1, far, game);
+        sprint.updateVisualAnimation(0.016, far);
+        assert.equal(sprint.actorAnimation.action, 'skill');
+
+        const trick = makeJoker(game);
+        trick._jokerTrickCd = 0.01;
+        const mid = makeVictim(400, 300);
+        Rng.chance = () => true; Rng.int = () => 0;
+        trick.update(0.1, mid, game);
+        trick.updateVisualAnimation(0.016, mid);
+        assert.equal(trick.actorAnimation.action, 'skill2');
+
+        const slap = makeJoker(game);
+        slap._jokerSlapCd = 0.01;
+        const near = makeVictim(340, 300);
+        slap.update(0.1, near, game);
+        slap.updateVisualAnimation(0.016, near);
+        assert.equal(slap.actorAnimation.action, 'skill3');
+        assert.deepEqual(effects, ['fx_joker_trick', 'fx_joker_trick', 'fx_joker_slap']);
+
+        slap.visualJokerSkillT = 0;
+        slap.updateVisualAnimation(0.016, near);
+        assert.notEqual(slap.actorAnimation.action, 'skill3', '表现时间结束后退出耳光姿势');
+    } finally { Rng.chance = origChance; Rng.int = origInt; }
 });
 
 // ── 技能1：上蹿下跳 ─────────────────────────────────────────

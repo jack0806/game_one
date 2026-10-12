@@ -35,7 +35,7 @@ export const UNIT_ATTACK_ART: Record<string, string> = {
     boss_abyss: 'fx_enemy_water_bomb', boss_vespa: 'fx_enemy_claw_slash',
     boss_crucible_city: 'fx_enemy_ember_brand', boss_manyfold: 'fx_enemy_void_blade',
     boss_invader: 'fx_enemy_ember_brand',
-    boss_joker: 'fx_enemy_claw_slash',
+    boss_joker: 'fx_joker_slap',
 };
 
 
