@@ -1,0 +1,100 @@
+{
+  "id": "boss_vespa",
+  "actualArtKey": "enemy_boss_vespa",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 148.8000000000011,
+      "delta": -31.19999999999891,
+      "arena": "ch1-random-slot-5-wreck-slot-14-wreck-slot-2-wreck",
+      "enemy": [
+        671.1999999999989,
+        370,
+        46,
+        true,
+        78
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 548.7999999999997,
+      "delta": -31.200000000000273,
+      "arena": "ch1-random-slot-5-wreck-slot-14-wreck-slot-2-wreck",
+      "enemy": [
+        271.2000000000003,
+        370,
+        46,
+        true,
+        78
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "boss",
+  "framesChecked": 288,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "front/skill3",
+    "front/skill4",
+    "front/skill5",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "side/skill3",
+    "side/skill4",
+    "side/skill5",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2",
+    "back/skill3",
+    "back/skill4",
+    "back/skill5"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 140,
+  "aiMaxSeconds": 10,
+  "movementPixels": 389.88,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill",
+    "idle",
+    "attack",
+    "skill2"
+  ],
+  "pass": true
+}

@@ -1,0 +1,90 @@
+{
+  "id": "turtle",
+  "actualArtKey": "enemy_turtle",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 160.93333333333442,
+      "delta": -19.066666666665583,
+      "arena": "ch1-random-slot-12-barrier-slot-1-wall-slot-3-barrier",
+      "enemy": [
+        659.0666666666656,
+        370,
+        32,
+        true,
+        40
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 560.9333333333332,
+      "delta": -19.066666666666833,
+      "arena": "ch1-random-slot-12-barrier-slot-1-wall-slot-3-barrier",
+      "enemy": [
+        259.0666666666669,
+        370,
+        32,
+        true,
+        40
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "miniboss",
+  "framesChecked": 216,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 82,
+  "aiMaxSeconds": 10,
+  "movementPixels": 292.6,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill2",
+    "attack",
+    "idle"
+  ],
+  "pass": true
+}

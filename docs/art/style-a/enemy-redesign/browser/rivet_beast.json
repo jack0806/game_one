@@ -1,0 +1,87 @@
+{
+  "id": "rivet_beast",
+  "actualArtKey": "enemy_rivet_beast",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 166.39999999999873,
+      "delta": -13.600000000001273,
+      "arena": "ch1-random-slot-12-barrier-slot-1-wall-slot-3-barrier",
+      "enemy": [
+        653.6000000000013,
+        370,
+        29,
+        true,
+        34
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 566.4000000000001,
+      "delta": -13.599999999999909,
+      "arena": "ch1-random-slot-12-barrier-slot-1-wall-slot-3-barrier",
+      "enemy": [
+        253.5999999999999,
+        370,
+        29,
+        true,
+        34
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 57,
+  "aiMaxSeconds": 10,
+  "movementPixels": 505.84,
+  "aiActions": [
+    "run",
+    "walk",
+    "attack",
+    "skill",
+    "idle"
+  ],
+  "pass": true
+}

@@ -1,0 +1,87 @@
+{
+  "id": "rust_biter",
+  "actualArtKey": "enemy_rust_biter",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 147.19999999999982,
+      "delta": -32.80000000000018,
+      "arena": "ch1-random-slot-7-wall-slot-9-barrier-slot-11-wreck",
+      "enemy": [
+        672.8000000000002,
+        170,
+        21,
+        true,
+        82
+      ],
+      "player": [
+        820,
+        170
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 547.1999999999998,
+      "delta": -32.80000000000018,
+      "arena": "ch1-random-slot-7-wall-slot-9-barrier-slot-11-wreck",
+      "enemy": [
+        272.8000000000002,
+        170,
+        21,
+        true,
+        82
+      ],
+      "player": [
+        820,
+        170
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 52.08000000000001,
+  "aiMaxSeconds": 10,
+  "movementPixels": 466.92,
+  "aiActions": [
+    "run",
+    "walk",
+    "attack",
+    "skill",
+    "idle"
+  ],
+  "pass": true
+}

@@ -1,0 +1,86 @@
+{
+  "id": "archer",
+  "actualArtKey": "enemy_archer",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 204,
+      "delta": 24,
+      "arena": "ch1-random-slot-14-wreck-slot-2-wreck-slot-10-wall",
+      "enemy": [
+        616,
+        370,
+        18,
+        true,
+        60
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 556,
+      "delta": -24,
+      "arena": "ch1-random-slot-14-wreck-slot-2-wreck-slot-10-wall",
+      "enemy": [
+        264,
+        370,
+        18,
+        true,
+        60
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/jump",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/attack",
+    "front/walk",
+    "front/run",
+    "side/idle",
+    "side/jump",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/attack",
+    "side/walk",
+    "side/run",
+    "back/idle",
+    "back/jump",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/attack",
+    "back/walk",
+    "back/run"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 34.559999999999995,
+  "aiMaxSeconds": 10,
+  "movementPixels": 302,
+  "aiActions": [
+    "run",
+    "walk",
+    "attack",
+    "idle"
+  ],
+  "pass": true
+}

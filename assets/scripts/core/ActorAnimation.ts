@@ -31,14 +31,28 @@ export class ActorAnimation {
         this._clip = undefined; this._events.length = 0;
     }
 
-    play(action: ActorAction, clip: ActorClip | undefined, restart = false): boolean {
+    play(action: ActorAction, clip: ActorClip | undefined, restart = false, preserveGait = false): boolean {
         if (!clip || clip.frames.length === 0) return false;
         if (this.action === 'defeated' && this._clip) return false;
         if (this.locked && PRIORITY[action] < PRIORITY[this.action]) return false;
         if (!restart && this.action === action && this._clip === clip) return false;
+        // 敌人转向时保持双脚承重相位；攻击、受击和死亡仍从各自时间轴起点开始。
+        let gaitPhase = 0;
+        if (preserveGait && !restart && this._clip?.loop && clip.loop &&
+            (this.action === 'walk' || this.action === 'run') && (action === 'walk' || action === 'run')) {
+            const duration = this._clip.frames.reduce((sum, frame) => sum + frame.seconds, 0);
+            const elapsed = this._clip.frames.slice(0, this.frame).reduce((sum, frame) => sum + frame.seconds, this.elapsed);
+            gaitPhase = duration > 0 ? elapsed / duration : 0;
+        }
         this.action = action; this._clip = clip;
         this.frame = 0; this.elapsed = 0; this.finished = false;
         this._events.length = 0;
+        if (gaitPhase > 0) {
+            this.elapsed = gaitPhase * clip.frames.reduce((sum, frame) => sum + frame.seconds, 0);
+            while (this.frame + 1 < clip.frames.length && this.elapsed >= clip.frames[this.frame].seconds) {
+                this.elapsed -= clip.frames[this.frame].seconds; this.frame++;
+            }
+        }
         this._enterFrame();
         return true;
     }

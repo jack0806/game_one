@@ -16,6 +16,9 @@ export class InputManager extends Component {
      *  用于区分"鼠标模式"——比 sys.hasFeature(INPUT_TOUCH) 可靠，
      *  原生模拟器/带触屏的桌面机会误报触控导致鼠标瞄准失效。 */
     mouse = { x: 640, y: 360, down: false, active: false };
+    /** 最近一次鼠标按下的时间戳(ms)：E 放置类技能用"新鲜点击"确认落点，
+     *  250ms 内未被消费才算（防止旧点击误触发放置）。 */
+    private _mouseDownAt = 0;
 
     // ── 虚拟输入（由 TouchControls 写入） ────────────────────
     /** 虚拟摇杆方向（画布坐标系，y向下；长度已钳制到≤1）。 */
@@ -55,8 +58,17 @@ export class InputManager extends Component {
         this.mouse.y = CANVAS_H - y;
         this.mouse.active = true;
     }
-    private _onMouseDown(_e: EventMouse): void  { this.mouse.down = true; this.mouse.active = true; }
+    private _onMouseDown(_e: EventMouse): void  { this.mouse.down = true; this.mouse.active = true; this._mouseDownAt = performance.now(); }
     private _onMouseUp(_e: EventMouse): void    { this.mouse.down = false; }
+
+    /** E 放置类技能确认：消费一次 250ms 内的鼠标按下沿（点击选点）。 */
+    consumeMouseClick(): boolean {
+        if (this._mouseDownAt > 0 && performance.now() - this._mouseDownAt <= 250) {
+            this._mouseDownAt = 0;
+            return true;
+        }
+        return false;
+    }
 
     lateUpdate(_dt: number): void {
         this._justPressed.clear();

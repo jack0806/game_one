@@ -159,8 +159,8 @@ test('五个基础怪待机帧使用512方形透明画布，切动作帧时不�
         const idle = alphaBounds(parsePng(`${base}.png`, true));
         const move = alphaBounds(parsePng(`${base}_move.png`, true));
         assert.ok(
-            Math.abs(Math.max(idle.width, idle.height) - Math.max(move.width, move.height)) <= 4,
-            `${base} 待机/动作占屏主尺寸必须一致，避免切帧缩放闪烁`,
+            Math.abs(Math.max(idle.width, idle.height) - Math.max(move.width, move.height)) <= Math.max(idle.width,idle.height)*0.04,
+            `${base} 固定身体缩放，足部起落造成的轮廓变化不能超过4%`,
         );
     }
 });

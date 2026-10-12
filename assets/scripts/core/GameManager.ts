@@ -1,5 +1,5 @@
 import { ENEMY_PROJECTILE_ART, enemyProjectileSize, UNIT_ATTACK_ART } from '../data/CombatArtDB';
-import { separatePlayerBodies } from './CombatCollision';
+import { separatePlayerBodies, moveCombatBody, moveEnemyBody } from './CombatCollision';
 import { drawAttackSector, drawChargeLane, drawEnergyBeam, drawEnergyArc, localSectorBounds, sectorPath } from './CombatVfx';
 import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
@@ -115,6 +115,10 @@ export class GameManager extends Component {
     private _turretBasePool!:   SpriteNodePool;
     private _turretBarrelPool!: SpriteNodePool;
     private _summonArtPool!:     SpriteNodePool;
+    /** 地面层特效池（GroundFxLayer，实体之下）：腐雾等领域型贴图不遮单位。 */
+    private _groundArtPool!:     SpriteNodePool;
+    /** 地面领域特效图层（残骸层之上、实体层之下，独立于会被清空的 ArenaLayer）。 */
+    private _groundFxLayer!:     Node;
     /** One-shot art FX (explosion/heal/poison/cold_arrow/hex_ring), synced from ParticleManager.spriteFx each frame. */
     private _fxPool!:        SpriteNodePool;
     private _contactFxPool!: SpriteNodePool;
@@ -292,6 +296,8 @@ export class GameManager extends Component {
         // Cocos 的 Web 构建会把 `[...set]` 降级成 `[].concat(set)`，导致 Set
         // 本身被当成单个资源 key。显式使用 Array.from 保证构建产物仍是字符串数组。
         preloadArt(Array.from(new Set(Object.keys(EFFECT_ANIMATIONS).map(key => EFFECT_ANIMATIONS[key].sheet))));
+        // 亡灵法师技能专属贴图（2026-10-10 入库）：腐雾地面雾 / 天灾冲击波 / 骸骨仆从
+        preloadArt(['fx_rot_fog', 'fx_plague_wave', 'unit_skeleton']);
         this._setState('menu');
         loadArtSprite('title_screen', () => {
             if (this.isValid) this._audio.preloadAll();
@@ -376,6 +382,13 @@ export class GameManager extends Component {
         this._arenaLayer.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
         this._arenaGfx = this._arenaLayer.addComponent(Graphics);
 
+        // GroundFxLayer — 地面领域特效（腐雾等）：位于残骸之上、实体之下。
+        // 不能直接挂 _arenaLayer：_drawArenaProps 重画场地会 destroy 其全部子节点，
+        // 池节点会被连坐销毁（acquire 出僵尸节点，getComponent 即崩）。
+        this._groundFxLayer = new Node('GroundFxLayer');
+        this._groundFxLayer.setParent(this.node);
+        this._groundFxLayer.addComponent(UITransform).setContentSize(CANVAS_W, CANVAS_H);
+
         // GameLayer — entity graphics
         this._gameLayer = new Node('GameLayer');
         this._gameLayer.setParent(this.node);
@@ -387,7 +400,10 @@ export class GameManager extends Component {
         this._groundFxPool = new SpriteNodePool(this._gameLayer, 40, 'GroundFx', [64, 64]);
         this._turretBasePool = new SpriteNodePool(this._gameLayer, 24, 'TurretBase', [52, 52]);
         this._turretBarrelPool = new SpriteNodePool(this._gameLayer, 24, 'TurretBarrel', [72, 48]);
-        this._summonArtPool = new SpriteNodePool(this._gameLayer, 16, 'SummonArt', [82, 82]);
+        this._summonArtPool = new SpriteNodePool(this._gameLayer, 24, 'SummonArt', [82, 82]);
+        // 地面特效池：GroundFxLayer（残骸之上、实体之下），
+        // 领域型贴图（腐雾）在这里渲染，保证不遮角色/怪物本体。
+        this._groundArtPool = new SpriteNodePool(this._groundFxLayer, 8, 'GroundArt', [64, 64]);
 
         // ParticleLayer — on top of entities
         this._particleLayer = new Node('ParticleLayer');
@@ -1047,7 +1063,7 @@ export class GameManager extends Component {
             if (id.startsWith('boss_') && id !== 'boss_ch1' && id !== 'boss_ch2' && id !== 'boss_ch3' && id !== 'boss_ch4') {
                 this.spawnEnemy('boss', sx, sy, id.slice('boss_'.length));
             } else if (id.startsWith('boss_ch')) {
-                const ch = Number(id.slice('boss_ch'.length)) - 1;
+                const ch = Number(id.slice('boss_ch'.length));
                 this.spawnEnemy('boss', sx, sy, ch);
             } else if (id === 'squid') {
                 // 深海鱿鱼与水柱/水分身共享 12 上限（工具条直出也不超发）
@@ -2797,8 +2813,9 @@ export class GameManager extends Component {
     private _placeEnemyArt(
         key: string, x: number, y: number, width: number, height = width,
         rotationDeg = 0, alpha = 255, tint = '#ffffff',
+        pool: SpriteNodePool = this._enemyArtPool,
     ): void {
-        const node = this._enemyArtPool.acquire();
+        const node = pool.acquire();
         if (!node) return;
         node.getComponent(UITransform)!.setContentSize(Math.max(2, width), Math.max(2, height));
         const sprite = node.getComponent(Sprite)!;
@@ -2824,6 +2841,7 @@ export class GameManager extends Component {
         this._turretBarrelPool.releaseAll();
         this._summonArtPool.releaseAll();
         this._enemyArtPool.releaseAll();
+        this._groundArtPool.releaseAll();
 
         // Background is now the _bgSprite layer (bg_chapter<N>, set in _updateBgForChapter()),
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
@@ -3048,6 +3066,55 @@ export class GameManager extends Component {
             if (z.timer < 0.55) this._placeEnemyArt('fx_enemy_missile', zx, zy + z.timer * 180, 44, 36, -90, 230);
         }
 
+        // 技能瞄准辅助层（纯视觉提示）：Q 方向技就绪虚线瞄准线 + E 放置预览圈。
+        // 不参与任何结算；只在 playing/testRoom 且玩家存活时绘制。
+        if (this._player?.alive && (this.state === 'playing' || this.state === 'testRoom')) {
+            const aim = this._player.qAimPreview?.(this);
+            if (aim) {
+                const [ax0, ay0] = this._toLocal(aim.x, aim.y);
+                const [ax1, ay1] = this._toLocal(aim.x + aim.dx * aim.len, aim.y + aim.dy * aim.len);
+                const pulse = 0.6 + 0.4 * Math.sin(this._visualTime * 5);
+                g.strokeColor = new Color(232, 226, 208, Math.floor(120 * pulse));
+                g.lineWidth = 2;
+                const dist = Math.hypot(ax1 - ax0, ay1 - ay0) || 1;
+                const ux = (ax1 - ax0) / dist, uy = (ay1 - ay0) / dist;
+                for (let d = 0; d < dist; d += 26) {
+                    const seg = Math.min(14, dist - d);
+                    g.moveTo(ax0 + ux * d, ay0 + uy * d);
+                    g.lineTo(ax0 + ux * (d + seg), ay0 + uy * (d + seg)); g.stroke();
+                }
+                const headA = Math.atan2(ay1 - ay0, ax1 - ax0);
+                for (const off of [Math.PI * 0.82, -Math.PI * 0.82]) {
+                    g.moveTo(ax1, ay1);
+                    g.lineTo(ax1 + Math.cos(headA + off) * 16, ay1 + Math.sin(headA + off) * 16); g.stroke();
+                }
+            }
+            const tp = this._player.eTargetPreview?.(this);
+            if (tp) {
+                const [cx, cy] = this._toLocal(tp.x, tp.y);
+                const pulse = 0.55 + 0.45 * Math.sin(this._visualTime * 6);
+                g.fillColor = new Color(168, 224, 110, Math.floor(26 * pulse));
+                g.circle(cx, cy, tp.r); g.fill();
+                g.strokeColor = new Color(168, 224, 110, Math.floor(220 * pulse));
+                g.lineWidth = 3; g.circle(cx, cy, tp.r); g.stroke();
+                // 虚线内环 + 中心十字 + 角色→落点细连线
+                g.lineWidth = 1.5;
+                for (let i = 0; i < 36; i += 2) {
+                    const a0 = (i / 36) * Math.PI * 2, a1 = ((i + 1) / 36) * Math.PI * 2;
+                    g.moveTo(cx + Math.cos(a0) * tp.r * 0.8, cy + Math.sin(a0) * tp.r * 0.8);
+                    g.lineTo(cx + Math.cos(a1) * tp.r * 0.8, cy + Math.sin(a1) * tp.r * 0.8); g.stroke();
+                }
+                g.strokeColor = new Color(220, 255, 190, Math.floor(230 * pulse));
+                g.lineWidth = 2;
+                g.moveTo(cx - 12, cy); g.lineTo(cx + 12, cy); g.stroke();
+                g.moveTo(cx, cy - 12); g.lineTo(cx, cy + 12); g.stroke();
+                const [px0, py0] = this._toLocal(this._player.x, this._player.y);
+                g.strokeColor = new Color(168, 224, 110, Math.floor(70 * pulse));
+                g.lineWidth = 1;
+                g.moveTo(px0, py0); g.lineTo(cx, cy); g.stroke();
+            }
+        }
+
         // Turrets / clones — 用明确的底座、炮管和朝向替代“蓝色圆圈占位”。
         for (const t of this._turrets) {
             if (!t.alive) continue;
@@ -3080,29 +3147,58 @@ export class GameManager extends Component {
                 g.circle(lx, ly, 18 + Math.sin(this._visualTime * 6) * 3); g.stroke();
                 continue;
             }
+            // 骨刺·穿刺闪线：出刺方向 0.28 秒骨白渐隐直线（Q 指向提示）
+            if (t.kind === 'boneSpearFlash') {
+                const [sx0, sy0] = this._toLocal(t.x, t.y);
+                const [ex, ey] = this._toLocal(t.x + t._dx * t._len, t.y + t._dy * t._len);
+                const a = Math.max(0, t._t / 0.28);
+                g.strokeColor = new Color(232, 226, 208, Math.floor(235 * a));
+                g.lineWidth = 9; g.moveTo(sx0, sy0); g.lineTo(ex, ey); g.stroke();
+                g.strokeColor = new Color(255, 252, 240, Math.floor(165 * a));
+                g.lineWidth = 2.5; g.moveTo(sx0, sy0); g.lineTo(ex, ey); g.stroke();
+                continue;
+            }
+            // 亡者天灾·灵魂冲击波：贴图冲击环（fx_plague_wave，随 t.r 扩大）+ 缓旋
+            if (t.kind === 'plagueWave') {
+                const [wx, wy] = this._toLocal(t.x, t.y);
+                const fade = Math.max(0, t._t / 0.7);
+                const size = (t.r + 46) * 2;
+                this._placeEnemyArt('fx_plague_wave', wx, wy, size, size,
+                    (this._visualTime * 40) % 360, Math.floor(235 * fade));
+                continue;
+            }
             // 亡灵法师·骸骨仆从：骨白小圆 + 血圈 + 顶部骨头标识
             if (t.kind === 'skeleton') {
-                const [kx, ky] = this._toLocal(t.x, t.y);
-                const fade = Math.max(0, Math.min(1, t._t / 2));
-                g.fillColor = new Color(232, 226, 208, Math.floor(235 * fade));
-                g.circle(kx, ky, 12); g.fill();
-                g.strokeColor = new Color(90, 84, 70, Math.floor(220 * fade));
-                g.lineWidth = 2; g.circle(kx, ky, 12); g.stroke();
-                g.fillColor = new Color(40, 40, 36, Math.floor(255 * fade));
-                g.circle(kx - 4, ky - 2, 2); g.fill();
-                g.circle(kx + 4, ky - 2, 2); g.fill();
-                // 生命圈：剩余血量比例
+                // 复苏浮现：_spawnT 0.6→0 期间从地下 16px 升起并渐显，脚下画召唤法阵
+                const spawn = t._spawnT ?? 0;
+                const rise = Math.min(1, spawn / 0.6);
+                const [kx, ky] = this._toLocal(t.x, t.y - rise * 16);
+                const fade = Math.max(0, Math.min(1, t._t / 2)) * (1 - rise * 0.85);
+                // 贴图立绘（unit_skeleton）：走召唤物池（实体层，与单位同层不悬浮遮挡）。
+                // 素材抠图后为 148×256 竖长俯视骨架（头朝上），按宽高比 ~1.73 渲染避免拉胖
+                const artW = 40 * (0.72 + 0.28 * (1 - rise));
+                this._placeEnemyArt('unit_skeleton', kx, ky, artW, artW * 1.73, 0,
+                    Math.floor(255 * Math.max(0.25, fade)), '#ffffff', this._summonArtPool);
+                // 生命圈：剩余血量比例（贴图之上的程序叠加）
                 g.strokeColor = new Color(168, 224, 110, Math.floor(220 * fade));
                 g.lineWidth = 2.5;
                 g.arc(kx, ky, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, t.hp / t.maxHp), false); g.stroke();
+                if (spawn > 0) {
+                    // 召唤法阵：地面位置（非浮起位置）收缩法阵圈
+                    const [gx, gy] = this._toLocal(t.x, t.y);
+                    g.strokeColor = new Color(168, 224, 110, Math.floor(210 * (1 - rise)));
+                    g.lineWidth = 2.5;
+                    g.circle(gx, gy, 18 + rise * 10); g.stroke();
+                }
                 continue;
             }
-            // 腐雾领域：瘟绿半透明雾圈 + 内旋纹理
+            // 腐雾领域：贴图毒雾走地面池（实体之下不遮单位）+ 程序边界环保证范围判读。
+            // 2026-10-10 玩家反馈"遮地形"：贴图透明度 235→140，雾要能看见但不能糊掉地面。
             if (t.kind === 'rotFog') {
                 const [fx2, fy2] = this._toLocal(t.x, t.y);
                 const fade = Math.max(0, Math.min(1, t._t / 1.2));
-                g.fillColor = new Color(96, 160, 70, Math.floor(52 * fade));
-                g.circle(fx2, fy2, t.r); g.fill();
+                this._placeEnemyArt('fx_rot_fog', fx2, fy2, t.r * 2.08, t.r * 2.08,
+                    (this._visualTime * 6) % 360, Math.floor(140 * fade), '#ffffff', this._groundArtPool);
                 g.strokeColor = new Color(168, 224, 110, Math.floor(150 * fade));
                 g.lineWidth = 2.5; g.circle(fx2, fy2, t.r); g.stroke();
                 g.strokeColor = new Color(140, 200, 96, Math.floor(70 * fade));
@@ -3702,8 +3798,7 @@ export class GameManager extends Component {
             const width = enemyProjectileSize(radius, art);
             const angle = art.spin !== undefined ? this._visualTime * art.spin
                 : -Math.atan2(b.vy, b.vx) * 180 / Math.PI;
-            this._placeEnemyArt(art.key, bx, by, width, width * art.aspect, angle, 255);
-        }
+            this._placeEnemyArt(art.key, bx, by, width, width * art.aspect, angle, 255);        }
 
         // Player — Sprite node (char_<id> battle token, set up in PlayerController.init)
         // carries the visual; Graphics only draws the shield ring overlay.
@@ -4014,6 +4109,16 @@ export class GameManager extends Component {
         return moveInArena(this._arena, x, y, dx, dy, radius);
     }
 
+    movePlayerBody(dx: number, dy: number) {
+        return moveCombatBody(this._player, dx, dy, this._enemies, (x, y, mx, my, radius) =>
+            moveInArena(this._arena, x, y, mx, my, radius));
+    }
+
+    moveEnemyBody(enemy: EnemyBase, dx: number, dy: number) {
+        return moveEnemyBody(enemy, this._player, this._enemies, dx, dy, (x, y, mx, my, radius) =>
+            moveInArena(this._arena, x, y, mx, my, radius));
+    }
+
     dashInArena(x: number, y: number, dx: number, dy: number, radius: number) {
         return dashInArena(this._arena, x, y, dx, dy, radius);
     }
@@ -4034,7 +4139,7 @@ export class GameManager extends Component {
 
     /**
      * Spawn an enemy of the given type. If x/y omitted, spawns just outside a random edge.
-     * bossKey 仅对 type==='boss' 生效：number=0-based 章节（正式局/测试房章节 Boss），
+     * bossKey 仅对 type==='boss' 生效：number=1-based 图号（测试房章节 Boss），省略则用正式局全局章号，
      * 'mech' | 'abyss' = 测试房文档专属 Boss（TEST_BOSSES）。
      */
     spawnEnemy(type: string, x?: number, y?: number, bossKey?: string | number): EnemyBase {

@@ -1,0 +1,313 @@
+{
+  "complete": true,
+  "date": "2026-10-10T08:52:59.249Z",
+  "results": [
+    {
+      "case": "hero-approach",
+      "id": "grunt",
+      "enemyMovement": 0,
+      "gap": 37,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "shield",
+      "enemyMovement": 0,
+      "gap": 39.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "exploder",
+      "enemyMovement": 0,
+      "gap": 39.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "golem",
+      "enemyMovement": 0,
+      "gap": 45.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "elite_grunt",
+      "enemyMovement": 0,
+      "gap": 41.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "archer",
+      "enemyMovement": 0,
+      "gap": 37,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "miniboss",
+      "enemyMovement": 0,
+      "gap": 49,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "rust_biter",
+      "enemyMovement": 0,
+      "gap": 40,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "needle_gunner",
+      "enemyMovement": 0,
+      "gap": 39.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "ember_acolyte",
+      "enemyMovement": 0,
+      "gap": 40,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "frost_acolyte",
+      "enemyMovement": 0,
+      "gap": 41.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "acid_sac",
+      "enemyMovement": 0,
+      "gap": 41.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "rivet_beast",
+      "enemyMovement": 0,
+      "gap": 48.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "arc_leech",
+      "enemyMovement": 0,
+      "gap": 41.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "gold_scavenger",
+      "enemyMovement": 0,
+      "gap": 39.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "blast_tick",
+      "enemyMovement": 0,
+      "gap": 39.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "squid",
+      "enemyMovement": 0,
+      "gap": 49,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "turtle",
+      "enemyMovement": 0,
+      "gap": 51.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "shrimp",
+      "enemyMovement": 0,
+      "gap": 49,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "jelly",
+      "enemyMovement": 0,
+      "gap": 47.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "drone_a",
+      "enemyMovement": 0,
+      "gap": 41.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "drone_s",
+      "enemyMovement": 0,
+      "gap": 43,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "chain_hound",
+      "enemyMovement": 0,
+      "gap": 47.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "prism_snail",
+      "enemyMovement": 0,
+      "gap": 51.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "triune_priest",
+      "enemyMovement": 0,
+      "gap": 49,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "rail_butcher",
+      "enemyMovement": 0,
+      "gap": 53.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "bell_devourer",
+      "enemyMovement": 0,
+      "gap": 57.000999999999976,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_ch1",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_ch2",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_ch3",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_ch4",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_mech",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_abyss",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_vespa",
+      "enemyMovement": 0,
+      "gap": 71.90099999999995,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_crucible_city",
+      "enemyMovement": 0,
+      "gap": 76.50099999999998,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_manyfold",
+      "enemyMovement": 0,
+      "gap": 74.20100000000002,
+      "pass": true
+    },
+    {
+      "case": "hero-approach",
+      "id": "boss_invader",
+      "enemyMovement": 0,
+      "gap": 70.75099999999998,
+      "pass": true
+    },
+    {
+      "case": "enemy-approach",
+      "id": "grunt",
+      "heroMovement": 0,
+      "damage": 36.36363636360329,
+      "pass": true
+    },
+    {
+      "case": "enemy-approach",
+      "id": "golem",
+      "heroMovement": 0,
+      "damage": 72.7272727272939,
+      "pass": true
+    },
+    {
+      "case": "enemy-approach",
+      "id": "boss_ch1",
+      "heroMovement": 0,
+      "damage": 267.2727272727643,
+      "pass": true
+    },
+    {
+      "case": "enemy-approach",
+      "id": "boss_ch2",
+      "heroMovement": 0,
+      "damage": 420,
+      "pass": true
+    },
+    {
+      "case": "diagonal-slide",
+      "pass": true,
+      "hero": [
+        740.5554463889072,
+        189.37878892813012
+      ]
+    },
+    {
+      "case": "crowd-side-step",
+      "rear": [
+        783.7652961936623,
+        363.2491863557664
+      ],
+      "pass": true
+    },
+    {
+      "case": "hit-stop",
+      "pass": true
+    }
+  ]
+}

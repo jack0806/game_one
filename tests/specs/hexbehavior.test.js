@@ -632,7 +632,7 @@ test('InputManager鼠标模式:首次鼠标移动/按下置位active(触屏不�
     const path = require('node:path');
     const src = fs.readFileSync(path.resolve(__dirname, '..', '..', 'assets/scripts/systems/InputManager.ts'), 'utf8');
     assert.match(src, /mouse = \{ x: 640, y: 360, down: false, active: false \};/, 'mouse.active 初始为 false');
-    assert.match(src, /this\.mouse\.active = true; \}/, '鼠标事件置位 active');
+    assert.match(src, /this\.mouse\.active = true; this\._mouseDownAt = performance\.now\(\); \}/, '鼠标事件置位 active（按下同时记录点击沿时间戳）');
     // 坐标必须用 UI 坐标（设计分辨率）换算——getLocation 是物理像素，
     // 全屏/DPI 缩放下会错位导致瞄准不跟鼠标（与 TouchControls 触点换算同源）
     assert.match(src, /e\.getUILocationX\?\.\(\) \?\? e\.getLocationX\(\)/, '鼠标用 UI 坐标');

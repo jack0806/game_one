@@ -1,0 +1,1312 @@
+[
+  {
+    "id": "grunt",
+    "key": "enemy_grunt",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 0.821917808219178,
+      "dy": {
+        "front": -18,
+        "side": -18,
+        "back": -18
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 35.136,
+    "displayScale": 1.2337349397590363,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "shield",
+    "key": "enemy_shield",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 0.8571428571428571,
+      "dy": {
+        "front": -18,
+        "side": -18,
+        "back": -18
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 37.76,
+    "displayScale": 1.1702857142857142,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "exploder",
+    "key": "enemy_exploder",
+    "rig": "crawler",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "defeated",
+      "skill",
+      "hit"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -13,
+        "side": -13,
+        "back": -13
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 38.400000000000006,
+    "displayScale": 1.2263473053892218,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "golem",
+    "key": "enemy_golem",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "skill",
+      "defeated"
+    ],
+    "calibration": {
+      "scale": 0.6666666666666666,
+      "dy": {
+        "front": -14,
+        "side": -14,
+        "back": -14
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 47.84,
+    "displayScale": 1.4422535211267606,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "elite_grunt",
+    "key": "enemy_elite",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 0.631578947368421,
+      "dy": {
+        "front": -18,
+        "side": -18,
+        "back": -18
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 44.0,
+    "displayScale": 1.517037037037037,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "archer",
+    "key": "enemy_archer",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "jump",
+      "hit",
+      "defeated",
+      "skill",
+      "attack",
+      "walk",
+      "run"
+    ],
+    "calibration": {
+      "scale": 0.821917808219178,
+      "dy": {
+        "front": -18,
+        "side": -18,
+        "back": -18
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 34.559999999999995,
+    "displayScale": 1.1441340782122904,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "miniboss",
+    "key": "enemy_shadow_hunter",
+    "rig": "quadruped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": 8,
+        "side": 8,
+        "back": 12
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 57,
+    "displayScale": 0.8735632183908046,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "rust_biter",
+    "key": "enemy_rust_biter",
+    "rig": "quadruped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -14,
+        "side": -14,
+        "back": -26
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 52.08000000000001,
+    "displayScale": 1.2047058823529413,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "needle_gunner",
+    "key": "enemy_needle_gunner",
+    "rig": "tripod",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -2,
+        "side": -2,
+        "back": -2
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 51.2,
+    "displayScale": 1.2190476190476192,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "ember_acolyte",
+    "key": "enemy_ember_acolyte",
+    "rig": "ember",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -10,
+        "side": -10,
+        "back": -10
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 53.088,
+    "displayScale": 1.1636363636363636,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "frost_acolyte",
+    "key": "enemy_frost_acolyte",
+    "rig": "crystal",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 0.8633093525179856,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 55.616000000000014,
+    "displayScale": 1.2641975308641977,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "acid_sac",
+    "key": "enemy_acid_sac",
+    "rig": "quadruped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 0.9090909090909091,
+      "dy": {
+        "front": -23,
+        "side": -13,
+        "back": -26
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 55.616000000000014,
+    "displayScale": 1.0343434343434343,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "rivet_beast",
+    "key": "enemy_rivet_beast",
+    "rig": "crawler",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -13,
+        "side": -13,
+        "back": -13
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 57,
+    "displayScale": 1.1658304304752163,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "arc_leech",
+    "key": "enemy_arc_leech",
+    "rig": "leech",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 56.32000000000001,
+    "displayScale": 1.1314917127071824,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "gold_scavenger",
+    "key": "enemy_gold_scavenger",
+    "rig": "crawler",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -13,
+        "side": -13,
+        "back": -13
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 51.84000000000001,
+    "displayScale": 1.2337349397590363,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "blast_tick",
+    "key": "enemy_blast_tick",
+    "rig": "crawler",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": 6,
+        "side": 6,
+        "back": 6
+      }
+    },
+    "category": "grunt",
+    "visibleExtent": 49.92000000000001,
+    "displayScale": 1.2337349397590363,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "squid",
+    "key": "enemy_squid",
+    "rig": "tentacle",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3"
+    ],
+    "calibration": {
+      "scale": 0.5,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82,
+    "displayScale": 1.5145743145743147,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "turtle",
+    "key": "enemy_turtle",
+    "rig": "quadruped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -23,
+        "side": -13,
+        "back": -26
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82,
+    "displayScale": 1.2567049808429118,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "shrimp",
+    "key": "enemy_shrimp",
+    "rig": "crawler",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2"
+    ],
+    "calibration": {
+      "scale": 0.967741935483871,
+      "dy": {
+        "front": -21,
+        "side": -21,
+        "back": -21
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82,
+    "displayScale": 1.348233782915864,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "jelly",
+    "key": "enemy_jelly",
+    "rig": "tentacle",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2"
+    ],
+    "calibration": {
+      "scale": 0.96,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82,
+    "displayScale": 1.5567157095396298,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "drone_a",
+    "key": "enemy_drone_attack",
+    "rig": "drone",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82,
+    "displayScale": 2.2210936177416625,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "drone_s",
+    "key": "enemy_drone_support",
+    "rig": "drone",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82,
+    "displayScale": 2.182302062541584,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "chain_hound",
+    "key": "enemy_chain_hound",
+    "rig": "quadruped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill2",
+      "skill"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": 10,
+        "side": 10,
+        "back": 17
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 84.224,
+    "displayScale": 1.0138613861386139,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "prism_snail",
+    "key": "enemy_prism_snail",
+    "rig": "prism",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2"
+    ],
+    "calibration": {
+      "scale": 0.9917355371900827,
+      "dy": {
+        "front": 10,
+        "side": 10,
+        "back": 10
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 101.376,
+    "displayScale": 0.9990243902439025,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "triune_priest",
+    "key": "enemy_triune_priest",
+    "rig": "triune",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 82.56,
+    "displayScale": 1.248780487804878,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "rail_butcher",
+    "key": "enemy_rail_butcher",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3"
+    ],
+    "calibration": {
+      "scale": 0.8333333333333334,
+      "dy": {
+        "front": -18,
+        "side": -18,
+        "back": -18
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 96.83200000000001,
+    "displayScale": 1.1252747252747253,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "bell_devourer",
+    "key": "enemy_bell_devourer",
+    "rig": "bell",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "miniboss",
+    "visibleExtent": 105,
+    "displayScale": 1.0804136440808767,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_ch1",
+    "key": "enemy_boss_ch1",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4"
+    ],
+    "calibration": {
+      "scale": 0.8108108108108109,
+      "dy": {
+        "front": -14,
+        "side": -14,
+        "back": -14
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.2880503144654087,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_ch2",
+    "key": "enemy_boss_ch2",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4"
+    ],
+    "calibration": {
+      "scale": 0.72,
+      "dy": {
+        "front": -14,
+        "side": -14,
+        "back": -14
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.2962025316455696,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_ch3",
+    "key": "enemy_boss_ch3",
+    "rig": "hover",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4"
+    ],
+    "calibration": {
+      "scale": 0.975609756097561,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.1906976744186046,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_ch4",
+    "key": "enemy_boss_ch4",
+    "rig": "tentacle",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4"
+    ],
+    "calibration": {
+      "scale": 0.9302325581395349,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.1976608187134503,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_mech",
+    "key": "enemy_boss_mech",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4"
+    ],
+    "calibration": {
+      "scale": 0.5806451612903226,
+      "dy": {
+        "front": -21,
+        "side": -21,
+        "back": -22
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.2564417177914111,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_abyss",
+    "key": "enemy_boss_abyss",
+    "rig": "tentacle",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4",
+      "skill5"
+    ],
+    "calibration": {
+      "scale": 0.96,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.1570621468926554,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_vespa",
+    "key": "enemy_boss_vespa",
+    "rig": "spider",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4",
+      "skill5"
+    ],
+    "calibration": {
+      "scale": 1.0,
+      "dy": {
+        "front": 18,
+        "side": 11,
+        "back": 12
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 140,
+    "displayScale": 1.0222125882742175,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_crucible_city",
+    "key": "enemy_boss_crucible_city",
+    "rig": "foundry",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4",
+      "skill5"
+    ],
+    "calibration": {
+      "scale": 0.8326530612244898,
+      "dy": {
+        "front": -16,
+        "side": -16,
+        "back": -16
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 147.20000000000002,
+    "displayScale": 1.0835978835978837,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_manyfold",
+    "key": "enemy_boss_manyfold",
+    "rig": "spool",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4",
+      "skill5"
+    ],
+    "calibration": {
+      "scale": 0.8947368421052632,
+      "dy": {
+        "front": -12,
+        "side": -12,
+        "back": -12
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.384,
+    "displayScale": 0.882758620689655,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_invader",
+    "key": "enemy_boss",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4",
+      "skill5"
+    ],
+    "calibration": {
+      "scale": 0.7692307692307693,
+      "dy": {
+        "front": -14,
+        "side": -14,
+        "back": -14
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.150561797752809,
+    "generated": true,
+    "browserVerified": true
+  },
+  {
+    "id": "boss_invader_final",
+    "key": "enemy_boss_final",
+    "rig": "biped",
+    "views": [
+      "front",
+      "side",
+      "back"
+    ],
+    "actions": [
+      "idle",
+      "walk",
+      "run",
+      "jump",
+      "attack",
+      "hit",
+      "defeated",
+      "skill",
+      "skill2",
+      "skill3",
+      "skill4",
+      "skill5"
+    ],
+    "calibration": {
+      "scale": 0.7692307692307693,
+      "dy": {
+        "front": -14,
+        "side": -14,
+        "back": -14
+      }
+    },
+    "category": "boss",
+    "visibleExtent": 144.0,
+    "displayScale": 1.150561797752809,
+    "generated": true,
+    "browserVerified": true
+  }
+]

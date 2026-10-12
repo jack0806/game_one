@@ -1,0 +1,91 @@
+{
+  "id": "chain_hound",
+  "actualArtKey": "enemy_chain_hound",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 143.20000000000073,
+      "delta": -36.79999999999927,
+      "arena": "ch1-random-slot-15-barrier-slot-11-wreck-slot-4-wall",
+      "enemy": [
+        596.7999999999993,
+        220,
+        28,
+        true,
+        92
+      ],
+      "player": [
+        740,
+        220
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 543.2,
+      "delta": -36.799999999999955,
+      "arena": "ch1-random-slot-15-barrier-slot-11-wreck-slot-4-wall",
+      "enemy": [
+        196.79999999999995,
+        220,
+        28,
+        true,
+        92
+      ],
+      "player": [
+        740,
+        220
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "miniboss",
+  "framesChecked": 216,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill2",
+    "front/skill",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill2",
+    "side/skill",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill2",
+    "back/skill"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 84.224,
+  "aiMaxSeconds": 10,
+  "movementPixels": 493.89,
+  "aiActions": [
+    "run",
+    "walk",
+    "attack",
+    "skill",
+    "idle",
+    "skill2"
+  ],
+  "pass": true
+}

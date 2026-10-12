@@ -1,0 +1,94 @@
+{
+  "id": "triune_priest",
+  "actualArtKey": "enemy_triune_priest",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 156.79999999999927,
+      "delta": -23.200000000000728,
+      "arena": "ch1-random-slot-3-barrier-slot-12-barrier-slot-10-wall",
+      "enemy": [
+        663.2000000000007,
+        370,
+        30,
+        true,
+        58
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 556.8000000000002,
+      "delta": -23.199999999999818,
+      "arena": "ch1-random-slot-3-barrier-slot-12-barrier-slot-10-wall",
+      "enemy": [
+        263.1999999999998,
+        370,
+        30,
+        true,
+        58
+      ],
+      "player": [
+        820,
+        370
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "miniboss",
+  "framesChecked": 240,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "front/skill2",
+    "front/skill3",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "side/skill2",
+    "side/skill3",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill",
+    "back/skill2",
+    "back/skill3"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 82.56,
+  "aiMaxSeconds": 10,
+  "movementPixels": 276.63,
+  "aiActions": [
+    "run",
+    "walk",
+    "skill",
+    "attack",
+    "idle",
+    "skill2"
+  ],
+  "pass": true
+}

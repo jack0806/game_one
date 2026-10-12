@@ -1,0 +1,1715 @@
+{
+  "checks": [
+    {
+      "id": "grunt",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 153.9999999999991,
+          "delta": -26.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            666.0000000000009,
+            370,
+            18,
+            true,
+            65
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 554,
+          "delta": -26,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            265.99999999999994,
+            370,
+            18,
+            true,
+            65
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "shield",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 162,
+          "delta": -18,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            658,
+            370,
+            20,
+            true,
+            45
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 562,
+          "delta": -18,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            258,
+            370,
+            20,
+            true,
+            45
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "exploder",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 146.0000000000009,
+          "delta": -33.99999999999909,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            673.9999999999991,
+            370,
+            20,
+            true,
+            85
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 545.9999999999999,
+          "delta": -34.000000000000114,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            274.0000000000001,
+            370,
+            20,
+            true,
+            85
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "golem",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 165.9999999999991,
+          "delta": -14.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            654.0000000000009,
+            370,
+            26,
+            true,
+            35
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 565.9999999999998,
+          "delta": -14.000000000000227,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            254.00000000000023,
+            370,
+            26,
+            true,
+            35
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "elite_grunt",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 150,
+          "delta": -30,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            670,
+            370,
+            22,
+            true,
+            75
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 550,
+          "delta": -30,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            270,
+            370,
+            22,
+            true,
+            75
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "archer",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 204,
+          "delta": 24,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            616,
+            370,
+            18,
+            true,
+            60
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 556,
+          "delta": -24,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            264,
+            370,
+            18,
+            true,
+            60
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "miniboss",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 158.0000000000009,
+          "delta": -21.99999999999909,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            661.9999999999991,
+            370,
+            30,
+            true,
+            55
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 558,
+          "delta": -22,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            261.99999999999994,
+            370,
+            30,
+            true,
+            55
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "rust_biter",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 147.19999999999982,
+          "delta": -32.80000000000018,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            672.8000000000002,
+            370,
+            21,
+            true,
+            82
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 547.1999999999998,
+          "delta": -32.80000000000018,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            272.8000000000002,
+            370,
+            21,
+            true,
+            82
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "needle_gunner",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 180,
+          "delta": 0,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            640,
+            370,
+            20,
+            true,
+            58
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 563.2994625707439,
+          "delta": -16.700537429256087,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            256.7824789481263,
+            379.6077319212752,
+            20,
+            true,
+            58
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "ember_acolyte",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 180,
+          "delta": 0,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            640,
+            370,
+            21,
+            true,
+            50
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 559.9999999999999,
+          "delta": -20.000000000000114,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            260.0000000000001,
+            370,
+            21,
+            true,
+            50
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "frost_acolyte",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 180,
+          "delta": 0,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            640,
+            370,
+            22,
+            true,
+            48
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 560.7999999999997,
+          "delta": -19.200000000000273,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            259.2000000000003,
+            370,
+            22,
+            true,
+            48
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "acid_sac",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 180,
+          "delta": 0,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            640,
+            370,
+            22,
+            true,
+            55
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 558,
+          "delta": -22,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            261.99999999999994,
+            370,
+            22,
+            true,
+            55
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "rivet_beast",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 166.39999999999873,
+          "delta": -13.600000000001273,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            653.6000000000013,
+            370,
+            29,
+            true,
+            34
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 566.4000000000001,
+          "delta": -13.599999999999909,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            253.5999999999999,
+            370,
+            29,
+            true,
+            34
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "arc_leech",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 180,
+          "delta": 0,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            640,
+            370,
+            22,
+            true,
+            68
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 552.8000000000002,
+          "delta": -27.199999999999818,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            267.1999999999998,
+            370,
+            22,
+            true,
+            68
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "gold_scavenger",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 184.83506160899236,
+          "delta": 4.835061608992362,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            640,
+            412,
+            20,
+            true,
+            105
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 622,
+          "delta": 42,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            198,
+            370,
+            20,
+            true,
+            105
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "blast_tick",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 143.20000000000073,
+          "delta": -36.79999999999927,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            676.7999999999993,
+            370,
+            20,
+            true,
+            92
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 543.1999999999996,
+          "delta": -36.80000000000041,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            276.80000000000035,
+            370,
+            20,
+            true,
+            92
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "squid",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 159.9999999999991,
+          "delta": -20.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            660.0000000000009,
+            370,
+            30,
+            true,
+            50
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 559.9999999999999,
+          "delta": -20.000000000000114,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            260.0000000000001,
+            370,
+            30,
+            true,
+            50
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "turtle",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 160.93333333333442,
+          "delta": -19.066666666665583,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            659.0666666666656,
+            370,
+            32,
+            true,
+            40
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 560.9333333333332,
+          "delta": -19.066666666666833,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            259.0666666666669,
+            370,
+            32,
+            true,
+            40
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "shrimp",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 135,
+          "delta": -45,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            685,
+            370,
+            30,
+            true,
+            75
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 535,
+          "delta": -45,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            285,
+            370,
+            30,
+            true,
+            75
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "jelly",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 162,
+          "delta": -18,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            658,
+            370,
+            28,
+            true,
+            45
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 562,
+          "delta": -18,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            258,
+            370,
+            28,
+            true,
+            45
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "drone_a",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 144,
+          "delta": -36,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            676,
+            370,
+            22,
+            true,
+            90
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 544,
+          "delta": -36,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            276,
+            370,
+            22,
+            true,
+            90
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "drone_s",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 152.0000000000009,
+          "delta": -27.99999999999909,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            667.9999999999991,
+            370,
+            24,
+            true,
+            70
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 552,
+          "delta": -28,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            268.00000000000006,
+            370,
+            24,
+            true,
+            70
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "chain_hound",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 143.20000000000073,
+          "delta": -36.79999999999927,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            676.7999999999993,
+            370,
+            28,
+            true,
+            92
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 543.1999999999996,
+          "delta": -36.80000000000041,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            276.80000000000035,
+            370,
+            28,
+            true,
+            92
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "prism_snail",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 161.60000000000036,
+          "delta": -18.399999999999636,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            658.3999999999996,
+            370,
+            32,
+            true,
+            46
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 561.5999999999998,
+          "delta": -18.400000000000205,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            258.4000000000002,
+            370,
+            32,
+            true,
+            46
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "triune_priest",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 156.79999999999927,
+          "delta": -23.200000000000728,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            663.2000000000007,
+            370,
+            30,
+            true,
+            58
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 556.8000000000002,
+          "delta": -23.199999999999818,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            263.1999999999998,
+            370,
+            30,
+            true,
+            58
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "rail_butcher",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 151.1999999999989,
+          "delta": -28.80000000000109,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            668.8000000000011,
+            370,
+            34,
+            true,
+            72
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 551.2000000000003,
+          "delta": -28.799999999999727,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            268.7999999999997,
+            370,
+            34,
+            true,
+            72
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "bell_devourer",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 155.20000000000073,
+          "delta": -24.799999999999272,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            664.7999999999993,
+            370,
+            38,
+            true,
+            62
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 555.1999999999998,
+          "delta": -24.800000000000182,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            264.8000000000002,
+            370,
+            38,
+            true,
+            62
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_ch1",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 155.20000000000073,
+          "delta": -24.799999999999272,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            664.7999999999993,
+            370,
+            45,
+            true,
+            62
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 555.1999999999998,
+          "delta": -24.800000000000182,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            264.8000000000002,
+            370,
+            45,
+            true,
+            62
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_ch2",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 152.80000000000018,
+          "delta": -27.199999999999818,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            667.1999999999998,
+            370,
+            45,
+            true,
+            68
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 552.8000000000002,
+          "delta": -27.199999999999818,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            267.1999999999998,
+            370,
+            45,
+            true,
+            68
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_ch3",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 150.39999999999964,
+          "delta": -29.600000000000364,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            669.6000000000004,
+            370,
+            45,
+            true,
+            74
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 550.4,
+          "delta": -29.600000000000023,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            269.6,
+            370,
+            45,
+            true,
+            74
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_ch4",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 147.9999999999991,
+          "delta": -32.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            672.0000000000009,
+            370,
+            45,
+            true,
+            80
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 548.0000000000001,
+          "delta": -31.999999999999886,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            271.9999999999999,
+            370,
+            45,
+            true,
+            80
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_mech",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 152.80000000000018,
+          "delta": -27.199999999999818,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            667.1999999999998,
+            370,
+            45,
+            true,
+            68
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 552.8000000000002,
+          "delta": -27.199999999999818,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            267.1999999999998,
+            370,
+            45,
+            true,
+            68
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_abyss",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 150.39999999999964,
+          "delta": -29.600000000000364,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            669.6000000000004,
+            370,
+            45,
+            true,
+            74
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 550.4,
+          "delta": -29.600000000000023,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            269.6,
+            370,
+            45,
+            true,
+            74
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_vespa",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 148.8000000000011,
+          "delta": -31.19999999999891,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            671.1999999999989,
+            370,
+            46,
+            true,
+            78
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 548.7999999999997,
+          "delta": -31.200000000000273,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            271.2000000000003,
+            370,
+            46,
+            true,
+            78
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_crucible_city",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 159.9999999999991,
+          "delta": -20.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            660.0000000000009,
+            370,
+            50,
+            true,
+            50
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 559.9999999999999,
+          "delta": -20.000000000000114,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            260.0000000000001,
+            370,
+            50,
+            true,
+            50
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_manyfold",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 154.39999999999873,
+          "delta": -25.600000000001273,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            665.6000000000013,
+            370,
+            48,
+            true,
+            64
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 554.4000000000001,
+          "delta": -25.59999999999991,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            265.5999999999999,
+            370,
+            48,
+            true,
+            64
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_invader",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 153.9999999999991,
+          "delta": -26.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            666.0000000000009,
+            370,
+            45,
+            true,
+            65
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 554,
+          "delta": -26,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            265.99999999999994,
+            370,
+            45,
+            true,
+            65
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    },
+    {
+      "id": "boss_invader_final",
+      "samples": [
+        {
+          "gap": 180,
+          "before": 180,
+          "after": 153.9999999999991,
+          "delta": -26.00000000000091,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            666.0000000000009,
+            370,
+            45,
+            true,
+            65
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        },
+        {
+          "gap": 580,
+          "before": 580,
+          "after": 554,
+          "delta": -26,
+          "arena": "ch1-random-slot-12-barrier-slot-9-barrier-slot-2-wreck",
+          "enemy": [
+            265.99999999999994,
+            370,
+            45,
+            true,
+            65
+          ],
+          "player": [
+            820,
+            370
+          ],
+          "paused": false,
+          "deathPending": false
+        }
+      ]
+    }
+  ],
+  "complete": true
+}

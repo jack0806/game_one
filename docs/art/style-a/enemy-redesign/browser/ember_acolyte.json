@@ -1,0 +1,85 @@
+{
+  "id": "ember_acolyte",
+  "actualArtKey": "enemy_ember_acolyte",
+  "movement": [
+    {
+      "gap": 180,
+      "before": 180,
+      "after": 180,
+      "delta": 0,
+      "arena": "ch1-random-slot-7-wall-slot-9-barrier-slot-11-wreck",
+      "enemy": [
+        640,
+        170,
+        21,
+        true,
+        50
+      ],
+      "player": [
+        820,
+        170
+      ],
+      "paused": false,
+      "deathPending": false
+    },
+    {
+      "gap": 580,
+      "before": 580,
+      "after": 559.9999999999999,
+      "delta": -20.000000000000114,
+      "arena": "ch1-random-slot-7-wall-slot-9-barrier-slot-11-wreck",
+      "enemy": [
+        260.0000000000001,
+        170,
+        21,
+        true,
+        50
+      ],
+      "player": [
+        820,
+        170
+      ],
+      "paused": false,
+      "deathPending": false
+    }
+  ],
+  "category": "grunt",
+  "framesChecked": 192,
+  "views": 3,
+  "actions": [
+    "front/idle",
+    "front/walk",
+    "front/run",
+    "front/jump",
+    "front/attack",
+    "front/hit",
+    "front/defeated",
+    "front/skill",
+    "side/idle",
+    "side/walk",
+    "side/run",
+    "side/jump",
+    "side/attack",
+    "side/hit",
+    "side/defeated",
+    "side/skill",
+    "back/idle",
+    "back/walk",
+    "back/run",
+    "back/jump",
+    "back/attack",
+    "back/hit",
+    "back/defeated",
+    "back/skill"
+  ],
+  "mirrorChecked": true,
+  "visibleExtent": 53.088,
+  "aiMaxSeconds": 10,
+  "movementPixels": 0,
+  "aiActions": [
+    "run",
+    "idle",
+    "attack"
+  ],
+  "pass": true
+}
