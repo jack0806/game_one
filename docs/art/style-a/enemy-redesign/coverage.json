@@ -1331,7 +1331,7 @@
       "skill3"
     ],
     "calibration": {
-      "scale": 0.8391608391608392,
+      "scale": 0.8717948717948718,
       "dy": {
         "front": -17,
         "side": -17,
@@ -1340,7 +1340,7 @@
     },
     "category": "boss",
     "visibleExtent": 90,
-    "displayScale": 1.2549019607843137,
+    "displayScale": 1.20792702107581,
     "generated": true,
     "browserVerified": false
   }

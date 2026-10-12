@@ -762,7 +762,8 @@ export class EnemyBase {
         }
         else if (!this.actorAnimation.locked) {
             const action: ActorAction = moved < 0.015 ? 'idle'
-                : moved / Math.max(0.001, dt) > Math.max(120, this.speed * 1.2) ? 'run' : 'walk';
+                : ((bodyKind === 'joker' && boss.jokerSprintT > 0) ||
+                    moved / Math.max(0.001, dt) > Math.max(120, this.speed * 1.2)) ? 'run' : 'walk';
             if (!actorClip(this.animationSpriteKey, facing.view, action)) this.actorAnimation.reset();
             else play(action);
             this.animationView = facing.view; this.animationMirror = facing.mirror;

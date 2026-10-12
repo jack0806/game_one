@@ -91,6 +91,9 @@ export class BossController extends EnemyBase {
     // 滑稽猴（joker，彩蛋Boss）状态：加速/恶作剧/耳光三技能独立冷却
     /** 技能1·上蹿下跳：移速+50% 剩余时间（>0 时 buffSpeedMult=1.5）。 */
     jokerSprintT = 0;
+    /** 上蹿下跳贴身时绕行方向，避免抵达接触距离后原地踏步。 */
+    jokerOrbitSign = 1;
+    private _jokerHopSwitchT = 0;
     /** 仅驱动滑稽猴本体动作；1加速、2恶作剧、3耳光。 */
     visualJokerSkillT = 0;
     visualJokerSkillIndex = 0;
@@ -123,7 +126,8 @@ export class BossController extends EnemyBase {
         this._abyssCloneCd = 16; this._abyssSquidCd = 20;
         this.attackWindup = 0; this._chargeTime = 0;
         this.finalForm = false; this._invFormT = 0; this.invLaserT = 0;
-        this.jokerSprintT = 0; this._jokerSprintCd = 5; this._jokerTrickCd = 3; this._jokerSlapCd = 4;
+        this.jokerSprintT = 0; this.jokerOrbitSign = 1; this._jokerHopSwitchT = 0;
+        this._jokerSprintCd = 5; this._jokerTrickCd = 3; this._jokerSlapCd = 4;
         this.visualJokerSkillT = 0; this.visualJokerSkillIndex = 0;
         this.mechanicFrozen = 0;
         this.visualInvaderSkillT = 0; this.visualInvaderSkillIndex = 0;
@@ -318,7 +322,7 @@ export class BossController extends EnemyBase {
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
             if (this._chargeTime <= 0) this.isCharging = false;
-        } else if (this.attackWindup <= 0) {
+        } else if (this.attackWindup <= 0 || (this.bossKind === 'joker' && this.jokerSprintT > 0)) {
             // 普通追逐（对齐 hexblast-py：追逐速度要乘slowMult，之前完全没接线，
             // 导致减速类词条/技能对boss完全无效）
             const toPlayerX = player.x - this.x;
@@ -328,14 +332,27 @@ export class BossController extends EnemyBase {
             const [dx, dy] = Vec.normalize(route.x - this.x, route.y - this.y);
             // 停在真实身体边界，近身时不再靠后撤修补穿透。
             const standDistance = contactDistance(this, player);
-            const moveSpeed = this.speed * this.slowMult;
+            const moveSpeed = this.speed * this.slowMult * (this.bossKind === 'joker' ? this.buffSpeedMult : 1);
             let step = 0;
+            let moveX = dx, moveY = dy;
             if (distance > standDistance + 0.5) {
                 step = Math.min(moveSpeed * dt, distance - standDistance);
             }
-            const next = game.moveEnemyBody?.(this, dx * step, dy * step);
-            this.x = next ? next.x : this.x + dx * step;
-            this.y = next ? next.y : this.y + dy * step;
+            if (this.bossKind === 'joker' && this.jokerSprintT > 0 && distance <= standDistance + 0.6) {
+                // 贴身后沿接触圆弧左右侧跳，避免切向直线位移把自己甩出攻击距离。
+                const radius = Math.max(standDistance, distance);
+                const awayX = distance > 0.001 ? -toPlayerX / distance : -1;
+                const awayY = distance > 0.001 ? -toPlayerY / distance : 0;
+                const angle = Math.min(0.35, Math.min(moveSpeed, 210) * dt / radius) * this.jokerOrbitSign;
+                const targetX = player.x + radius * (awayX * Math.cos(angle) - awayY * Math.sin(angle));
+                const targetY = player.y + radius * (awayX * Math.sin(angle) + awayY * Math.cos(angle));
+                moveX = targetX - this.x;
+                moveY = targetY - this.y;
+                step = 1;
+            }
+            const next = game.moveEnemyBody?.(this, moveX * step, moveY * step);
+            this.x = next ? next.x : this.x + moveX * step;
+            this.y = next ? next.y : this.y + moveY * step;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
@@ -795,6 +812,11 @@ export class BossController extends EnemyBase {
         // 技能1·上蹿下跳：3秒移速+50%（走到 EnemyBase 的 buffSpeedMult 乘区）
         if (this.jokerSprintT > 0) {
             this.jokerSprintT -= dt;
+            this._jokerHopSwitchT -= dt;
+            if (this._jokerHopSwitchT <= 0) {
+                this.jokerOrbitSign *= -1;
+                this._jokerHopSwitchT += 0.35;
+            }
             if (this.jokerSprintT <= 0) {
                 this.jokerSprintT = 0;
                 this.buffSpeedMult = 1;
@@ -804,6 +826,8 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._jokerSprintCd <= 0) {
             this._jokerSprintCd = 9;
             this.jokerSprintT = 3;
+            this.jokerOrbitSign = Rng.chance(0.5) ? 1 : -1;
+            this._jokerHopSwitchT = 0.35;
             this.buffSpeedMult = 1.5;
             this.visualJokerSkillT = 0.65; this.visualJokerSkillIndex = 1;
             game.floatingText?.spawn?.(this.x, this.y - 90, '上蹿下跳！', this.glowColor, 18, true);

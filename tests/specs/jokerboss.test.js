@@ -149,6 +149,34 @@ test('技能1·上蹿下跳:3秒移速+50%,到期恢复', () => {
     assert.equal(boss.buffSpeedMult, 1, '到期恢复原速');
 });
 
+test('上蹿下跳:追逐实际加速，贴身后侧跳且动作跟随移动', () => {
+    const game = makeMockGame();
+    const far = makeVictim(900, 300);
+    const walking = makeJoker(game);
+    walking.update(0.1, far, game);
+    const sprint = makeJoker(game);
+    sprint._jokerSprintCd = 0.01;
+    sprint.update(0.1, far, game);
+    assert.ok(sprint.x - 300 > (walking.x - 300) * 1.45, '冲刺真实位移比普通追逐快50%');
+    sprint.visualJokerSkillT = 0;
+    sprint.updateVisualAnimation(0.016, far);
+    assert.equal(sprint.actorAnimation.action, 'run', '冲刺剩余时间继续使用快速步态');
+
+    const near = makeVictim(355, 300);
+    const hopping = makeJoker(game);
+    hopping._jokerSprintCd = 0.01;
+    hopping.update(0.1, near, game);
+    assert.ok(Math.hypot(hopping.x - 300, hopping.y - 300) > 10, '贴身时不原地播放提示');
+    assert.ok(Math.hypot(hopping.x - near.x, hopping.y - near.y) >= 55, '侧跳不穿过玩家身体');
+    let travel = 0;
+    for (let frame = 0; frame < 12; frame++) {
+        const beforeX = hopping.x, beforeY = hopping.y;
+        hopping.update(1 / 60, near, game);
+        travel += Math.hypot(hopping.x - beforeX, hopping.y - beforeY);
+    }
+    assert.ok(travel > 20, '进入普通攻击前摇后仍连续侧跳');
+});
+
 // ── 技能2：滑稽恶作剧 ───────────────────────────────────────
 
 test('技能2·滑稽恶作剧:150码内随机一种3秒恶作剧,150码外不放', () => {

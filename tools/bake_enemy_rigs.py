@@ -173,6 +173,17 @@ def main():
                 for ai,action in enumerate(('skill','skill2','skill3')):
                     skills.alpha_composite(framed_pose(parts[view],view,action,.5,unit,calibration),(ai*SIZE,vi*SIZE))
             skills.save(out/'boss_joker-skills.png')
+            motion = Image.new('RGBA',(SIZE*8,SIZE*6),'#354454')
+            for vi,view in enumerate(VIEWS):
+                for ai,action in enumerate(('skill','skill3')):
+                    for frame in range(8):
+                        motion.alpha_composite(framed_pose(parts[view],view,action,frame/7,unit,calibration),
+                                               (frame*SIZE,(vi*2+ai)*SIZE))
+            motion.save(out/'boss_joker-motion.png')
+            shoulder = Image.new('RGBA',(SIZE*4,SIZE),'#354454')
+            for ai,(action,t) in enumerate((('idle',0),('walk',.25),('skill',.5),('skill3',.5))):
+                shoulder.alpha_composite(framed_pose(parts['side'],'side',action,t,unit,calibration),(ai*SIZE,0))
+            shoulder.save(out/'boss_joker-side-connection.png')
         roster.alpha_composite(framed_pose(parts['front'],'front','idle',0,unit,calibration),(n%6*256,n//6*256))
         if args.publish:
             # 既有静态/方向回退资源同名覆盖，防止刚生成或异步载入时闪回旧形象。

@@ -29,17 +29,19 @@
 
 | 玩法动作 | 身体动作节奏 | 阅读重点 |
 | --- | --- | --- |
-| 上蹿下跳 | 蹲低压缩 → 后腿交替弹出 → 尾巴滞后甩动 → 结束减速回稳 | 加速期间轮廓前倾且步频变快；不改变现有实际移速或碰撞。 |
+| 上蹿下跳 | 蹲低压缩 → 身体带四肢离地 → 尾巴滞后甩动 → 快速步态 | 加速期间实际追逐速度提高 50%；贴身时沿接触圆弧左右侧跳，不穿过玩家。 |
 | 滑稽恶作剧 | 一手指向玩家，另一手碰背带装置；躯干侧倾，装置短促闪亮后回到待机 | 与耳光分开：手掌闭合、不做挥击；四种减益共用身体动作，现有文字与暗角负责区分结果。 |
 | 滑稽耳光 | 掌面外翻并明显后撤 → 肩部带动横扫 → 大掌短暂停在命中方向 → 收臂 | 掌面是前摇识别点；峰值对应现有伤害与眩晕时刻，不重做命中特效。 |
 | 受击 / 倒地 | 耳朵和头后仰、尾巴先失衡；倒地时四肢打开、尾巴松卷 | 和主动跳跃分清，避免被误读为再次加速。 |
 
 ## 已制作并接入
 
-- 透明分件源稿：[boss_joker.png](../enemy-redesign/rigs/boss_joker.png)，正、侧、背各六件。三方向动作图集 `anim_stylea_boss_joker_front/side/back` 各为 2048×2560，8 帧×10 行；[动作总览](../enemy-redesign/qa/boss_joker-contact.png)和[三技能对照](../enemy-redesign/qa/boss_joker-skills.png)可检查轮廓与姿势。
+- 透明分件源稿：[boss_joker.png](../enemy-redesign/rigs/boss_joker.png)，正、侧、背各六件。三方向动作图集 `anim_stylea_boss_joker_front/side/back` 各为 2048×2560，8 帧×10 行；[动作总览](../enemy-redesign/qa/boss_joker-contact.png)、[三技能对照](../enemy-redesign/qa/boss_joker-skills.png)与[起跳/耳光逐帧检查](../enemy-redesign/qa/boss_joker-motion.png)可检查轮廓、肩关节和姿势。
 - `enemy_boss_joker.png` 是 512×512 静态回退图。`BossDB.TEST_BOSSES` 已指向该 key，并取消金黄染色。小体型例外约 90–105 逻辑像素，碰撞半径和技能数值仍由原数据控制。
 - `anim_fx_joker_trick.png` 用于冲刺启动与恶作剧命中；`anim_fx_joker_slap.png` 用于近战挥掌。两张均为透明四帧图集，动画和资源元数据已经登记。
 - 三技能触发时分别切换 `skill`、`skill2`、`skill3` 动作。结算当帧对齐动作爆发帧；现有伤害、减益与玩偶猴掉落逻辑不变。
+- 2026-10-12 截图反馈修正：近侧手臂围绕三方向各自的肩关节转动，不再平移独立手掌；上蹿下跳的 50% 加速已接入实际位移，并在贴身时左右侧跳。
+- 侧面实机截图复核：前臂根部进一步压入肩部体块，手掌下旋以露出面部；正面肩关节也加深搭接。[侧面肩臂对照](../enemy-redesign/qa/boss_joker-side-connection.png)涵盖待机、移动、起跳和耳光，逐帧检查见上方动作图。
 
 现有 `anim_hit_units_10` 仍是玩家受击时的程序化占位命中图，后续可单独重绘。当前以图集对照、资源校验、运行时 headless 测试验收；仍需在 Cocos Creator 的 1280×720 测试房预览中检查正/侧/背切换、密集战斗辨识、贴身碰撞与实际加载效果。
 

@@ -46,7 +46,7 @@ def render_pose(parts, view, action, t, unit, markers=None):
     skill = int(action[-1]) if action[-1:].isdigit() else 1
     hurt = math.sin(t*math.pi) if action == 'hit' else 0
     fall = min(1,t*1.5) if action == 'defeated' else 0
-    jump = math.sin(t*math.pi)*24 if action == 'jump' else 0
+    jump = math.sin(t*math.pi) * (24 if action == 'jump' else 26 if kind == 'joker' and action == 'skill' else 0)
     bob = (-abs(math.sin(cycle))*2 if moving else breath)-jump+fall*15
     lean = 0
     # 全身根只允许小幅重心位移。发力来自肢体，不把整图压扁当动作。
@@ -63,7 +63,7 @@ def render_pose(parts, view, action, t, unit, markers=None):
     if kind == 'joker':
         # 彩蛋猴以卷尾和巴掌构成轮廓：尾巴滞后、双足弹跳、右掌单独出击。
         spring = math.sin(cycle) if moving else 0
-        crouch = 7 * power if action == 'skill' else 0
+        crouch = 7 * (1 - power) if action == 'skill' else 0
         tail_swing = math.sin(cycle - .9) * (11 if moving else 3)
         body_y = 111 + bob + crouch + fall * 9
         draw_part(canvas, parts[5], 105, (.43, .86),
@@ -83,16 +83,17 @@ def render_pose(parts, view, action, t, unit, markers=None):
                   (127 + shift, body_y),
                   -spring * 3 - hurt * 8 + fall * 26)
         slap = action in ('attack', 'skill3')
-        slap_power = power if slap else 0
-        palm_angle = (-70 if not back else 70) * slap_power
-        if trick: palm_angle = 65 * power
-        palm_x = (171 if side else 158 if back else 179) + shift if trick else (190 if side else 205) + shift
-        palm_y = (100 if trick else 142) + bob + crouch
-        if slap:
-            palm_x += 3
-            palm_y -= 62 * slap_power
-        draw_part(canvas, parts[2], 100 if slap else 59 if trick else 72, (.53, .14),
-                  (palm_x, palm_y), palm_angle - 38 + step * 10 + fall * 60)
+        # 近侧手臂源稿的截断端就是肩关节：正面在右端，侧面在左端，背面在左下端。
+        # 所有动作都围绕肩关节转动，手掌不能单独平移到躯干外侧。
+        arm_pivot = (.18, .76) if back else (.16, .62) if side else (.89, .54)
+        arm_angle = (0 if back else -20 if side else 180) + step * 10
+        if trick: arm_angle += (30 if not back else -32) * power
+        if slap: arm_angle += 70 * power
+        arm_angle += fall * 60
+        arm_x = (161 if back else 137 if side else 160) + shift
+        arm_y = (136 if side else 133 if not back else 127) + bob + crouch
+        draw_part(canvas, parts[2], 87 if slap else 62 if trick else 72, arm_pivot,
+                  (arm_x, arm_y), arm_angle)
     elif kind == 'biped':
         body_h = 139 if uid in HEAVY else 143
         body_w = parts[0].width/parts[0].height*body_h
