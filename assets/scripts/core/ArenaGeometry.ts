@@ -179,16 +179,65 @@ export function isArenaFree(arena: ArenaLayout, x: number, y: number, radius: nu
     return !arenaSolids(arena).some(obstacle => overlapsObstacle(x, y, radius, obstacle));
 }
 
-/** 分步推进并分别尝试 X/Y，贴墙移动时自然沿墙滑动。 */
+/** 碰到斜边时按输入方向扇形试探，选择仍有前进分量的可行切向。 */
+function slideStep(arena: ArenaLayout, x: number, y: number, dx: number, dy: number, radius: number): ArenaPoint {
+    const length = Math.hypot(dx, dy);
+    if (length < 1e-8) return { x, y };
+    let best = { x, y }, bestProgress = 0;
+    const angles = [0, 15, -15, 30, -30, 45, -45, 60, -60, 75, -75, 85, -85];
+    for (const degrees of angles) {
+        const angle = degrees * Math.PI / 180;
+        const vx = dx * Math.cos(angle) - dy * Math.sin(angle);
+        const vy = dx * Math.sin(angle) + dy * Math.cos(angle);
+        const freeAt = (t: number) => {
+            const check = (fraction: number) => {
+                const nx = clampValue(x + vx * t * fraction, radius, CANVAS_W - radius);
+                const ny = clampValue(y + vy * t * fraction, radius, PLAYFIELD_BOTTOM - radius);
+                return isArenaFree(arena, nx, ny, radius);
+            };
+            // 途中也采样，避免候选终点恰好落在薄路障另一侧。
+            return check(1) && check(0.5) && check(0.25) && check(0.75);
+        };
+        let fraction = 1;
+        if (!freeAt(1)) {
+            let low = 0, high = 1;
+            for (let i = 0; i < 7; i++) {
+                const middle = (low + high) / 2;
+                if (freeAt(middle)) low = middle;
+                else high = middle;
+            }
+            fraction = low;
+        }
+        const nx = clampValue(x + vx * fraction, radius, CANVAS_W - radius);
+        const ny = clampValue(y + vy * fraction, radius, PLAYFIELD_BOTTOM - radius);
+        const progress = ((nx - x) * dx + (ny - y) * dy) / length;
+        if (progress >= length * 0.15 && progress > bestProgress + 0.01) {
+            best = { x: nx, y: ny }; bestProgress = progress;
+        }
+    }
+    return best;
+}
+
+/** 分步推进；正面受阻时沿地形切向滑动，避免纯水平/竖直输入卡在斜边。 */
 export function moveInArena(arena: ArenaLayout, x: number, y: number, dx: number, dy: number, radius: number): ArenaPoint {
-    const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 12));
+    const travel = Math.hypot(dx, dy);
+    const steps = Math.max(1, Math.ceil(travel / 12));
+    // 大幅技能位移只截断/分轴，避免一次推挤就自动绕过整个掩体。
+    const walkingStep = travel <= 48;
     let px = x, py = y;
     for (let i = 0; i < steps; i++) {
         const nx = clampValue(px + dx / steps, radius, CANVAS_W - radius);
         const ny = clampValue(py + dy / steps, radius, PLAYFIELD_BOTTOM - radius);
         if (isArenaFree(arena, nx, ny, radius)) { px = nx; py = ny; continue; }
-        if (isArenaFree(arena, nx, py, radius)) px = nx;
-        if (isArenaFree(arena, px, ny, radius)) py = ny;
+        // 底图边界要维持可见墙体的停靠点；独立残骸才允许顺斜边滑行。
+        const blocker = walkingStep ? firstSegmentHit(arena, px, py, nx, ny, radius, false) : undefined;
+        if (blocker && arena.obstacles.indexOf(blocker as ArenaObstacle) >= 0) {
+            const slid = slideStep(arena, px, py, dx / steps, dy / steps, radius);
+            px = slid.x; py = slid.y;
+        } else {
+            if (isArenaFree(arena, nx, py, radius)) px = nx;
+            if (isArenaFree(arena, px, ny, radius)) py = ny;
+        }
     }
     return { x: px, y: py };
 }

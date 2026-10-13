@@ -80,6 +80,22 @@ test('冲刺撞到建筑或画布边界时沿原路径停止，斜墙外的空�
     assert.equal(isArenaFree(tilted, 570, 335, 8), false, '斜墙实际实体仍挡人');
 });
 
+test('英雄与大小敌人直走碰到斜向路障时沿边缘滑动且不穿墙', () => {
+    const tilted = { id: 'slide-test', chapter: 0, obstacles: [{
+        id: 'sloped', x: 640, y: 360, w: 240, h: 30, angleDeg: 45, blocksBullets: true,
+    }] };
+    for (const radius of [16, 18, 70]) {
+        let point = { x: 390, y: 360 };
+        assert.equal(isArenaFree(tilted, point.x, point.y, radius), true);
+        for (let frame = 0; frame < 150; frame++) {
+            point = moveInArena(tilted, point.x, point.y, 3, 0, radius);
+            assert.equal(isArenaFree(tilted, point.x, point.y, radius), true);
+        }
+        assert.ok(point.x > 620, `半径${radius}能沿斜边继续前进：${JSON.stringify(point)}`);
+        assert.ok(Math.abs(point.y - 360) > 35, `半径${radius}沿斜边产生斜向位移`);
+    }
+});
+
 test('六章各有两套场地并保留中央 Boss 区', () => {
     assert.equal(CHAPTER_ARENAS.length, 12);
     for (let chapter = 1; chapter <= 6; chapter++) {
