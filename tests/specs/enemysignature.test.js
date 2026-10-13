@@ -9,7 +9,7 @@ const { BossController } = require('../dist/entities/BossController');
 const { makeMockGame, makePlayer } = require('./mockGame');
 const { enemyProjectileArt } = require('../dist/data/CombatArtDB');
 
-test('十一名小首领与十一名首领的出手和全部主动技能都有专属轮廓', () => {
+test('十一名小首领与十一名首领的出手和全部主动技能都有独立配置', () => {
     const required = {
         squid: 3, turtle: 2, shrimp: 2, jelly: 2, drone_a: 2, drone_s: 3,
         chain_hound: 2, prism_snail: 2, triune_priest: 3, rail_butcher: 3, bell_devourer: 4,
@@ -33,18 +33,23 @@ test('十一名小首领与十一名首领的出手和全部主动技能都有�
     }
 });
 
-test('技能轨迹使用不同形状，命中轨迹按比例收敛且暂停后保持原位', () => {
+test('普攻与命中不叠加线框，技能只产生短时本体色碎屑', () => {
     const particles = new ParticleManager();
+    particles.enemySignature('boss_vespa', 'attack', 300, 200, 0);
+    assert.equal(particles.particles.length, 0);
     particles.enemySignature('boss_vespa', 'skill1', 300, 200, 0);
-    const web = particles.particles.filter(p => p.type === 'line').map(p => [p.x, p.y, p.x2, p.y2]);
+    const web = particles.particles.map(p => p.color);
+    assert.ok(particles.particles.every(p => p.type === 'dot' && p.life <= 0.24));
     particles.clear();
     particles.enemySignature('boss_vespa', 'skill3', 300, 200, 0);
-    const rain = particles.particles.filter(p => p.type === 'line').map(p => [p.x, p.y, p.x2, p.y2]);
+    const rain = particles.particles.map(p => p.color);
     assert.notDeepEqual(web, rain);
+    assert.ok(particles.particles.every(p => p.type === 'dot'));
     particles.clear();
     particles.playerHit(300, 200, { source: 'boss_vespa', kind: 'vespa_rain' });
     assert.equal(particles.spriteFx[0].key, 'fx_damage_boss_vespa');
-    assert.ok(particles.particles.some(p => p.type === 'line'));
+    assert.equal(particles.particles.length, 0);
+    particles.enemySignature('boss_vespa', 'skill1', 300, 200, 0);
     const life = particles.particles[0].life;
     particles.update(0);
     assert.equal(particles.particles[0].life, life);
@@ -108,13 +113,14 @@ test('同弹种的首领弹体按伤害来源选择不同外形与尾迹', () =>
     assert.notEqual(hexColor, particles.particles[0].color);
 });
 
-test('首领近战不再被共用刃片盖住，滑稽猴保留专属耳光逐帧图', () => {
+test('首领近战不叠加线框或共用刃片，滑稽猴保留专属耳光逐帧图', () => {
     const p = new ParticleManager();
     p.meleeSlash(100, 100, 0, '#88ccff', 90, 1.5, 'boss_mech');
     assert.equal(p.spriteFx.length, 0);
-    assert.ok(p.particles.some(q => q.type === 'line'));
+    assert.ok(p.particles.length > 0);
+    assert.ok(p.particles.every(q => q.type === 'dot'));
     p.clear();
     p.meleeSlash(100, 100, 0, '#ffd24d', 70, 1.5, 'boss_joker');
     assert.equal(p.spriteFx[0].key, 'fx_joker_slap');
-    assert.ok(p.particles.some(q => q.type === 'line'));
+    assert.ok(p.particles.every(q => q.type === 'dot'));
 });

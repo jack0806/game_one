@@ -137,7 +137,7 @@ const PROJECTILE_HIT_SOURCE: Record<string, string> = {
     arc: 'arc_leech', homing: 'boss_ch3', beam: 'drone_a',
 };
 
-/** 特殊命中使用本体专属碎裂帧；附加的技能几何由 ParticleManager 绘制。 */
+/** 特殊命中使用本体专属碎裂帧。 */
 export function enemyHitArt(hit: EnemyHitContext = {}): { key: string; size: number } {
     return ENEMY_HIT_ART[hit.source ?? ''] ?? ENEMY_HIT_ART[PROJECTILE_HIT_SOURCE[hit.kind ?? '']] ?? ENEMY_HIT_ART.physical;
 }

@@ -1,4 +1,4 @@
-import { UNIT_ATTACK_ART, enemyHitArt, enemyImpactSkill, EnemyHitContext } from '../data/CombatArtDB';
+import { UNIT_ATTACK_ART, enemyHitArt, EnemyHitContext } from '../data/CombatArtDB';
 // ============================================================
 //  ParticleManager.ts — 粒子特效管理器（纯逻辑，与渲染解耦）
 // ============================================================
@@ -151,8 +151,6 @@ export class ParticleManager {
         });
         const created = this.spriteFx[this.spriteFx.length - 1];
         created.follow = target; created.followOffsetY = -6; created.playerContact = true; created.contactKind = hit.kind;
-        const skill = enemyImpactSkill(hit);
-        if (skill && hit.source) this.enemySignature(hit.source, skill, x, y, hit.angle ?? 0, 0.45);
         // 渲染池按数组顺序分配；玩家受击优先，不能被敌群的命中火花挤掉。
         this.spriteFx.unshift(this.spriteFx.pop()!);
     }
@@ -308,85 +306,22 @@ export class ParticleManager {
             speedMin: 60, speedMax: 150, lifeMin: 0.08, lifeMax: 0.19,
             sizeMin: 1.5, sizeMax: 3, glow: false,
             angleMin: angle - 0.65, angleMax: angle + 0.65 });
-        if (signature) this.enemySignature(unit!, 'attack', centerX, centerY, angle);
     }
 
-    /** 首领技能的短时剪影：每招在数据表中指定几何语言，全部随战斗时间自然消散。 */
+    /** 施法只留下少量本体色碎屑；实际动作、弹体和落点资源承担技能辨识。 */
     enemySignature(unit: string, skill: string, x: number, y: number, angle = 0, scale = 1): void {
         const cfg = ENEMY_SIGNATURES[unit]?.[skill as keyof typeof ENEMY_SIGNATURES[string]];
-        if (!cfg) return;
-        // 小 Boss 体型较小，轮廓需要跨过数帧才能被玩家辨认；仍在下次出招前消散。
-        const life = skill === 'attack' ? 0.35 : 0.68;
-        const line = (ax: number, ay: number, bx: number, by: number, color: string, width = 2.5) => {
-            this.particles.push({ x: ax, y: ay, x2: bx, y2: by, vx: 0, vy: 0,
-                life, maxLife: life, size: 2, color, fade: true, gravity: false,
-                glow: true, type: 'line', alpha: 0.88, lineWidth: width });
-        };
-        const ring = (radius: number, color: string, width = 2.5) => {
-            this.particles.push({ x, y, vx: 0, vy: 0, life, maxLife: life, size: 2,
-                color, fade: true, gravity: false, glow: true, type: 'ring',
-                radius, startRadius: radius, maxRadius: radius * 1.45, alpha: 0.78, lineWidth: width });
-        };
-        const polar = (a: number, r: number): [number, number] => [x + Math.cos(a) * r, y + Math.sin(a) * r];
-        const n = cfg.count, r = cfg.radius * scale;
-        if (cfg.shape === 'pulse' || cfg.shape === 'ripple') {
-            ring(r * 0.28, cfg.color, cfg.shape === 'pulse' ? 4 : 2);
-            ring(r * 0.67, cfg.accent, cfg.shape === 'pulse' ? 2 : 1.5);
-            if (cfg.shape === 'pulse') for (let i = 0; i < n; i++) {
-                const a = angle + i * Math.PI * 2 / n;
-                const [ax, ay] = polar(a, r * 0.68), [bx, by] = polar(a, r);
-                line(ax, ay, bx, by, cfg.color, 3);
-            }
-        } else if (cfg.shape === 'rail') {
-            const px = -Math.sin(angle), py = Math.cos(angle);
-            for (let i = 0; i < n; i++) {
-                const offset = (i - (n - 1) / 2) * 9;
-                line(x + px * offset - Math.cos(angle) * r * 0.22,
-                    y + py * offset - Math.sin(angle) * r * 0.22,
-                    x + px * offset + Math.cos(angle) * r,
-                    y + py * offset + Math.sin(angle) * r,
-                    i % 2 ? cfg.accent : cfg.color, i === 0 || i === n - 1 ? 2 : 3);
-            }
-        } else if (cfg.shape === 'fang' || cfg.shape === 'fork') {
-            for (let i = 0; i < n; i++) {
-                const a = angle + (i - (n - 1) / 2) * (cfg.shape === 'fang' ? 0.24 : 0.43);
-                const [ax, ay] = polar(a - 0.18, r * 0.25), [mx, my] = polar(a, r * 0.68);
-                const [bx, by] = polar(a + 0.11, r);
-                line(ax, ay, mx, my, cfg.color, 3.5);
-                line(mx, my, bx, by, cfg.accent, 2);
-            }
-        } else if (cfg.shape === 'coil' || cfg.shape === 'orbit') {
-            let [px, py] = polar(angle, r * 0.15);
-            for (let i = 1; i <= n * 3; i++) {
-                const t = i / (n * 3), a = angle + t * Math.PI * (cfg.shape === 'coil' ? 2.4 : 3.6);
-                const [nx, ny] = polar(a, r * (0.15 + t * 0.85));
-                line(px, py, nx, ny, i % 3 === 0 ? cfg.accent : cfg.color, 2.4);
-                px = nx; py = ny;
-            }
-        } else {
-            for (let i = 0; i < n; i++) {
-                const a = angle + i * Math.PI * 2 / n;
-                const [ax, ay] = polar(a, r * (cfg.shape === 'web' ? 0.58 : 0.3));
-                const [bx, by] = polar(a, r);
-                if (cfg.shape === 'plate') {
-                    const [cx, cy] = polar(a + Math.PI * 2 / n * 0.5, r * 0.83);
-                    line(ax, ay, bx, by, cfg.color, 3.5); line(bx, by, cx, cy, cfg.accent, 2.5);
-                } else if (cfg.shape === 'web') {
-                    const [cx, cy] = polar(a + Math.PI * 2 / n, r * 0.58);
-                    line(ax, ay, cx, cy, cfg.color, 2); line(ax, ay, bx, by, cfg.accent, 1.5);
-                } else if (cfg.shape === 'cross') {
-                    const [cx, cy] = polar(a + 0.3, r * 0.72);
-                    line(ax, ay, bx, by, cfg.color, 3); line(cx, cy, bx, by, cfg.accent, 2);
-                } else if (cfg.shape === 'shard') {
-                    const [cx, cy] = polar(a + 0.2, r * 0.72);
-                    line(ax, ay, bx, by, cfg.color, 3); line(bx, by, cx, cy, cfg.accent, 2);
-                    line(cx, cy, ax, ay, cfg.accent, 1.5);
-                } else { line(ax, ay, bx, by, i % 2 ? cfg.accent : cfg.color, 2.5); }
-            }
-        }
-        this.emit({ x, y, count: skill === 'attack' ? 2 : Math.min(8, n), color: cfg.accent,
-            speedMin: 18, speedMax: 70, lifeMin: 0.12, lifeMax: life, sizeMin: 1, sizeMax: 2.5,
-            glow: false, angleMin: angle - 0.4, angleMax: angle + 0.4 });
+        if (!cfg || skill === 'attack') return;
+        const directional = ['fang', 'fork', 'rail', 'shard'].indexOf(cfg.shape) >= 0;
+        const count = Math.min(6, Math.max(3, cfg.count));
+        const spread = directional ? 0.8 : Math.PI;
+        const distance = Math.min(18, cfg.radius * scale * 0.25);
+        const centerX = x + (directional ? Math.cos(angle) * distance : 0);
+        const centerY = y + (directional ? Math.sin(angle) * distance : 0);
+        this.emit({ x: centerX, y: centerY, count, color: cfg.color,
+            speedMin: 22, speedMax: 65, lifeMin: 0.10, lifeMax: 0.24,
+            sizeMin: 1.5, sizeMax: 3, glow: false,
+            angleMin: angle - spread, angleMax: angle + spread });
     }
 
     /** 时间刃从挥刃命中帧的武器挂点展开，范围判定仍由攻击者负责。 */

@@ -1,5 +1,5 @@
-// 首领与小首领的施法轮廓。动作帧负责身体姿态，这里只描述瞬时能量轨迹。
-// 同一单位的不同技能使用不同轮廓，避免靠同一张法阵换色表达所有机制。
+// 首领与小首领的施法色彩和碎屑方向。动作帧、弹体与地面资源负责技能主体。
+// shape 只控制碎屑向前或向四周散开，不再绘制贴在角色身上的几何线框。
 export type SignatureShape = 'fang' | 'ripple' | 'spoke' | 'fork' | 'plate' |
     'coil' | 'cross' | 'web' | 'shard' | 'orbit' | 'rail' | 'pulse';
 
