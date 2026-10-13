@@ -68,10 +68,17 @@ export class ScreenManager extends Component {
     private _saveSelect!: SaveSelectUI;
     /** v4 章节选择页(v5 选图页)的卡片区容器（每次进入页面按存档解锁链重建）。 */
     private _mapCardsRoot!: Node;
+    private _mapProgressLabel!: Label;
     /** v5 图内章节页的卡片区容器。 */
     private _chapterCardsRoot!: Node;
     /** v5 图内章节页的任务线节点绘制（每次重建重画）。 */
     private _questLineGfx?: Graphics;
+    private _chapterPreview!: Sprite;
+    private _chapterPreviewAccent: Color = UI_PALETTE.cyan;
+    private _drawChapterPreview?: () => void;
+    private _chapterMapName!: Label;
+    private _chapterMapDesc!: Label;
+    private _chapterMapProgress!: Label;
     private _lobby!: LobbyUI;
     private _menuArtNode?: Node;
     private _drawSettingsBg?: () => void;
@@ -186,7 +193,7 @@ export class ScreenManager extends Component {
         this._drawSettingsBg?.();
         this._panels.get('charDetail')?.getComponent(UITransform)?.setContentSize(width, 720);
         this._drawCharDetailDim?.();
-        for (const name of ['mapSelect', 'difficultySelect', 'charSelect'] as ScreenName[]) {
+        for (const name of ['mapSelect', 'chapterSelect', 'difficultySelect', 'charSelect'] as ScreenName[]) {
             this._panels.get(name)?.getComponent(UITransform)?.setContentSize(width, 720);
             const backdrop = this._selectionBackdrops.get(name);
             backdrop?.art.getComponent(UITransform)?.setContentSize(width, 720);
@@ -514,10 +521,26 @@ export class ScreenManager extends Component {
         this._selectionBackdrops.set(panel.name as ScreenName, { art: artNode, redraw });
     }
 
-    /**
-     * v5：选图页——6 张地图卡（上 4 下 2，沿用 v4 布局）。
-     * 卡片信息：图名 / 图末 Boss / 图内进度 x/5；未解锁图显示解锁条件。
-     */
+    /** 选图与章节页共用的档案文字：明确左对齐，避免信息卡看起来像按钮墙。 */
+    private _selectionLabel(parent: Node, name: string, value: string,
+                            x: number, y: number, w: number, h: number,
+                            size: number, color: Color, centered = false): Label {
+        const node = new Node(name); node.setParent(parent);
+        node.setPosition(new Vec3(x, y, 0));
+        node.addComponent(UITransform).setContentSize(w, h);
+        const label = node.addComponent(Label);
+        label.string = value;
+        label.fontSize = size;
+        label.lineHeight = size + 6;
+        label.color = color;
+        label.horizontalAlign = centered ? HorizontalTextAlignment.CENTER : HorizontalTextAlignment.LEFT;
+        label.verticalAlign = VerticalTextAlignment.CENTER;
+        label.overflow = Label.Overflow.SHRINK;
+        styleLabel(label, { outline: false });
+        return label;
+    }
+
+    /** 六张场景档案按 3×2 排列；实景、任务进度、交互状态各占独立视觉层。 */
     private _buildMapSelectPanel() {
         const p = this._mkPanel('mapSelect', 1280, 720);
 
@@ -530,23 +553,16 @@ export class ScreenManager extends Component {
             sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onMapBack?.(), this);
 
-        const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 292, 0));
-        tn.addComponent(UITransform).setContentSize(500, 44);
-        const tl = tn.addComponent(Label);
-        tl.string = '选择作战地图';
-        tl.fontSize = 28; tl.color = UI_PALETTE.text;
-        styleLabel(tl);
+        this._selectionLabel(p, 'Eyebrow', '战区档案  /  01', 0, 314, 280, 22,
+            14, UI_PALETTE.cyan, true);
+        this._selectionLabel(p, 'T', '选择作战地图', 0, 272, 560, 46,
+            30, UI_PALETTE.text, true);
+        this._selectionLabel(p, 'Sub', '六图 × 每图五章 · 一局一章 15 波 · 通关整张图解锁下一张',
+            0, 236, 830, 24, 14, UI_PALETTE.muted, true);
+        this._mapProgressLabel = this._selectionLabel(p, 'TotalProgress', '', 470, 274,
+            260, 30, 16, UI_PALETTE.reward, true);
 
-        const sub = new Node('Sub'); sub.setParent(p);
-        sub.setPosition(new Vec3(0, 258, 0));
-        sub.addComponent(UITransform).setContentSize(860, 22);
-        const sl = sub.addComponent(Label);
-        sl.string = '六图 × 每图五章 · 一局一章 15 波 · 通关整张图解锁下一张';
-        sl.fontSize = 14; sl.color = new Color(150, 172, 190, 235);
-        styleLabel(sl);
-
-        // 章节卡容器：每次 show('mapSelect') 时按存档实时重建（解锁状态随通关进度刷新）
+        // 每次进入重新读取存档，首通后立即更新地图状态。
         this._mapCardsRoot = new Node('Cards'); this._mapCardsRoot.setParent(p);
         this._rebuildMapCards();
     }
@@ -563,13 +579,10 @@ export class ScreenManager extends Component {
             child.removeFromParent();
             child.destroy();
         }
-        // 地图卡信息（Boss 名读 BossDB；主力敌人为文案速查，对应设计文档 12 节）
-        const ENEMY_BRIEF = [
-            '割草教学局', '+铆甲兽·断针射手', '+石像鬼·三咒仆', '+暗影猎手·闪弧', '机械军团', '全明星混编',
-        ];
         const unlocked = Math.max(1, this.onQueryChapterUnlock?.() ?? 1);
         const cleared = unlocked - 1;
-        const CARD_W = 286, CARD_H = 212;
+        this._mapProgressLabel.string = `战线进度  ${Math.min(cleared, TOTAL_CHAPTERS)} / ${TOTAL_CHAPTERS}`;
+        const CARD_W = 356, CARD_H = 222;
 
         const mkCard = (x: number, y: number, mapId: number): void => {
             const map = mapDef(mapId);
@@ -583,59 +596,50 @@ export class ScreenManager extends Component {
             card.setPosition(new Vec3(x, y, 0));
             card.addComponent(UITransform).setContentSize(CARD_W, CARD_H);
 
-            const nameN = new Node('Name'); nameN.setParent(card);
-            nameN.setPosition(new Vec3(0, 66, 0));
-            nameN.addComponent(UITransform).setContentSize(CARD_W - 24, 30);
-            const nl = nameN.addComponent(Label);
-            nl.string = `图${mapId} ${map.name}${swept ? ' ✓' : ''}`;
-            nl.fontSize = 20;
-            nl.color = locked ? new Color(166, 180, 194, 255) : new Color(235, 246, 250, 255);
-            styleLabel(nl);
-
-            const bossN = new Node('Boss'); bossN.setParent(card);
-            bossN.setPosition(new Vec3(0, 28, 0));
-            bossN.addComponent(UITransform).setContentSize(CARD_W - 24, 26);
-            const bl = bossN.addComponent(Label);
-            bl.string = `图末 Boss：${boss}`;
-            bl.fontSize = 14; bl.lineHeight = 18;
-            bl.color = locked ? new Color(152, 170, 186, 245) : new Color(200, 214, 228, 245);
-            bl.overflow = Label.Overflow.SHRINK;
-            styleLabel(bl);
-
-            const infoN = new Node('Info'); infoN.setParent(card);
-            infoN.setPosition(new Vec3(0, -16, 0));
-            infoN.addComponent(UITransform).setContentSize(CARD_W - 24, 52);
-            const il = infoN.addComponent(Label);
-            il.string = locked ? `通关图 ${mapId - 1} 全部章节解锁`
-                : swept ? `${ENEMY_BRIEF[mapId - 1]} · 已肃清`
-                : `${ENEMY_BRIEF[mapId - 1]} · 进度 ${clearedInMap}/5`;
-            il.fontSize = 13; il.lineHeight = 18;
-            il.color = locked ? new Color(140, 152, 166, 235) : new Color(168, 190, 206, 245);
-            il.overflow = Label.Overflow.SHRINK;
-            il.enableWrapText = true;
-            styleLabel(il);
-
             applyHexCardSkin(card, CARD_W, CARD_H, accent, locked);
+            // 实景缩略图展示地图身份；锁定区域压暗而不泄露后续章节细节。
+            const scene = new Node('Scene'); scene.setParent(card);
+            scene.setPosition(new Vec3(0, 9, 0));
+            scene.addComponent(UITransform).setContentSize(CARD_W - 12, 194);
+            const sceneSp = scene.addComponent(Sprite);
+            sceneSp.sizeMode = Sprite.SizeMode.CUSTOM;
+            sceneSp.color = locked ? new Color(110, 125, 139, 150) : new Color(235, 243, 249, 255);
+            applyArtSprite(sceneSp, map.bgKey);
+            const shade = new Node('SceneShade'); shade.setParent(card);
+            const sg = shade.addComponent(Graphics);
+            const drawShade = () => {
+                sg.clear();
+                sg.fillColor = new Color(9, 19, 31, locked ? 132 : 42);
+                sg.fillRect(-172, -30, 344, 132);
+                sg.fillColor = new Color(12, 25, 39, 240);
+                sg.fillRect(-172, -105, 344, 74);
+                sg.fillColor = new Color(accent.r, accent.g, accent.b, locked ? 85 : 230);
+                sg.fillRect(-172, -33, 344 * clearedInMap / CHAPTERS_PER_MAP, 3);
+            };
+            drawShade(); attachEnableRedraw(shade, drawShade);
+
+            this._selectionLabel(card, 'Index', `0${mapId}  /  战区`, -80, 83, 160, 22,
+                13, locked ? UI_PALETTE.muted : accent);
+            this._selectionLabel(card, 'Name', map.name, -2, 37, 310, 42,
+                27, UI_PALETTE.text, true);
+            this._selectionLabel(card, 'Status', locked ? '尚未解锁' : swept ? '区域肃清' : '可进入',
+                119, 84, 105, 22, 13, locked ? UI_PALETTE.muted : UI_PALETTE.reward, true);
+            this._selectionLabel(card, 'Boss', `关底  ${boss}`, -14, -60, 320, 25,
+                14, locked ? UI_PALETTE.muted : UI_PALETTE.text, true);
+            this._selectionLabel(card, 'Info', locked ? `通关战区 0${mapId - 1} 后解锁`
+                : `章节进度  ${clearedInMap} / ${CHAPTERS_PER_MAP}   ·   进入选择章节  ›`,
+                0, -91, 320, 23, 14, locked ? UI_PALETTE.muted : accent, true);
             if (!locked) {
                 card.on(Node.EventType.TOUCH_END, () => this.onMapPicked?.(mapId), this);
             }
         };
-
-        // 上行 4 卡（图 1~4），下行 2 卡（图 5/6 居中）
-        const rowY = [96, -146];
-        // 286px 卡片之间留 18px 实际点击间隔，避免后创建的卡覆盖前一张热区。
-        const topX = [-456, -152, 152, 456];
-        for (let i = 0; i < 4; i++) mkCard(topX[i], rowY[0], i + 1);
-        mkCard(-152, rowY[1], 5);
-        mkCard(152, rowY[1], 6);
+        const xs = [-380, 0, 380];
+        for (let i = 0; i < MAP_COUNT; i++) mkCard(xs[i % 3], i < 3 ? 93 : -153, i + 1);
     }
 
     // ── 图内章节选择页（v5 新增） ─────────────────────────────
 
-    /**
-     * v5：图内章节页——顶部图名 + 任务线一览（5 节点连线）+ 5 张章节卡（3+2）。
-     * 纵向分带（无重叠验收 7.4）：标题带 y≥240 / 任务线 y≈225 / 卡片区 -250~+200 / 底部 y≤-280。
-     */
+    /** 左侧场景档案，右侧五段任务线；扫描顺序与实际推进顺序一致。 */
     private _buildChapterSelectPanel() {
         const p = this._mkPanel('chapterSelect', 1280, 720);
 
@@ -648,20 +652,44 @@ export class ScreenManager extends Component {
             sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.onChapterBack?.(), this);
 
-        const tn = new Node('T'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 288, 0));
-        tn.addComponent(UITransform).setContentSize(600, 40);
-        const tl = tn.addComponent(Label);
-        tl.string = '';
-        tl.fontSize = 26; tl.color = UI_PALETTE.text;
-        tl.overflow = Label.Overflow.SHRINK;
-        styleLabel(tl);
-        this._chapterTitleLabel = tl;
+        this._selectionLabel(p, 'Eyebrow', '战区档案  /  02', 0, 314, 280, 22,
+            14, UI_PALETTE.cyan, true);
+        this._chapterTitleLabel = this._selectionLabel(p, 'T', '', 0, 271, 780, 44,
+            30, UI_PALETTE.text, true);
+        this._selectionLabel(p, 'Sub', '选择章节后配置难度与出战英雄', 0, 235, 760, 24,
+            14, UI_PALETTE.muted, true);
 
-        // 任务线一览：5 个节点圆 + 连线（Graphics 每次进入页面重画）
+        const preview = new Node('MapPreview'); preview.setParent(p);
+        preview.setPosition(new Vec3(-390, -29, 0));
+        preview.addComponent(UITransform).setContentSize(376, 434);
+        const previewG = preview.addComponent(Graphics);
+        const drawPreview = () => {
+            previewG.clear();
+            drawHexPanel(previewG, -188, -217, 376, 434, this._chapterPreviewAccent, 246);
+        };
+        this._drawChapterPreview = drawPreview;
+        drawPreview(); attachEnableRedraw(preview, drawPreview);
+        const scene = new Node('Scene'); scene.setParent(preview);
+        scene.setPosition(new Vec3(0, 100, 0));
+        scene.addComponent(UITransform).setContentSize(352, 198);
+        this._chapterPreview = scene.addComponent(Sprite);
+        this._chapterPreview.sizeMode = Sprite.SizeMode.CUSTOM;
+        const veil = new Node('SceneVeil'); veil.setParent(preview);
+        const vg = veil.addComponent(Graphics);
+        const drawVeil = () => {
+            vg.clear();
+            vg.fillColor = new Color(12, 25, 39, 70);
+            vg.fillRect(-176, 1, 352, 198);
+        };
+        drawVeil(); attachEnableRedraw(veil, drawVeil);
+        this._chapterMapName = this._selectionLabel(preview, 'MapName', '', -1, -90, 336, 40,
+            27, UI_PALETTE.text, true);
+        this._chapterMapDesc = this._selectionLabel(preview, 'MapDesc', '', -1, -130, 336, 52,
+            15, UI_PALETTE.muted, true);
+        this._chapterMapProgress = this._selectionLabel(preview, 'Progress', '', -1, -180, 336, 29,
+            16, UI_PALETTE.reward, true);
+
         const qNode = new Node('QuestLine'); qNode.setParent(p);
-        qNode.addComponent(UITransform).setContentSize(560, 40);
-        qNode.setPosition(new Vec3(0, 228, 0));
         this._questLineGfx = qNode.addComponent(Graphics);
 
         this._chapterCardsRoot = new Node('Cards'); this._chapterCardsRoot.setParent(p);
@@ -683,32 +711,41 @@ export class ScreenManager extends Component {
         const unlocked = Math.max(1, this.onQueryChapterUnlock?.() ?? 1);
         const cleared = unlocked - 1;
         const accent = Color.fromHEX(new Color(), map.accent);
+        this._chapterPreviewAccent = accent;
+        this._drawChapterPreview?.();
 
-        this._chapterTitleLabel.string = `图${mapId} · ${map.name} —— 选择章节`;
+        this._chapterTitleLabel.string = `图${mapId} · ${map.name}  /  选择章节`;
+        this._chapterMapName.string = map.name;
+        this._chapterMapDesc.string = map.desc;
+        this._chapterMapProgress.string = `已肃清  ${clamp(cleared - (mapId - 1) * 5, 0, 5)} / 5  章`;
+        applyArtSprite(this._chapterPreview, map.bgKey);
+        const backdrop = this._selectionBackdrops.get('chapterSelect');
+        if (backdrop) applyArtSprite(backdrop.art.getComponent(Sprite)!, map.bgKey);
 
-        // 任务线：已通节点点亮 / 当前节点高亮 / 未解锁空心
+        // 连接线退至卡片外侧，完成/当前/锁定状态由节点亮度区分。
         const g = this._questLineGfx!;
-        g.clear();
-        const qy = 0, qx = [-200, -100, 0, 100, 200];
-        g.lineWidth = 3;
-        for (let i = 0; i < 4; i++) {
-            const k = globalChapter(mapId, i + 1);
-            const done = k <= cleared, next = k === cleared + 1;
-            g.strokeColor = done ? accent : next
-                ? new Color(255, 214, 85, 220) : new Color(90, 106, 122, 160);
-            g.moveTo(qx[i], qy); g.lineTo(qx[i + 1], qy); g.stroke();
-        }
-        for (let i = 0; i < 5; i++) {
-            const c = i + 1, k = globalChapter(mapId, c);
-            const done = k <= cleared, next = k === cleared + 1;
-            g.fillColor = done ? accent : next ? new Color(255, 214, 85, 235) : new Color(24, 34, 48, 255);
-            g.circle(qx[i], qy, 13); g.fill();
+        const drawQuestLine = () => {
+            g.clear();
+            const qx = -150, qy = [151, 66, -19, -104, -189];
             g.lineWidth = 2;
-            g.strokeColor = done ? accent : next ? new Color(255, 214, 85, 255) : new Color(90, 106, 122, 200);
-            g.circle(qx[i], qy, 13); g.stroke();
-        }
+            for (let i = 0; i < 4; i++) {
+                const k = globalChapter(mapId, i + 1);
+                g.strokeColor = k <= cleared ? accent : new Color(90, 106, 122, 160);
+                g.moveTo(qx, qy[i]); g.lineTo(qx, qy[i + 1]); g.stroke();
+            }
+            for (let i = 0; i < 5; i++) {
+                const k = globalChapter(mapId, i + 1);
+                const done = k <= cleared, next = k === cleared + 1;
+                g.fillColor = done ? accent : next ? UI_PALETTE.reward : new Color(24, 34, 48, 255);
+                g.circle(qx, qy[i], 9); g.fill();
+                g.lineWidth = 2;
+                g.strokeColor = done ? accent : next ? UI_PALETTE.reward : new Color(90, 106, 122, 200);
+                g.circle(qx, qy[i], 11); g.stroke();
+            }
+        };
+        drawQuestLine(); attachEnableRedraw(g.node, drawQuestLine);
 
-        const CARD_W = 300, CARD_H = 220;
+        const CARD_W = 700, CARD_H = 75;
         const mkCard = (x: number, y: number, c: number): void => {
             const k = globalChapter(mapId, c);
             const node = chapterNode(k);
@@ -724,62 +761,40 @@ export class ScreenManager extends Component {
             const card = new Node(`Ch_${k}`); card.setParent(p);
             card.setPosition(new Vec3(x, y, 0));
             card.addComponent(UITransform).setContentSize(CARD_W, CARD_H);
-
-            const nameN = new Node('Name'); nameN.setParent(card);
-            nameN.setPosition(new Vec3(0, 76, 0));
-            nameN.addComponent(UITransform).setContentSize(CARD_W - 24, 30);
-            const nl = nameN.addComponent(Label);
-            nl.string = `第${c}章 · ${node.name}`;
-            nl.fontSize = 18;
-            nl.color = locked ? new Color(166, 180, 194, 255) : new Color(235, 246, 250, 255);
-            nl.overflow = Label.Overflow.SHRINK;
-            styleLabel(nl);
-
-            const questN = new Node('Quest'); questN.setParent(card);
-            questN.setPosition(new Vec3(0, 40, 0));
-            questN.addComponent(UITransform).setContentSize(CARD_W - 24, 26);
-            const ql = questN.addComponent(Label);
-            ql.string = locked ? '' : `任务：${node.quest.title}`;
-            ql.fontSize = 13; ql.lineHeight = 18;
-            ql.color = new Color(255, 224, 130, 240);
-            ql.overflow = Label.Overflow.SHRINK;
-            styleLabel(ql);
-
-            const gimN = new Node('Gimmick'); gimN.setParent(card);
-            gimN.setPosition(new Vec3(0, 6, 0));
-            gimN.addComponent(UITransform).setContentSize(CARD_W - 24, 26);
-            const gl = gimN.addComponent(Label);
-            gl.string = locked ? '' : mutNames ? `变异：${mutNames}` : finaleText;
-            gl.fontSize = 13; gl.lineHeight = 18;
-            gl.color = locked ? new Color(152, 170, 186, 245) : new Color(200, 214, 228, 245);
-            gl.overflow = Label.Overflow.SHRINK;
-            styleLabel(gl);
-
-            const infoN = new Node('Info'); infoN.setParent(card);
-            infoN.setPosition(new Vec3(0, -38, 0));
-            infoN.addComponent(UITransform).setContentSize(CARD_W - 24, 52);
-            const il = infoN.addComponent(Label);
-            il.string = locked
-                ? (c === 1 ? `通关图 ${mapId - 1} 全部章节解锁` : `通关第 ${c - 1} 章解锁`)
-                : done ? `✓ 已通关 · 可重打\n${mutNames ? `变异：${mutNames}` : finaleText}`
-                : `${node.isMapFinale ? '图末决战' : '推进任务线'} · ${finaleText}`;
-            il.fontSize = 13; il.lineHeight = 19;
-            il.color = locked ? new Color(140, 152, 166, 235)
-                : done ? new Color(140, 220, 160, 245) : new Color(168, 190, 206, 245);
-            il.overflow = Label.Overflow.SHRINK;
-            il.enableWrapText = true;
-            styleLabel(il);
-
             applyHexCardSkin(card, CARD_W, CARD_H, accent, locked);
+            const decor = new Node('AccentBar'); decor.setParent(card);
+            const dg = decor.addComponent(Graphics);
+            const drawDecor = () => {
+                dg.clear();
+                dg.fillColor = new Color(accent.r, accent.g, accent.b, locked ? 60 : 225);
+                dg.fillRect(-344, -26, 4, 52);
+                if (node.isMapFinale) {
+                    dg.fillColor = new Color(255, 200, 92, locked ? 60 : 220);
+                    dg.fillRect(335, -26, 4, 52);
+                }
+            };
+            drawDecor(); attachEnableRedraw(decor, drawDecor);
+            const textColor = locked ? new Color(148, 163, 178, 245) : UI_PALETTE.text;
+            this._selectionLabel(card, 'Number', `0${c}`, -302, 0, 55, 48,
+                26, locked ? UI_PALETTE.muted : accent, true);
+            this._selectionLabel(card, 'Name', node.name, -130, 13, 270, 26,
+                19, textColor);
+            this._selectionLabel(card, 'Quest', locked
+                ? (c === 1 ? `通关图 ${mapId - 1} 全部章节解锁` : `通关第 ${c - 1} 章解锁`)
+                : `任务  ${node.quest.title}`, -126, -16, 280, 23,
+                13, locked ? UI_PALETTE.muted : UI_PALETTE.reward);
+            this._selectionLabel(card, 'Encounter', locked ? '未知威胁'
+                : node.isMapFinale ? finaleText : mutNames ? `变异  ${mutNames}` : finaleText,
+                146, -15, 258, 22, 13, UI_PALETTE.muted);
+            this._selectionLabel(card, 'Status', locked ? '锁定' : done ? '已通关  ·  重战 ›'
+                : node.isMapFinale ? '决战  ·  进入 ›' : '可出击  ·  进入 ›',
+                214, 15, 210, 27, 15,
+                locked ? UI_PALETTE.muted : done ? accent : UI_PALETTE.reward, true);
             if (!locked) {
                 card.on(Node.EventType.TOUCH_END, () => this.onChapterPicked?.(k), this);
             }
         };
-
-        // 3+2 双行（与选图页同构）：卡 300×220。行内中心距 380 → 边缘净距 80px；
-        // 行间中心距 244 → 纵向净距 24px（≥18px 红线）；下排底缘 -264 不侵入底部带（≤-280）。
-        mkCard(-380, 90, 1); mkCard(0, 90, 2); mkCard(380, 90, 3);
-        mkCard(-190, -154, 4); mkCard(190, -154, 5);
+        for (let c = 1; c <= CHAPTERS_PER_MAP; c++) mkCard(214, 151 - (c - 1) * 85, c);
     }
 
     // ── 难度选择页 ─────────────────────────────────────────────
