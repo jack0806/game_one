@@ -1,10 +1,11 @@
-import { UNIT_ATTACK_ART, enemyHitArt, EnemyHitContext } from '../data/CombatArtDB';
+import { UNIT_ATTACK_ART, enemyHitArt, enemyImpactSkill, EnemyHitContext } from '../data/CombatArtDB';
 // ============================================================
 //  ParticleManager.ts — 粒子特效管理器（纯逻辑，与渲染解耦）
 // ============================================================
 import { Rng } from '../core/MathUtils';
 import type { ActorClip, AnimationFrame } from '../data/ActorAnimationDB';
 import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
+import { ENEMY_SIGNATURES } from '../data/EnemySignatureDB';
 
 interface Particle {
     x: number; y: number;
@@ -15,6 +16,7 @@ interface Particle {
     type: 'dot' | 'ring' | 'line';
     // ring / line 专用
     radius?: number; maxRadius?: number;
+    startRadius?: number;
     x2?: number; y2?: number;
     alpha?: number;
     lineWidth?: number;
@@ -38,6 +40,7 @@ export interface SpriteFx {
     follow?: { x: number; y: number; alive?: boolean };
     followOffsetY?: number;
     playerContact?: boolean;
+    contactKind?: string;
     /** 不同特效需要不同时间曲线：爆发、挥斩、持续光环。 */
     motion?: 'burst' | 'slash' | 'aura';
     /** 持续光环不应像爆炸一样满不透明遮住角色。 */
@@ -138,7 +141,7 @@ export class ParticleManager {
     /** 真实受伤才播放来源独立的四帧碎裂动画；同源连击合并，异源最多两份。 */
     playerHit(x: number, y: number, hit: EnemyHitContext = {}, target?: { x: number; y: number; alive?: boolean }): void {
         const art = enemyHitArt(hit);
-        const existing = this.spriteFx.find(fx => fx.playerContact && fx.key === art.key);
+        const existing = this.spriteFx.find(fx => fx.playerContact && fx.key === art.key && fx.contactKind === hit.kind);
         if (existing && existing.life > 0.18) return;
         if (existing) this.spriteFx.splice(this.spriteFx.indexOf(existing), 1);
         const hits = this.spriteFx.filter(fx => fx.playerContact);
@@ -147,7 +150,9 @@ export class ParticleManager {
             layer: 'impact', baseAlpha: 1, rotationDeg: -(hit.angle ?? 0) * 180 / Math.PI,
         });
         const created = this.spriteFx[this.spriteFx.length - 1];
-        created.follow = target; created.followOffsetY = -6; created.playerContact = true;
+        created.follow = target; created.followOffsetY = -6; created.playerContact = true; created.contactKind = hit.kind;
+        const skill = enemyImpactSkill(hit);
+        if (skill && hit.source) this.enemySignature(hit.source, skill, x, y, hit.angle ?? 0, 0.45);
         // 渲染池按数组顺序分配；玩家受击优先，不能被敌群的命中火花挤掉。
         this.spriteFx.unshift(this.spriteFx.pop()!);
     }
@@ -291,14 +296,97 @@ export class ParticleManager {
         const centerX = x + Math.cos(angle) * reach * 0.48;
         const centerY = y + Math.sin(angle) * reach * 0.48;
         const art = unit ? (UNIT_ATTACK_ART[unit] ?? 'fx_enemy_claw_slash') : 'fx_enemy_claw_slash';
-        this.spawnSpriteFx(centerX, centerY, art, 0.24, Math.min(2, Math.max(0.45, reach / 80)), undefined, {
-            rotationDeg: -angle * 180 / Math.PI,
-            motion: art === 'fx_hit' ? 'burst' : 'slash', baseAlpha: 0.78,
-        });
+        // 专属敌人的挥击由身体动作和身份轮廓组成；通用刃片会盖过这些差异。
+        // 滑稽猴的耳光有独立逐帧图，仍保留其专属贴图。
+        const signature = unit && ENEMY_SIGNATURES[unit];
+        if (!signature || art === 'fx_joker_slap') this.spawnSpriteFx(centerX, centerY, art, 0.24,
+            Math.min(2, Math.max(0.45, reach / 80)), undefined, {
+                rotationDeg: -angle * 180 / Math.PI,
+                motion: art === 'fx_hit' ? 'burst' : 'slash', baseAlpha: 0.78,
+            });
         this.emit({ x: centerX, y: centerY, count: 3 + Math.floor(strength * 2), color,
             speedMin: 60, speedMax: 150, lifeMin: 0.08, lifeMax: 0.19,
             sizeMin: 1.5, sizeMax: 3, glow: false,
             angleMin: angle - 0.65, angleMax: angle + 0.65 });
+        if (signature) this.enemySignature(unit!, 'attack', centerX, centerY, angle);
+    }
+
+    /** 首领技能的短时剪影：每招在数据表中指定几何语言，全部随战斗时间自然消散。 */
+    enemySignature(unit: string, skill: string, x: number, y: number, angle = 0, scale = 1): void {
+        const cfg = ENEMY_SIGNATURES[unit]?.[skill as keyof typeof ENEMY_SIGNATURES[string]];
+        if (!cfg) return;
+        // 小 Boss 体型较小，轮廓需要跨过数帧才能被玩家辨认；仍在下次出招前消散。
+        const life = skill === 'attack' ? 0.35 : 0.68;
+        const line = (ax: number, ay: number, bx: number, by: number, color: string, width = 2.5) => {
+            this.particles.push({ x: ax, y: ay, x2: bx, y2: by, vx: 0, vy: 0,
+                life, maxLife: life, size: 2, color, fade: true, gravity: false,
+                glow: true, type: 'line', alpha: 0.88, lineWidth: width });
+        };
+        const ring = (radius: number, color: string, width = 2.5) => {
+            this.particles.push({ x, y, vx: 0, vy: 0, life, maxLife: life, size: 2,
+                color, fade: true, gravity: false, glow: true, type: 'ring',
+                radius, startRadius: radius, maxRadius: radius * 1.45, alpha: 0.78, lineWidth: width });
+        };
+        const polar = (a: number, r: number): [number, number] => [x + Math.cos(a) * r, y + Math.sin(a) * r];
+        const n = cfg.count, r = cfg.radius * scale;
+        if (cfg.shape === 'pulse' || cfg.shape === 'ripple') {
+            ring(r * 0.28, cfg.color, cfg.shape === 'pulse' ? 4 : 2);
+            ring(r * 0.67, cfg.accent, cfg.shape === 'pulse' ? 2 : 1.5);
+            if (cfg.shape === 'pulse') for (let i = 0; i < n; i++) {
+                const a = angle + i * Math.PI * 2 / n;
+                const [ax, ay] = polar(a, r * 0.68), [bx, by] = polar(a, r);
+                line(ax, ay, bx, by, cfg.color, 3);
+            }
+        } else if (cfg.shape === 'rail') {
+            const px = -Math.sin(angle), py = Math.cos(angle);
+            for (let i = 0; i < n; i++) {
+                const offset = (i - (n - 1) / 2) * 9;
+                line(x + px * offset - Math.cos(angle) * r * 0.22,
+                    y + py * offset - Math.sin(angle) * r * 0.22,
+                    x + px * offset + Math.cos(angle) * r,
+                    y + py * offset + Math.sin(angle) * r,
+                    i % 2 ? cfg.accent : cfg.color, i === 0 || i === n - 1 ? 2 : 3);
+            }
+        } else if (cfg.shape === 'fang' || cfg.shape === 'fork') {
+            for (let i = 0; i < n; i++) {
+                const a = angle + (i - (n - 1) / 2) * (cfg.shape === 'fang' ? 0.24 : 0.43);
+                const [ax, ay] = polar(a - 0.18, r * 0.25), [mx, my] = polar(a, r * 0.68);
+                const [bx, by] = polar(a + 0.11, r);
+                line(ax, ay, mx, my, cfg.color, 3.5);
+                line(mx, my, bx, by, cfg.accent, 2);
+            }
+        } else if (cfg.shape === 'coil' || cfg.shape === 'orbit') {
+            let [px, py] = polar(angle, r * 0.15);
+            for (let i = 1; i <= n * 3; i++) {
+                const t = i / (n * 3), a = angle + t * Math.PI * (cfg.shape === 'coil' ? 2.4 : 3.6);
+                const [nx, ny] = polar(a, r * (0.15 + t * 0.85));
+                line(px, py, nx, ny, i % 3 === 0 ? cfg.accent : cfg.color, 2.4);
+                px = nx; py = ny;
+            }
+        } else {
+            for (let i = 0; i < n; i++) {
+                const a = angle + i * Math.PI * 2 / n;
+                const [ax, ay] = polar(a, r * (cfg.shape === 'web' ? 0.58 : 0.3));
+                const [bx, by] = polar(a, r);
+                if (cfg.shape === 'plate') {
+                    const [cx, cy] = polar(a + Math.PI * 2 / n * 0.5, r * 0.83);
+                    line(ax, ay, bx, by, cfg.color, 3.5); line(bx, by, cx, cy, cfg.accent, 2.5);
+                } else if (cfg.shape === 'web') {
+                    const [cx, cy] = polar(a + Math.PI * 2 / n, r * 0.58);
+                    line(ax, ay, cx, cy, cfg.color, 2); line(ax, ay, bx, by, cfg.accent, 1.5);
+                } else if (cfg.shape === 'cross') {
+                    const [cx, cy] = polar(a + 0.3, r * 0.72);
+                    line(ax, ay, bx, by, cfg.color, 3); line(cx, cy, bx, by, cfg.accent, 2);
+                } else if (cfg.shape === 'shard') {
+                    const [cx, cy] = polar(a + 0.2, r * 0.72);
+                    line(ax, ay, bx, by, cfg.color, 3); line(bx, by, cx, cy, cfg.accent, 2);
+                    line(cx, cy, ax, ay, cfg.accent, 1.5);
+                } else { line(ax, ay, bx, by, i % 2 ? cfg.accent : cfg.color, 2.5); }
+            }
+        }
+        this.emit({ x, y, count: skill === 'attack' ? 2 : Math.min(8, n), color: cfg.accent,
+            speedMin: 18, speedMax: 70, lifeMin: 0.12, lifeMax: life, sizeMin: 1, sizeMax: 2.5,
+            glow: false, angleMin: angle - 0.4, angleMax: angle + 0.4 });
     }
 
     /** 时间刃从挥刃命中帧的武器挂点展开，范围判定仍由攻击者负责。 */
@@ -455,7 +543,7 @@ export class ParticleManager {
      */
     enemyProjectileTrail(x: number, y: number, fx: 'poison' | 'toxin_dart' | 'gear' | 'homing' | 'chaos' |
         'needle' | 'frost' | 'arc' | 'rail' | 'water_bomb' | 'water_spike' |
-        'shrimp_spike' | 'venom_sting' | 'sonic' | 'beam' | 'blade', vx: number, vy: number, color = '#fff', radius = 6): void {
+        'shrimp_spike' | 'venom_sting' | 'sonic' | 'beam' | 'blade', vx: number, vy: number, color = '#fff', radius = 6, source?: string): void {
         // 短寿命离散碎屑留在真实飞行路径；弹体本身由 Sprite 表达。
         // 不发出 line 粒子，避免高速弹再次拼成长方形条带。
         const angle = Math.atan2(-vy, -vx);
@@ -465,7 +553,11 @@ export class ParticleManager {
             water_bomb: '#70d6ef', water_spike: '#b8efff', shrimp_spike: '#ffc780',
             venom_sting: '#d895e8', sonic: '#efbf7d', beam: '#ffab81', blade: '#cfa6ff', rail: '#ffacd9',
         };
-        this.emit({ x, y, count: fx === 'poison' ? 2 : 1, color: colors[fx] ?? color,
+        const trailColor = source === 'boss_ch3' && fx === 'homing' ? '#5ae6cf'
+            : source === 'boss_manyfold' && fx === 'chaos' ? '#d2a4f2'
+            : source === 'boss_mech' && fx === 'blade' ? '#b6e8ff'
+            : source === 'drone_a' && fx === 'sonic' ? '#ff8479' : colors[fx] ?? color;
+        this.emit({ x, y, count: fx === 'poison' ? 2 : 1, color: trailColor,
             speedMin: 8, speedMax: 26, lifeMin: 0.09, lifeMax: 0.18,
             sizeMin: 1, sizeMax: Math.min(3.5, radius * 0.4), glow: false,
             angleMin: angle - 0.35, angleMax: angle + 0.35 });
@@ -484,7 +576,7 @@ export class ParticleManager {
                 if (p.fade) p.alpha = Math.max(0, p.life / p.maxLife);
             } else if (p.type === 'ring') {
                 const t = 1 - p.life / p.maxLife;
-                p.radius = 4 + ((p.maxRadius ?? 40) - 4) * t;
+                p.radius = (p.startRadius ?? 4) + ((p.maxRadius ?? 40) - (p.startRadius ?? 4)) * t;
                 p.alpha  = Math.max(0, p.life / p.maxLife);
             } else if (p.type === 'line') {
                 p.alpha = Math.max(0, p.life / p.maxLife);

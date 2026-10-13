@@ -1,4 +1,4 @@
-import { ENEMY_PROJECTILE_ART, enemyProjectileSize } from '../data/CombatArtDB';
+import { enemyProjectileArt, enemyProjectileSize } from '../data/CombatArtDB';
 // ============================================================
 //  BulletController.ts — 子弹对象池（Cocos Creator 3.x）
 // ============================================================
@@ -151,7 +151,7 @@ export class BulletPool {
                 // 保留素材自身的金属、亮核与尾焰层次；纯色染色会再次把它压成色块。
                 b.sprite.color = new Color(255, 255, 255, 255);
             } else {
-                const art = ENEMY_PROJECTILE_ART[b.enemyFx ?? 'needle'] ?? ENEMY_PROJECTILE_ART.needle;
+                const art = enemyProjectileArt(b.enemyFx, b.hitSource);
                 b.node.active = true;
                 const width = enemyProjectileSize(b.radius, art);
                 b.node.getComponent(UITransform)!.setContentSize(width, width * art.aspect);
@@ -373,7 +373,7 @@ export class BulletPool {
                 b.trailCd = (b.trailCd ?? 0) - dt;
                 if (b.trailCd <= 0) {
                     b.trailCd = 0.08;
-                    game.particles?.enemyProjectileTrail?.(b.x, b.y, b.enemyFx, b.vx, b.vy, b.color, b.radius);
+                    game.particles?.enemyProjectileTrail?.(b.x, b.y, b.enemyFx, b.vx, b.vy, b.color, b.radius, b.hitSource);
                 }
             }
             // 边界反弹（深海恐惧大水刺反弹2次 / 深水炸弹反弹1次后撞边爆炸）

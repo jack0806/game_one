@@ -373,7 +373,7 @@ export class BossController extends EnemyBase {
             }
             if (!this.bossSkillCut && this._chargeCd <= 0 && !this.isCharging && this.chargeWindup <= 0) {
                 this._chargeCd = Math.max(7, 10 - this.phase);
-                this._startCharge(player);
+                this._startCharge(player, game);
             }
         }
 
@@ -414,7 +414,7 @@ export class BossController extends EnemyBase {
         }
         game.screenShake?.shake(10, 0.32);
         game.floatingText?.spawn(640, 200, `⚠ PHASE ${phase} ⚠`, this.glowColor, 28, true);
-        game.particles?.hexActivate(this.x, this.y, this.glowColor);
+        game.particles?.enemySignature?.(this.hitSource, 'phase', this.x, this.y);
     }
 
     private _isDocBoss(): boolean {
@@ -430,6 +430,8 @@ export class BossController extends EnemyBase {
         this.docBasicTimer -= dt;
         if (this.docBasicTimer <= 0 && !game.docBossSkillBusy?.(this)) {
             this.docBasicTimer = this.bossKind === 'crucible_city' ? 2.1 : this.bossKind === 'manyfold' ? 2.0 : 1.55;
+            game.particles?.enemySignature?.(this.hitSource, 'attack', this.x, this.y,
+                Math.atan2(player.y - this.y, player.x - this.x));
             game.startDocBossBasic?.(this.bossKind, this, player);
             this.actionRecoil = 0.24;
         }
@@ -461,6 +463,8 @@ export class BossController extends EnemyBase {
         this.visualDocSkillIndex = skill + 1;
         this.visualDocSkillT = 0.72;
         game.floatingText?.spawn?.(this.x, this.y - 100, this.docSkillName, this.glowColor, 18, true);
+        game.particles?.enemySignature?.(this.hitSource, `skill${skill + 1}`, this.x, this.y,
+            Math.atan2(player.y - this.y, player.x - this.x));
         game.startDocBossSkill?.(this.bossKind, skill, this, player);
         this.actionRecoil = 0.34;
         const next = (pool.indexOf(skill) + 1) % pool.length;
@@ -474,6 +478,9 @@ export class BossController extends EnemyBase {
         const kind = this.bossKind ?? `ch${this.chapter}`;
         this.actionRecoil = 0.30;
         this.visualSkillT = 0.65;
+        if (['ch1', 'ch2', 'ch3', 'ch4'].indexOf(kind) >= 0) game.particles?.enemySignature?.(
+            this.hitSource, 'skill1', this.x, this.y,
+            Math.atan2(player.y - this.y, player.x - this.x));
         switch (kind) {
             case 'ch1': // 废土：毒液 DOT 圆
                 game.particles?.enemyBurst?.(this.x, this.y, 'acid', 100);
@@ -510,6 +517,7 @@ export class BossController extends EnemyBase {
 
     private _summon(game: any): void {
         this.visualSummonT = 0.65;
+        game.particles?.enemySignature?.(this.hitSource, 'summon', this.x, this.y);
         const count = this.phase;
         const angleOffset = Rng.float(0, Math.PI * 2);
         for (let i = 0; i < count; i++) {
@@ -520,13 +528,15 @@ export class BossController extends EnemyBase {
         }
     }
 
-    private _startCharge(player: any): void {
+    private _startCharge(player: any, game: any): void {
         const [dx, dy] = Vec.normalize(player.x - this.x, player.y - this.y);
         this._chargeVx = dx * this.speed * 3;
         this._chargeVy = dy * this.speed * 3;
         this.chargeTargetX = player.x;
         this.chargeTargetY = player.y;
         this.chargeWindup = this.chargeWindupMax;
+        game.particles?.enemySignature?.(this.hitSource, 'charge', this.x, this.y,
+            Math.atan2(dy, dx));
     }
 
     // ── 机械高达X-剑（测试房间，文档 boss.docx） ──────────────
@@ -544,6 +554,7 @@ export class BossController extends EnemyBase {
             if (this.mechSkyT <= 0) {
                 this.invulnerable = false;
                 this.visualMechSkyLandT = 0.65;
+                game.particles?.enemySignature?.(this.hitSource, 'skill4', this.mechSkyTargetX, this.mechSkyTargetY);
                 game.particles?.enemyBurst?.(this.mechSkyTargetX, this.mechSkyTargetY, 'metal', 90);
                 game.screenShake?.shake?.(14, 0.35);
                 game.hitStop?.trigger?.(90);
@@ -560,6 +571,7 @@ export class BossController extends EnemyBase {
             this.mechSlashT -= dt;
             if (this.mechSlashT <= 0) {
                 this.visualMechSlashReleaseT = 0.65;
+                game.particles?.enemySignature?.(this.hitSource, 'skill1', this.x, this.y, this.mechSlashAngle);
                 game.particles?.meleeSlash?.(this.x, this.y, this.mechSlashAngle, this.glowColor, 260, 1.6, this.bossKind ? 'boss_' + this.bossKind : this.chapter === 5 ? 'boss_mech' : this.chapter === 6 ? 'boss_invader' : 'boss_ch' + this.chapter);
                 game.screenShake?.shake?.(8, 0.25);
                 game.audio?.playSfx?.('skill_r', 0.8);
@@ -594,8 +606,8 @@ export class BossController extends EnemyBase {
             } else if (r === 1) {
                 this.mechBuffT = 15;
                 this.visualMechBuffT = 0.65;
+                game.particles?.enemySignature?.(this.hitSource, 'skill3', this.x, this.y);
                 this.buffDmgMult = 1.25;
-                game.particles?.hexActivate?.(this.x, this.y, '#88ccff');
                 game.floatingText?.spawn?.(this.x, this.y - 90, '光剑·增伤25%！', '#88ccff', 20, true);
             } else {
                 this._mechSkyDive(player, game);
@@ -605,6 +617,7 @@ export class BossController extends EnemyBase {
 
     /** 剑气风暴发射：10~20 道剑气向四面八方连续挥出，每道 5 伤。 */
     private _mechBladeStormFire(_player: any, game: any): void {
+        game.particles?.enemySignature?.(this.hitSource, 'skill2', this.x, this.y);
         const count = Rng.int(10, 20);
         const base = Rng.float(0, Math.PI * 2);
         for (let i = 0; i < count; i++) {
@@ -623,13 +636,13 @@ export class BossController extends EnemyBase {
 
     /** 天空坠击：举剑飞空（无敌+隐身+带走自身弹幕），锁定主角位置，3s 后落地 AoE。 */
     private _mechSkyDive(player: any, game: any): void {
+        game.particles?.enemySignature?.(this.hitSource, 'skill4', this.x, this.y);
         this.invulnerable = true;
         this.mechSkyT = 3;
         this.mechSkyTargetX = player.x;
         this.mechSkyTargetY = player.y;
         // 升空瞬间场上残留的剑气一并消失——Boss"直接消失"时不能还留着它的子弹攻击
         game.clearTaggedEnemyBullets?.('mech');
-        game.particles?.hexActivate?.(this.x, this.y, '#88ccff');
         game.floatingText?.spawn?.(this.x, this.y - 90, '升空锁定！', '#88ccff', 20, true);
         game.audio?.playSfx?.('skill_q', 0.8);
     }
@@ -643,6 +656,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._abyssPillarCd <= 0) {
             this._abyssPillarCd = 22;
             this.visualAbyssSkillIndex = 2; this.visualAbyssSkillT = 0.68;
+            game.particles?.enemySignature?.(this.hitSource, 'skill2', this.x, this.y);
             game.startPillarStorm?.(this);
         }
         // 冰冻区域：随机 4 个预告区（GameManager._telegraphZones 维护）
@@ -650,6 +664,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._abyssZoneCd <= 0) {
             this._abyssZoneCd = 15;
             this.visualAbyssSkillIndex = 3; this.visualAbyssSkillT = 0.68;
+            game.particles?.enemySignature?.(this.hitSource, 'skill3', this.x, this.y);
             game.startTelegraphZones?.(this);
         }
         // 水分身冲锋
@@ -657,6 +672,8 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._abyssCloneCd <= 0 && player.alive) {
             this._abyssCloneCd = 14;
             this.visualAbyssSkillIndex = 4; this.visualAbyssSkillT = 0.68;
+            game.particles?.enemySignature?.(this.hitSource, 'skill4', this.x, this.y,
+                Math.atan2(player.y - this.y, player.x - this.x));
             game.spawnWaterClone?.(this, player);
         }
         // 消耗水柱召唤深海鱿鱼
@@ -664,6 +681,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._abyssSquidCd <= 0) {
             this._abyssSquidCd = 18;
             this.visualAbyssSkillIndex = 5; this.visualAbyssSkillT = 0.72;
+            game.particles?.enemySignature?.(this.hitSource, 'skill5', this.x, this.y);
             game.abyssSummonSquid?.(this);
         }
         // 大水刺：随机 3 方向各 3 发（复用 skillWindup 前摇）。
@@ -677,6 +695,8 @@ export class BossController extends EnemyBase {
 
     /** 大水刺：向 6 个均匀方向（整体随机旋转）各释放 3 发水刺，每发 20 伤，遇屏幕边缘反弹 2 次。 */
     private _abyssWaterSpikes(player: any, game: any): void {
+        game.particles?.enemySignature?.(this.hitSource, 'skill1', this.x, this.y,
+            Math.atan2(player.y - this.y, player.x - this.x));
         game.particles?.enemyBurst?.(this.x, this.y, 'water', 90);
         const baseAngle = Rng.float(0, Math.PI * 2 / 6); // 整体随机旋转
         for (let s = 0; s < 6; s++) {
@@ -729,7 +749,7 @@ export class BossController extends EnemyBase {
             game.particles?.heal?.(this.x, this.y);
             game.floatingText?.spawn?.(this.x, this.y - 130, '能量重铸 +50%血！', '#8fffb0', 20, true);
             game.floatingText?.spawn?.(this.x, this.y - 100, '⚠ 最终形态 引导中… ⚠', '#ffaa33', 24, true);
-            game.particles?.hexActivate?.(this.x, this.y, '#ffaa33');
+            game.particles?.enemySignature?.(this.hitSource, 'skill4', this.x, this.y);
             game.screenShake?.shake?.(12, 0.5);
             game.audio?.playSfx?.('boss_roar', 0.9);
             return;
@@ -753,6 +773,7 @@ export class BossController extends EnemyBase {
         if (this._invLaserCd <= 0) {
             this._invLaserCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderLaserGrid?.(this);
+            game.particles?.enemySignature?.(this.hitSource, 'skill1', this.x, this.y);
             this.visualInvaderSkillT = 2; this.visualInvaderSkillIndex = 1;
         }
 
@@ -761,6 +782,7 @@ export class BossController extends EnemyBase {
         if (!this.bossSkillCut && this._invMissileCd <= 0) {
             this._invMissileCd = (this.finalForm ? 9 : 12) + Rng.float(0, 2);
             game.startInvaderMissiles?.(this);
+            game.particles?.enemySignature?.(this.hitSource, 'skill2', this.x, this.y);
             this.visualInvaderSkillT = 0.8; this.visualInvaderSkillIndex = 2;
         }
 
@@ -778,6 +800,8 @@ export class BossController extends EnemyBase {
      * 追踪 4 秒（lifeTime=4）仍未命中主角 → 脱靶原地爆炸，半径 100 圆形范围伤害。
      */
     private _invaderHomingFire(player: any, game: any): void {
+        game.particles?.enemySignature?.(this.hitSource, 'skill3', this.x, this.y,
+            Math.atan2(player.y - this.y, player.x - this.x));
         const count = this.finalForm ? 2 : 1;
         const dmg = this.finalForm ? 30 : 25;
         for (let i = 0; i < count; i++) {
@@ -832,6 +856,7 @@ export class BossController extends EnemyBase {
             this.visualJokerSkillT = 0.65; this.visualJokerSkillIndex = 1;
             game.floatingText?.spawn?.(this.x, this.y - 90, '上蹿下跳！', this.glowColor, 18, true);
             game.particles?.spawnSpriteFx?.(this.x, this.y, 'fx_joker_trick', 0.33, 0.8);
+            game.particles?.enemySignature?.(this.hitSource, 'skill1', this.x, this.y);
         }
         if (!player?.alive) return;
         // 技能2·滑稽恶作剧：玩家进入自身150码内才有几率施放（60%），随机一种恶作剧3秒
@@ -850,6 +875,7 @@ export class BossController extends EnemyBase {
                 this.visualJokerSkillT = 0.65; this.visualJokerSkillIndex = 2;
                 game.floatingText?.spawn?.(player.x, player.y - 50, `恶作剧·${t.name}`, this.glowColor, 18, true);
                 game.particles?.spawnSpriteFx?.(player.x, player.y, 'fx_joker_trick', 0.33, 0.7);
+                game.particles?.enemySignature?.(this.hitSource, 'skill2', player.x, player.y);
             }
         }
         // 技能3·滑稽耳光：玩家贴脸（50码内）时一巴掌，2.5倍伤害+1.5秒眩晕
@@ -859,6 +885,7 @@ export class BossController extends EnemyBase {
             this._jokerSlapCd = 5;
             const ang = Math.atan2(player.y - this.y, player.x - this.x);
             game.particles?.meleeSlash?.(this.x, this.y, ang, this.glowColor, 90, 1.4, 'boss_joker');
+            game.particles?.enemySignature?.(this.hitSource, 'skill3', this.x, this.y, ang);
             player.takeDamage(this.damage * this.buffDmgMult * 2.5, game,
                 { impact: { source: 'boss_joker', angle: ang } });
             player.applyBuff?.('joker_stun', 1.5, { stun: true, noMove: true, silence: true });

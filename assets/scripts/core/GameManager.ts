@@ -1,4 +1,4 @@
-import { ENEMY_PROJECTILE_ART, enemyProjectileSize, UNIT_ATTACK_ART } from '../data/CombatArtDB';
+import { enemyProjectileArt, enemyProjectileSize, UNIT_ATTACK_ART } from '../data/CombatArtDB';
 import { separatePlayerBodies, moveCombatBody, moveEnemyBody } from './CombatCollision';
 import { drawAttackSector, drawChargeLane, drawEnergyBeam, drawEnergyArc, localSectorBounds, sectorPath } from './CombatVfx';
 import {
@@ -1344,7 +1344,7 @@ export class GameManager extends Component {
             this._floatText.spawn(CANVAS_W / 2, 200, '首领已进入阶段 III', '#d9a6ff', 16, true);
             return;
         }
-        this._floatText.spawn(CANVAS_W / 2, 200, '推进阶段：清理旧机制后留出1.2秒观察窗', '#d9a6ff', 16, true);
+        this._floatText.spawn(CANVAS_W / 2, 245, '推进阶段：清理旧机制后留出1.2秒观察窗', '#d9a6ff', 16, true);
     }
 
     /** 酸囊投手抛投入口：落点在飞行全程可见，测试房与未来正式波次共用。 */
@@ -1420,7 +1420,7 @@ export class GameManager extends Component {
                     group.dead = true;
                     for (const n of group.nodes) n.alive = false;
                     this._economy.spawnDrop(node.x, node.y, 3);
-                    this._particles.hexActivate(node.x, node.y, '#d8f7ff');
+                    this._particles.enemySignature('triune_priest', 'skill3', node.x, node.y);
                     this._floatText.spawn(node.x, node.y - 32, '电网瓦解！ +3', '#d8f7ff', 15, true);
                 }
                 return dealt;
@@ -1484,7 +1484,12 @@ export class GameManager extends Component {
             n.hp -= dealt;
             if (n.hp <= 0) {
                 n.alive = false;
-                this._particles.hexActivate(n.x, n.y, kind.includes('vespa') ? '#72ff3c' : kind.includes('manyfold') ? '#c991ff' : '#ff9c3d');
+                const source = kind.indexOf('vespa') >= 0 ? 'boss_vespa'
+                    : kind.indexOf('manyfold') >= 0 ? 'boss_manyfold' : 'boss_crucible_city';
+                const skill = kind.indexOf('web') >= 0 || kind.indexOf('pole') >= 0 ? 'skill1'
+                    : kind.indexOf('egg') >= 0 || kind.indexOf('billet') >= 0 ? 'skill4'
+                    : kind.indexOf('shell') >= 0 || kind.indexOf('needle') >= 0 ? 'skill5' : 'skill3';
+                this._particles.enemySignature(source, skill, n.x, n.y, 0, 0.75);
                 onBreak?.(n);
             }
             return dealt;
@@ -1681,7 +1686,7 @@ export class GameManager extends Component {
                         const pa = Math.atan2(p.y - boss.y, p.x - boss.x);
                         if (Math.abs(Math.atan2(Math.sin(pa - aa), Math.cos(pa - aa))) < 0.25) hurt(22, '晶矛点刺');
                     }
-                    this._particles.meleeSlash?.(boss.x, boss.y, aa, '#8dff65', 145, 1.25);
+                    this._particles.meleeSlash?.(boss.x, boss.y, aa, '#8dff65', 145, 1.25, boss.hitSource);
                 }
             } else if (m.kind === 'crucible_mortar') {
                 if (!m.fired && m.timer <= 2) {
@@ -3788,17 +3793,17 @@ export class GameManager extends Component {
         for (const b of this._bullets.active) {
             const [bx, by] = this._toLocal(b.x, b.y);
             if (b.node && b.node.active) {
-                const projectileArt = ENEMY_PROJECTILE_ART[b.enemyFx ?? ''];
+                const projectileArt = enemyProjectileArt(b.enemyFx, b.hitSource);
                 const clip = projectileArt && EFFECT_ANIMATIONS[projectileArt.key];
                 if (clip && b.sprite) applyAnimationFrame(b.sprite, clip, clip.frames[Math.floor(b.life * 16) % clip.frames.length]);
                 b.node.setPosition(Math.round(bx), Math.round(by), 0);
-                const art = (b.isEnemyBullet || b.owner === 'enemy') ? ENEMY_PROJECTILE_ART[b.enemyFx ?? 'needle'] : undefined;
+                const art = (b.isEnemyBullet || b.owner === 'enemy') ? enemyProjectileArt(b.enemyFx, b.hitSource) : undefined;
                 b.node.setRotationFromEuler(0, 0, art?.spin !== undefined
                     ? b.life * art.spin : -Math.atan2(b.vy, b.vx) * 180 / Math.PI);
                 continue;
             }
             const radius = b.radius ?? 5;
-            const art = ENEMY_PROJECTILE_ART[b.enemyFx ?? 'needle'] ?? ENEMY_PROJECTILE_ART.needle;
+            const art = enemyProjectileArt(b.enemyFx, b.hitSource);
             const width = enemyProjectileSize(radius, art);
             const angle = art.spin !== undefined ? this._visualTime * art.spin
                 : -Math.atan2(b.vy, b.vx) * 180 / Math.PI;

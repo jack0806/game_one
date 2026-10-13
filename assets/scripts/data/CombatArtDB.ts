@@ -18,6 +18,19 @@ export const ENEMY_PROJECTILE_ART: Record<string, { key: string; aspect: number;
     beam:         { key: 'fx_enemy_plasma', aspect: 0.8, scale: 5.6 },
 };
 
+/** 同弹种不同来源的外形：海克斯核、机神导弹与万相缝针不能共用导弹/刃片图。 */
+const SOURCE_PROJECTILE_ART: Record<string, Record<string, { key: string; aspect: number; scale: number; spin?: number }>> = {
+    boss_ch3: { homing: { key: 'fx_enemy_arc', aspect: 1, scale: 4.7, spin: 130 } },
+    boss_manyfold: { chaos: { key: 'fx_enemy_rail', aspect: 0.65, scale: 6.1 } },
+    boss_mech: { blade: { key: 'fx_enemy_frost', aspect: 0.8, scale: 6.2 } },
+    drone_a: { sonic: { key: 'fx_enemy_arc', aspect: 1, scale: 4.1 } },
+    shrimp: { shrimp_spike: { key: 'fx_enemy_saw', aspect: 1, scale: 5.5, spin: 180 } },
+};
+
+export function enemyProjectileArt(fx?: string, source?: string): { key: string; aspect: number; scale: number; spin?: number } {
+    return SOURCE_PROJECTILE_ART[source ?? '']?.[fx ?? ''] ?? ENEMY_PROJECTILE_ART[fx ?? 'needle'] ?? ENEMY_PROJECTILE_ART.needle;
+}
+
 /** 全单位释放主体；同机制共享形状，身份由元素、体量、动画与实际轨迹区分。 */
 export const UNIT_ATTACK_ART: Record<string, string> = {
     grunt: 'fx_enemy_claw_slash', shield: 'fx_damage_shield', exploder: 'fx_explosion',
@@ -124,16 +137,31 @@ const PROJECTILE_HIT_SOURCE: Record<string, string> = {
     arc: 'arc_leech', homing: 'boss_ch3', beam: 'drone_a',
 };
 
-/** 同一单位的特殊元素攻击优先匹配材质；普通攻击仍使用该单位的独立图行。 */
+/** 特殊命中使用本体专属碎裂帧；附加的技能几何由 ParticleManager 绘制。 */
 export function enemyHitArt(hit: EnemyHitContext = {}): { key: string; size: number } {
-    let source = hit.source;
-    if (source === 'boss_ch1' && hit.kind === 'poison') source = 'acid_sac';
-    else if (source === 'drone_a' && hit.kind === 'sonic') source = 'bell_devourer';
-    else if (source === 'triune_priest' && hit.kind === 'frost') source = 'prism_snail';
-    else if (source === 'triune_priest' && hit.kind === 'fire') source = 'ember_acolyte';
-    else if (source === 'boss_mech' && hit.kind === 'explosion') source = 'boss_invader';
-    else if (source === 'boss_invader' && hit.kind === 'beam') source = 'boss_ch3';
-    else if (source === 'boss_vespa' && ['vespa_poison_pool', 'vespa_rain', 'vespa_shell'].indexOf(hit.kind ?? '') >= 0) source = 'acid_sac';
-    else if (source === 'boss_crucible_city' && ['crucible_pistons', 'crucible_scrap', 'crucible_billets'].indexOf(hit.kind ?? '') >= 0) source = 'rivet_beast';
-    return ENEMY_HIT_ART[source ?? ''] ?? ENEMY_HIT_ART[PROJECTILE_HIT_SOURCE[hit.kind ?? '']] ?? ENEMY_HIT_ART.physical;
+    return ENEMY_HIT_ART[hit.source ?? ''] ?? ENEMY_HIT_ART[PROJECTILE_HIT_SOURCE[hit.kind ?? '']] ?? ENEMY_HIT_ART.physical;
+}
+
+/** 同一首领的不同招式用接触轮廓区分，不再借其他敌人的受击图。 */
+export function enemyImpactSkill(hit: EnemyHitContext): string | undefined {
+    const kind = hit.kind ?? '';
+    const projectileSkills: Record<string, Record<string, string>> = {
+        squid: { water_bomb: 'skill1', water_spike: 'skill2' },
+        shrimp: { shrimp_spike: 'skill1' }, jelly: { venom_sting: 'skill2' },
+        drone_a: { sonic: 'skill1', beam: 'skill2' },
+        rail_butcher: { rail: 'skill1' },
+        boss_ch1: { poison: 'skill1' }, boss_ch2: { gear: 'skill1' },
+        boss_ch3: { homing: 'skill1' }, boss_ch4: { chaos: 'skill1' },
+        boss_mech: { blade: 'skill2', explosion: 'skill4' },
+        boss_abyss: { water_spike: 'skill1' },
+        boss_manyfold: { chaos: 'attack' },
+        boss_invader: { beam: 'skill1', explosion: 'skill2', homing: 'skill3' },
+    };
+    const projectile = projectileSkills[hit.source ?? '']?.[kind];
+    if (projectile) return projectile;
+    if (hit.source === 'triune_priest') return kind === 'fire' ? 'skill1' : kind === 'frost' ? 'skill2' : kind === 'arc' ? 'skill3' : undefined;
+    if (hit.source === 'boss_vespa') return ({ vespa_web: 'skill1', vespa_jump: 'skill2', vespa_poison_pool: 'skill2', vespa_rain: 'skill3', vespa_eggs: 'skill4', vespa_shell: 'skill5', vespa_broken_ring: 'skill5' } as Record<string, string>)[kind];
+    if (hit.source === 'boss_crucible_city') return ({ crucible_poles: 'skill1', crucible_pistons: 'skill2', crucible_scrap: 'skill3', crucible_billets: 'skill4', crucible_backflow: 'skill5' } as Record<string, string>)[kind];
+    if (hit.source === 'boss_manyfold') return ({ manyfold_lines: 'skill1', manyfold_mirror: 'skill2', manyfold_shadow: 'skill3', manyfold_sectors: 'skill4', manyfold_boundary: 'skill5' } as Record<string, string>)[kind];
+    return undefined;
 }

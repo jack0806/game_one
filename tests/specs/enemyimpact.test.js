@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ENEMY_HIT_ART, enemyHitArt } = require('../dist/data/CombatArtDB');
+const { ENEMY_HIT_ART, enemyHitArt, enemyImpactSkill } = require('../dist/data/CombatArtDB');
 const { EFFECT_ANIMATIONS } = require('../dist/data/EffectAnimationDB');
 const { UNIT_CATALOG } = require('../dist/data/BossDB');
 const { globalChapter } = require('../dist/data/LevelIndex');
@@ -67,13 +67,17 @@ test('真实针枪发射保存单位身份，十种首领身份不会退化为�
     }
 });
 
-test('同一首领的毒液和爪击、祭司的冰火电具有不同命中材质', () => {
-    assert.notEqual(enemyHitArt({ source: 'boss_ch1' }).key, enemyHitArt({ source: 'boss_ch1', kind: 'poison' }).key);
-    const priest = ['', 'frost', 'fire'].map(kind => enemyHitArt({ source: 'triune_priest', kind }).key);
-    assert.equal(new Set(priest).size, 3);
-    assert.notEqual(enemyHitArt({ source: 'boss_vespa' }).key, enemyHitArt({ source: 'boss_vespa', kind: 'vespa_rain' }).key);
-    assert.notEqual(enemyHitArt({ source: 'boss_invader', kind: 'beam' }).key, enemyHitArt({ source: 'boss_invader', kind: 'explosion' }).key);
-    assert.notEqual(enemyHitArt({ source: 'boss_mech' }).key, enemyHitArt({ source: 'boss_mech', kind: 'explosion' }).key);
+test('特殊命中保留敌人本体材质，技能轮廓按招式分开', () => {
+    for (const [source, kinds] of [
+        ['boss_ch1', ['poison']], ['triune_priest', ['fire', 'frost', 'arc']],
+        ['boss_vespa', ['vespa_web', 'vespa_rain', 'vespa_shell']],
+        ['boss_crucible_city', ['crucible_poles', 'crucible_pistons', 'crucible_backflow']],
+        ['boss_invader', ['beam', 'explosion', 'homing']],
+    ]) {
+        const ownArt = enemyHitArt({ source }).key;
+        assert.ok(kinds.every(kind => enemyHitArt({ source, kind }).key === ownArt), source);
+        assert.equal(new Set(kinds.map(kind => enemyImpactSkill({ source, kind }))).size, kinds.length, source);
+    }
 });
 
 test('不同来源同时受击保留区别但最多叠两份，四帧真实推进并及时消散', () => {

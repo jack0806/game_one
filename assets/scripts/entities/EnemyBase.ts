@@ -888,7 +888,22 @@ export class EnemyBase {
         }
 
         // 测试房间小 Boss 专属技能
-        if (this.isMiniBoss) this._updateMiniBoss(dt, player, game);
+        if (this.isMiniBoss) {
+            const previousSkill = this.miniSkillState;
+            this._updateMiniBoss(dt, player, game);
+            if (this.miniSkillState && this.miniSkillState !== previousSkill) {
+                const skill: Record<string, string> = {
+                    chain_charge: 'skill1', prism_windup: 'skill1', prism_shell: 'skill2',
+                    triune_fire: 'skill1', triune_ice: 'skill2', triune_arc: 'skill3',
+                    rail_windup: 'skill1', rail_saw: 'skill2', rail_drag: 'skill3',
+                    bell_rings: 'skill1', bell_record: 'skill2', bell_silence: 'skill3',
+                    bell_counter: 'skill4',
+                };
+                if (skill[this.miniSkillState]) game.particles?.enemySignature?.(
+                    this.type, skill[this.miniSkillState], this.x, this.y,
+                    Math.atan2(player.y - this.y, player.x - this.x));
+            }
+        }
         // 巡灯/闭壳期间停止追击与接触攻击，两个大范围机制不会互相叠加。
         if (this.type === 'prism_snail' && this.miniSkillState !== '') return;
         if (this.type === 'triune_priest' && this.miniSkillState !== '') return;
@@ -1152,8 +1167,8 @@ export class EnemyBase {
         if (this.type === 'shrimp') this._flushShrimpSkills(game);
         if (this.type === 'jelly') this._flushJellySkill(game);
         if (this.type === 'drone_a') this._flushAttackDroneSkills(game);
-        if (this.type === 'drone_s') this._flushSupportDroneSkills();
-        if (this.type === 'chain_hound') this._flushChainHoundSkill();
+        if (this.type === 'drone_s') this._flushSupportDroneSkills(game);
+        if (this.type === 'chain_hound') this._flushChainHoundSkill(game);
 
         // 位移和击退结算后再定位枪口，弹体与本帧身体使用相同世界坐标。
         if (arcShot) {
@@ -1303,8 +1318,11 @@ export class EnemyBase {
     // ── 测试房间小 Boss 专属技能（文档 boss.docx） ──────────
 
     /** 立即落到技能结算帧，并返回该方向图上绑定的真实释放挂点。 */
-    private _miniSkillOrigin(action: ActorAction, targetX: number, targetY: number): [number, number] {
+    private _miniSkillOrigin(action: ActorAction, targetX: number, targetY: number, game?: any): [number, number] {
         const facing = resolveFacingView(targetX - this.x, targetY - this.y, this.animationView);
+        const skill = action === 'skill' ? 'skill1' : action;
+        game?.particles?.enemySignature?.(this.type, skill, this.x, this.y,
+            Math.atan2(targetY - this.y, targetX - this.x));
         const clip = actorClip(this.animationSpriteKey, facing.view, action);
         const frame = clip?.frames.find(candidate => candidate.event === 'cast');
         if (!clip || !frame || !this.actorAnimation.play(action, clip, true)) return [this.x, this.y];
@@ -1318,7 +1336,7 @@ export class EnemyBase {
         const bomb = this._squidBombTarget;
         this._squidBombTarget = undefined;
         if (bomb) {
-            const origin = this._miniSkillOrigin('skill', bomb[0], bomb[1]);
+            const origin = this._miniSkillOrigin('skill', bomb[0], bomb[1], game);
             const a = Math.atan2(bomb[1] - origin[1], bomb[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'ice');
             game.enemyBullets?.push({ hitSource: this.hitSource,
@@ -1331,7 +1349,7 @@ export class EnemyBase {
         const spikes = this._squidSpikeTarget;
         this._squidSpikeTarget = undefined;
         if (spikes) {
-            const origin = this._miniSkillOrigin('skill2', spikes[0], spikes[1]);
+            const origin = this._miniSkillOrigin('skill2', spikes[0], spikes[1], game);
             const base = Math.atan2(spikes[1] - origin[1], spikes[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(base), Math.sin(base), 'ice');
             for (let i = -1; i <= 1; i++) {
@@ -1345,14 +1363,14 @@ export class EnemyBase {
         }
         const grab = this._squidGrabTarget;
         this._squidGrabTarget = undefined;
-        if (grab) this._miniSkillOrigin('skill3', grab[0], grab[1]);
+        if (grab) this._miniSkillOrigin('skill3', grab[0], grab[1], game);
     }
 
     private _flushShrimpSkills(game: any): void {
         const spike = this._shrimpSpikeTarget;
         this._shrimpSpikeTarget = undefined;
         if (spike) {
-            const origin = this._miniSkillOrigin('skill', spike[0], spike[1]);
+            const origin = this._miniSkillOrigin('skill', spike[0], spike[1], game);
             const a = Math.atan2(spike[1] - origin[1], spike[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
             game.enemyBullets?.push({ hitSource: this.hitSource,
@@ -1364,14 +1382,14 @@ export class EnemyBase {
         }
         const tail = this._shrimpTailTarget;
         this._shrimpTailTarget = undefined;
-        if (tail) this._miniSkillOrigin('skill2', tail[0], tail[1]);
+        if (tail) this._miniSkillOrigin('skill2', tail[0], tail[1], game);
     }
 
     private _flushJellySkill(game: any): void {
         const venom = this._jellyVenomTarget;
         this._jellyVenomTarget = undefined;
         if (!venom) return;
-        const origin = this._miniSkillOrigin('skill2', venom[0], venom[1]);
+        const origin = this._miniSkillOrigin('skill2', venom[0], venom[1], game);
         const a = Math.atan2(venom[1] - origin[1], venom[0] - origin[0]);
         game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'toxic');
         game.enemyBullets?.push({ hitSource: this.hitSource,
@@ -1386,7 +1404,7 @@ export class EnemyBase {
         const sonic = this._droneSonicTarget;
         this._droneSonicTarget = undefined;
         if (sonic) {
-            const origin = this._miniSkillOrigin('skill', sonic[0], sonic[1]);
+            const origin = this._miniSkillOrigin('skill', sonic[0], sonic[1], game);
             const a = Math.atan2(sonic[1] - origin[1], sonic[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
             game.enemyBullets?.push({ hitSource: this.hitSource,
@@ -1399,7 +1417,7 @@ export class EnemyBase {
         const beam = this._droneBeamTarget;
         this._droneBeamTarget = undefined;
         if (beam) {
-            const origin = this._miniSkillOrigin('skill2', beam[0], beam[1]);
+            const origin = this._miniSkillOrigin('skill2', beam[0], beam[1], game);
             const a = Math.atan2(beam[1] - origin[1], beam[0] - origin[0]);
             game.particles?.weaponFlash?.(origin[0], origin[1], Math.cos(a), Math.sin(a), 'charged');
             game.enemyBullets?.push({ hitSource: this.hitSource,
@@ -1411,22 +1429,22 @@ export class EnemyBase {
         }
     }
 
-    private _flushSupportDroneSkills(): void {
+    private _flushSupportDroneSkills(game: any): void {
         const summon = this._droneSupportSummonTarget;
         this._droneSupportSummonTarget = undefined;
-        if (summon) this._miniSkillOrigin('skill3', summon[0], summon[1]);
+        if (summon) this._miniSkillOrigin('skill3', summon[0], summon[1], game);
         const heal = this._droneSupportHealTarget;
         this._droneSupportHealTarget = undefined;
-        if (heal) this._miniSkillOrigin('skill', heal[0], heal[1]);
+        if (heal) this._miniSkillOrigin('skill', heal[0], heal[1], game);
         const shield = this._droneSupportShieldTarget;
         this._droneSupportShieldTarget = undefined;
-        if (shield) this._miniSkillOrigin('skill2', shield[0], shield[1]);
+        if (shield) this._miniSkillOrigin('skill2', shield[0], shield[1], game);
     }
 
-    private _flushChainHoundSkill(): void {
+    private _flushChainHoundSkill(game: any): void {
         const trap = this._chainHoundTrapTarget;
         this._chainHoundTrapTarget = undefined;
-        if (trap) this._miniSkillOrigin('skill2', trap[0], trap[1]);
+        if (trap) this._miniSkillOrigin('skill2', trap[0], trap[1], game);
     }
 
     private _updateMiniBoss(dt: number, player: any, game: any): void {
@@ -1519,7 +1537,7 @@ export class EnemyBase {
                         owner: 'enemy', isEnemyBullet: true, enemyFx: 'frost',
                     });
                 }
-                game.particles?.hexActivate?.(this.x, this.y, '#c8f7ff');
+                game.particles?.enemySignature?.(this.type, 'skill2', this.x, this.y);
             }
             return;
         }
@@ -1578,7 +1596,6 @@ export class EnemyBase {
             game.floatingText?.spawn?.(this.x, this.y - 50, '雷相 · 三角传导', '#d8f7ff', 15, true);
         }
         this._miniSkillCount++;
-        game.particles?.hexActivate?.(this.x, this.y, phase === 0 ? '#ff8a35' : phase === 1 ? '#8eeaff' : '#d8f7ff');
     }
 
     /** 磁轨屠夫（史诗）：磁轨→回转锯→拖拽固定轮转，绝不让炮击与拖拽重叠。 */
@@ -1777,7 +1794,6 @@ export class EnemyBase {
             game.floatingText?.spawn?.(this.x, this.y - 58, '吞音反震：停火或破钟', '#fff0a6', 16, true);
         }
         this._miniSkillCount++;
-        game.particles?.hexActivate?.(this.x, this.y, phase === 1 ? '#bd73ff' : '#fff0a6');
     }
 
     /** 深海鱿鱼（史诗）：缠绕 / 深水炸弹 / 分裂水刺；放完一轮技能（累计3个）后自毁消失。 */
@@ -1803,7 +1819,7 @@ export class EnemyBase {
             this._miniSkillCount++;
             this._squidGrabTarget = [player.x, player.y];
             player.applyBuff?.('squid_grab', 2, { noMove: true });
-            game.particles?.hexActivate?.(player.x, player.y, '#33ccff');
+            game.particles?.enemySignature?.(this.type, 'skill3', player.x, player.y);
             game.floatingText?.spawn?.(player.x, player.y - 50, '缠绕！', '#33ccff', 18, true);
         }
         // 放完一轮技能后自毁消失（消耗水柱召唤的一次性单位，不长期占场）
@@ -1827,7 +1843,7 @@ export class EnemyBase {
                     e !== this && !e.dead && Vec.dist(e.x, e.y, this.x, this.y) < 220);
                 if (hasAlly) {
                     this.maxShieldHp = 100; this.shieldHp = 100; this.shieldActive = true;
-                    this._miniSkillOrigin('skill', player.x, player.y);
+                    this._miniSkillOrigin('skill', player.x, player.y, game);
                     game.particles?.shieldBlock?.(this.x, this.y, false);
                     game.floatingText?.spawn?.(this.x, this.y - 46, '龟壳护盾', '#55ff77', 14, true);
                 }
@@ -1841,6 +1857,7 @@ export class EnemyBase {
             this._chargeVy = Math.sin(a) * this.speed * 1.2;
             this._chargeT = 0.6;
             this._chargeDmg = 10;
+            game.particles?.enemySignature?.(this.type, 'skill2', this.x, this.y, a);
             game.particles?.impact?.(this.x, this.y, a, 0.9, this.glowColor);
             game.floatingText?.spawn?.(this.x, this.y - 46, '高速碰撞！', '#55ff77', 14, true);
         }
@@ -1878,7 +1895,7 @@ export class EnemyBase {
             this.invulnerable = this.invisible;
             this._miniTimer = this.invisible ? 3 : 10;
             if (this.invisible) {
-                this._miniSkillOrigin('skill', player.x, player.y);
+                this._miniSkillOrigin('skill', player.x, player.y, game);
                 game.floatingText?.spawn?.(this.x, this.y - 40, '隐身…', '#cc88ff', 14, true);
             }
         }
@@ -1918,7 +1935,7 @@ export class EnemyBase {
                 const a = Rng.float(0, Math.PI * 2);
                 game.spawnEnemy?.('drone_a', this.x + Math.cos(a) * 90, this.y + Math.sin(a) * 90);
             }
-            game.particles?.hexActivate?.(this.x, this.y, '#ff8888');
+            game.particles?.enemySignature?.(this.type, 'skill3', this.x, this.y);
             game.floatingText?.spawn?.(this.x, this.y - 46, '紧急呼叫无人机支援！', '#ff8888', 16, true);
         }
         // 技能1 对附近随机 5~10 个怪物治疗 40~60 血
