@@ -63,7 +63,7 @@ export class HUD extends Component {
     private readonly SHIELD_H = 8;
     private readonly BOSS_W = 414;
     private readonly BOSS_H = 12;
-    private readonly SKILL_R = 32;
+    private readonly SKILL_R = 26;
 
     onLoad() {
         this._buildHpBar(); this._buildGoldDisplay(); this._buildWaveDisplay();
@@ -201,12 +201,12 @@ export class HUD extends Component {
     private _buildSkillRings() {
         for (let i = 0; i < 3; i++) {
             const n = this._mkNode(`Skill${i}`, 0, 0);
-            n.addComponent(UITransform).setContentSize(90, 112);
+            n.addComponent(UITransform).setContentSize(76, 102);
             const g = n.addComponent(Graphics), iconN = this._mkChild(n, 'Icon', 0, 0);
-            iconN.addComponent(UITransform).setContentSize(46, 46);
+            iconN.addComponent(UITransform).setContentSize(38, 38);
             const icon = iconN.addComponent(Sprite); icon.sizeMode = Sprite.SizeMode.CUSTOM;
-            const cd = this._label(n, 'Cooldown', 0, 0, 62, 32, 23);
-            this._label(n, 'Key', 0, -this.SKILL_R * 1.34 - 7, 32, 23, 18).string = ['Q', 'E', 'R'][i];
+            const cd = this._label(n, 'Cooldown', 0, 0, 52, 28, 20);
+            this._label(n, 'Key', 0, -this.SKILL_R * 1.34 - 7, 28, 20, 16).string = ['Q', 'E', 'R'][i];
             this._skillRings.push({ g, icon, cd }); this._skillRingNodes.push(n);
         }
     }
@@ -225,7 +225,7 @@ export class HUD extends Component {
         this._goldRoot?.setPosition(new Vec3(right - 206, 332, 0));
         this._moveHintRoot?.setPosition(new Vec3(-right + 88, this._testRoomMode ? -176 : -288, 0));
         for (let i = 0; i < this._skillRingNodes.length; i++) {
-            this._skillRingNodes[i].setPosition(new Vec3(right - 278 + i * 105, this._testRoomMode ? -155 : -267, 0));
+            this._skillRingNodes[i].setPosition(new Vec3(right - 240 + i * 90, this._testRoomMode ? -155 : -276, 0));
         }
     }
 

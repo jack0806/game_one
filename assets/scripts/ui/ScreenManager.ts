@@ -15,7 +15,8 @@ import { getBossDefById } from '../data/BossDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
-    isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
+    isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus,
+    registerKeyboardModalScope, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth, visibleDesignHeight } from '../core/ScreenFit';
 import { CANVAS_H } from '../core/Constants';
@@ -102,6 +103,9 @@ export class ScreenManager extends Component {
     private _detailSkillHeaders: Label[] = [];
     private _detailSkillDescs: Label[] = [];
     private _detailSkillIcons: Sprite[] = [];
+    private _detailSkillOverlay!: Node;
+    private _detailSkillTitle!: Label;
+    private _detailSkillFullDesc!: Label;
     /** 选人页标题下的作战难度徽标（setRunDifficulty 填充）。 */
     private _charDiffLabel!: Label;
 
@@ -1004,11 +1008,36 @@ export class ScreenManager extends Component {
         p.on(Node.EventType.TOUCH_END, block, this);
 
         const dlg = new Node('Dialog'); dlg.setParent(p);
-        dlg.addComponent(UITransform).setContentSize(880, 580);
+        dlg.addComponent(UITransform).setContentSize(1020, 620);
         this._detailGfx = dlg.addComponent(Graphics);
+        const detailLabel = (parent: Node, name: string, value: string,
+                             x: number, y: number, w: number, h: number,
+                             size: number, color: Color,
+                             align = HorizontalTextAlignment.LEFT): Label => {
+            const node = new Node(name); node.setParent(parent);
+            node.setPosition(new Vec3(x, y, 0));
+            node.addComponent(UITransform).setContentSize(w, h);
+            const label = node.addComponent(Label);
+            label.string = value;
+            label.fontSize = size;
+            label.color = color;
+            label.horizontalAlign = align;
+            label.verticalAlign = VerticalTextAlignment.CENTER;
+            label.overflow = Label.Overflow.SHRINK;
+            styleLabel(label, { outline: size >= 20 });
+            return label;
+        };
+
+        const eyebrow = new Node('Eyebrow'); eyebrow.setParent(dlg);
+        eyebrow.setPosition(new Vec3(0, 295, 0));
+        eyebrow.addComponent(UITransform).setContentSize(560, 21);
+        const el = eyebrow.addComponent(Label);
+        el.string = '英雄档案  /  HERO DOSSIER';
+        el.fontSize = 13; el.color = UI_PALETTE.cyan;
+        styleLabel(el, { outline: false });
 
         const tn = new Node('Title'); tn.setParent(dlg);
-        tn.setPosition(new Vec3(0, 244, 0));
+        tn.setPosition(new Vec3(0, 261, 0));
         tn.addComponent(UITransform).setContentSize(700, 40);
         this._detailTitle = tn.addComponent(Label);
         this._detailTitle.fontSize = 32;
@@ -1016,46 +1045,45 @@ export class ScreenManager extends Component {
         this._detailTitle.enableWrapText = false;
         styleLabel(this._detailTitle);
 
-        // 左列：立绘 + 基础属性
+        // 左列：立绘成为角色身份焦点，属性收在同一装甲卡内。
         const pf = new Node('PortraitFrame'); pf.setParent(dlg);
-        pf.setPosition(new Vec3(-330, 140, 0));
-        pf.addComponent(UITransform).setContentSize(148, 148);
+        pf.setPosition(new Vec3(-350, 94, 0));
+        pf.addComponent(UITransform).setContentSize(246, 246);
         this._detailPortraitGfx = pf.addComponent(Graphics);
 
         const pn = new Node('Portrait'); pn.setParent(dlg);
-        pn.setPosition(new Vec3(-330, 140, 0));
-        pn.addComponent(UITransform).setContentSize(132, 132);
+        pn.setPosition(new Vec3(-350, 94, 0));
+        pn.addComponent(UITransform).setContentSize(230, 230);
         this._detailPortrait = pn.addComponent(Sprite);
         this._detailPortrait.sizeMode = Sprite.SizeMode.CUSTOM;
 
         const stN = new Node('Stats'); stN.setParent(dlg);
-        stN.setPosition(new Vec3(-330, -46, 0));
-        stN.addComponent(UITransform).setContentSize(220, 196);
+        stN.setPosition(new Vec3(-350, -136, 0));
+        stN.addComponent(UITransform).setContentSize(240, 169);
         this._detailStats = stN.addComponent(Label);
         this._detailStats.fontSize = 16;
-        this._detailStats.lineHeight = 27;
+        this._detailStats.lineHeight = 23;
         this._detailStats.color = new Color(198, 212, 230, 250);
         this._detailStats.horizontalAlign = HorizontalTextAlignment.LEFT;
         this._detailStats.verticalAlign = VerticalTextAlignment.TOP;
         styleLabel(this._detailStats);
 
-        // 右列：被动 + Q/E/R，每段「标题（含冷却）+ 详细效果说明」。
-        // 标题19px、说明16px/行距24px，段间隔约100px，R段说明底部距按钮仍有余量。
-        const RX = 90, RW = 560;
-        const headY = [198, 102, 6, -90];
-        const descY = [158, 62, -34, -130];
+        // 右列：被动与 Q/E/R 四张阅读卡，长说明不再挤成灰色注脚。
+        const RX = 180, RW = 590;
+        const headY = [188, 88, -12, -112];
+        const descY = [151, 51, -49, -149];
         for (let k = 0; k < 4; k++) {
             if (k > 0) {
                 const icon = new Node(`SkillIcon${k}`); icon.setParent(dlg);
-                icon.setPosition(new Vec3(-218, headY[k], 0));
-                icon.addComponent(UITransform).setContentSize(40, 40);
+                icon.setPosition(new Vec3(-166, headY[k] - 7, 0));
+                icon.addComponent(UITransform).setContentSize(46, 46);
                 const sp = icon.addComponent(Sprite);
                 sp.sizeMode = Sprite.SizeMode.CUSTOM;
                 this._detailSkillIcons.push(sp);
             }
             const hd = new Node(`SkillHead${k}`); hd.setParent(dlg);
             hd.setPosition(new Vec3(RX, headY[k], 0));
-            hd.addComponent(UITransform).setContentSize(RW, 30);
+            hd.addComponent(UITransform).setContentSize(RW, 31);
             const hl = hd.addComponent(Label);
             hl.fontSize = 19;
             hl.lineHeight = 24;
@@ -1067,14 +1095,14 @@ export class ScreenManager extends Component {
 
             const dc = new Node(`SkillDesc${k}`); dc.setParent(dlg);
             dc.setPosition(new Vec3(RX, descY[k], 0));
-            dc.addComponent(UITransform).setContentSize(RW, 48);
+            dc.addComponent(UITransform).setContentSize(RW, 50);
             const dl = dc.addComponent(Label);
             dl.fontSize = 16;
             dl.lineHeight = 24;
             dl.color = new Color(212, 224, 240, 242);
             dl.horizontalAlign = HorizontalTextAlignment.LEFT;
             dl.verticalAlign = VerticalTextAlignment.TOP;
-            dl.overflow = Label.Overflow.SHRINK;
+            dl.overflow = Label.Overflow.CLAMP;
             dl.enableWrapText = true;
             styleLabel(dl);
             this._detailSkillDescs.push(dl);
@@ -1082,38 +1110,95 @@ export class ScreenManager extends Component {
 
         // 底部：弹窗内可直接出战，或返回选人页
         const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
-        const selBtn = this._mkBtn(dlg, '选择出战', -174, -234,
+        const selBtn = this._mkBtn(dlg, '选择出战', -174, -268,
             260, touch ? 72 : 52, new Color(24, 170, 120, 255));
         selBtn.on(Node.EventType.TOUCH_END, () => {
             if (this._detailDef) this.onCharSelected?.(this._detailDef);
         }, this);
-        const backBtn = this._mkBtn(dlg, '返回', 174, -234,
+        const backBtn = this._mkBtn(dlg, '返回', 174, -268,
             260, touch ? 72 : 52, new Color(70, 90, 130, 255));
         backBtn.on(Node.EventType.TOUCH_END, () => this.hide('charDetail'), this);
+
+        detailLabel(dlg, 'SkillTapHint', '点按技能卡查看完整说明',
+            180, -219, 400, 19, 13, UI_PALETTE.muted, HorizontalTextAlignment.CENTER);
+        for (let k = 0; k < 4; k++) {
+            const tap = new Node(`SkillCardTap${k}`); tap.setParent(dlg);
+            tap.setPosition(new Vec3(145, 173 - k * 100, 0));
+            tap.addComponent(UITransform).setContentSize(682, 92);
+            tap.on(Node.EventType.TOUCH_END, () => this._showCharSkillDetail(k));
+            registerKeyboardFocus(tap, 682, 92);
+        }
+
+        const overlay = new Node('SkillDetail'); overlay.setParent(dlg);
+        overlay.addComponent(UITransform).setContentSize(1020, 620);
+        overlay.addComponent(BlockInputEvents);
+        registerKeyboardModalScope(overlay);
+        const overlayG = overlay.addComponent(Graphics);
+        const drawSkillOverlay = () => {
+            overlayG.clear();
+            overlayG.fillColor = new Color(3, 9, 17, 224);
+            overlayG.fillRect(-510, -310, 1020, 620);
+            drawHexPanel(overlayG, -380, -215, 760, 430, UI_PALETTE.cyan, 255);
+            overlayG.fillColor = new Color(46, 195, 216, 180);
+            overlayG.fillRect(-333, 124, 666, 2);
+        };
+        drawSkillOverlay(); attachEnableRedraw(overlay, drawSkillOverlay);
+        this._detailSkillTitle = detailLabel(overlay, 'Title', '',
+            0, 162, 650, 42, 26, UI_PALETTE.text, HorizontalTextAlignment.CENTER);
+        this._detailSkillFullDesc = detailLabel(overlay, 'FullDescription', '',
+            0, 0, 640, 222, 18, UI_PALETTE.text);
+        this._detailSkillFullDesc.verticalAlign = VerticalTextAlignment.TOP;
+        this._detailSkillFullDesc.lineHeight = 29;
+        this._detailSkillFullDesc.enableWrapText = true;
+        this._detailSkillFullDesc.overflow = Label.Overflow.CLAMP;
+        const closeSkill = this._mkBtn(overlay, '关闭说明', 0, -166, 206, 48, UI_PALETTE.cyan);
+        closeSkill.on(Node.EventType.TOUCH_END, () => { overlay.active = false; }, this);
+        overlay.active = false;
+        this._detailSkillOverlay = overlay;
+    }
+
+    private _showCharSkillDetail(slot: number): void {
+        const def = this._detailDef;
+        if (!def) return;
+        const skills = [def.skills.q, def.skills.e, def.skills.r];
+        const skill = slot === 0 ? null : splitSkillText(skills[slot - 1]);
+        this._detailSkillTitle.string = slot === 0 ? '被动天赋' : `${['Q', 'E', 'R'][slot - 1]} · ${skill![0]}`;
+        this._detailSkillTitle.color = slot === 0 ? UI_PALETTE.reward : Color.fromHEX(new Color(), def.color);
+        this._detailSkillFullDesc.string = slot === 0 ? def.desc : skill![1];
+        this._detailSkillOverlay.active = true;
     }
 
     /** 打开英雄介绍弹窗：按角色填充立绘、基础属性与被动/Q/E/R 详细描述。 */
     showCharDetail(def: CharDef) {
         this._detailDef = def;
+        this._detailSkillOverlay.active = false;
         const col = Color.fromHEX(new Color(), def.color);
 
         const g = this._detailGfx;
         g.clear();
-        drawHexPanel(g, -440, -290, 880, 580, new Color(86, 116, 139), 255);
-        g.strokeColor = new Color(col.r, col.g, col.b, 115);
+        drawHexPanel(g, -510, -310, 1020, 620, new Color(86, 116, 139), 255);
+        g.fillColor = new Color(8, 20, 32, 255);
+        g.roundRect(-490, -224, 280, 450, 12); g.fill();
+        for (const y of [127, 27, -73, -173]) {
+            g.fillColor = new Color(10, 26, 41, 250);
+            g.roundRect(-196, y, 682, 92, 10); g.fill();
+            g.fillColor = new Color(col.r, col.g, col.b, 170);
+            g.fillRect(-196, y + 10, 3, 72);
+        }
+        g.strokeColor = new Color(col.r, col.g, col.b, 135);
         g.lineWidth = 2;
-        g.moveTo(-392, 218); g.lineTo(392, 218); g.stroke();
+        g.moveTo(-470, 229); g.lineTo(470, 229); g.stroke();
 
         const pg = this._detailPortraitGfx;
         pg.clear();
         pg.fillColor = new Color(9, 15, 24, 245);
-        pg.fillRect(-74, -74, 148, 148);
+        pg.fillRect(-123, -123, 246, 246);
         pg.strokeColor = new Color(col.r, col.g, col.b, 170);
         pg.lineWidth = 1.5;
-        pg.rect(-74, -74, 148, 148); pg.stroke();
+        pg.rect(-123, -123, 246, 246); pg.stroke();
 
         this._detailTitle.string = def.name;
-        this._detailTitle.color = UI_PALETTE.text;
+        this._detailTitle.color = col;
 
         loadArtSprite(`char_${def.id}`, (frame) => {
             if (frame && this._detailPortrait.isValid) this._detailPortrait.spriteFrame = frame;

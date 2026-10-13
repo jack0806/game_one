@@ -472,6 +472,7 @@ export class GameManager extends Component {
 
         const statsNode = new Node('Stats'); statsNode.setParent(ul);
         this._statsUI = statsNode.addComponent(StatsPanel);
+        this._statsUI.onClose = () => this._setState(this._pauseReturn);
 
         const smNode = new Node('ScreenMgr'); smNode.setParent(ul);
         this._screenMgr = smNode.addComponent(ScreenManager);
@@ -4089,6 +4090,7 @@ export class GameManager extends Component {
         const st  = p.stats;
         const pct = (v: number) => `${Math.round(v * 100)}%`;
         return {
+            charId:     this._char?.id ?? 'kai',
             charName:   this._char?.name  ?? '角色',
             charColor:  this._char?.color ?? '#ffd700',
             passiveDesc: this._char?.desc ?? '',
@@ -4109,6 +4111,7 @@ export class GameManager extends Component {
             progress: `进度  图${mapOf(this._chapter)}-${chapterInMap(this._chapter)} · 第${this._waveMgr.wave}波 · 击杀 ${this.kills} · 得分 ${this.score}`,
             augments:    this._augMgr.all(),
             skillStates: p.getSkillStates(),
+            skillIcons: this._char?.skillIcons ?? { q: 'skill_kai_q', e: 'skill_kai_e', r: 'skill_kai_r' },
         };
     }
 

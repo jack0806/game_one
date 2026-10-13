@@ -45,12 +45,12 @@ type SkillSlot = 'q' | 'e' | 'r';
 /**
  * 技能按钮锚点：位置以「可见区右边缘」为基准（fromRight 为相对右缘的偏移），
  * 全面屏横向延展后按钮仍贴住物理右缘；y 为根节点本地纵坐标。
- * 1280 宽时与 PC HUD 同位：Q(362,-267) E(467,-267) R(572,-267)。
+ * 1280 宽时与 PC HUD 同位：Q(400,-276) E(490,-276) R(580,-276)。
  */
 const SKILL_ANCHORS: Record<SkillSlot, { fromRight: number; y: number; r: number }> = {
-    q: { fromRight: -278, y: -267, r: 32 },
-    e: { fromRight: -173, y: -267, r: 32 },
-    r: { fromRight: -68, y: -267, r: 32 },
+    q: { fromRight: -240, y: -276, r: 26 },
+    e: { fromRight: -150, y: -276, r: 26 },
+    r: { fromRight: -60, y: -276, r: 26 },
 };
 
 interface SkillButtonView {
@@ -438,10 +438,10 @@ export class TouchControls extends Component {
             const d = SKILL_ANCHORS[slot];
             const n = new Node(`Skill_${slot.toUpperCase()}`); n.setParent(this.node);
             n.setPosition(new Vec3(CANVAS_W / 2 + d.fromRight, d.y, 0));
-            n.addComponent(UITransform).setContentSize(d.r * 2.68, d.r * 2.68 + 32);
+            n.addComponent(UITransform).setContentSize(76, 102);
 
             const iconN = new Node('Icon'); iconN.setParent(n);
-            const iconSize = 46;
+            const iconSize = 38;
             iconN.addComponent(UITransform).setContentSize(iconSize, iconSize);
             const icon = iconN.addComponent(Sprite);
             icon.sizeMode = Sprite.SizeMode.CUSTOM;
@@ -449,15 +449,15 @@ export class TouchControls extends Component {
             const cdN = new Node('Cd'); cdN.setParent(n);
             cdN.addComponent(UITransform).setContentSize(d.r * 2, d.r * 2);
             const cdLabel = cdN.addComponent(Label);
-            cdLabel.fontSize = 23; cdLabel.lineHeight = 28;
+            cdLabel.fontSize = 20; cdLabel.lineHeight = 24;
             cdLabel.color = new Color(255, 240, 200, 255);
             styleLabel(cdLabel);
 
             const keyN = new Node('Key'); keyN.setParent(n);
             keyN.setPosition(new Vec3(0, -d.r * 1.34 - 7, 0));
-            keyN.addComponent(UITransform).setContentSize(32, 23);
+            keyN.addComponent(UITransform).setContentSize(28, 20);
             const keyLabel = keyN.addComponent(Label);
-            keyLabel.string = slot.toUpperCase(); keyLabel.fontSize = 18; keyLabel.lineHeight = 21;
+            keyLabel.string = slot.toUpperCase(); keyLabel.fontSize = 16; keyLabel.lineHeight = 19;
             keyLabel.color = new Color(238, 244, 250, 255); styleLabel(keyLabel);
 
             const view: SkillButtonView = {

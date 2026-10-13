@@ -184,16 +184,20 @@ test('英雄介绍弹窗展示被动与Q/E/R详细描述、冷却与基础属性
     assert.match(screenSource, /\(\) => this\.hide\('charDetail'\), this\);/);
 });
 
-test('英雄介绍弹窗文字放大后保持可读：属性16px、技能标题19px、说明16px', () => {
+test('英雄介绍弹窗以大幅立绘和四张技能卡呈现，文字保持可读', () => {
     assert.match(screenSource, /this\._detailTitle\.fontSize = 32/);
     assert.match(screenSource, /this\._detailStats\.fontSize = 16/);
-    assert.match(screenSource, /this\._detailStats\.lineHeight = 27/);
+    assert.match(screenSource, /this\._detailStats\.lineHeight = 23/);
+    assert.match(screenSource, /pn\.addComponent\(UITransform\)\.setContentSize\(230, 230\)/);
+    assert.match(screenSource, /for \(const y of \[127, 27, -73, -173\]\)/);
+    assert.match(screenSource, /tap\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._showCharSkillDetail\(k\)\)/);
+    assert.match(screenSource, /this\._detailSkillFullDesc\.string = slot === 0 \? def\.desc : skill!\[1\]/);
     assert.match(screenSource, /hl\.fontSize = 19/);
     assert.match(screenSource, /dl\.fontSize = 16/);
     assert.match(screenSource, /dl\.lineHeight = 24/);
     // 桌面保持52px，触屏增至72px且左右留缝。
-    assert.match(screenSource, /'选择出战', -174, -234,\s*260, touch \? 72 : 52/);
-    assert.match(screenSource, /'返回', 174, -234,\s*260, touch \? 72 : 52/);
+    assert.match(screenSource, /'选择出战', -174, -268,\s*260, touch \? 72 : 52/);
+    assert.match(screenSource, /'返回', 174, -268,\s*260, touch \? 72 : 52/);
     // 只检查详情弹窗的说明 Label；地图页另有独立的 15px 描述。
     const detailSource = screenSource.slice(screenSource.indexOf('private _buildCharDetailPanel()'),
         screenSource.indexOf('private _buildGameoverPanel()'));
@@ -266,9 +270,11 @@ test('移动端虚拟操控：左下角常驻静态摇杆，触摸可浮动锚�
 });
 
 test('技能按钮与A图同排装甲方框,按下即触发且带冷却显示', () => {
-    assert.match(touchSource, /q: \{ fromRight: -278, y: -267, r: 32 \}/);
-    assert.match(touchSource, /e: \{ fromRight: -173, y: -267, r: 32 \}/);
-    assert.match(touchSource, /r: \{ fromRight: -68, y: -267, r: 32 \}/);
+    assert.match(touchSource, /q: \{ fromRight: -240, y: -276, r: 26 \}/);
+    assert.match(touchSource, /e: \{ fromRight: -150, y: -276, r: 26 \}/);
+    assert.match(touchSource, /r: \{ fromRight: -60, y: -276, r: 26 \}/);
+    assert.match(hudSource, /private readonly SKILL_R = 26/);
+    assert.match(hudSource, /right - 240 \+ i \* 90/);
     assert.match(touchSource, /drawCombatSkill\(g, btn\.radius, ratio\)/);
     assert.match(hudSource, /drawCombatSkill\(g, this\.SKILL_R, ratio\)/);
     // 按下(TOUCH_START)即出手，与键盘Q/E/R同一按下沿语义
@@ -383,16 +389,17 @@ test('水分身、影分身与炮台都使用真实逐帧动作', () => {
     assert.doesNotMatch(gameSource, /分身使用角形人形剪影/);
 });
 
-test('角色详情将十个词条排成2列×5行，长技能说明使用双行阅读单元', () => {
-    assert.match(statsSource, /const augColX = \[132, 398\]/);
-    assert.match(statsSource, /Math\.floor\(i \/ 2\) \* rowH/);
-    assert.match(statsSource, /nn\.setPosition\(new Vec3\(-350, y \+ 14, 0\)\)/);
-    assert.match(statsSource, /dn\.setPosition\(new Vec3\(-265, y - 18, 0\)\)/);
-    assert.match(statsSource, /dn\.addComponent\(UITransform\)\.setContentSize\(450, 36\)/);
-    assert.match(statsSource, /dl\.fontSize = 14/);
-    assert.match(statsSource, /dl\.enableWrapText = true/);
-    assert.match(statsSource, /row\.desc\.string = detail \? `— \$\{detail\}` : ''/);
-    assert.match(statsSource, /sk\?\.desc\?\.split\('—'\)/);
+test('角色详情以立绘、作战参数和技能为概览，海克斯构筑独立分页并保留详情', () => {
+    assert.match(statsSource, /_selectTab\('overview'\)/);
+    assert.match(statsSource, /button\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._selectTab\(def\.name\)\)/);
+    assert.match(statsSource, /applyArtSprite\(this\._portrait, `char_\$\{d\.charId\}`\)/);
+    assert.match(statsSource, /applyArtSprite\(row\.icon, `ui_icon_\$\{d\.skillIcons\[key\]\}`\)/);
+    assert.match(statsSource, /const augColX = \[-273, 273\], y0 = 180, rowH = 87/);
+    assert.match(statsSource, /this\._emptyAug\.active = this\._augments\.length === 0/);
+    assert.match(statsSource, /this\._augDetail\.active = true/);
+    assert.match(statsSource, /row\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._showSkillDetail\(i\)\)/);
+    assert.match(statsSource, /passiveTap\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._showPassiveDetail\(\)\)/);
+    assert.match(gameSource, /this\._statsUI\.onClose = \(\) => this\._setState\(this\._pauseReturn\)/);
 });
 
 test('战斗英雄呼吸动画保持等比缩放', () => {
