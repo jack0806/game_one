@@ -49,3 +49,18 @@ test('clear立即清空跨页面残留的战斗飘字', () => {
     text.clear();
     assert.equal(text.items.length, 0);
 });
+
+test('同一位置的技能浮字错行，重复提示合并并限制密集数量', () => {
+    const text = new FloatingText();
+    text.spawn(600, 280, '窃取失败', '#ffd655', 15);
+    text.spawn(600, 280, '窃神之手', '#ffd655', 15);
+    assert.ok(Math.abs(text.items[0].y - text.items[1].y) >= 28);
+    text.spawn(600, 280, '窃取失败', '#ffd655', 15);
+    assert.equal(text.items.length, 2, '重复提示刷新而非盖在原文上');
+    for (let i = 0; i < 8; i++) text.spawn(600, 280, `状态${i}`, '#fff', 15);
+    assert.ok(text.items.length <= 5, '同一区域只保留少量近期提示');
+    const upper = new FloatingText();
+    upper.spawn(600, 100, '提示甲', '#fff', 15);
+    upper.spawn(600, 100, '提示乙', '#fff', 15);
+    assert.ok(upper.items[1].y > upper.items[0].y, '贴近屏幕顶部时应向下错行');
+});

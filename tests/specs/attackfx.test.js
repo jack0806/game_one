@@ -137,22 +137,18 @@ test('超杀伤害的冲击粒子倍率钳制为1,避免千像素光环', () => 
     assert.ok(particles.particles.every(p => p.size <= 9));
 });
 
-test('格雷夫Q/E/R使用三套不同轮廓的专属混沌特效', () => {
+test('格雷夫Q/E/R保留紫晶爆点且不再生成整圈与放射直线', () => {
     const q = new ParticleManager();
     q.grafWhipLash(100, 100, 1, 0);
     const e = new ParticleManager();
     e.grafChaosStun(100, 100);
     const r = new ParticleManager();
     r.grafCataclysm(100, 100);
-    assert.equal(q.spriteFx.length, 1, 'Q鞭击为单核脉冲');
-    assert.equal(e.spriteFx.length, 1, 'E眩晕波为单核震环');
-    assert.equal(r.spriteFx.length, 3, 'R必须是三层灾变法阵');
-    // Q主缝沿鞭向延伸200码（混沌间隙长度）
-    const lash = q.particles.find(p => p.type === 'line' && p.x2 - p.x === 200);
-    assert.ok(lash, 'Q应有沿鞭向200码的主缝裂光线');
-    // E震环扩散需覆盖450眩晕半径
-    const stunRings = e.particles.filter(p => p.type === 'ring');
-    assert.ok(stunRings.some(p => p.maxRadius >= 450), 'E震环扩散应覆盖450码眩晕半径');
+    assert.equal(q.spriteFx.length, 1, 'Q鞭击保留单核脉冲');
+    assert.equal(e.spriteFx.length, 1, 'E保留中心紫晶爆发');
+    assert.equal(r.spriteFx.length, 2, 'R保留两层中心爆发，外缘由伤害波绘制');
+    assert.ok([q, e, r].every(fx => fx.particles.every(p => p.type === 'dot')),
+        '技能粒子不得再拼接直线和整圆');
     assert.ok(r.particles.length > e.particles.length, 'R规模必须高于Q/E');
 });
 

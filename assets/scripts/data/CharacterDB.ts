@@ -521,6 +521,15 @@ export const CHARACTERS: Record<string, CharDef> = {
             }
             if (game.particles.grafChaosStun) game.particles.grafChaosStun(p.x, p.y);
             else game.particles.hexActivate(p.x, p.y, '#cc44ff');
+            // 与真实 450 码眩晕范围同步的短促裂潮，动画只负责呈现。
+            game.turrets?.push({
+                x: p.x, y: p.y, r: 24, kind: 'chaosStunWave', alive: true, _t: 0.78,
+                update(dt: number) {
+                    this._t -= dt;
+                    this.r = 24 + (1 - Math.max(0, this._t) / 0.78) * 426;
+                    if (this._t <= 0) this.alive = false;
+                },
+            });
             game.screenShake?.shake?.(10, 0.35);
             if (stunned > 0) game.floatingText?.spawn?.(p.x, p.y - 50, `眩晕×${stunned}`, '#cc44ff', 16, true);
         },
@@ -630,7 +639,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                 // 没有可攻击目标时不消耗赃技（保持冷却挂起）
                 if (!valid.length) {
                     p.stats.deferQcd = true;
-                    game.announceSteal?.('没有可攻击目标：赃技保留');
+                    game.announceSteal?.('无目标，赃技保留');
                     return;
                 }
                 const pool = game.bulletPool ?? game.bullets;
@@ -674,7 +683,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                 p.stats._stealGuaranteed = true;
                 p.stats.qCdNext = 5;
                 p.stats.deferQcd = false;
-                game.announceSteal?.('窃取失败：500码内无可窃目标，恢复8点生命（下次必定成功）');
+                game.announceSteal?.('窃取失败 · 回复8生命 · 下次保底');
                 return;   // PlayerController 读取 qCdNext 启动 5 秒失败冷却
             }
             valid.sort((a: any, b: any) =>
@@ -690,7 +699,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                 p.stats._stealGuaranteed = true;
                 p.stats.qCdNext = 5;
                 p.stats.deferQcd = false;
-                game.announceSteal?.('窃取失败：对方捂紧了技能，恢复8点生命（下次必定成功）');
+                game.announceSteal?.('窃取失败 · 回复8生命 · 下次保底');
                 game.particles.hexActivate(target.x, target.y, '#8a8f9a');
                 return;
             }
@@ -710,7 +719,7 @@ export const CHARACTERS: Record<string, CharDef> = {
             };
             p.stats.deferQcd = true;
             kleptoGainMark(p, game);
-            game.announceSteal?.(`窃取成功：${p.stats._stolenSkill.name}（再按Q释放）`);
+            game.announceSteal?.(`已窃取${p.stats._stolenSkill.name} · 再按Q`);
             game.particles.hexActivate(target.x, target.y, '#f0c04a');
         },
         eSkill(p: any, game: any) {

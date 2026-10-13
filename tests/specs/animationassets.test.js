@@ -63,61 +63,23 @@ test('疫晶跳蛛维斯帕三向图集覆盖五项文档技能',()=>assertEnemy
 test('磁潮坩埚城兽三向图集覆盖五项文档技能',()=>assertEnemyActions('enemy_boss_crucible_city',5));
 test('折界裁缝万相三向图集覆盖五项文档技能',()=>assertEnemyActions('enemy_boss_manyfold',5));
 
-test('凯尔Q/E/R分别使用强化射击、弹幕架炮和核心过载动作', () => {
-    const kai = ACTOR_ANIMATIONS.char_token_kai;
-    for (const view of ['front', 'side', 'back']) {
-        assert.match(kai[view].skill.sheet, /anim_kai_/);
-        assert.equal(kai[view].skill2.sheet, 'anim_kai_skill2');
-        assert.equal(kai[view].skill3.sheet, 'anim_kai_skill3');
-        assert.equal(kai[view].skill2.frames[2].event, 'cast');
-        assert.equal(kai[view].skill3.frames[2].event, 'cast');
-        assert.ok(kai[view].skill3.frames[2].muzzle, `${view}核心过载缺少炮口挂点`);
-    }
-});
-
-test('薇薇安Q/E/R分别使用部署、超频和炮台风暴指令动作', () => {
-    const vivian = ACTOR_ANIMATIONS.char_token_vivian;
-    for (const view of ['front', 'side', 'back']) {
-        assert.equal(vivian[view].skill2.sheet, 'anim_vivian_skill2');
-        assert.equal(vivian[view].skill3.sheet, 'anim_vivian_skill3');
-        assert.equal(vivian[view].skill2.frames[2].event, 'cast');
-        assert.equal(vivian[view].skill3.frames[2].event, 'cast');
-    }
-});
-
-test('雷克Q/E/R分别使用怒冲、原战吼和死亡意志动作', () => {
-    const reik = ACTOR_ANIMATIONS.char_token_reik;
-    for (const view of ['front', 'side', 'back']) {
-        assert.equal(reik[view].skill.sheet, 'anim_reik_skill');
-        assert.match(reik[view].skill2.sheet, /^anim_reik_(front|side|back)$/);
-        assert.equal(reik[view].skill3.sheet, 'anim_reik_skill3');
-        assert.equal(reik[view].skill.frames[2].event, 'cast');
-        assert.equal(reik[view].skill2.frames.find(frame => frame.event === 'cast')?.index % 4, 2);
-        assert.equal(reik[view].skill3.frames[2].event, 'cast');
-    }
-});
-
-test('奥莉亚Q/E/R分别使用瞬移斩、形态切换和原奇点蓄能动作', () => {
-    const olia = ACTOR_ANIMATIONS.char_token_olia;
-    for (const view of ['front', 'side', 'back']) {
-        assert.equal(olia[view].skill.sheet, 'anim_olia_skill');
-        assert.equal(olia[view].skill2.sheet, 'anim_olia_skill2');
-        assert.match(olia[view].skill3.sheet, /^anim_olia_/);
-        for (const action of ['skill', 'skill2', 'skill3']) {
-            assert.ok(olia[view][action].frames.some(frame => frame.event === 'cast'), `${view}.${action}`);
-        }
-    }
-});
-
-test('格雷夫与莉安娜Q/E/R均使用各自实际技能动作', () => {
-    for (const [key, prefix] of [['char_token_graf', 'anim_graf'], ['char_token_liana', 'anim_liana']]) {
-        const set = ACTOR_ANIMATIONS[key];
+test('八名英雄三方向的基础、攻击与Q/E/R各有独立动作行', () => {
+    for (const id of ['kai', 'vivian', 'reik', 'olia', 'graf', 'liana', 'via', 'mortis']) {
+        const set = ACTOR_ANIMATIONS[`char_token_${id}`];
         for (const view of ['front', 'side', 'back']) {
-            assert.match(set[view].skill.sheet, new RegExp(`^${prefix}_`));
-            assert.equal(set[view].skill2.sheet, `${prefix}_skill2`);
-            assert.equal(set[view].skill3.sheet, `${prefix}_skill3`);
-            assert.equal(set[view].skill2.frames[2].event, 'cast');
-            assert.equal(set[view].skill3.frames[2].event, 'cast');
+            const rows = new Set();
+            for (const action of ['idle', 'walk', 'run', 'attack', 'hit', 'defeated',
+                'skill', 'skill2', 'skill3', 'attackMelee']) {
+                const clip = set[view][action];
+                assert.equal(clip.sheet, `anim_stylea_hero_${id}_${view}`);
+                assert.equal(clip.frames.length, 4);
+                assert.ok(!rows.has(clip.frames[0].index), `${id}/${view}/${action}复用动作行`);
+                rows.add(clip.frames[0].index);
+            }
+            for (const action of ['skill', 'skill2', 'skill3']) {
+                assert.equal(set[view][action].frames[2].event, 'cast');
+            }
+            assert.ok(set[view].attack.frames.some(frame => frame.event === 'fire' || frame.event === 'strike'));
         }
     }
 });

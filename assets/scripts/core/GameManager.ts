@@ -206,7 +206,7 @@ export class GameManager extends Component {
     // ── extra runtime state (turrets / zones / enemy bullets / stats) ──
     private _turrets:      any[] = [];
     private _deathZones:   { x: number; y: number; r: number; timer: number; dps: number }[] = [];
-    private _iceZones:     { x: number; y: number; r: number; timer: number }[] = [];
+    private _iceZones:     { x: number; y: number; r: number; timer: number; duration?: number; field?: boolean }[] = [];
     /** 敌方酸囊：0.7秒抛物预告 → 3秒毒斑；与玩家技能地面区分开维护。 */
     private _enemyHazards: { kind: 'acid' | 'ember' | 'trap' | 'priest_fire'; fromX: number; fromY: number; x: number; y: number; r: number; phase: 'telegraph' | 'pool'; timer: number; telegraphMax: number; tickCd: number }[] = [];
     /** 三相祭司晶墙、可破坏导体与磁轨屠夫回转锯都使用独立判定对象，避免只画假特效。 */
@@ -2442,11 +2442,17 @@ export class GameManager extends Component {
             }
         }
 
-        // Ice zones (仅维护生命周期，减速效果在生成时已直接施加到敌人)
+        // 冰场持续影响进入区域的敌人，离开后很快恢复；全屏大招仍沿用单次冻结。
         for (let i = this._iceZones.length - 1; i >= 0; i--) {
             const z = this._iceZones[i];
             z.timer -= dt;
-            if (z.timer <= 0) this._iceZones.splice(i, 1);
+            if (z.timer <= 0) { this._iceZones.splice(i, 1); continue; }
+            if (!z.field) continue;
+            for (const e of this._enemies) {
+                if (e.dead || (e.x - z.x) ** 2 + (e.y - z.y) ** 2 > z.r * z.r) continue;
+                e.slowMult = Math.min(e.slowMult ?? 1, 0.35);
+                e._slowTimer = Math.max(e._slowTimer ?? 0, 0.18);
+            }
         }
 
         if (!(this.state === 'testRoom' && this._testTargetPaused)) {
@@ -2905,13 +2911,38 @@ export class GameManager extends Component {
             g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
         }
 
-        // Ice zones
+        // 冰场：浅冰面、断续晶棱与向内漂移的霜片；收尾整体消散，不留孤立细圈。
         for (const z of this._iceZones) {
+            if (!z.field) continue;
             const [zx, zy] = this._toLocal(z.x, z.y);
-            g.fillColor = new Color(100, 180, 255, 30);
-            g.circle(zx, zy, z.r); g.fill();
-            g.strokeColor = new Color(136, 221, 255, 200);
-            g.lineWidth = 2; g.circle(zx, zy, z.r); g.stroke();
+            const age = (z.duration ?? 12) - z.timer;
+            const fade = Math.min(1, age / 0.32, z.timer / 0.7);
+            g.fillColor = new Color(85, 191, 236, Math.floor(27 * fade));
+            g.circle(zx, zy, z.r * 0.94); g.fill();
+            g.fillColor = new Color(180, 239, 255, Math.floor(19 * fade));
+            g.circle(zx, zy, z.r * 0.55); g.fill();
+            for (let i = 0; i < 10; i++) {
+                const a = i * Math.PI * 2 / 10 + Math.sin(this._visualTime * 0.45 + i) * 0.03;
+                drawEnergyArc(g, zx, zy, z.r - 2, 1.8, a, a + 0.37,
+                    this._visualTime + i * 0.2, '#8eeaff', 0.6 * fade);
+                const cr = z.r * (0.67 + (i % 3) * 0.085);
+                const cx = zx + Math.cos(a + 0.15) * cr, cy = zy + Math.sin(a + 0.15) * cr;
+                const tip = 7 + (i % 3) * 3;
+                g.fillColor = new Color(173, 234, 255, Math.floor(105 * fade));
+                g.moveTo(cx + Math.cos(a) * tip, cy + Math.sin(a) * tip);
+                g.lineTo(cx - Math.sin(a) * 3, cy + Math.cos(a) * 3);
+                g.lineTo(cx - Math.cos(a) * tip * 0.55, cy - Math.sin(a) * tip * 0.55);
+                g.lineTo(cx + Math.sin(a) * 3, cy - Math.cos(a) * 3); g.close(); g.fill();
+            }
+            for (let i = 0; i < 6; i++) {
+                const a = i * Math.PI / 3 + this._visualTime * 0.17;
+                const drift = 0.48 + 0.12 * Math.sin(this._visualTime * 1.6 + i * 1.8);
+                const cx = zx + Math.cos(a) * z.r * drift, cy = zy + Math.sin(a) * z.r * drift;
+                g.strokeColor = new Color(213, 249, 255, Math.floor(105 * fade));
+                g.lineWidth = 1.5;
+                g.moveTo(cx - 4, cy); g.lineTo(cx + 4, cy);
+                g.moveTo(cx, cy - 4); g.lineTo(cx, cy + 4); g.stroke();
+            }
         }
 
         // 深海水柱：旋流核心、浮动水滴与脚下涟漪，射击时收紧并提亮。
@@ -3202,18 +3233,34 @@ export class GameManager extends Component {
                 }
                 continue;
             }
-            // 腐雾领域：贴图毒雾走地面池（实体之下不遮单位）+ 程序边界环保证范围判读。
-            // 2026-10-10 玩家反馈"遮地形"：贴图透明度 235→140，雾要能看见但不能糊掉地面。
+            // 腐雾领域：五簇独立雾片错速绕流，替代整张铺地旋涡。
+            // 漂移孢子与少量破碎边界提示有效范围，地面仍然清楚。
             if (t.kind === 'rotFog') {
                 const [fx2, fy2] = this._toLocal(t.x, t.y);
                 const fade = Math.max(0, Math.min(1, t._t / 1.2));
-                this._placeEnemyArt('fx_rot_fog', fx2, fy2, t.r * 2.08, t.r * 2.08,
-                    (this._visualTime * 6) % 360, Math.floor(140 * fade), '#ffffff', this._groundArtPool);
-                g.strokeColor = new Color(168, 224, 110, Math.floor(150 * fade));
-                g.lineWidth = 2.5; g.circle(fx2, fy2, t.r); g.stroke();
-                g.strokeColor = new Color(140, 200, 96, Math.floor(70 * fade));
-                g.lineWidth = 1.5;
-                g.circle(fx2, fy2, t.r * 0.66 + Math.sin(this._visualTime * 2.2) * 14); g.stroke();
+                g.fillColor = new Color(79, 129, 58, Math.floor(15 * fade));
+                g.circle(fx2, fy2, t.r * 0.94); g.fill();
+                for (let k = 0; k < 5; k++) {
+                    const a = k * Math.PI * 2 / 5 + this._visualTime * (k % 2 ? -0.28 : 0.23);
+                    const radius = t.r * (0.22 + (k % 2) * 0.17);
+                    const wx = fx2 + Math.cos(a) * radius, wy = fy2 + Math.sin(a) * radius;
+                    this._placeEnemyArt('fx_rot_fog', wx, wy, 235 + (k % 2) * 42,
+                        155 + (k % 2) * 26, a * 180 / Math.PI + 75,
+                        Math.floor((k % 2 ? 165 : 190) * fade), '#ffffff', this._groundArtPool);
+                }
+                for (let k = 0; k < 12; k++) {
+                    const a = k * Math.PI / 6 - this._visualTime * (0.22 + k % 3 * 0.04);
+                    const r = t.r * (0.26 + ((k * 7) % 11) / 15);
+                    const px = fx2 + Math.cos(a) * r, py = fy2 + Math.sin(a) * r;
+                    const pulse = 0.55 + 0.45 * Math.sin(this._visualTime * 3 + k * 1.7);
+                    g.fillColor = new Color(169, 224, 109, Math.floor(65 * fade * pulse));
+                    g.circle(px, py, 2.5 + (k % 3)); g.fill();
+                }
+                for (let k = 0; k < 9; k++) {
+                    const a = k * Math.PI * 2 / 9 + Math.sin(this._visualTime * 0.8 + k) * 0.025;
+                    drawEnergyArc(g, fx2, fy2, t.r * (0.96 + 0.025 * Math.sin(k * 2.3)),
+                        1.1, a + 0.08, a + 0.25, this._visualTime, '#9cce73', 0.27 * fade);
+                }
                 continue;
             }
             // 掠夺领域：金色掠夺法阵（边缘刻度 + 呼吸内环）
@@ -3243,39 +3290,70 @@ export class GameManager extends Component {
                 g.lineWidth = 2; g.circle(dx2, dy2, Math.max(4, t.r - 16)); g.stroke();
                 continue;
             }
-            // 混沌傀儡·格雷夫：混沌脉冲间隙（长200/宽100裂隙带）与混沌爆发
-            // 震荡波（扩散圆环）都是非实体区域效果，不画炮台底座投影。
-            if (t.kind === 'chaosGap' || t.kind === 'chaosBurst') {
+            // 格雷夫三技共用破裂的紫晶语言；它们是区域效果，不画炮台投影。
+            if (t.kind === 'chaosGap' || t.kind === 'chaosBurst' || t.kind === 'chaosStunWave') {
                 const [gx, gy] = this._toLocal(t.x, t.y);
                 if (t.kind === 'chaosGap') {
-                    const fade = Math.max(0, Math.min(1, t._t / 0.8));
+                    const fade = Math.max(0, Math.min(1, t._t / 0.55));
                     const nx = t.dirX, ny = t.dirY;
                     const px = -ny, py = nx;
                     const corner = (along: number, side: number): [number, number] => {
                         const [cx, cy] = this._toLocal(t.x + nx * along + px * side, t.y + ny * along + py * side);
                         return [cx, cy];
                     };
-                    const [x0, y0] = corner(0, t.halfW);
-                    const [x1, y1] = corner(t.len, t.halfW);
-                    const [x2, y2] = corner(t.len, -t.halfW);
-                    const [x3, y3] = corner(0, -t.halfW);
-                    g.fillColor = new Color(30, 4, 48, Math.floor(35 * fade));
-                    g.moveTo(x0, y0); g.lineTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.close(); g.fill();
-                    const [sx, sy] = corner(0, 0), [ex, ey] = corner(t.len, 0);
-                    drawEnergyBeam(g, sx, sy, ex, ey, t.halfW * 0.65, this._visualTime, '#c86bff', fade);
-                    for (const f of [0.22, 0.5, 0.78]) {
-                        const [cx, cy] = corner(t.len * f, 0);
-                        this._placeEnemyArt('fx_enemy_void_blade', cx, cy, t.halfW * 1.3, t.halfW * 1.3,
-                            -Math.atan2(ny, nx) * 180 / Math.PI, 220 * fade);
+                    // Q 保留漂亮的紫色刃片，去掉矩形黑底与整条白光柱。
+                    // 三条错位裂纹加不断游走的刃片，让 3 秒伤害区仍可辨识。
+                    for (let side = -1; side <= 1; side++) {
+                        g.strokeColor = side === 0
+                            ? new Color(231, 164, 255, Math.floor(155 * fade))
+                            : new Color(165, 69, 222, Math.floor(100 * fade));
+                        g.lineWidth = side === 0 ? 2.5 : 1.5;
+                        for (let step = 0; step <= 6; step++) {
+                            const along = t.len * step / 6;
+                            const wav = Math.sin(step * 2.7 + this._visualTime * 4 + side) * (side === 0 ? 6 : 11);
+                            const [cx, cy] = corner(along, side * 24 + wav);
+                            if (step === 0) g.moveTo(cx, cy); else g.lineTo(cx, cy);
+                        }
+                        g.stroke();
+                    }
+                    for (let k = 0; k < 4; k++) {
+                        const along = 28 + k * 50 + Math.sin(this._visualTime * 2.8 + k) * 6;
+                        const [cx, cy] = corner(along, (k % 2 ? 1 : -1) * 13);
+                        this._placeEnemyArt('fx_enemy_void_blade', cx, cy, 60, 54,
+                            -Math.atan2(ny, nx) * 180 / Math.PI + (k % 2 ? 16 : -16), Math.floor(205 * fade));
                     }
                 } else {
-                    const fade = Math.max(0, 1 - t.r / t._maxR);
-                    g.strokeColor = new Color(204, 68, 255, Math.floor(230 * fade));
-                    g.lineWidth = 6;
-                    g.circle(gx, gy, t.r); g.stroke();
-                    g.strokeColor = new Color(255, 130, 245, Math.floor(150 * fade));
-                    g.lineWidth = 2;
-                    g.circle(gx, gy, Math.max(4, t.r - 16)); g.stroke();
+                    const stun = t.kind === 'chaosStunWave';
+                    const fade = stun ? Math.sqrt(Math.max(0, t._t / 0.78))
+                        : Math.sqrt(Math.max(0, 1 - t.r / t._maxR));
+                    const count = stun ? 9 : 12;
+                    if (stun) {
+                        const coreFade = Math.min(1, Math.max(0, (t._t - 0.38) / 0.18));
+                        for (let k = 0; k < 6; k++) {
+                            const a = k * Math.PI / 3 - this._visualTime * 0.7;
+                            const radius = 34 + (0.78 - t._t) * 58;
+                            this._placeEnemyArt('fx_enemy_void_blade', gx + Math.cos(a) * radius,
+                                gy + Math.sin(a) * radius, 58, 52, a * 180 / Math.PI + 70,
+                                Math.floor(190 * coreFade));
+                        }
+                    }
+                    for (let k = 0; k < count; k++) {
+                        const a = k * Math.PI * 2 / count + this._visualTime * (stun ? 0.16 : -0.11);
+                        // 分离的刃片是主体，短弧只负责带出运动尾迹，不拼成圆线。
+                        drawEnergyArc(g, gx, gy, t.r - (k % 2) * 10, stun ? 2.4 : 3.2,
+                            a + 0.1, a + (stun ? 0.24 : 0.27), this._visualTime + k,
+                            k % 3 === 0 ? '#f6a3ff' : '#a64cda', (stun ? 0.25 : 0.3) * fade);
+                        const cr = t.r - (k % 2) * (stun ? 17 : 25);
+                        this._placeEnemyArt('fx_enemy_void_blade', gx + Math.cos(a) * cr,
+                            gy + Math.sin(a) * cr, stun ? 72 : 102, stun ? 64 : 88,
+                            a * 180 / Math.PI + 90, Math.floor((stun ? 215 : 235) * fade));
+                        if (!stun && k % 2 === 0) {
+                            const inner = t.r * 0.73;
+                            this._placeEnemyArt('fx_enemy_void_blade', gx + Math.cos(a + 0.25) * inner,
+                                gy + Math.sin(a + 0.25) * inner, 60, 50,
+                                a * 180 / Math.PI - 40, Math.floor(140 * fade));
+                        }
+                    }
                 }
                 continue;
             }
@@ -4703,12 +4781,13 @@ export class GameManager extends Component {
     // ── area / aoe damage ────────────────────────────────────
 
     spawnIceZone(x: number, y: number, r: number, dur: number): void {
-        this._iceZones.push({ x, y, r, timer: dur });
+        this._iceZones.push({ x, y, r, timer: dur, duration: dur, field: true });
         const r2 = r * r;
         for (const e of this._enemies) {
             if (!e.dead && (e.x - x) ** 2 + (e.y - y) ** 2 <= r2) {
-                e.slowMult   = 0;
-                e._slowTimer = dur;
+                e.frozen = Math.max(e.frozen ?? 0, 0.35);
+                e.slowMult = Math.min(e.slowMult ?? 1, 0.35);
+                e._slowTimer = Math.max(e._slowTimer ?? 0, 0.18);
             }
         }
     }
@@ -4953,7 +5032,8 @@ export class GameManager extends Component {
 
     /** 盗神·薇娅：窃取结果/赃技释放的反馈文案（技能名仍由 PlayerController 统一显示）。 */
     announceSteal(msg: string): void {
-        this._floatText.spawn?.(this._player.x, this._player.y - 56, msg, '#f0c04a', 15, true);
+        // 长状态消息放在场地上方，和角色头顶的短技能名分区。
+        this._floatText.spawn?.(CANVAS_W / 2, 156, msg, '#f0c04a', 14, false);
         this._audio?.playSfx?.('skill_q', 0.6);
     }
 

@@ -119,7 +119,7 @@ export class PlayerController extends Component {
     formAtkSpdMult = 1;
     /** 战斗贴图基 key（char_token_<id>），init 时按角色设置。 */
     spriteKey = 'char_token_kai';
-    /** 薇娅与莫提斯暂用单张静态形象，不请求尚未制作的方向动作帧。 */
+    /** 八位英雄均使用独立的前、侧、背方向动作帧。 */
     directionalFrames = true;
     /** 与静止帧成对的真实动作帧。 */
     moveSpriteKey = 'char_token_kai_move';
@@ -165,7 +165,7 @@ export class PlayerController extends Component {
             this.sprite.trim = false;
         }
         this.spriteKey = `char_token_${charId}`;
-        this.directionalFrames = charId !== 'via' && charId !== 'mortis';
+        this.directionalFrames = true;
         this.resetVisualAnimation();
         const animationSheets = new Set<string>();
         const animationSet = ACTOR_ANIMATIONS[this.spriteKey] ?? {};

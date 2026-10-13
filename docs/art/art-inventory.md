@@ -1,5 +1,9 @@
 # 现有美术资源清单（assets/resources/art/）
 
+> 2026-10-13 战斗特效复查：`fx_rot_fog.png` 保留原文件名和 UUID，改为透明卡通腐雾片并由多簇独立运动组成莫提斯 E；利亚娜 E 改为持续晶棱冰场，格雷夫 Q/E/R 改为破碎紫晶与移动刃片。资源总数不变。
+
+> 2026-10-13：新增八名英雄各三方向动作图集，共 24 张 PNG；当前目录共 706 张 PNG。八人选人立绘、战斗 token、Q/E/R 释放姿势，以及薇薇安飞炮/海克斯图标已同步更新。薇娅按原设为女性。见[八英雄制作记录](style-a/hero-redesign/README.md)。下方 682 张及六英雄静态说明为历史快照。
+
 > 2026-10-12：新增滑稽猴静态本体 `enemy_boss_joker`、三方向动作图集 `anim_stylea_boss_joker_front/side/back`、两组四帧特效 `anim_fx_joker_slap/trick`，共 6 张 PNG 及对应 meta；当前目录共 682 张 PNG。制作和动作总览见[滑稽猴记录](style-a/joker-design/joker-design-v1.md)。
 
 > 2026-10-10：新增 `anim_hit_units_10.png`（滑稽猴命中四帧，程序化金色调占位，1254×1254 RGBA，附手写 meta）。当前目录共 558 张 PNG。

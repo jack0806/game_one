@@ -1796,6 +1796,83 @@ for (const key in ACTOR_ANIMATIONS) {
 // A 风格身体采用分层关节离线烘焙，沿用同一个时钟和事件来源。
 Object.assign(ACTOR_ANIMATIONS, STYLE_A_ENEMY_ANIMATIONS);
 
+// 八位英雄共用新三视图的十一行动画行；每个动作都从对应身份母稿烘焙。
+// 帧事件仍由 ActorAnimation 单一时钟驱动，避免动作切换时重复释放技能。
+const STYLE_A_HERO_IDS = ['kai', 'vivian', 'reik', 'olia', 'graf', 'liana', 'via', 'mortis'];
+const STYLE_A_HERO_ACTIONS: ActorAction[] = [
+    'idle', 'walk', 'run', 'jump', 'attack', 'hit', 'defeated',
+    'skill', 'skill2', 'skill3', 'attackMelee',
+];
+const HERO_MUZZLE: Record<string, Record<ActorView, [number, number][]>> = {
+    kai: {
+        front: [[0.81, 0.43], [0.87, 0.44], [0.84, 0.43], [0.81, 0.43]],
+        side: [[0.85, 0.42], [0.91, 0.42], [0.86, 0.42], [0.83, 0.42]],
+        back: [[0.83, 0.42], [0.88, 0.42], [0.84, 0.42], [0.81, 0.42]],
+    },
+    vivian: {
+        front: [[0.69, 0.29], [0.71, 0.28], [0.70, 0.29], [0.69, 0.29]],
+        side: [[0.68, 0.29], [0.75, 0.28], [0.72, 0.29], [0.68, 0.29]],
+        back: [[0.68, 0.29], [0.75, 0.28], [0.72, 0.29], [0.68, 0.29]],
+    },
+    olia: {
+        front: [[0.70, 0.47], [0.84, 0.48], [0.80, 0.49], [0.70, 0.47]],
+        side: [[0.73, 0.45], [0.89, 0.45], [0.84, 0.46], [0.73, 0.45]],
+        back: [[0.68, 0.43], [0.80, 0.42], [0.75, 0.43], [0.68, 0.43]],
+    },
+    liana: {
+        front: [[0.78, 0.55], [0.91, 0.55], [0.87, 0.56], [0.78, 0.55]],
+        side: [[0.83, 0.53], [0.94, 0.53], [0.89, 0.54], [0.83, 0.53]],
+        back: [[0.77, 0.54], [0.88, 0.53], [0.83, 0.54], [0.77, 0.54]],
+    },
+    mortis: {
+        front: [[0.56, 0.22], [0.79, 0.48], [0.77, 0.47], [0.56, 0.22]],
+        side: [[0.56, 0.22], [0.83, 0.48], [0.79, 0.47], [0.56, 0.22]],
+        back: [[0.56, 0.22], [0.79, 0.48], [0.77, 0.47], [0.56, 0.22]],
+    },
+};
+const HERO_MELEE_SOCKET: Record<string, Record<ActorView, [number, number]>> = {
+    reik: { front: [0.79, 0.56], side: [0.84, 0.55], back: [0.82, 0.54] },
+    olia: { front: [0.86, 0.48], side: [0.89, 0.45], back: [0.80, 0.42] },
+    graf: { front: [0.81, 0.52], side: [0.84, 0.52], back: [0.80, 0.51] },
+    via: { front: [0.72, 0.51], side: [0.76, 0.50], back: [0.73, 0.51] },
+};
+for (const id of STYLE_A_HERO_IDS) {
+    const views: ActorAnimationSet = {};
+    for (const view of ['front', 'side', 'back'] as ActorView[]) {
+        const actions: Partial<Record<ActorAction, ActorClip>> = {};
+        for (const [row, action] of STYLE_A_HERO_ACTIONS.entries()) {
+            const seconds = action === 'idle' ? 0.22 : action === 'walk' ? 0.12
+                : action === 'run' ? 0.075 : action === 'defeated' ? 0.18
+                : action === 'attack' || action === 'attackMelee' ? 0.065
+                : action === 'hit' ? 0.09 : 0.13;
+            actions[action] = {
+                sheet: `anim_stylea_hero_${id}_${view}`,
+                columns: 4, rows: STYLE_A_HERO_ACTIONS.length, cellSize: 256,
+                loop: row < 3,
+                frames: [0, 1, 2, 3].map(column => ({
+                    index: row * 4 + column,
+                    pivot: [0.5, 0.56] as [number, number],
+                    seconds,
+                    muzzle: action === 'attack' || ['skill', 'skill2', 'skill3'].indexOf(action) >= 0
+                        ? HERO_MUZZLE[id]?.[view]?.[column]
+                        : action === 'attackMelee' ? HERO_MELEE_SOCKET[id]?.[view] : undefined,
+                    ...(action === 'attack' && column === 1
+                        ? { event: (id === 'reik' || id === 'via' ? 'strike' : 'fire') as 'strike' | 'fire' }
+                        : {}),
+                    ...(action === 'attackMelee' && column === 1 ? { event: 'strike' as const } : {}),
+                    ...(['skill', 'skill2', 'skill3'].indexOf(action) >= 0 && column === 2
+                        ? { event: 'cast' as const } : {}),
+                    ...(action === 'jump' && column === 3 ? { event: 'land' as const } : {}),
+                })),
+            };
+        }
+        // 与现有跳跃输入规则保持一致。
+        delete actions.jump;
+        views[view] = actions;
+    }
+    ACTOR_ANIMATIONS[`char_token_${id}`] = views;
+}
+
 export function actorClip(key: string, view: ActorView, action: ActorAction): ActorClip | undefined {
     return ACTOR_ANIMATIONS[key]?.[view]?.[action];
 }

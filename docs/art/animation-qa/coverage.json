@@ -7,8 +7,8 @@
       "key": "char_token_kai",
       "directions": [
         "front",
-        "back",
-        "side"
+        "side",
+        "back"
       ],
       "actions": {
         "front": [
@@ -20,18 +20,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
-        ],
-        "back": [
-          "idle",
-          "walk",
-          "run",
-          "attack",
-          "hit",
-          "defeated",
-          "skill",
-          "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "side": [
           "idle",
@@ -42,7 +32,20 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
         ]
       },
       "visualAcceptance": "pending",
@@ -67,7 +70,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "side": [
           "idle",
@@ -78,7 +82,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "back": [
           "idle",
@@ -89,7 +94,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ]
       },
       "visualAcceptance": "pending",
@@ -114,7 +120,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "side": [
           "idle",
@@ -125,7 +132,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "back": [
           "idle",
@@ -136,7 +144,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ]
       },
       "visualAcceptance": "pending",
@@ -159,10 +168,10 @@
           "attack",
           "hit",
           "defeated",
-          "attackMelee",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "side": [
           "idle",
@@ -171,10 +180,10 @@
           "attack",
           "hit",
           "defeated",
-          "attackMelee",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "back": [
           "idle",
@@ -183,10 +192,10 @@
           "attack",
           "hit",
           "defeated",
-          "attackMelee",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ]
       },
       "visualAcceptance": "pending",
@@ -211,7 +220,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "side": [
           "idle",
@@ -222,7 +232,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "back": [
           "idle",
@@ -233,7 +244,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ]
       },
       "visualAcceptance": "pending",
@@ -258,7 +270,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "side": [
           "idle",
@@ -269,7 +282,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ],
         "back": [
           "idle",
@@ -280,7 +294,8 @@
           "defeated",
           "skill",
           "skill2",
-          "skill3"
+          "skill3",
+          "attackMelee"
         ]
       },
       "visualAcceptance": "pending",
@@ -290,8 +305,49 @@
       "id": "via",
       "category": "hero",
       "key": "char_token_via",
-      "directions": [],
-      "actions": {},
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
+        ]
+      },
       "visualAcceptance": "pending",
       "skillEffectsAcceptance": "pending"
     },
@@ -299,8 +355,49 @@
       "id": "mortis",
       "category": "hero",
       "key": "char_token_mortis",
-      "directions": [],
-      "actions": {},
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3",
+          "attackMelee"
+        ]
+      },
       "visualAcceptance": "pending",
       "skillEffectsAcceptance": "pending"
     },
@@ -844,6 +941,56 @@
           "skill3",
           "skill4",
           "skill5"
+        ]
+      },
+      "visualAcceptance": "pending",
+      "skillEffectsAcceptance": "pending"
+    },
+    {
+      "id": "boss_joker",
+      "category": "boss",
+      "key": "enemy_boss_joker",
+      "directions": [
+        "front",
+        "side",
+        "back"
+      ],
+      "actions": {
+        "front": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "side": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
+        ],
+        "back": [
+          "idle",
+          "walk",
+          "run",
+          "jump",
+          "attack",
+          "hit",
+          "defeated",
+          "skill",
+          "skill2",
+          "skill3"
         ]
       },
       "visualAcceptance": "pending",

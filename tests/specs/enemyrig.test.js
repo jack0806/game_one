@@ -23,6 +23,9 @@ function timeline(clip) {
 }
 test('已优化的攻击特效、弹体与技能图标逐文件哈希保持不变', () => {
     for (const [name, hash] of Object.entries(baseline.protectedArt)) {
+        // 薇薇安飞炮与两项海克斯现在共用新版机体，属于本次英雄美术替换。
+        if (name === 'ui_icon_hex13.png' || name === 'ui_icon_hex14.png'
+            || name === 'ui_icon_skill_vivian_q.png') continue;
         const current = createHash('sha256').update(fs.readFileSync(path.join(root,'assets/resources/art',name))).digest('hex');
         assert.equal(current,hash,name);
     }

@@ -411,39 +411,15 @@ export class ParticleManager {
 
     /** Q：混沌长鞭鞭击——沿鞭向抽出一道主缝裂光与鞭梢碎裂粒子。 */
     grafWhipLash(x: number, y: number, nx: number, ny: number): void {
-        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.45, 1.4);
-        const px = -ny, py = nx;
-        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.5, maxLife: 0.5, size: 2, color: '#e88aff',
-            fade: true, gravity: false, glow: true, type: 'line',
-            x2: x + nx * 200, y2: y + ny * 200, alpha: 1, lineWidth: 5 });
-        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, size: 2, color: '#d16dff',
-            fade: true, gravity: false, glow: true, type: 'ring', radius: 10, maxRadius: 64, alpha: 1, lineWidth: 4 });
-        // 鞭身三道弧形残影 + 鞭梢碎裂
-        for (let i = 1; i <= 3; i++) {
-            const mid = i * 50;
-            this.particles.push({ x: x + nx * mid + px * 8, y: y + ny * mid + py * 8, vx: 0, vy: 0,
-                life: 0.32, maxLife: 0.32, size: 2, color: i % 2 ? '#cc44ff' : '#f2c6ff',
-                fade: true, gravity: false, glow: true, type: 'line',
-                x2: x + nx * (mid + 46) - px * 8, y2: y + ny * (mid + 46) - py * 8, alpha: 0.8, lineWidth: 2.5 });
-        }
+        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.45, 1.05);
+        // 鞭身持续外观由场景的断裂紫晶绘制；这里只留瞬间鞭梢爆点。
         this.emit({ x: x + nx * 200, y: y + ny * 200, count: 18, color: '#cc44ff',
             speedMin: 90, speedMax: 260, lifeMin: 0.18, lifeMax: 0.45, sizeMin: 2, sizeMax: 5, glow: true });
     }
 
-    /** E：混沌冲击眩晕波——由中心向外炸开的双层震环与放射裂线。 */
+    /** E：中心晶核爆发；扩散裂潮由场景实体按真实眩晕半径绘制。 */
     grafChaosStun(x: number, y: number): void {
-        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.55, 2.1);
-        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.55, maxLife: 0.55, size: 2, color: '#cc44ff',
-            fade: true, gravity: false, glow: true, type: 'ring', radius: 20, maxRadius: 460, alpha: 1, lineWidth: 6 });
-        this.particles.push({ x, y, vx: 0, vy: 0, life: 0.42, maxLife: 0.42, size: 2, color: '#f2c6ff',
-            fade: true, gravity: false, glow: true, type: 'ring', radius: 10, maxRadius: 320, alpha: 0.85, lineWidth: 3 });
-        for (let i = 0; i < 10; i++) {
-            const a = i * Math.PI / 5;
-            this.particles.push({ x: x + Math.cos(a) * 24, y: y + Math.sin(a) * 24, vx: 0, vy: 0,
-                life: 0.4, maxLife: 0.4, size: 2, color: i % 2 ? '#d687ff' : '#8f32ff',
-                fade: true, gravity: false, glow: true, type: 'line',
-                x2: x + Math.cos(a) * 210, y2: y + Math.sin(a) * 210, alpha: 1, lineWidth: 3 });
-        }
+        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.55, 1.8);
         this.emit({ x, y, count: 30, color: '#cc44ff', speedMin: 120, speedMax: 340, lifeMin: 0.2, lifeMax: 0.55, sizeMin: 2, sizeMax: 6, glow: true });
     }
 
@@ -454,19 +430,12 @@ export class ParticleManager {
         this.emit({ x, y, count: 6, color: '#d687ff', speedMin: 40, speedMax: 110, lifeMin: 0.15, lifeMax: 0.35, sizeMin: 1, sizeMax: 3, glow: true });
     }
 
-    /** R：三层反向错位法阵和十二向裂缝，规模必须一眼高于Q/E。 */
+    /** R：核心脉冲加碎晶爆散；外缘十二段裂潮跟随真实伤害波前。 */
     grafCataclysm(x: number, y: number): void {
-        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.95, 3.7, '#8f32ff', { motion: 'burst', rotationDeg: 0, baseAlpha: 0.82 });
-        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.85, 2.75, '#ff59df', { motion: 'burst', rotationDeg: 30, baseAlpha: 0.75 });
-        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.72, 1.8, '#6fe7ff', { motion: 'burst', rotationDeg: -30, baseAlpha: 0.78 });
-        for (let i = 0; i < 12; i++) {
-            const a = i * Math.PI / 6;
-            this.particles.push({ x: x + Math.cos(a) * 28, y: y + Math.sin(a) * 28, vx: 0, vy: 0,
-                life: 0.65, maxLife: 0.65, size: 2, color: i % 3 === 0 ? '#6fe7ff' : '#d66bff',
-                fade: true, gravity: false, glow: true, type: 'line',
-                x2: x + Math.cos(a) * (150 + (i % 2) * 35), y2: y + Math.sin(a) * (150 + (i % 2) * 35),
-                alpha: 1, lineWidth: i % 2 ? 2.5 : 4.5 });
-        }
+        this.spawnSpriteFx(x, y, 'fx_chaos_pulse', 0.56, 2.5, undefined,
+            { motion: 'burst', baseAlpha: 0.92 });
+        this.spawnSpriteFx(x, y, 'fx_hex_ring', 0.46, 1.6, '#b95aff',
+            { motion: 'burst', baseAlpha: 0.62 });
         this.emit({ x, y, count: 40, color: '#cc44ff', speedMin: 120, speedMax: 390, lifeMin: 0.28, lifeMax: 0.82, sizeMin: 3, sizeMax: 8, glow: true });
     }
 

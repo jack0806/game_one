@@ -76,7 +76,33 @@ export class FloatingText {
     items: FloatingItem[] = [];
 
     spawn(x: number, y: number, text: string, color = '#fff', size = 18, crit = false): void {
-        this.items.push({ x, y, text, color, size, life: 1, vy: -60, alpha: 1, crit });
+        // 同一位置连续触发的技能反馈按行错开；重复文案只刷新寿命，避免
+        // 盗神等高频技能把数行文字叠成一块。估宽用于布局，不依赖引擎字体。
+        const width = Math.min(600, text.length * size * 0.9);
+        const nearby = this.items.filter(item =>
+            Math.abs(item.x - x) < (width + Math.min(600, item.text.length * item.size * 0.9)) / 2 + 10
+            && Math.abs(item.y - y) < 125);
+        const repeated = nearby.find(item => item.text === text);
+        if (repeated) {
+            repeated.life = 1;
+            repeated.alpha = 1;
+            return;
+        }
+        if (nearby.length >= 4) {
+            const oldest = nearby[0];
+            this.items.splice(this.items.indexOf(oldest), 1);
+        }
+        let placedY = y;
+        const direction = y < 180 ? 1 : -1;
+        for (let lane = 0; lane < 5; lane++) {
+            const collision = this.items.some(item =>
+                Math.abs(item.x - x) < (width + Math.min(600, item.text.length * item.size * 0.9)) / 2 + 10
+                && Math.abs(item.y - placedY) < Math.max(28, (size + item.size) * 0.75));
+            if (!collision) break;
+            placedY = y + direction * (lane + 1) * 31;
+        }
+        this.items.push({ x, y: Math.max(62, placedY), text, color, size, life: 1, vy: -60, alpha: 1, crit });
+        if (this.items.length > 32) this.items.shift();
     }
 
     update(dt: number): void {

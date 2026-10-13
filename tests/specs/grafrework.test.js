@@ -227,6 +227,7 @@ test('混沌脉冲:无鼠标时沿角色朝向释放', () => {
 
 test('混沌冲击:眩晕周围450码的所有怪物2秒,超距不眩晕', () => {
     const game = makeMockGame();
+    game.turrets = [];
     const p = makePlayer({ x: 100, y: 100, stats: { ...CHARACTERS.graf.stats } });
     const close = makeGrafEnemy(game, 200, 100, 200);
     const edge = makeGrafEnemy(game, 540, 100, 200);    // 440码
@@ -236,6 +237,12 @@ test('混沌冲击:眩晕周围450码的所有怪物2秒,超距不眩晕', () =>
     assert.equal(close.stunned, 2, '眩晕2秒');
     assert.equal(edge.stunned, 2, '450码内(440)应被眩晕');
     assert.equal(farout.stunned, 0, '超出450码不眩晕');
+    const wave = game.turrets.find(t => t.kind === 'chaosStunWave');
+    assert.ok(wave?.alive, '释放后应有独立的紫晶扩散动画');
+    wave.update(0.39);
+    assert.equal(wave.r, 237, '视觉波前经过一半时间抵达一半范围');
+    wave.update(0.39);
+    assert.equal(wave.alive, false, '动画到达450码后清理');
 });
 
 // ── R 混沌爆发 ───────────────────────────────────────────────
