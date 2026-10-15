@@ -1,11 +1,11 @@
 // ============================================================
-//  MetaPageUI.ts — 首页元进度页面（任务树 / 图鉴 / 成就墙）
+//  MetaPageUI.ts — 首页元进度页面（图鉴 / 成就墙）
 // ============================================================
-// 三个页面均由代码构建，不依赖 prefab。页面只消费静态数据表与存档视图，
-// 后续替换任务、图鉴和成就配置时不需要重做布局。
+// 两个页面均由代码构建，不依赖 prefab。页面只消费静态数据表与存档视图，
+// 后续替换图鉴和成就配置时不需要重做布局。
 
 import {
-    Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite,
+    Color, Graphics, HorizontalTextAlignment, Label, Mask, Node, Sprite,
     UITransform, Vec3, VerticalTextAlignment, sys,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
@@ -14,23 +14,15 @@ import { loadArtSprite, applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import {
     CodexCategory, CodexEntry, CODEX_ENTRIES, codexByCategory,
-    QuestBranch, QuestDef, questsByBranch,
 } from '../data/MetaProgressionDB';
-import { ACHIEVEMENTS, AchievementDef, SaveSystem } from '../systems/SaveSystem';
+import { AchievementAdmin } from '../systems/AchievementAdmin';
+import { AchievementDef, SaveSystem } from '../systems/SaveSystem';
 
-export type MetaPageName = 'tasks' | 'codex' | 'achievements';
+export type MetaPageName = 'codex' | 'achievements';
 
 export interface MetaPageCallbacks {
     onBack: () => void;
     onButtonSfx: () => void;
-}
-
-interface TaskNodeView {
-    def: QuestDef;
-    node: Node;
-    graphics: Graphics;
-    title: Label;
-    status: Label;
 }
 
 interface AchievementCardView {
@@ -46,21 +38,7 @@ interface AchievementCardView {
 
 const WHITE = new Color(232, 244, 250, 255);
 const MUTED = new Color(145, 166, 184, 255);
-const CYAN = new Color(40, 224, 218, 255);
 const GOLD = new Color(255, 205, 82, 255);
-
-/** 任务树三分支的展示文案与主题色：主线青 / 支线紫 / 挑战橙。 */
-const BRANCH_LABEL: Record<QuestBranch, string> = {
-    main: '主线链路', side: '支线委托', challenge: '挑战试炼',
-};
-const BRANCH_SHORT: Record<QuestBranch, string> = {
-    main: '主线', side: '支线', challenge: '挑战',
-};
-const BRANCH_COLOR: Record<QuestBranch, Color> = {
-    main: CYAN,
-    side: new Color(174, 101, 255, 255),
-    challenge: new Color(255, 130, 70, 255),
-};
 
 function hexColor(hex: string, alpha = 255): Color {
     const c = Color.fromHEX(new Color(), hex);
@@ -84,17 +62,6 @@ function drawPanel(g: Graphics, w: number, h: number, accent: Color, alpha = 242
 export class MetaPageUI {
     private readonly _panels = new Map<MetaPageName, Node>();
     private readonly _pageAccents = new Map<MetaPageName, Color>();
-    private _taskBranch: QuestBranch = 'main';
-    private _taskRoots = new Map<QuestBranch, Node>();
-    private _taskViews: TaskNodeView[] = [];
-    private _taskSelected = '';
-    private _taskBranchLabel!: Label;
-    private _taskDetailChapter!: Label;
-    private _taskDetailName!: Label;
-    private _taskDetailDesc!: Label;
-    private _taskDetailObjective!: Label;
-    private _taskDetailProgress!: Label;
-    private _taskDetailReward!: Label;
 
     private _codexCategory: CodexCategory = 'monster';
     private _codexRoots = new Map<CodexCategory, Node>();
@@ -110,9 +77,19 @@ export class MetaPageUI {
 
     private _achievementCards: AchievementCardView[] = [];
     private _achievementSummary!: Label;
+    // ── 成就墙滚动：视口（Mask 裁剪）+ 内容节点 + 滚动条 ──
+    private _achieveViewport!: Node;
+    private _achieveContent!: Node;
+    private _achieveScrollbar!: Graphics;
+    private _achieveTabs!: Node;
+    /** 当前选中的类型（一级分组；空 = 取第一个分类）。 */
+    private _achieveCategory = '';
+    private _achieveScroll = 0;
+    private _achieveMaxScroll = 0;
+    private _achieveDragY = 0;
+    private _achieveDragging = false;
 
     constructor(private readonly _root: Node, private readonly _callbacks: MetaPageCallbacks) {
-        this._buildTaskPage();
         this._buildCodexPage();
         this._buildAchievementPage();
         this.fitToVisible();
@@ -124,9 +101,12 @@ export class MetaPageUI {
     }
 
     refresh(name: MetaPageName): void {
-        if (name === 'tasks') this._showTaskBranch(this._taskBranch);
-        else if (name === 'codex') this._showCodexCategory(this._codexCategory);
-        else this._refreshAchievements();
+        if (name === 'codex') this._showCodexCategory(this._codexCategory);
+        else {
+            // 成就墙：后台改动（参数/成就管理）后进入页面即重建（页签+卡片）
+            this._rebuildAchievementTabs();
+            this._rebuildAchievementCards();
+        }
     }
 
     /** 页面背景独立覆盖可见宽度；不依赖战斗底图是否已经加载。 */
@@ -177,135 +157,13 @@ export class MetaPageUI {
             sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 72 : 42, new Color(78, 111, 135, 255));
         back.on(Node.EventType.TOUCH_END, this._callbacks.onBack);
 
-        // 顶栏两端的切角光标，强化三个页面共用的工业终端语言。
+        // 顶栏两端的切角光标，强化两个页面共用的工业终端语言。
         const marks = new Node('HeaderMarks'); marks.setParent(page);
         const mg = marks.addComponent(Graphics);
         mg.strokeColor = new Color(accent.r, accent.g, accent.b, 185); mg.lineWidth = 3;
         mg.moveTo(-606, 336); mg.lineTo(-606, 286); mg.lineTo(-590, 270); mg.stroke();
         mg.moveTo(606, 270); mg.lineTo(606, 286); mg.stroke();
         return page;
-    }
-
-    private _buildTaskPage(): void {
-        const page = this._mkPage('tasks', '行动任务树', 'MISSION NETWORK / 行动链路', 'bg_chapter2', CYAN);
-        const mainTab = this._mkButton(page, '主线任务', -507, 221, 154, 42, CYAN);
-        const sideTab = this._mkButton(page, '支线任务', -337, 221, 154, 42, BRANCH_COLOR.side);
-        const challengeTab = this._mkButton(page, '挑战任务', -167, 221, 154, 42, BRANCH_COLOR.challenge);
-        mainTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('main'));
-        sideTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('side'));
-        challengeTab.on(Node.EventType.TOUCH_END, () => this._showTaskBranch('challenge'));
-        this._taskBranchLabel = this._mkLabel(page, 48, 222, 370, 28, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
-
-        const treePanel = new Node('TaskTreePanel'); treePanel.setParent(page);
-        treePanel.setPosition(new Vec3(-178, -35, 0));
-        const treeG = treePanel.addComponent(Graphics); drawPanel(treeG, 856, 478, CYAN);
-        this._mkLabel(treePanel, -217, 208, 380, 26, '任务链路 / 点击节点查看详情', 14, MUTED, HorizontalTextAlignment.LEFT);
-
-        for (const branch of ['main', 'side', 'challenge'] as QuestBranch[]) {
-            const root = new Node(`${branch}_tree`); root.setParent(treePanel);
-            this._taskRoots.set(branch, root);
-            const defs = questsByBranch(branch);
-            const pos = [
-                new Vec3(-315, 72, 0), new Vec3(-110, -60, 0),
-                new Vec3(95, 72, 0), new Vec3(300, -60, 0),
-            ];
-
-            const accent = BRANCH_COLOR[branch];
-            const links = new Node('Links'); links.setParent(root);
-            const lg = links.addComponent(Graphics);
-            lg.strokeColor = new Color(accent.r, accent.g, accent.b, 115);
-            lg.lineWidth = 3;
-            for (let i = 0; i < Math.min(defs.length, pos.length) - 1; i++) {
-                const a = pos[i], b = pos[i + 1];
-                lg.moveTo(a.x + 83, a.y); lg.lineTo((a.x + b.x) / 2, a.y);
-                lg.lineTo((a.x + b.x) / 2, b.y); lg.lineTo(b.x - 83, b.y); lg.stroke();
-                lg.fillColor = new Color(lg.strokeColor.r, lg.strokeColor.g, lg.strokeColor.b, 220);
-                lg.circle((a.x + b.x) / 2, (a.y + b.y) / 2, 4); lg.fill();
-            }
-
-            defs.slice(0, 4).forEach((def, i) => {
-                const n = new Node(`Quest_${def.id}`); n.setParent(root); n.setPosition(pos[i]);
-                n.addComponent(UITransform).setContentSize(170, 104);
-                registerKeyboardFocus(n, 170, 104);
-                const g = n.addComponent(Graphics);
-                const title = this._mkLabel(n, 0, 15, 144, 30, def.name, 16, WHITE);
-                const status = this._mkLabel(n, 0, -24, 144, 22, '', 14, MUTED);
-                const view = { def, node: n, graphics: g, title, status };
-                this._taskViews.push(view);
-                n.on(Node.EventType.TOUCH_END, () => this._selectQuest(def));
-            });
-        }
-
-        const detail = new Node('TaskDetail'); detail.setParent(page);
-        detail.setPosition(new Vec3(431, -35, 0));
-        const detailG = detail.addComponent(Graphics); drawPanel(detailG, 334, 478, GOLD);
-        this._mkLabel(detail, 0, 208, 268, 22, '任务简报', 14, GOLD, HorizontalTextAlignment.LEFT);
-        this._taskDetailChapter = this._mkLabel(detail, 0, 169, 266, 22, '', 14, MUTED, HorizontalTextAlignment.LEFT);
-        this._taskDetailName = this._mkLabel(detail, 0, 131, 266, 34, '', 21, WHITE, HorizontalTextAlignment.LEFT);
-        this._taskDetailDesc = this._mkLabel(detail, 0, 54, 268, 90, '', 16, new Color(197, 214, 226, 255), HorizontalTextAlignment.LEFT, true);
-        this._mkDivider(detail, 0, -5, 268, CYAN);
-        this._taskDetailObjective = this._mkLabel(detail, 0, -36, 268, 50, '', 16, WHITE, HorizontalTextAlignment.LEFT, true);
-        this._taskDetailProgress = this._mkLabel(detail, 0, -88, 268, 24, '', 15, CYAN, HorizontalTextAlignment.LEFT);
-        this._mkDivider(detail, 0, -119, 268, GOLD);
-        this._mkLabel(detail, 0, -148, 268, 22, '奖励预览', 14, MUTED, HorizontalTextAlignment.LEFT);
-        this._taskDetailReward = this._mkLabel(detail, 0, -181, 268, 30, '', 16, GOLD, HorizontalTextAlignment.LEFT);
-
-        this._showTaskBranch('main');
-    }
-
-    private _showTaskBranch(branch: QuestBranch): void {
-        this._taskBranch = branch;
-        this._taskRoots.forEach((root, key) => root.active = key === branch);
-        const defs = questsByBranch(branch);
-        const done = defs.filter(d => d.state === 'completed').length;
-        this._taskBranchLabel.string = `${BRANCH_LABEL[branch]}  ·  已完成 ${done}/${defs.length}`;
-        const selected = defs.find(d => d.id === this._taskSelected) ??
-            defs.find(d => d.state === 'active') ?? defs[0];
-        if (selected) this._selectQuest(selected);
-    }
-
-    private _selectQuest(def: QuestDef): void {
-        this._taskSelected = def.id;
-        for (const view of this._taskViews) this._drawTaskNode(view, view.def.id === def.id);
-        this._taskDetailChapter.string = `${BRANCH_SHORT[def.branch]} · ${def.chapter}`;
-        this._taskDetailName.string = def.name;
-        if (def.state === 'locked') {
-            this._taskDetailDesc.string = '任务简报尚未解锁。';
-            this._taskDetailObjective.string = '目标  尚未公开';
-            this._taskDetailProgress.string = '未解锁';
-            this._taskDetailProgress.color = MUTED;
-            this._taskDetailReward.string = '解锁后公布';
-            return;
-        }
-        this._taskDetailDesc.string = def.desc;
-        this._taskDetailObjective.string = `目标  ${def.objective}`;
-        const pct = def.goal > 0 ? Math.floor(Math.min(1, def.progress / def.goal) * 100) : 0;
-        this._taskDetailProgress.string = `${def.progress} / ${def.goal}   ${pct}%`;
-        this._taskDetailProgress.color = CYAN;
-        this._taskDetailReward.string = def.reward;
-    }
-
-    private _drawTaskNode(view: TaskNodeView, selected: boolean): void {
-        const { def, graphics: g } = view;
-        const colors: Record<string, Color> = {
-            completed: new Color(78, 215, 137, 255), active: CYAN,
-            available: new Color(255, 181, 74, 255), locked: new Color(89, 105, 120, 255),
-        };
-        const labels: Record<string, string> = {
-            completed: '已完成', active: '进行中', available: '可接取', locked: '未解锁',
-        };
-        const c = colors[def.state];
-        g.clear();
-        g.fillColor = new Color(7, 15, 25, def.state === 'locked' ? 228 : 250);
-        clippedPath(g, 170, 104, 12); g.fill();
-        g.fillColor = new Color(c.r, c.g, c.b, selected ? 45 : 22);
-        clippedPath(g, 164, 98, 10); g.fill();
-        g.strokeColor = new Color(c.r, c.g, c.b, selected ? 255 : 150);
-        g.lineWidth = selected ? 3 : 1.5; clippedPath(g, 170, 104, 12); g.stroke();
-        g.strokeColor = new Color(c.r, c.g, c.b, 230); g.lineWidth = 4;
-        g.moveTo(-67, 48); g.lineTo(67, 48); g.stroke();
-        view.title.color = def.state === 'locked' ? new Color(142, 151, 162, 255) : WHITE;
-        view.status.string = labels[def.state]; view.status.color = c;
     }
 
     private _buildCodexPage(): void {
@@ -425,39 +283,180 @@ export class MetaPageUI {
         const page = this._mkPage('achievements', '成就档案库', 'ACHIEVEMENT VAULT / 永久记录', 'bg_chapter4', GOLD);
         this._achievementSummary = this._mkLabel(page, -80, 292, 450, 38, '', 15, GOLD, HorizontalTextAlignment.RIGHT);
 
-        const legend = new Node('RarityLegend'); legend.setParent(page);
-        legend.setPosition(new Vec3(-391, 226, 0));
-        const lg = legend.addComponent(Graphics); drawPanel(lg, 420, 42, new Color(133, 100, 201, 255), 224);
-        const rarityColors = [
-            ['普通', '#8fa7b8'], ['稀有', '#44aaff'], ['史诗', '#b060ff'], ['传奇', '#ffd05a'],
-        ];
-        rarityColors.forEach((r, i) => {
-            const c = hexColor(r[1]);
-            const dot = new Node(`Dot_${r[0]}`); dot.setParent(legend); dot.setPosition(new Vec3(-164 + i * 103, 0, 0));
-            const dg = dot.addComponent(Graphics); dg.fillColor = c; dg.circle(-22, 0, 4); dg.fill();
-            this._mkLabel(dot, 12, 0, 62, 22, r[0], 14, c);
+        // 类型页签容器（一级分组，随后台分类数据重建）+ 右侧说明
+        this._achieveTabs = new Node('AchTabs'); this._achieveTabs.setParent(page);
+        this._achieveTabs.setPosition(new Vec3(0, 226, 0));
+        this._mkLabel(page, 500, 226, 200, 24, '等级：普通→稀有→史诗→传奇', 12, MUTED, HorizontalTextAlignment.RIGHT);
+
+        // 滚动视口：Mask 裁剪 + 内容节点承载卡片；滚轮/拖拽滚动。
+        const VIEW_W = 1180, VIEW_H = 520;
+        const viewport = new Node('AchieveViewport'); viewport.setParent(page);
+        viewport.setPosition(new Vec3(0, -80, 0));
+        viewport.addComponent(UITransform).setContentSize(VIEW_W, VIEW_H);
+        const mask = viewport.addComponent(Mask); mask.type = Mask.Type.GRAPHICS_STENCIL;
+        const mg = viewport.addComponent(Graphics);
+        mg.fillColor = Color.WHITE; mg.rect(-VIEW_W / 2, -VIEW_H / 2, VIEW_W, VIEW_H); mg.fill();
+        this._achieveViewport = viewport;
+
+        const content = new Node('AchieveContent'); content.setParent(viewport);
+        content.addComponent(UITransform).setContentSize(VIEW_W, VIEW_H);
+        this._achieveContent = content;
+
+        // 滚动条：视口右缘细槽 + 位置滑块，随滚动重画。
+        const sb = new Node('AchieveScrollbar'); sb.setParent(page);
+        sb.setPosition(new Vec3(VIEW_W / 2 + 14, -80, 0));
+        this._achieveScrollbar = sb.addComponent(Graphics);
+
+        // 滚轮：向上滚回顶部（s 减小），向下翻页（s 增大）。
+        viewport.on(Node.EventType.MOUSE_WHEEL, (ev: any) => {
+            this._scrollAchievements(this._achieveScroll - (ev.getScrollY?.() ?? 0) * 0.5);
+        }, this);
+        // 触屏/鼠标拖拽翻页。
+        viewport.on(Node.EventType.TOUCH_START, (ev: any) => {
+            this._achieveDragging = true;
+            this._achieveDragY = ev.getUILocation?.().y ?? 0;
+        }, this);
+        viewport.on(Node.EventType.TOUCH_MOVE, (ev: any) => {
+            if (!this._achieveDragging) return;
+            const y = ev.getUILocation?.().y ?? 0;
+            this._scrollAchievements(this._achieveScroll - (y - this._achieveDragY));
+            this._achieveDragY = y;
+        }, this);
+        viewport.on(Node.EventType.TOUCH_END, () => this._achieveDragging = false, this);
+        viewport.on(Node.EventType.TOUCH_CANCEL, () => this._achieveDragging = false, this);
+
+        this._rebuildAchievementTabs();
+        this._rebuildAchievementCards();
+    }
+
+    /** 类型页签（一级分组，随后台成就管理分类数据重建，带已解锁/总数角标）。 */
+    private _rebuildAchievementTabs(): void {
+        for (const child of [...this._achieveTabs.children]) child.destroy();
+        const cats = AchievementAdmin.categories();
+        const all = SaveSystem.allAchievements();
+        const profile = SaveSystem.load();
+        if (cats.indexOf(this._achieveCategory) < 0) this._achieveCategory = cats[0] ?? '';
+        cats.forEach((cat, i) => {
+            const list = all.filter(a => a.category === cat);
+            const done = list.filter(a => profile.achievements.indexOf(a.id) >= 0).length;
+            const selected = cat === this._achieveCategory;
+            const btn = this._mkButton(this._achieveTabs, `${cat} ${done}/${list.length}`,
+                -520 + i * 178, 0, 170, 40,
+                selected ? GOLD : new Color(56, 72, 92, 255));
+            btn.on(Node.EventType.TOUCH_END, () => {
+                if (this._achieveCategory === cat) return;
+                this._achieveCategory = cat;
+                this._callbacks.onButtonSfx();
+                this._rebuildAchievementTabs();
+                this._rebuildAchievementCards();
+            }, this);
         });
-        this._mkLabel(page, 387, 226, 360, 24, '稀有度代表达成条件的特殊性  ·  奖励为预览', 14, MUTED, HorizontalTextAlignment.RIGHT);
+    }
 
-        ACHIEVEMENTS.forEach((def, i) => {
-            const col = i % 3, row = Math.floor(i / 3);
-            const card = new Node(`Achievement_${def.id}`); card.setParent(page);
-            card.setPosition(new Vec3(-390 + col * 390, 135 - row * 128, 0));
-            card.addComponent(UITransform).setContentSize(370, 116);
-            const g = card.addComponent(Graphics);
+    /**
+     * 按当前类型重建成就卡片：先按等级（普通→稀有→史诗→传奇）排序，
+     * 等级之间插细分隔行；排序键 = 类型 + 等级 + 定义顺序（与达成状态无关，
+     * 解锁新成就不会引起卡片跳动）。后台改动后每次进入页面/切页签都重建。
+     */
+    private _rebuildAchievementCards(): void {
+        const content = this._achieveContent;
+        for (const child of [...content.children]) child.destroy();
+        this._achievementCards = [];
 
-            this._mkArt(card, `ui_icon_${def.artKey}`, 50, 50, -150, 17);
-            const name = this._mkLabel(card, -24, 30, 200, 30, def.name, 19, WHITE, HorizontalTextAlignment.LEFT);
-            const rarity = this._mkLabel(card, 146, 31, 62, 24, def.rarity, 14, GOLD, HorizontalTextAlignment.RIGHT);
-            const desc = this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
-            this._mkLabel(card, -38, -24, 200, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
-            const progress = this._mkLabel(card, 145, -45, 70, 22, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
-            const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-28, -47, 0));
-            const pg = bar.addComponent(Graphics);
-            this._achievementCards.push({ def, graphics: g, name, desc, rarity, progress, progressGraphics: pg });
-        });
+        const cats = AchievementAdmin.categories();
+        if (cats.indexOf(this._achieveCategory) < 0) this._achieveCategory = cats[0] ?? '';
+        const order = ['普通', '稀有', '史诗', '传奇'];
+        const list = SaveSystem.allAchievements()
+            .filter(a => a.category === this._achieveCategory)
+            .map((def, i) => ({ def, i }))
+            .sort((a, b) =>
+                (order.indexOf(a.def.rarity) - order.indexOf(b.def.rarity)) || (a.i - b.i))
+            .map(x => x.def);
 
+        const VIEW_H = 520, VIEW_W = 1180;
+        const COL_X = [-390, 0, 390], ROW_H = 128, DIV_H = 30;
+        // 预排版：条目序列 = 等级分隔行 + 卡片（每行 3 张）
+        type Entry = { kind: 'div'; rarity: AchievementDef['rarity'] } | { kind: 'card'; def: AchievementDef; col: number };
+        const entries: Entry[] = [];
+        let prevRarity = '';
+        let col = 0;
+        for (const def of list) {
+            if (def.rarity !== prevRarity) {
+                prevRarity = def.rarity;
+                entries.push({ kind: 'div', rarity: def.rarity });
+                col = 0;
+            }
+            entries.push({ kind: 'card', def, col });
+            col++;
+        }
+        const divCount = entries.filter(e => e.kind === 'div').length;
+        const cardCount = entries.filter(e => e.kind === 'card').length;
+        const contentH = Math.max(VIEW_H, divCount * DIV_H + cardCount * ROW_H + 12);
+        content.getComponent(UITransform)!.setContentSize(VIEW_W, contentH);
+        this._achieveMaxScroll = Math.max(0, contentH - VIEW_H);
+
+        // 顶部原点游标（自上而下）：分隔行占 DIV_H 且独占一行，卡片按 3 列排布
+        let y = contentH - 6;
+        let rowCols = 0;
+        for (const e of entries) {
+            if (e.kind === 'div') {
+                const c = this._achievementRarityColor(e.rarity);
+                const dn = new Node(`Div_${e.rarity}`); dn.setParent(content);
+                dn.setPosition(new Vec3(0, y - DIV_H / 2, 0));
+                const dg = dn.addComponent(Graphics);
+                dg.strokeColor = new Color(c.r, c.g, c.b, 120); dg.lineWidth = 1;
+                dg.moveTo(-570, 0); dg.lineTo(570, 0); dg.stroke();
+                dg.fillColor = c; dg.circle(-578, 0, 3); dg.circle(578, 0, 3); dg.fill();
+                this._mkLabel(dn, -520, 0, 120, 22, e.rarity, 13, c, HorizontalTextAlignment.LEFT);
+                y -= DIV_H;
+                rowCols = 0;
+                continue;
+            }
+            if (rowCols === 0) y -= ROW_H;
+            this._mkAchievementCard(e.def, COL_X[e.col], y + ROW_H / 2);
+            rowCols++;
+        }
+        this._scrollAchievements(0);
         this._refreshAchievements();
+    }
+
+    private _mkAchievementCard(def: AchievementDef, cx: number, cy: number): Node {
+        const card = new Node(`Achievement_${def.id}`); card.setParent(this._achieveContent);
+        card.setPosition(new Vec3(cx, cy, 0));
+        card.addComponent(UITransform).setContentSize(370, 116);
+        const g = card.addComponent(Graphics);
+
+        this._mkArt(card, `ui_icon_${def.artKey}`, 50, 50, -150, 17);
+        const name = this._mkLabel(card, -24, 30, 200, 30, def.name, 19, WHITE, HorizontalTextAlignment.LEFT);
+        const rarity = this._mkLabel(card, 146, 31, 62, 24, def.rarity, 14, GOLD, HorizontalTextAlignment.RIGHT);
+        const desc = this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
+        this._mkLabel(card, -38, -24, 200, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
+        const progress = this._mkLabel(card, 145, -45, 70, 22, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
+        const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-28, -47, 0));
+        const pg = bar.addComponent(Graphics);
+        this._achievementCards.push({ def, graphics: g, name, desc, rarity, progress, progressGraphics: pg });
+        return card;
+    }
+
+    /** 应用滚动位置：钳制范围、移动内容节点、重画滚动条。 */
+    private _scrollAchievements(s: number): void {
+        this._achieveScroll = Math.max(0, Math.min(this._achieveMaxScroll, s));
+        const content = this._achieveContent;
+        const viewH = this._achieveViewport.getComponent(UITransform)!.contentSize.height;
+        const contentH = Math.max(viewH, content.getComponent(UITransform)!.contentSize.height);
+        content.setPosition(new Vec3(0, (viewH - contentH) / 2 + this._achieveScroll, 0));
+        // 内容不满一屏时不显示滚动条
+        const g = this._achieveScrollbar;
+        g.clear();
+        if (this._achieveMaxScroll <= 0) return;
+        const trackH = viewH - 24;
+        const thumbH = Math.max(48, trackH * viewH / contentH);
+        const t = this._achieveScroll / this._achieveMaxScroll;
+        const thumbY = trackH / 2 - thumbH / 2 - t * (trackH - thumbH);
+        g.fillColor = new Color(24, 33, 43, 200);
+        g.rect(0, -trackH / 2, 4, trackH); g.fill();
+        g.fillColor = new Color(255, 205, 82, 190);
+        g.rect(-1, thumbY - thumbH / 2, 6, thumbH); g.fill();
     }
 
     private _refreshAchievements(): void {
@@ -494,8 +493,9 @@ export class MetaPageUI {
             pg.fillColor = done ? new Color(89, 222, 143, 255) : c;
             pg.fillRect(-122, -3, 240 * (secretPending ? 0 : Math.max(0, Math.min(1, ratio))), 6);
         }
-        const legendary = ACHIEVEMENTS.filter(a => a.rarity === '传奇').length;
-        this._achievementSummary.string = `已解锁 ${unlocked} / ${ACHIEVEMENTS.length}   ·   传奇成就 ${legendary}`;
+        const legendary = SaveSystem.allAchievements().filter(a => a.rarity === '传奇' && !a.hidden).length;
+        const total = SaveSystem.allAchievements().length;
+        this._achievementSummary.string = `已解锁 ${unlocked} / ${total}   ·   明面传奇成就 ${legendary}`;
     }
 
     private _achievementRarityColor(rarity: AchievementDef['rarity']): Color {

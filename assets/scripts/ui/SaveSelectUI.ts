@@ -6,7 +6,7 @@
 // 页面由代码构建，不依赖 prefab；槽位数据每次 show() 时刷新。
 
 import {
-    Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite,
+    Color, EditBox, Graphics, HorizontalTextAlignment, Label, Node, Sprite,
     UITransform, Vec3, VerticalTextAlignment, sys,
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
@@ -56,6 +56,8 @@ interface SlotCardView {
 export class SaveSelectUI {
     private readonly _panel: Node;
     private _cards: SlotCardView[] = [];
+    /** 存档码浮层（导出/导入共用）：仅打开时创建。 */
+    private _codeOverlay: Node | null = null;
 
     constructor(private readonly _root: Node, private readonly _callbacks: SaveSelectCallbacks) {
         this._panel = this._buildPage();
@@ -128,7 +130,72 @@ export class SaveSelectUI {
         back.on(Node.EventType.TOUCH_END, this._callbacks.onBack);
 
         for (let i = 0; i < SaveSystem.SLOT_COUNT; i++) this._buildCard(page, i);
+
+        // 底部：存档码导出/导入（localStorage 按浏览器+地址隔离，换环境靠存档码迁移）
+        this._mkButton(page, '导出存档码', -160, -318, 170, 40, new Color(70, 105, 135, 255))
+            .on(Node.EventType.TOUCH_END, () => this._openSaveCodeOverlay('export'));
+        this._mkButton(page, '导入存档码', 10, -318, 170, 40, new Color(95, 120, 100, 255))
+            .on(Node.EventType.TOUCH_END, () => this._openSaveCodeOverlay('import'));
+        this._mkLabel(page, 330, -318, 440, 24,
+            '存档保存在当前浏览器 · 换浏览器/地址请用存档码迁移', 13, MUTED, HorizontalTextAlignment.RIGHT);
+
         return page;
+    }
+
+    /** 存档码浮层：导出（生成可复制的存档码）与导入（粘贴恢复全部槽位）。 */
+    private _openSaveCodeOverlay(mode: 'export' | 'import'): void {
+        this._callbacks.onButtonSfx();
+        if (this._codeOverlay) { this._codeOverlay.destroy(); this._codeOverlay = null; }
+        const overlay = new Node('SaveCodeOverlay'); overlay.setParent(this._panel);
+        overlay.addComponent(UITransform).setContentSize(1280, 720);
+        overlay.setSiblingIndex(this._panel.children.length - 1);
+        const dim = overlay.addComponent(Graphics);
+        dim.fillColor = new Color(3, 8, 15, 225); dim.fillRect(-640, -360, 1280, 720);
+
+        const panel = new Node('Panel'); panel.setParent(overlay);
+        panel.addComponent(UITransform).setContentSize(820, 430);
+        const pg = panel.addComponent(Graphics);
+        drawHexPanel(pg, -410, -215, 820, 430, CYAN, 250);
+        this._mkLabel(panel, -330, 168, 400, 28,
+            mode === 'export' ? '导出存档码' : '导入存档码', 20, WHITE, HorizontalTextAlignment.LEFT);
+        this._mkLabel(panel, -330, 132, 660, 22,
+            mode === 'export'
+                ? '整段复制保存（发微信/记事本均可），换浏览器或设备后粘贴导入'
+                : '粘贴此前导出的存档码，导入会覆盖当前三个存档槽',
+            13, MUTED, HorizontalTextAlignment.LEFT);
+
+        const codeEb = this._mkEditBox(panel, 0, 40, 760, 110,
+            mode === 'export' ? '存档码生成中…' : '在此粘贴存档码', '');
+
+        const status = this._mkLabel(panel, 0, -60, 700, 24, '', 14, GOLD);
+
+        const closeBtn = this._mkButton(panel, '关闭', 330, -160, 120, 42, new Color(60, 100, 80, 255));
+        closeBtn.on(Node.EventType.TOUCH_END, () => {
+            overlay.destroy();
+            this._codeOverlay = null;
+        });
+
+        if (mode === 'export') {
+            codeEb.string = SaveSystem.exportSaveCode();
+            const copyBtn = this._mkButton(panel, '复制到剪贴板', -150, -160, 220, 42, new Color(70, 105, 135, 255));
+            copyBtn.on(Node.EventType.TOUCH_END, () => {
+                try {
+                    void navigator.clipboard.writeText(codeEb.string);
+                    status.string = '已复制到剪贴板，请粘贴保存';
+                } catch (_e) { status.string = '复制失败，请手动全选复制'; }
+            });
+        } else {
+            const importBtn = this._mkButton(panel, '导入并覆盖', -150, -160, 220, 42, new Color(60, 120, 90, 255));
+            importBtn.on(Node.EventType.TOUCH_END, () => {
+                if (SaveSystem.importSaveCode(codeEb.string)) {
+                    status.string = '导入成功，存档已恢复';
+                    this.refresh();
+                } else {
+                    status.string = '存档码无效，请检查是否完整';
+                }
+            });
+        }
+        this._codeOverlay = overlay;
     }
 
     private _buildCard(page: Node, slot: number): void {
@@ -314,5 +381,40 @@ export class SaveSelectUI {
         this._mkLabel(button, 0, 0, w - 18, h, text, Math.round(h * 0.34), WHITE);
         button.on(Node.EventType.TOUCH_END, this._callbacks.onButtonSfx);
         return button;
+    }
+
+    /** 代码创建 EditBox：内部标签须锚点 (0,1)（引擎定位在框左上角，中心锚点会飘出框外）。 */
+    private _mkEditBox(parent: Node, x: number, y: number, w: number, h: number,
+                       placeholder: string, init: string): EditBox {
+        const n = new Node(`EB_${placeholder.slice(0, 6)}`); n.setParent(parent);
+        n.setPosition(new Vec3(x, y, 0));
+        n.addComponent(UITransform).setContentSize(w, h);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(8, 13, 22, 245);
+        g.roundRect(-w / 2, -h / 2, w, h, 6); g.fill();
+        g.strokeColor = new Color(90, 110, 140, 200);
+        g.lineWidth = 1.2; g.roundRect(-w / 2, -h / 2, w, h, 6); g.stroke();
+
+        const mkInner = (name: string, color: Color): Label => {
+            const ln = new Node(name); ln.setParent(n);
+            ln.addComponent(UITransform).setAnchorPoint(0, 1);
+            const l = ln.addComponent(Label);
+            l.fontSize = 14; l.lineHeight = 18;
+            l.color = color;
+            l.verticalAlign = VerticalTextAlignment.CENTER;
+            l.horizontalAlign = HorizontalTextAlignment.LEFT;
+            l.overflow = Label.Overflow.SHRINK;
+            styleLabel(l);
+            return l;
+        };
+        const textLabel = mkInner('TEXT_LABEL', WHITE.clone());
+        const phLabel = mkInner('PLACEHOLDER_LABEL', new Color(120, 140, 160, 255));
+
+        const eb = n.addComponent(EditBox);
+        eb.textLabel = textLabel;
+        eb.placeholderLabel = phLabel;
+        eb.placeholder = placeholder;
+        eb.string = init;
+        return eb;
     }
 }

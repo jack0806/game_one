@@ -12,6 +12,7 @@
 //  · 卖出：卸下词条回收购买价 75%（退款经 GameManager 走 Economy）。
 import { AUGMENT_DB, AugmentDef, HexRarity, rarityForLevel, ELEMENT_HEX_IDS } from '../data/AugmentDB';
 import { Rng } from '../core/MathUtils';
+import { GameConfig } from '../data/GameConfig';
 
 /** 稀有度出售溢价：银/金每买 1 张该稀有度涨价 10%，彩涨 100%。 */
 const SURGE_RATE: Record<HexRarity, number> = { silver: 0.10, gold: 0.10, prismatic: 1.0 };
@@ -48,7 +49,8 @@ export class AugmentManager {
         if (!this.pinnedCards.some(p => p.id === card.id)) this.pinnedCards.push(card);
         if (this._pinCharged.has(card.id)) return;
         this._pinCharged.add(card.id);
-        card._price = Math.round((card._price ?? 0) * 1.05);
+        // 附加费率后台可调（pinFeeRate，默认 5%）
+        card._price = Math.round((card._price ?? 0) * (1 + GameConfig.get('pinFeeRate')));
     }
 
     /** 取消固定：解除跨波保留（已收的 +5% 附加费不退，防固定↔取消刷价）。 */
@@ -77,12 +79,15 @@ export class AugmentManager {
 
     // ── 定价 ──────────────────────────────────────────────
 
-    /** 当前买下这张卡的价格（按档位稀有度基准价 × 同稀有度累计溢价；卖出回收 75%）。 */
+    /**
+     * 当前买下这张卡的价格（按档位稀有度基准价 × 同稀有度累计溢价；
+     * 卖出回收 75%）。后台 augPriceMult 为定价总乘区。
+     */
     priceOf(def: AugmentDef, level = 1): number {
         const rarity = rarityForLevel(def, level);
         const base = def.prices[Math.min(def.prices.length, Math.max(1, level)) - 1];
         const surge = 1 + SURGE_RATE[rarity] * (this.boughtPerRarity[rarity] || 0);
-        return Math.round(base * surge);
+        return Math.round(base * surge * GameConfig.get('augPriceMult'));
     }
 
     /** 记一次成功购买（涨价与回收价都以实付为准）。 */
@@ -90,9 +95,9 @@ export class AugmentManager {
         this.boughtPerRarity[rarity] = (this.boughtPerRarity[rarity] || 0) + 1;
     }
 
-    /** 卖出回收价 = 实付 × 75%。 */
+    /** 卖出回收价 = 实付 × 回收率（默认 75%，后台 augSellRate 可调）。 */
     sellValue(inst: AugmentDef): number {
-        return Math.round((inst.paid ?? 0) * 0.75);
+        return Math.round((inst.paid ?? 0) * GameConfig.get('augSellRate'));
     }
 
     // ── 生成选项 ──────────────────────────────────────────
@@ -103,11 +108,11 @@ export class AugmentManager {
      * （第 5 波起才有，封顶约 4%）。
      */
     rarityWeights(wave: number): Record<HexRarity, number> {
-        return {
-            silver:    Math.max(50, 80 - wave),
-            gold:      Math.min(40, 18 + wave),
-            prismatic: Math.min(4, Math.max(0, wave - 4) * 0.25),
-        };
+        const silver = Math.max(50, 80 - wave);
+        const gold = Math.min(40, 18 + wave) * GameConfig.get('augRarityLuck');
+        const prismatic = Math.min(4, Math.max(0, wave - 4) * 0.25) * GameConfig.get('augRarityLuck');
+        // 加成砍掉/加上的权重回填银色，保持三档总量近似不变（luck=1 即原值）
+        return { silver: silver + (Math.min(40, 18 + wave) - gold) + (Math.min(4, Math.max(0, wave - 4) * 0.25) - prismatic), gold, prismatic };
     }
 
     /**

@@ -33,9 +33,10 @@ test('首页标题与按钮为真实节点，独立按钮直接叠在场景上',
     assert.doesNotMatch(screenSource, /dockG\.fillRect/);
 });
 
-test('任务树/图鉴/成就档案入口迁入存档大厅,首页不再展示', () => {
-    // 三个元进度入口随存档会话进入大厅左侧"情报终端"
-    assert.match(lobbySource, /\['tasks', '任务树', CYAN\]/);
+test('图鉴/成就档案入口迁入存档大厅,任务树入口已移除,首页不再展示', () => {
+    // 两个元进度入口随存档会话进入大厅左侧"情报终端"；任务树按玩家要求下线
+    assert.doesNotMatch(lobbySource, /'任务树'/);
+    assert.doesNotMatch(lobbySource, /\['tasks'/);
     assert.match(lobbySource, /\['codex', '图鉴'/);
     assert.match(lobbySource, /\['achievements', '成就档案', GOLD\]/);
     assert.match(lobbySource, /this\._callbacks\.onMetaPage\(name\)/);
@@ -127,16 +128,22 @@ test('存档大厅:右侧动画传送门,点击进入选人,左侧展示当前�
     assert.match(screenSource, /name === 'lobby'[\s\S]*?this\._lobby\.refresh\(\)/);
 });
 
-test('任务页使用主线/支线/挑战三系列节点链路、状态着色和独立任务详情', () => {
-    assert.match(metaSource, /'主线任务'/);
-    assert.match(metaSource, /'支线任务'/);
-    assert.match(metaSource, /'挑战任务'/);
-    assert.match(metaSource, /new Node\('Links'\)/);
-    assert.match(metaSource, /completed: '已完成'/);
-    assert.match(metaSource, /active: '进行中'/);
-    assert.match(metaSource, /'奖励预览'/);
-    assert.match(metaSource, /challenge: '挑战试炼'/, '挑战系列分支文案');
-    assert.match(metaSource, /for \(const branch of \['main', 'side', 'challenge'\] as QuestBranch\[\]\)/, '三个分支都建树');
+test('任务树页与章节任务线已按玩家要求整体移除', () => {
+    // 元进度页只剩图鉴/成就两页，无任务分支/详情节点
+    assert.doesNotMatch(metaSource, /'主线任务'/);
+    assert.doesNotMatch(metaSource, /'支线任务'/);
+    assert.doesNotMatch(metaSource, /'挑战任务'/);
+    assert.doesNotMatch(metaSource, /QuestBranch/);
+    assert.doesNotMatch(metaSource, /questsByBranch/);
+    // 章节选择页无任务线连线与任务行
+    assert.doesNotMatch(screenSource, /QuestLine/);
+    assert.doesNotMatch(screenSource, /_questLineGfx/);
+    assert.doesNotMatch(screenSource, /任务：/);
+    assert.doesNotMatch(screenSource, /推进任务线/);
+    // MetaProgressionDB 只导出图鉴数据
+    const mpSource = fs.readFileSync(path.join(root, 'assets/scripts/data/MetaProgressionDB.ts'), 'utf8');
+    assert.doesNotMatch(mpSource, /QUESTS/);
+    assert.doesNotMatch(mpSource, /QuestDef/);
 });
 
 test('图鉴显示怪物英雄统计、条目图片和未解锁问号详情', () => {
@@ -147,12 +154,56 @@ test('图鉴显示怪物英雄统计、条目图片和未解锁问号详情', ()
     assert.match(metaSource, /未解锁条目使用问号隐藏视觉与身份信息/);
 });
 
-test('成就墙一屏展示数量、稀有度特殊性、图片、进度与奖励', () => {
-    assert.match(metaSource, /ACHIEVEMENTS\.forEach/);
+test('成就墙按类型页签+等级梯度重建,滚动容器修复下翻,数据走后台合并列表', () => {
+    assert.match(metaSource, /AchievementAdmin\.categories\(\)/, '类型页签来自后台分类数据');
+    assert.match(metaSource, /_rebuildAchievementTabs/, '页签重建');
+    assert.match(metaSource, /_rebuildAchievementCards/, '卡片按页签重建');
+    assert.match(metaSource, /SaveSystem\.allAchievements\(\)/, '数据走后台合并列表');
+    assert.match(metaSource, /'普通', '稀有', '史诗', '传奇'/, '类型内等级排序');
     assert.match(metaSource, /`ui_icon_\$\{def\.artKey\}`/);
-    assert.match(metaSource, /稀有度代表达成条件的特殊性/);
     assert.match(metaSource, /`奖励  \$\{def\.reward\}`/);
-    assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{ACHIEVEMENTS\.length\}/);
+    assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{total\}/);
+    // 滚动容器：Mask 视口 + 内容节点钳制滚动 + 滚轮/拖拽与滚动条（修复"下翻不了"）
+    assert.match(metaSource, /AchieveViewport/);
+    assert.match(metaSource, /Mask\.Type\.GRAPHICS_STENCIL/);
+    assert.match(metaSource, /MOUSE_WHEEL/);
+    assert.match(metaSource, /this\._achieveScroll = Math\.max\(0, Math\.min\(this\._achieveMaxScroll, s\)\)/);
+    assert.match(metaSource, /AchieveScrollbar/);
+});
+
+test('设置页接入后台管理入口,面板含密码门/参数配置/成就管理', () => {
+    const adminSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AdminUI.ts'), 'utf8');
+    const configSource = fs.readFileSync(path.join(root, 'assets/scripts/data/GameConfig.ts'), 'utf8');
+    const adminData = fs.readFileSync(path.join(root, 'assets/scripts/systems/AchievementAdmin.ts'), 'utf8');
+    // 设置页入口
+    assert.match(screenSource, /'后台管理'/);
+    assert.match(screenSource, /_adminUI\?\.open\(\)/);
+    // 密码门与管理员身份
+    assert.match(adminSource, /请输入管理员密码/);
+    assert.match(adminSource, /isAdminUnlocked/);
+    assert.match(adminSource, /退出管理员/);
+    assert.match(configSource, /DEFAULT_ADMIN_PASSWORD = 'hex2026'/);
+    // 页签1 系统参数：注册表驱动滑条,改即存,恢复默认
+    assert.match(adminSource, /_renderConfigTab/);
+    assert.match(adminSource, /GameConfig\.set\(item\.key, v\)/);
+    assert.match(adminSource, /全部恢复默认/);
+    assert.match(configSource, /hexblast_admin_config_v1/);
+    // 页签2 成就管理：分类/新增/编辑/下架/删除
+    assert.match(adminSource, /_renderAchievementsTab/);
+    assert.match(adminSource, /\+ 新建分类/);
+    assert.match(adminSource, /\+ 新增成就/);
+    assert.match(adminSource, /AchievementAdmin\.setOverride/);
+    assert.match(adminSource, /AchievementAdmin\.deleteCustom/);
+    assert.match(adminData, /hexblast_admin_achievements_v1/);
+    assert.match(adminData, /retired/);
+    // 参数在公式出口消费（抽点验证）
+    const economySource = fs.readFileSync(path.join(root, 'assets/scripts/systems/Economy.ts'), 'utf8');
+    assert.match(economySource, /GameConfig\.get\('goldGainMult'\)/);
+    const waveSource = fs.readFileSync(path.join(root, 'assets/scripts/data/WaveData.ts'), 'utf8');
+    assert.match(waveSource, /GameConfig\.get\('waveCountMult'\)/);
+    const gameMgr = fs.readFileSync(path.join(root, 'assets/scripts/core/GameManager.ts'), 'utf8');
+    assert.match(gameMgr, /GameConfig\.get\('coreCoinsRate'\)/);
+    assert.match(gameMgr, /GameConfig\.get\('freeRefreshCount'\)/);
 });
 
 test('英雄名单点击只切换预览，出战必须确认且锁定英雄不能开局', () => {
@@ -500,4 +551,20 @@ test('固定强化跨波次保留:开页恢复固定状态,取消走unpin,三处
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, this\._waveMgr\.templateWave\(\)/);
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, 1, \{\}\)/);
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, Math\.max\(1, this\._waveMgr\.templateWave\(\)\)\)/);
+});
+
+test('海克斯卖出两步确认:首点仅进入确认态,再点同一标签才真正卖出', () => {
+    const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
+    // 首点只记录待确认槽位与 id 并重绘，不触发 ctx.sell
+    assert.match(augSource, /if \(i !== this\._sellPendingIdx \|\| chip\.id !== this\._sellPendingId\) \{[\s\S]*?this\._refreshChips\(\);\s*return;/);
+    // 确认态标签与红边提示
+    assert.match(augSource, /'再点一次确认卖出'/);
+    assert.match(augSource, /confirming \? new Color\(232, 96, 84, 230\)/);
+    // 真正卖出只出现在确认通过之后
+    assert.match(augSource, /this\._ctx\?\.sell\(\{ id: chip\.id \} as AugDef\)/);
+    // 开页与换页都会重置确认态（槽位内容已变）
+    assert.match(augSource, /this\._chipPage = 0;\s*this\._sellPendingIdx = -1;/);
+    assert.match(augSource, /this\._chipPage = next;\s*[\s\S]*?this\._sellPendingIdx = -1;\s*this\._sellPendingId  = '';/);
+    // 底部提示文字同步两步确认玩法
+    assert.match(augSource, /点击持有标签两次确认卖出/);
 });

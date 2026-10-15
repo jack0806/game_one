@@ -1,104 +1,7 @@
 // ============================================================
-//  MetaProgressionDB.ts — 任务树与图鉴的可扩展占位数据
+//  MetaProgressionDB.ts — 图鉴的静态数据表
 // ============================================================
-// 当前内容仅用于页面结构与视觉验证。正式策划数据确定后，可直接替换数组
-// 内容；UI 只依赖这些接口，不需要调整节点布局或交互代码。
-
-export type QuestBranch = 'main' | 'side' | 'challenge';
-export type QuestState = 'completed' | 'active' | 'available' | 'locked';
-
-export interface QuestDef {
-    id: string;
-    branch: QuestBranch;
-    chapter: string;
-    name: string;
-    desc: string;
-    objective: string;
-    progress: number;
-    goal: number;
-    reward: string;
-    rewardIcon: string;
-    state: QuestState;
-    prerequisite?: string;
-}
-
-/** 主线/支线均为占位任务；顺序即任务树中的前后依赖顺序。 */
-export const QUESTS: QuestDef[] = [
-    {
-        id: 'main_01', branch: 'main', chapter: '序章', name: '首次校准',
-        desc: '完成一次战斗部署，确认海克斯核心可以正常运转。',
-        objective: '完成任意一局战斗', progress: 1, goal: 1,
-        reward: '核心币 × 100', rewardIcon: 'gold', state: 'completed',
-    },
-    {
-        id: 'main_02', branch: 'main', chapter: '第一章', name: '废土信号',
-        desc: '追踪废土深处的异常脉冲，并清理阻断路线的敌群。',
-        objective: '击败 80 个敌人', progress: 42, goal: 80,
-        reward: '强化样本 × 1', rewardIcon: 'summon', state: 'active', prerequisite: 'main_01',
-    },
-    {
-        id: 'main_03', branch: 'main', chapter: '第一章', name: '领主残响',
-        desc: '信号源被大型生命体占据，需要完成一次首领讨伐。',
-        objective: '击败第一章首领', progress: 0, goal: 1,
-        reward: '核心币 × 240', rewardIcon: 'crit', state: 'locked', prerequisite: 'main_02',
-    },
-    {
-        id: 'main_04', branch: 'main', chapter: '第二章', name: '熔炉之门',
-        desc: '前往钢铁工厂。后续目标将在正式任务配置完成后开放。',
-        objective: '占位目标：抵达第二章', progress: 0, goal: 1,
-        reward: '未知奖励', rewardIcon: 'chaos', state: 'locked', prerequisite: 'main_03',
-    },
-    {
-        id: 'side_01', branch: 'side', chapter: '行动记录', name: '火力测试',
-        desc: '记录不同强化组合的作战表现，为后续部署提供样本。',
-        objective: '单局装备 3 个强化', progress: 3, goal: 3,
-        reward: '核心币 × 60', rewardIcon: 'gold', state: 'completed',
-    },
-    {
-        id: 'side_02', branch: 'side', chapter: '英雄档案', name: '轮换出击',
-        desc: '使用不同英雄完成行动，补全作战适配数据。',
-        objective: '使用 3 名不同英雄', progress: 2, goal: 3,
-        reward: '档案碎片 × 2', rewardIcon: 'summon', state: 'active',
-    },
-    {
-        id: 'side_03', branch: 'side', chapter: '资源回收', name: '拾荒协议',
-        desc: '回收战场上的六角货币，验证资源循环流程。',
-        objective: '累计获得 1200 金币', progress: 760, goal: 1200,
-        reward: '刷新许可 × 1', rewardIcon: 'speed', state: 'available',
-    },
-    {
-        id: 'side_04', branch: 'side', chapter: '隐藏记录', name: '机密委托',
-        desc: '任务内容尚未配置，将在后续版本中替换。',
-        objective: '占位目标', progress: 0, goal: 1,
-        reward: '未知奖励', rewardIcon: 'chaos', state: 'locked',
-    },
-
-    // ── 挑战任务系列：高难度自限玩法，每条都是独立的挑战试炼 ──
-    {
-        id: 'ch_01', branch: 'challenge', chapter: '试炼 I', name: '裸装出击',
-        desc: '不依赖任何海克斯强化，仅凭英雄基础火力完成第一章的清剿。',
-        objective: '单局不购买海克斯通关第一章', progress: 1, goal: 1,
-        reward: '核心币 × 300', rewardIcon: 'crit', state: 'completed',
-    },
-    {
-        id: 'ch_02', branch: 'challenge', chapter: '试炼 II', name: '连锁风暴',
-        desc: '在敌群中不间断地收割，将连击计数推向极限。',
-        objective: '单局连击达到 80', progress: 46, goal: 80,
-        reward: '强化样本 × 2', rewardIcon: 'combo', state: 'active', prerequisite: 'ch_01',
-    },
-    {
-        id: 'ch_03', branch: 'challenge', chapter: '试炼 III', name: '极简构筑',
-        desc: '只用 2 个技能格迎战最终首领，验证极限操作的可行性。',
-        objective: '技能格占用 ≤ 2 时击败任意章节首领', progress: 0, goal: 1,
-        reward: '核心币 × 500', rewardIcon: 'shield', state: 'available',
-    },
-    {
-        id: 'ch_04', branch: 'challenge', chapter: '终局试炼', name: '地狱朝圣',
-        desc: '在地狱难度的全面压制下走完全部章节，只有最坚定的猎手能够返回。',
-        objective: '地狱难度通关全部章节', progress: 0, goal: 1,
-        reward: '称号「不灭者」', rewardIcon: 'gold', state: 'locked', prerequisite: 'ch_03',
-    },
-];
+// 内容仅用于图鉴页展示。替换数组内容时 UI 不需要调整节点布局或交互代码。
 
 export type CodexCategory = 'monster' | 'hero';
 export type CodexRarity = '普通' | '精英' | '首领' | '英雄';
@@ -167,10 +70,6 @@ export const CODEX_ENTRIES: CodexEntry[] = [
       desc: '驱使骸骨仆从挡刀作战，靠灵魂层数滚雪球——越苟越强，挨打就掉层。',
       artKey: 'char_mortis', color: '#a8e06e', rarity: '英雄', traits: ['召唤', '灵魂', '滚雪球'], unlocked: true },
 ];
-
-export function questsByBranch(branch: QuestBranch): QuestDef[] {
-    return QUESTS.filter(q => q.branch === branch);
-}
 
 export function codexByCategory(category: CodexCategory): CodexEntry[] {
     return CODEX_ENTRIES.filter(e => e.category === category);

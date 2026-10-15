@@ -6,6 +6,7 @@ import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getMiniBossDef, getTestGruntDef } from '../data/BossDB';
 import { statScaleFor } from '../data/LevelIndex';
+import { GameConfig } from '../data/GameConfig';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import { createDirectionalFacingState, resetDirectionalFacing, resolveFacingView } from '../core/DirectionalFacing';
 import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
@@ -247,8 +248,10 @@ export class EnemyBase {
      * game._difficulty 由 GameManager 在开局注入；测试房间不注入 = 原值。
      */
     _applyDifficulty(game: any): void {
-        const mult = game?._difficulty?.statMult;
-        if (!mult || mult === 1) return;
+        // 难度定稿值之上再乘后台乘区：diffStatMult（难度微调）与 enemyStatMult（怪物总乘区）
+        const mult = (game?._difficulty?.statMult ?? 1)
+            * GameConfig.get('diffStatMult') * GameConfig.get('enemyStatMult');
+        if (mult === 1) return;
         this.maxHp *= mult; this.hp = this.maxHp;
         if (this.maxShieldHp > 0) { this.maxShieldHp *= mult; this.shieldHp = this.maxShieldHp; }
         this.damage  *= mult;
@@ -562,8 +565,8 @@ export class EnemyBase {
         game.comboCount = (game.comboCount || 0) + 1;
         // v4 第 10 节：章节 Boss 击杀必掉 1 件装备（GameManager 负责入仓与提示）
         if (this.isBoss) game.dropBossEquipment?.(this);
-        // 滑稽猴：击杀后 20% 掉落玩偶猴（拾取解锁隐藏成就「这不是真的我哟」）
-        if ((this as any).bossKind === 'joker' && Rng.chance(0.2)) {
+        // 滑稽猴：击杀后按配置概率掉落玩偶猴（默认 20%，拾取解锁隐藏成就「这不是真的我哟」）
+        if ((this as any).bossKind === 'joker' && Rng.chance(GameConfig.get('jokerDollChance'))) {
             game.economy?.spawnDrop?.(this.x, this.y, 0, 'joker_doll');
         }
         // 成就存档统计：Boss 击杀数、单局最高连击（GameManager 局末读取）

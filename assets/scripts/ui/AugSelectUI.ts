@@ -80,6 +80,9 @@ export class AugSelectUI extends Component {
     private _bought:   Set<string> = new Set();
     /** 固定中的强化 id：本页刷新不被替换，且跨波次保留（show 时从 ctx 恢复）。 */
     private _pinned:   Set<string> = new Set();
+    /** 两步卖出确认：待确认槽位与海克斯 id（换页/开页即失效，防误触）。 */
+    private _sellPendingIdx = -1;
+    private _sellPendingId  = '';
     private _ctx?:     AugShopCtx;
     private _dimNode!: Node;
     private _drawDim!: () => void;
@@ -108,6 +111,8 @@ export class AugSelectUI extends Component {
         // 固定状态跨波次保留：从管理器恢复"已固定"回显与刷新保留逻辑
         this._pinned  = new Set(ctx.pinnedIds());
         this._chipPage = 0;
+        this._sellPendingIdx = -1;
+        this._sellPendingId  = '';
         // 三选一是模态弹窗，必须盖在商店等后创建的面板之上：每次显示都把本节点
         // 移到 UI 层末尾（绘制顺序最顶），否则会被商店商品压在下面。
         if (this.node.parent) this.node.setSiblingIndex(this.node.parent.children.length - 1);
@@ -323,7 +328,7 @@ export class AugSelectUI extends Component {
         hint.setPosition(new Vec3(345, 58, 0));
         hint.addComponent(UITransform).setContentSize(570, 26);
         const hl = hint.addComponent(Label);
-        hl.string = '点击持有标签可卖出（回收 75% 购价）· 功能海克斯不占技能格';
+        hl.string = '点击持有标签两次确认卖出（回收 75% 购价）· 功能海克斯不占技能格';
         hl.fontSize = 14;
         hl.lineHeight = 18;
         hl.color = new Color(174, 194, 211, 245);
@@ -462,14 +467,18 @@ export class AugSelectUI extends Component {
             chip.root.active = true;
             chip.id = inst.id;
             const tag = inst.category === '功能' ? '[功] ' : '';
-            chip.label.string = `${tag}${inst.name} Lv${inst.level ?? 1} · 卖 ${Math.round((inst.paid ?? 0) * 0.75)}`;
+            // 两步卖出确认：待确认槽位换红边与提示文字，再点一次才真正卖出
+            const confirming = i === this._sellPendingIdx && inst.id === this._sellPendingId;
+            chip.label.string = confirming ? '再点一次确认卖出'
+                : `${tag}${inst.name} Lv${inst.level ?? 1} · 卖 ${Math.round((inst.paid ?? 0) * 0.75)}`;
             const hex = RARITY_COLOR[inst.rarity] ?? '#888888';
             const col = Color.fromHEX(new Color(), hex);
             chip.g.clear();
             chip.g.fillColor = new Color(14, 20, 30, 245);
             chip.g.fillRect(-92, -22, 188, 44);
-            chip.g.strokeColor = new Color(col.r, col.g, col.b, 150);
-            chip.g.lineWidth = 1.5;
+            chip.g.strokeColor = confirming ? new Color(232, 96, 84, 230)
+                : new Color(col.r, col.g, col.b, 150);
+            chip.g.lineWidth = confirming ? 2 : 1.5;
             chip.g.rect(-92, -22, 188, 44);
             chip.g.stroke();
         }
@@ -480,6 +489,9 @@ export class AugSelectUI extends Component {
         const next = Math.max(0, Math.min(pages - 1, this._chipPage + step));
         if (next === this._chipPage) return;
         this._chipPage = next;
+        // 换页后槽位内容已变，待确认态失效
+        this._sellPendingIdx = -1;
+        this._sellPendingId  = '';
         this._refreshChips();
     }
 
@@ -534,9 +546,20 @@ export class AugSelectUI extends Component {
         this._populate();
     }
 
+    /** 卖出持有海克斯：两步确认，首点只进入确认态（红边提示），再点同一标签才真正卖出。 */
     private _sell(i: number) {
         const chip = this._chips[i];
         if (!chip?.id) return;
+        if (i !== this._sellPendingIdx || chip.id !== this._sellPendingId) {
+            // 首点/改点其他标签：进入（或转移）确认态，不触发卖出
+            this._sellPendingIdx = i;
+            this._sellPendingId  = chip.id;
+            this.onButtonSfx?.();
+            this._refreshChips();
+            return;
+        }
+        this._sellPendingIdx = -1;
+        this._sellPendingId  = '';
         this.onButtonSfx?.();
         this._ctx?.sell({ id: chip.id } as AugDef);
         this._populate();

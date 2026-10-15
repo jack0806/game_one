@@ -71,11 +71,12 @@ test('变异排期:图1全图不上,图末章不上,共10个章位', () => {
     assert.ok(withMut.every(n => !n.isMapFinale), '图末章不上变异');
 });
 
-test('任务骨架:30节点各有任务与首通奖励', () => {
+test('任务线字段已按玩家要求移除:30节点只保留曲线/变异/战备包', () => {
     assert.equal(CHAPTER_NODES.length, 30);
     for (const n of CHAPTER_NODES) {
-        assert.ok(n.quest.title.length > 0, `k=${n.id} 任务标题非空`);
-        assert.ok(n.quest.reward.coreCoins > 0);
+        assert.equal(n.quest, undefined, `k=${n.id} 无任务字段`);
+        assert.ok(n.statScale > 0 && n.countScale > 0);
+        assert.ok(n.starter && typeof n.starter.gold === 'number');
     }
 });
 

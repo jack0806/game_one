@@ -21,6 +21,7 @@ import { clamp } from '../core/MathUtils';
 import { visibleDesignWidth, visibleDesignHeight } from '../core/ScreenFit';
 import { CANVAS_H } from '../core/Constants';
 import { MetaPageName, MetaPageUI } from './MetaPageUI';
+import { AdminUI } from './AdminUI';
 import { SaveSelectUI } from './SaveSelectUI';
 import { LobbyUI } from './LobbyUI';
 
@@ -66,14 +67,14 @@ interface RunReportView {
 export class ScreenManager extends Component {
     private _panels: Map<ScreenName, Node> = new Map();
     private _metaPages!: MetaPageUI;
+    /** 后台管理面板（设置页「后台管理」入口；管理员验证 + 参数/成就管理）。 */
+    private _adminUI?: AdminUI;
     private _saveSelect!: SaveSelectUI;
     /** v4 章节选择页(v5 选图页)的卡片区容器（每次进入页面按存档解锁链重建）。 */
     private _mapCardsRoot!: Node;
     private _mapProgressLabel!: Label;
     /** v5 图内章节页的卡片区容器。 */
     private _chapterCardsRoot!: Node;
-    /** v5 图内章节页的任务线节点绘制（每次重建重画）。 */
-    private _questLineGfx?: Graphics;
     private _chapterPreview!: Sprite;
     private _chapterPreviewAccent: Color = UI_PALETTE.cyan;
     private _drawChapterPreview?: () => void;
@@ -168,6 +169,10 @@ export class ScreenManager extends Component {
         this._buildChapterClearPanel();
         this._buildPausePanel();
         this._buildSettingsPanel();
+        // 后台管理面板（设置页入口）：最后创建保证压在所有面板之上
+        this._adminUI = new AdminUI(this.node, {
+            onAchievementsChanged: () => this._metaPages?.refresh('achievements'),
+        });
         // start with everything hidden
         this._panels.forEach(p => p.active = false);
         input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
@@ -225,7 +230,7 @@ export class ScreenManager extends Component {
             || name === 'mapSelect' || name === 'chapterSelect' || name === 'difficultySelect' || name === 'charSelect') {
             this.fitToVisible();
         }
-        if (name === 'tasks' || name === 'codex' || name === 'achievements') {
+        if (name === 'codex' || name === 'achievements') {
             this._metaPages.fitToVisible();
             this._metaPages.refresh(name);
         } else if (name === 'settings') {
@@ -486,15 +491,15 @@ export class ScreenManager extends Component {
             // 200ms 后仍在本页（关闭被拦截）→ 告别遮罩兜底
             setTimeout(() => this._showExitVeil(), 200);
         }, this);
-        // 任务树/图鉴/成就档案入口已迁入存档大厅（LobbyUI 情报终端），首页不再展示。
+        // 图鉴/成就档案入口已迁入存档大厅（LobbyUI 情报终端），首页不再展示。
     }
 
-    /** 返回按钮只会在三个元进度页面内触发；取当前激活页作为 transition 来源。 */
+    /** 返回按钮只会在两个元进度页面内触发；取当前激活页作为 transition 来源。 */
     private _currentMetaPage(): MetaPageName {
-        for (const name of ['tasks', 'codex', 'achievements'] as MetaPageName[]) {
+        for (const name of ['codex', 'achievements'] as MetaPageName[]) {
             if (this._panels.get(name)?.active) return name;
         }
-        return 'tasks';
+        return 'codex';
     }
 
     // ── 作战地图选择页 ─────────────────────────────────────────
@@ -643,7 +648,7 @@ export class ScreenManager extends Component {
 
     // ── 图内章节选择页（v5 新增） ─────────────────────────────
 
-    /** 左侧场景档案，右侧五段任务线；扫描顺序与实际推进顺序一致。 */
+    /** 左侧场景档案，右侧章节卡片列表；扫描顺序与实际推进顺序一致。 */
     private _buildChapterSelectPanel() {
         const p = this._mkPanel('chapterSelect', 1280, 720);
 
@@ -693,16 +698,13 @@ export class ScreenManager extends Component {
         this._chapterMapProgress = this._selectionLabel(preview, 'Progress', '', -1, -180, 336, 29,
             16, UI_PALETTE.reward, true);
 
-        const qNode = new Node('QuestLine'); qNode.setParent(p);
-        this._questLineGfx = qNode.addComponent(Graphics);
-
         this._chapterCardsRoot = new Node('Cards'); this._chapterCardsRoot.setParent(p);
         this._rebuildChapterCards();
     }
 
     private _chapterTitleLabel!: Label;
 
-    /** 进入页面时按当前图 + 存档解锁链重建 5 张章节卡与任务线。 */
+    /** 进入页面时按当前图 + 存档解锁链重建 5 张章节卡。 */
     private _rebuildChapterCards(): void {
         const p = this._chapterCardsRoot;
         for (const child of [...p.children]) {
@@ -725,29 +727,6 @@ export class ScreenManager extends Component {
         applyArtSprite(this._chapterPreview, map.bgKey);
         const backdrop = this._selectionBackdrops.get('chapterSelect');
         if (backdrop) applyArtSprite(backdrop.art.getComponent(Sprite)!, map.bgKey);
-
-        // 连接线退至卡片外侧，完成/当前/锁定状态由节点亮度区分。
-        const g = this._questLineGfx!;
-        const drawQuestLine = () => {
-            g.clear();
-            const qx = -150, qy = [151, 66, -19, -104, -189];
-            g.lineWidth = 2;
-            for (let i = 0; i < 4; i++) {
-                const k = globalChapter(mapId, i + 1);
-                g.strokeColor = k <= cleared ? accent : new Color(90, 106, 122, 160);
-                g.moveTo(qx, qy[i]); g.lineTo(qx, qy[i + 1]); g.stroke();
-            }
-            for (let i = 0; i < 5; i++) {
-                const k = globalChapter(mapId, i + 1);
-                const done = k <= cleared, next = k === cleared + 1;
-                g.fillColor = done ? accent : next ? UI_PALETTE.reward : new Color(24, 34, 48, 255);
-                g.circle(qx, qy[i], 9); g.fill();
-                g.lineWidth = 2;
-                g.strokeColor = done ? accent : next ? UI_PALETTE.reward : new Color(90, 106, 122, 200);
-                g.circle(qx, qy[i], 11); g.stroke();
-            }
-        };
-        drawQuestLine(); attachEnableRedraw(g.node, drawQuestLine);
 
         const CARD_W = 700, CARD_H = 75;
         const mkCard = (x: number, y: number, c: number): void => {
@@ -785,7 +764,7 @@ export class ScreenManager extends Component {
                 19, textColor);
             this._selectionLabel(card, 'Quest', locked
                 ? (c === 1 ? `通关图 ${mapId - 1} 全部章节解锁` : `通关第 ${c - 1} 章解锁`)
-                : `任务  ${node.quest.title}`, -126, -16, 280, 23,
+                : `第 ${c}/5 章  ·  15 波`, -126, -16, 280, 23,
                 13, locked ? UI_PALETTE.muted : UI_PALETTE.reward);
             this._selectionLabel(card, 'Encounter', locked ? '未知威胁'
                 : node.isMapFinale ? finaleText : mutNames ? `变异  ${mutNames}` : finaleText,
@@ -1453,7 +1432,7 @@ export class ScreenManager extends Component {
             r => this._applyVolumes(this._currentRatio(this._sliderMusic), r));
 
         const hint = new Node('Hint'); hint.setParent(p);
-        hint.setPosition(new Vec3(0, -58, 0));
+        hint.setPosition(new Vec3(0, -34, 0));
         hint.addComponent(UITransform).setContentSize(440, 22);
         const hl = hint.addComponent(Label);
         hl.string = '拖动滑杆实时调节，设置自动保存';
@@ -1462,8 +1441,14 @@ export class ScreenManager extends Component {
         styleLabel(hl);
 
         const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
-        const close = this._mkBtn(p, '关闭', 0, -150, touch ? 240 : 200,
-            touch ? 72 : 44, new Color(60, 100, 80, 235));
+
+        // 后台管理入口（管理员验证后进入：系统参数配置 + 成就管理）
+        const adminBtn = this._mkBtn(p, '后台管理', 0, -92, 240,
+            touch ? 56 : 44, new Color(150, 108, 220, 255));
+        adminBtn.on(Node.EventType.TOUCH_END, () => this._adminUI?.open(), this);
+
+        const close = this._mkBtn(p, '关闭', 0, -166, touch ? 240 : 200,
+            touch ? 64 : 42, new Color(60, 100, 80, 235));
         close.on(Node.EventType.TOUCH_END, () => this.hide('settings'), this);
     }
 

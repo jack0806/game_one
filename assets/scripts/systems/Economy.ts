@@ -5,6 +5,7 @@ import { Vec, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { DIFFICULTIES } from '../data/DifficultyDB';
 import { mapOf } from '../data/LevelIndex';
+import { GameConfig } from '../data/GameConfig';
 
 interface GoldDrop {
     x: number; y: number;
@@ -35,15 +36,19 @@ export const GOLD_STAGE_MULT = [1.0, 1.15, 1.3, 1.45, 1.6, 1.75];
  */
 export function difficultyGoldMult(difficultyId?: string): number {
     const def = DIFFICULTIES.find(d => d.id === difficultyId);
-    return def?.goldMult ?? 1;
+    // 后台难度金币乘区（diffGoldMult）在四档定稿值之上再乘
+    return (def?.goldMult ?? 1) * GameConfig.get('diffGoldMult');
 }
 
 /**
  * 海克斯商店刷新定价（海克斯.docx）：第一次刷新 5 金币，3 次之后
  * 每次较基准溢价 75%（第4次 9、第5次 16、第6次 27 …）。
+ * 后台可调：基础价（augRefreshBase）与溢价系数（augRefreshPremium）。
  */
 export function nextAugRefreshCost(refreshCount: number): number {
-    return refreshCount < 3 ? 5 : Math.round(5 * Math.pow(1.75, refreshCount - 2));
+    const base = GameConfig.get('augRefreshBase');
+    const premium = GameConfig.get('augRefreshPremium');
+    return refreshCount < 3 ? base : Math.round(base * Math.pow(premium, refreshCount - 2));
 }
 
 export class Economy {
@@ -75,7 +80,8 @@ export class Economy {
     }
 
     addGold(amount: number): void  {
-        const gain = Math.round(amount * this.gainMult);
+        // 后台全局金币产出系数：所有"获得"统一吃这一层（退款/卖出走 refund 不吃）
+        const gain = Math.round(amount * this.gainMult * GameConfig.get('goldGainMult'));
         if (gain <= 0) return;
         this.gold += gain;
         if (gain > 0) this.earnedThisRun += gain;
@@ -115,7 +121,8 @@ export class Economy {
     }
 
     update(dt: number, player: any, game?: any): void {
-        const pickupR = player.stats.goldPickupRange || 60;
+        // 后台拾取范围系数：在角色基础值 + 装备吸金器加成之上再乘
+        const pickupR = (player.stats.goldPickupRange || 60) * GameConfig.get('goldPickupRangeMult');
         for (let i = this._drops.length - 1; i >= 0; i--) {
             const d = this._drops[i];
             d.age += dt;
@@ -164,9 +171,9 @@ export class Economy {
             { id: 'damage',   name: '伤害晶核',   desc: '伤害 +15%',           cost: 160, effect: 'damage',  value: 0.15},
             { id: 'augment',  name: '神秘强化',   desc: '随机选一张强化卡',    cost: 250, effect: 'augment', value: 0   },
         ];
-        // Scale costs with map (v5: 图内五章持平)
+        // Scale costs with map (v5: 图内五章持平)；后台商店价格系数再乘
         const mapId = mapOf(globalChapterId);
-        const mult = 1 + (mapId - 1) * 0.3;
+        const mult = (1 + (mapId - 1) * 0.3) * GameConfig.get('shopCostMult');
         return items.map(it => ({ ...it, cost: Math.round(it.cost * mult) }));
     }
 }

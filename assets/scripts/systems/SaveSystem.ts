@@ -8,6 +8,7 @@
 import { sys } from 'cc';
 import { equipmentKey } from '../data/EquipmentDB';
 import { TOTAL_CHAPTERS } from '../data/LevelIndex';
+import { AchievementAdmin, CustomAchievementSpec } from './AchievementAdmin';
 
 /** 一局结束时的汇总数据（由 GameManager 在死亡/通关时填写）。 */
 export interface RunSummary {
@@ -51,8 +52,6 @@ export interface PlayerProfile {
     equipLoadout: (string | null)[];
     /** v4：旧档一次性迁移标记（六章连打时代的 bestWave → 章节解锁链）。 */
     migratedV4?: boolean;
-    /** v5：挑战星完成记录（全局章号 → 已完成挑战 id 列表，见提案 8.3）。 */
-    questStars?: Record<number, string[]>;
     /** 滑稽猴彩蛋：已拾取的玩偶猴数量（≥1 解锁隐藏成就「这不是真的我哟」）。 */
     jokerDolls: number;
 }
@@ -72,15 +71,40 @@ export interface AchievementDef {
     icon: string;
     /** 成就墙使用的现有 ui_icon_* 美术 key（不含 ui_icon_ 前缀）。 */
     artKey: string;
+    /** 稀有度（类型内的等级梯度：普通→稀有→史诗→传奇）。 */
     rarity: '普通' | '稀有' | '史诗' | '传奇';
-    category: '挑战' | '探索' | '收集';
-    /** 当前仅展示预览，正式奖励结算接入后可沿用该字段。 */
+    /** 类型（一级分组/成就墙页签；后台成就管理可扩展自建分类）。 */
+    category: string;
+    /** 展示文案奖励（核心币类见 rewardCoins 真实发放）。 */
     reward: string;
+    /** 解锁即发放的核心币（后台成就管理可编辑；缺省不发）。 */
+    rewardCoins?: number;
     hidden?: boolean;
     goal: number;
     /** 当前进度值（达成时 >= goal）。 */
     progress: (p: PlayerProfile) => number;
 }
+
+/**
+ * 自建成就的进度来源白名单：全部是 PlayerProfile 已有统计字段，
+ * 不为自建成就改战斗内核（与任务线挑战星同一原则）。
+ */
+export const ACHIEVEMENT_STAT_FIELDS: { key: string; label: string; read: (p: PlayerProfile) => number }[] = [
+    { key: 'totalRuns',         label: '累计局数',     read: p => p.totalRuns },
+    { key: 'totalWins',         label: '通关局数',     read: p => p.totalWins },
+    { key: 'totalKills',        label: '累计击杀',     read: p => p.totalKills },
+    { key: 'bossKills',         label: '累计首领击杀', read: p => p.bossKills },
+    { key: 'chaptersCleared',   label: '已通关章号',   read: p => p.chaptersCleared ?? 0 },
+    { key: 'bestWave',          label: '最远波次',     read: p => p.bestWave ?? 0 },
+    { key: 'totalGoldEarned',   label: '累计金币',     read: p => p.totalGoldEarned ?? 0 },
+    { key: 'bestCombo',         label: '最高连击',     read: p => p.bestCombo ?? 0 },
+    { key: 'bestAugmentCount',  label: '单局最多强化', read: p => p.bestAugmentCount ?? 0 },
+    { key: 'bestKillsInRun',    label: '单局最多击杀', read: p => p.bestKillsInRun ?? 0 },
+    { key: 'charsPlayedCount',  label: '使用过英雄数', read: p => p.charsPlayed.length },
+    { key: 'coreCoins',         label: '核心币余额',   read: p => p.coreCoins ?? 0 },
+    { key: 'equipmentsCount',   label: '仓库装备数',   read: p => p.equipments.length },
+    { key: 'jokerDolls',        label: '玩偶猴数',     read: p => p.jokerDolls ?? 0 },
+];
 
 /** 成就墙全集（12 个），进度函数直接读档案字段。 */
 export const ACHIEVEMENTS: AchievementDef[] = [
@@ -113,6 +137,54 @@ export const ACHIEVEMENTS: AchievementDef[] = [
       progress: p => p.jokerDolls ?? 0 },
 ];
 
+/**
+ * 合并后台成就管理后的生效成就全集（成就墙展示与局末判定共用）：
+ * 静态表套用 overrides（过滤下架）+ 自建成就。后台改动即改即生效。
+ */
+export function buildMergedAchievements(): AchievementDef[] {
+    const out: AchievementDef[] = [];
+    const overrides = AchievementAdmin.overrides();
+    for (const base of ACHIEVEMENTS) {
+        const o = overrides[base.id];
+        if (o?.retired) continue;
+        out.push({
+            ...base,
+            name: o?.name ?? base.name,
+            desc: o?.desc ?? base.desc,
+            goal: o?.goal ?? base.goal,
+            rarity: (o?.rarity ?? base.rarity) as AchievementDef['rarity'],
+            category: o?.category ?? base.category,
+            reward: o?.reward ?? base.reward,
+            rewardCoins: o?.rewardCoins ?? base.rewardCoins,
+            hidden: o?.hidden ?? base.hidden,
+        });
+    }
+    for (const c of AchievementAdmin.custom()) {
+        out.push(customToDef(c));
+    }
+    return out;
+}
+
+/** 自建成就规格 → 运行时成就定义（进度读白名单统计字段，非法字段恒 0）。 */
+function customToDef(c: CustomAchievementSpec): AchievementDef {
+    const field = ACHIEVEMENT_STAT_FIELDS.find(f => f.key === c.statField);
+    const read = field?.read;
+    return {
+        id: c.id,
+        name: c.name,
+        desc: c.desc,
+        icon: '🛠️',
+        artKey: 'summon',
+        rarity: c.rarity,
+        category: c.category,
+        reward: c.reward,
+        rewardCoins: c.rewardCoins,
+        hidden: c.hidden,
+        goal: c.goal,
+        progress: read ?? (() => 0),
+    };
+}
+
 function freshProfile(): PlayerProfile {
     return {
         version: 2,
@@ -123,7 +195,7 @@ function freshProfile(): PlayerProfile {
         charsPlayed: [], achievements: [],
         coreCoins: 0, chaptersCleared: 0,
         equipments: [], equipLoadout: [null, null, null],
-        migratedV4: true, questStars: {}, jokerDolls: 0,
+        migratedV4: true, jokerDolls: 0,
     };
 }
 
@@ -182,6 +254,42 @@ export class SaveSystem {
     static deleteSlot(slot: number): void {
         try { sys.localStorage.removeItem(this.slotKey(slot)); } catch (_e) { /* 忽略 */ }
         if (slot === this._slot) this._cache = null;
+    }
+
+    /**
+     * 导出全部槽位为存档码（UTF-8 安全的 base64 JSON）。
+     * 用途：跨浏览器/换设备迁移存档（localStorage 按浏览器+地址隔离，
+     * 换环境后贴入存档码即可恢复——单机版的"账号"）。
+     */
+    static exportSaveCode(): string {
+        const slots: (PlayerProfile | null)[] = [];
+        for (let i = 0; i < this.SLOT_COUNT; i++) {
+            try { slots.push(parseProfileRaw(sys.localStorage.getItem(this.slotKey(i)))); }
+            catch (_e) { slots.push(null); }
+        }
+        const json = JSON.stringify({ v: 1, exportedAt: Date.now(), slots });
+        const bytes = new TextEncoder().encode(json);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin);
+    }
+
+    /** 导入存档码：覆盖全部槽位并清缓存；格式非法返回 false（不动现有存档）。 */
+    static importSaveCode(code: string): boolean {
+        try {
+            const bin = atob(code.trim());
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const data = JSON.parse(new TextDecoder().decode(bytes));
+            if (!data || data.v !== 1 || !Array.isArray(data.slots)) return false;
+            for (let i = 0; i < this.SLOT_COUNT; i++) {
+                const p = data.slots[i] ? parseProfileRaw(JSON.stringify(data.slots[i])) : null;
+                if (p) sys.localStorage.setItem(this.slotKey(i), JSON.stringify(p));
+                else sys.localStorage.removeItem(this.slotKey(i));
+            }
+            this._cache = null;
+            return true;
+        } catch (_e) { return false; }
     }
 
     /**
@@ -259,17 +367,27 @@ export class SaveSystem {
         return unlocked;
     }
 
-    /** 检查全部成就，把新达成的 id 写入档案并返回成就定义列表。 */
+    /**
+     * 检查全部成就，把新达成的 id 写入档案并返回成就定义列表。
+     * 判定走合并列表（含后台覆盖/自建）；核心币类奖励（rewardCoins）
+     * 在解锁同帧入档，天然防重复发放。
+     */
     static checkAchievements(): AchievementDef[] {
         const p = this.load();
         const fresh: AchievementDef[] = [];
-        for (const a of ACHIEVEMENTS) {
+        for (const a of buildMergedAchievements()) {
             if (p.achievements.indexOf(a.id) < 0 && a.progress(p) >= a.goal) {
                 p.achievements.push(a.id);
+                if (a.rewardCoins && a.rewardCoins > 0) p.coreCoins += a.rewardCoins;
                 fresh.push(a);
             }
         }
         return fresh;
+    }
+
+    /** 生效成就全集（后台覆盖/下架/自建已合并）；成就墙页与后台管理共用。 */
+    static allAchievements(): AchievementDef[] {
+        return buildMergedAchievements();
     }
 
     /**
@@ -311,22 +429,6 @@ export class SaveSystem {
     /** 已解锁的节点数（第 1 章恒解锁；1~30 线性链）。 */
     static unlockedChapterCount(): number {
         return Math.min(TOTAL_CHAPTERS, (this.load().chaptersCleared ?? 0) + 1);
-    }
-
-    // ── v5：挑战星（提案 8.3；完成即记，与首通无关） ──
-
-    static questStarsFor(chapterId: number): string[] {
-        return this.load().questStars?.[chapterId] ?? [];
-    }
-
-    static recordQuestStar(chapterId: number, challengeId: string): void {
-        const p = this.load();
-        if (!p.questStars) p.questStars = {};
-        const done = p.questStars[chapterId] ?? (p.questStars[chapterId] = []);
-        if (done.indexOf(challengeId) < 0) {
-            done.push(challengeId);
-            this.save();
-        }
     }
 
     // ── v4：装备仓库（《关卡设计-15波.md》第 10 节） ──

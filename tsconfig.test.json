@@ -36,6 +36,8 @@
     "assets/scripts/data/LevelIndex.ts",
     "assets/scripts/data/MetaProgressionDB.ts",
     "assets/scripts/data/WaveData.ts",
+    "assets/scripts/data/GameConfig.ts",
+    "assets/scripts/systems/AchievementAdmin.ts",
     "assets/scripts/entities/BossController.ts",
     "assets/scripts/entities/BulletController.ts",
     "assets/scripts/entities/EnemyBase.ts",

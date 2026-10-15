@@ -1,10 +1,10 @@
 'use strict';
 // ============================================================
-//  artmanifest.test.js ¡ª ×ÊÔ´Çåµ¥×Ô¼ì
-//  É¨Ãè´úÂëÀïËùÓÐ»á±»ÓÃ×÷ art key µÄ×Ö·û´®£¨±³¾°/µÐÈË/½ÇÉ«/×Óµ¯/ÌØÐ§/
-//  ´ÊÌõicon/¼¼ÄÜicon£©£¬Öð¸ö×ß ArtRemap.resolveArtKey() ½âÎöÕæÊµÎÄ¼þÃû£¬
-//  ¶ÏÑÔ assets/resources/art/ ÏÂÈ·ÓÐ¶ÔÓ¦ .png£¬·ÀÖ¹Æ´Ð´/Ó³Éä´íÎóµ¼ÖÂ
-//  ÔËÐÐÊ± resources.load() ¾²Ä¬Ê§°Ü¡£
+//  artmanifest.test.js ï¿½ï¿½ ï¿½ï¿½Ô´ï¿½åµ¥ï¿½Ô¼ï¿½
+//  É¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð»á±»ï¿½ï¿½ï¿½ï¿½ art key ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½É«/ï¿½Óµï¿½/ï¿½ï¿½Ð§/
+//  ï¿½ï¿½ï¿½ï¿½icon/ï¿½ï¿½ï¿½ï¿½iconï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ArtRemap.resolveArtKey() ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½
+//  ï¿½ï¿½ï¿½ï¿½ assets/resources/art/ ï¿½ï¿½È·ï¿½Ð¶ï¿½Ó¦ .pngï¿½ï¿½ï¿½ï¿½Ö¹Æ´Ð´/Ó³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//  ï¿½ï¿½ï¿½ï¿½Ê± resources.load() ï¿½ï¿½Ä¬Ê§ï¿½Ü¡ï¿½
 // ============================================================
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,7 +15,7 @@ const { CHARS } = require('../dist/data/CharacterDB');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 const { MAPS } = require('../dist/data/LevelIndex');
 const { CHAPTER_ARENAS } = require('../dist/data/ChapterArenaDB');
-const { QUESTS, CODEX_ENTRIES } = require('../dist/data/MetaProgressionDB');
+const { CODEX_ENTRIES } = require('../dist/data/MetaProgressionDB');
 const { ACHIEVEMENTS } = require('../dist/systems/SaveSystem');
 
 const ART_DIR = path.join(__dirname, '..', '..', 'assets', 'resources', 'art');
@@ -36,7 +36,7 @@ function collectAllArtKeys() {
         'enemy_boss', 'enemy_boss_ch1', 'enemy_boss_ch2', 'enemy_boss_ch3', 'enemy_boss_ch4',
         'enemy_boss_joker', 'anim_stylea_boss_joker_front', 'anim_stylea_boss_joker_side',
         'anim_stylea_boss_joker_back', 'anim_fx_joker_slap', 'anim_fx_joker_trick',
-        // ÍöÁé·¨Ê¦¼¼ÄÜ×¨ÊôÌùÍ¼£¨2026-10-10 Èë¿â£©
+        // ï¿½ï¿½ï¿½é·¨Ê¦ï¿½ï¿½ï¿½ï¿½×¨ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½2026-10-10 ï¿½ï¿½â£©
         'fx_rot_fog', 'fx_plague_wave', 'unit_skeleton',
     ]) keys.add(t);
     for (const c of CHARS) {
@@ -49,15 +49,14 @@ function collectAllArtKeys() {
     }
     for (const fx of ['fx_explosion', 'fx_hex_ring', 'fx_poison', 'fx_heal', 'fx_cold_arrow']) keys.add(fx);
     for (const a of AUGMENT_DB) keys.add('ui_icon_' + a.icon);
-    for (const q of QUESTS) keys.add('ui_icon_' + q.rewardIcon);
     for (const entry of CODEX_ENTRIES) keys.add(entry.artKey);
     for (const a of ACHIEVEMENTS) keys.add('ui_icon_' + a.artKey);
     return keys;
 }
 
-test('È«²¿art key¾­ArtRemap½âÎöºó,¶ÔÓ¦.pngÎÄ¼þÈ·Êµ´æÔÚÓÚassets/resources/art/', () => {
+test('È«ï¿½ï¿½art keyï¿½ï¿½ArtRemapï¿½ï¿½ï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½Ó¦.pngï¿½Ä¼ï¿½È·Êµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½assets/resources/art/', () => {
     const keys = collectAllArtKeys();
-    assert.ok(keys.size > 0, 'Ó¦ÖÁÉÙÊÕ¼¯µ½1¸öart key');
+    assert.ok(keys.size > 0, 'Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½1ï¿½ï¿½art key');
 
     const missing = [];
     for (const key of keys) {
@@ -65,38 +64,38 @@ test('È«²¿art key¾­ArtRemap½âÎöºó,¶ÔÓ¦.pngÎÄ¼þÈ·Êµ´æÔÚÓÚassets/resources/art/', 
         const file = path.join(ART_DIR, resolved + '.png');
         if (!fs.existsSync(file)) missing.push(`${key} -> ${resolved}.png`);
     }
-    assert.deepEqual(missing, [], `ÒÔÏÂart key½âÎöºóÕÒ²»µ½¶ÔÓ¦ÎÄ¼þ:\n${missing.join('\n')}`);
+    assert.deepEqual(missing, [], `ï¿½ï¿½ï¿½ï¿½art keyï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ä¼ï¿½:\n${missing.join('\n')}`);
 });
 
-test('½ÇÉ«Ä£ÐÍºÍÍ·ÏñÊ¹ÓÃÍ¬Ãû×ÊÔ´,²»»á±»¾ÉÓ³ÉäÔÙ´Î´®Î»', () => {
+test('ï¿½ï¿½É«Ä£ï¿½Íºï¿½Í·ï¿½ï¿½Ê¹ï¿½ï¿½Í¬ï¿½ï¿½ï¿½ï¿½Ô´,ï¿½ï¿½ï¿½á±»ï¿½ï¿½Ó³ï¿½ï¿½ï¿½Ù´Î´ï¿½Î»', () => {
     for (const c of CHARS) {
         assert.equal(resolveArtKey('char_' + c.id), 'char_' + c.id);
         assert.equal(resolveArtKey('char_token_' + c.id), 'char_token_' + c.id);
     }
 });
 
-test('6¸ö½ÇÉ«µÄskillIcons(q/e/r)È«²¿ÂäÔÚºÏ·¨µÄui_icon_*¹²ÏíÍ¼±ê¼¯ºÏÄÚ', () => {
+test('6ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½skillIcons(q/e/r)È«ï¿½ï¿½ï¿½ï¿½ï¿½ÚºÏ·ï¿½ï¿½ï¿½ui_icon_*ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ê¼¯ï¿½ï¿½ï¿½ï¿½', () => {
     const validIcons = fs.readdirSync(ART_DIR)
         .filter(f => f.startsWith('ui_icon_') && f.endsWith('.png'))
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
-    assert.ok(validIcons.length > 0, 'Ó¦ÖÁÉÙ´æÔÚ1ÕÅui_icon_*.png');
+    assert.ok(validIcons.length > 0, 'Ó¦ï¿½ï¿½ï¿½Ù´ï¿½ï¿½ï¿½1ï¿½ï¿½ui_icon_*.png');
 
     for (const c of CHARS) {
         for (const slot of ['q', 'e', 'r']) {
             const icon = c.skillIcons[slot];
-            assert.ok(validIcons.includes(icon), `½ÇÉ«${c.id}¼¼ÄÜ${slot}µÄicon '${icon}' ²»ÔÚºÏ·¨Í¼±ê¼¯ºÏÄÚ`);
+            assert.ok(validIcons.includes(icon), `ï¿½ï¿½É«${c.id}ï¿½ï¿½ï¿½ï¿½${slot}ï¿½ï¿½icon '${icon}' ï¿½ï¿½ï¿½ÚºÏ·ï¿½Í¼ï¿½ê¼¯ï¿½ï¿½ï¿½ï¿½`);
         }
     }
 });
 
-test('32¸öº£¿ËË¹µÄicon×Ö¶ÎÈ«²¿ÂäÔÚºÏ·¨µÄui_icon_*¹²ÏíÍ¼±ê¼¯ºÏÄÚ', () => {
+test('32ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¹ï¿½ï¿½iconï¿½Ö¶ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ÚºÏ·ï¿½ï¿½ï¿½ui_icon_*ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ê¼¯ï¿½ï¿½ï¿½ï¿½', () => {
     const validIcons = fs.readdirSync(ART_DIR)
         .filter(f => f.startsWith('ui_icon_') && f.endsWith('.png'))
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
 
-    // 2026-09-14 ¡¶º£¿ËË¹.docx¡·ÖØ×ö£º¾É 49 ´ÊÌõÕûÌåÌæ»»£¬ºóÐø×·¼ÓÔªËØÌåÏµÓë×Ô¶¨Òå°üÖÁ 32 ¸ö
-    assert.equal(AUGMENT_DB.length, 32, 'º£¿ËË¹ÊýÁ¿Ó¦Îª32');
+    // 2026-09-14 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¹.docxï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 49 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½æ»»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×·ï¿½ï¿½Ôªï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 32 ï¿½ï¿½
+    assert.equal(AUGMENT_DB.length, 32, 'ï¿½ï¿½ï¿½ï¿½Ë¹ï¿½ï¿½ï¿½ï¿½Ó¦Îª32');
     for (const a of AUGMENT_DB) {
-        assert.ok(validIcons.includes(a.icon), `º£¿ËË¹${a.id}µÄicon '${a.icon}' ²»ÔÚºÏ·¨Í¼±ê¼¯ºÏÄÚ`);
+        assert.ok(validIcons.includes(a.icon), `ï¿½ï¿½ï¿½ï¿½Ë¹${a.id}ï¿½ï¿½icon '${a.icon}' ï¿½ï¿½ï¿½ÚºÏ·ï¿½Í¼ï¿½ê¼¯ï¿½ï¿½ï¿½ï¿½`);
     }
 });

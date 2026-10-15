@@ -7,6 +7,7 @@
 // v4（2026-10-03）遗留的 CHAPTERS/statScale 表/开局战备包/精英槽已上移。
 
 import { countScaleFor } from './LevelIndex';
+import { GameConfig } from './GameConfig';
 
 export { starterPack, eliteSlots } from './LevelIndex';
 
@@ -56,6 +57,7 @@ export const ENEMY_COUNT_CAP = 128;
 /**
  * 关内某波的小兵总量（v4 4.1 公式，章节系数改由 LevelIndex 30 档曲线供给）：
  * round((10 + 2.4×波次) × 波型 × 章节数量 × 难度数量系数)，封顶 128。
+ * 后台可调：全局波次数量系数（waveCountMult）与单波封顶（enemyCountCap）。
  * wave 为关内波次 1~15；globalChapterId 为全局章号 1~30；diffMult 为难度数量倍率
  * （DifficultyDB.countMult，缺省 1 = 普通基准）。
  */
@@ -63,7 +65,8 @@ export function enemyCountForWave(wave: number, globalChapterId: number, diffMul
     const base = 10 + 2.4 * wave;
     const kind = WAVE_KIND_MULT[waveKind(wave)];
     const chapter = countScaleFor(globalChapterId);
-    return Math.min(Math.round(base * kind * chapter * diffMult), ENEMY_COUNT_CAP);
+    const cap = GameConfig.get('enemyCountCap');
+    return Math.min(Math.round(base * kind * chapter * diffMult * GameConfig.get('waveCountMult')), cap);
 }
 
 export const MUTATIONS: MutationDef[] = [

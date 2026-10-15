@@ -4,7 +4,7 @@
 // 全局章号 k ∈ 1~30 是唯一真源（1-based，全链路统一）：
 //   图号 m = ceil(k/5)；图内章 c = ((k-1) % 5) + 1。
 // 地图层（MapDef，6 份）= 环境身份：背景/场地/怪池全集/小首领池/图末 Boss/BGM/主题色。
-// 章节层（ChapterNode，30 份）= 推进节点：数值档/怪池渐进/固定变异/关底/任务线/战备包。
+// 章节层（ChapterNode，30 份）= 推进节点：数值档/怪池渐进/固定变异/关底/战备包。
 // 解锁链：通关全局第 k 节点解锁第 k+1 节点（存档 chaptersCleared 1~30 线性承载），
 // 图 N 五章全通自然解锁图 N+1 第一章，无需图级独立字段。
 //
@@ -27,29 +27,6 @@ export function mapOf(globalChapterId: number): number {
 
 export function chapterInMap(globalChapterId: number): number {
     return ((globalChapterId - 1) % CHAPTERS_PER_MAP) + 1;
-}
-
-// ── 任务线（提案 8 节：章节是任务线唯一推进器） ────────────────
-
-/** 挑战星条件白名单：只用结算/存档已有的统计项，不为任务系统改战斗内核。 */
-export type QuestStat = 'timeSec' | 'kills' | 'goldLeft' | 'combo' | 'shopFree';
-
-export interface QuestChallenge {
-    id: string;
-    desc: string;
-    stat: QuestStat;
-    goal: number;
-}
-
-export interface QuestDef {
-    title: string;
-    desc: string;
-    /** 章前剧情引子（首进弹窗；第二批填充，骨架期可空串）。 */
-    intro: string;
-    /** 首通剧情（结算面板；第二批填充）。 */
-    outro: string;
-    reward: { coreCoins: number; equipmentBox?: boolean };
-    challenges: QuestChallenge[];
 }
 
 // ── 关底（提案 5.1：图末章打图鉴大 Boss，前 4 章小首领组合） ──
@@ -94,8 +71,6 @@ export interface MapDef {
     bossId: string;
     /** 图内 5 章名（占位，文案第二批可改）。 */
     chapterNames: string[];
-    arcIntro: string;
-    arcOutro: string;
 }
 
 // 小首领池按 6 图重排（提案 5.1 草案，补齐图 1~3 地狱档空缺）。
@@ -113,7 +88,6 @@ export const MAPS: MapDef[] = [
         miniPool: { 普通: ['chain_hound', 'jelly'], 史诗: ['turtle', 'prism_snail'], 地狱: ['drone_s'] },
         bossId: 'ch1',
         chapterNames: ['荒芜外围', '废弃街区', '腐肉巢穴', '坍塌高架', '废土领主之核'],
-        arcIntro: '', arcOutro: '',
     },
     {
         id: 2, name: '钢铁工厂', bgKey: 'bg_chapter2', accent: '#c8874e', bgmCue: 'ch2',
@@ -126,7 +100,6 @@ export const MAPS: MapDef[] = [
         miniPool: { 普通: ['turtle', 'prism_snail'], 史诗: ['drone_s', 'squid'], 地狱: ['triune_priest'] },
         bossId: 'ch2',
         chapterNames: ['装卸货场', '熔炉车间', '装配流水线', '核心轧机', '熔炉王座'],
-        arcIntro: '', arcOutro: '',
     },
     {
         id: 3, name: '海克斯实验室', bgKey: 'bg_chapter3', accent: '#4ecc8e', bgmCue: 'ch3',
@@ -139,7 +112,6 @@ export const MAPS: MapDef[] = [
         miniPool: { 普通: ['jelly', 'squid'], 史诗: ['triune_priest', 'rail_butcher'], 地狱: ['shrimp'] },
         bossId: 'ch3',
         chapterNames: ['收容区', '培养槽区', '辐照走廊', '异变核心', '无限核之心'],
-        arcIntro: '', arcOutro: '',
     },
     {
         id: 4, name: '混沌位面', bgKey: 'bg_chapter4', accent: '#a06ee0', bgmCue: 'ch4',
@@ -152,7 +124,6 @@ export const MAPS: MapDef[] = [
         miniPool: { 普通: ['drone_a'], 史诗: ['squid', 'rail_butcher'], 地狱: ['shrimp', 'bell_devourer'] },
         bossId: 'ch4',
         chapterNames: ['裂隙边缘', '镜像回廊', '崩解街区', '终焉前庭', '终焉之门'],
-        arcIntro: '', arcOutro: '',
     },
     {
         id: 5, name: '天罚领域', bgKey: 'bg_chapter5', accent: '#6e9fe0', bgmCue: 'ch4',
@@ -165,7 +136,6 @@ export const MAPS: MapDef[] = [
         miniPool: { 普通: ['drone_a'], 史诗: ['drone_s', 'rail_butcher'], 地狱: ['shrimp', 'bell_devourer'] },
         bossId: 'ch5',
         chapterNames: ['磁轨平台', '机甲坟场', '天罚炮台', '反应堆层', 'X-剑格纳库'],
-        arcIntro: '', arcOutro: '',
     },
     {
         id: 6, name: '终焉天罚', bgKey: 'bg_chapter6', accent: '#e06e5a', bgmCue: 'ch4',
@@ -178,7 +148,6 @@ export const MAPS: MapDef[] = [
         miniPool: { 普通: [], 史诗: ['triune_priest', 'drone_s'], 地狱: ['bell_devourer', 'shrimp'] },
         bossId: 'ch6',
         chapterNames: ['崩坏防线', '毁灭回廊', '机神近卫', '天罚圣所', '灭世机神'],
-        arcIntro: '', arcOutro: '',
     },
 ];
 
@@ -188,14 +157,19 @@ export function mapDef(mapId: number): MapDef {
 
 // ── 章节层：30 节点曲线与派生查询 ─────────────────────────────
 
-/** 怪物血量/伤害系数（1.0 → 4.2，提案 6.1 线性基线）。 */
+import { GameConfig } from './GameConfig';
+
+/**
+ * 怪物血量/伤害系数（1.0 → 4.2，提案 6.1 线性基线）。
+ * 后台 statScaleMult 在曲线输出上再乘（默认 1 = 原值，测试断言端点不受影响）。
+ */
 export function statScaleFor(globalChapterId: number): number {
-    return 1 + (globalChapterId - 1) * 3.2 / (TOTAL_CHAPTERS - 1);
+    return (1 + (globalChapterId - 1) * 3.2 / (TOTAL_CHAPTERS - 1)) * GameConfig.get('statScaleMult');
 }
 
-/** 每波小兵数量系数（1.0 → 2.21）。 */
+/** 每波小兵数量系数（1.0 → 2.21）；后台 countScaleMult 同上。 */
 export function countScaleFor(globalChapterId: number): number {
-    return 1 + (globalChapterId - 1) * 1.2 / (TOTAL_CHAPTERS - 1);
+    return (1 + (globalChapterId - 1) * 1.2 / (TOTAL_CHAPTERS - 1)) * GameConfig.get('countScaleMult');
 }
 
 /** 开局战备包（0 抽/0 金 → 14 抽/900 金，提案 6.2 基线）。 */
@@ -207,9 +181,9 @@ export function starterPack(globalChapterId: number): { draws: number; gold: num
     };
 }
 
-/** 单局金币软上限系数（1.0 → 1.75，对齐旧 6 章端点；校准见提案 6.3）。 */
+/** 单局金币软上限系数（1.0 → 1.75，对齐旧 6 章端点）；后台 goldStageCurveMult 再乘。 */
 export function goldStageMult(globalChapterId: number): number {
-    return 1 + (globalChapterId - 1) * 0.75 / (TOTAL_CHAPTERS - 1);
+    return (1 + (globalChapterId - 1) * 0.75 / (TOTAL_CHAPTERS - 1)) * GameConfig.get('goldStageCurveMult');
 }
 
 /** 图内某 id 的解锁章号：不在 unlocks 里的恒为 1（章 1 起在场）。 */
@@ -308,11 +282,10 @@ export interface ChapterNode {
     /** 本章固定变异 id（对应 WaveData.MUTATIONS）。 */
     mutations: string[];
     isMapFinale: boolean;
-    quest: QuestDef;
     starter: { draws: number; gold: number };
 }
 
-/** 30 个章节节点（曲线 + 排期生成；任务文案为占位骨架，第二批填充）。 */
+/** 30 个章节节点（曲线 + 排期生成）。 */
 export const CHAPTER_NODES: ChapterNode[] = [];
 for (let m = 1; m <= MAP_COUNT; m++) {
     const map = mapDef(m);
@@ -325,14 +298,6 @@ for (let m = 1; m <= MAP_COUNT; m++) {
             countScale: countScaleFor(id),
             mutations: MUTATION_SCHEDULE[id] ?? [],
             isMapFinale: c === CHAPTERS_PER_MAP,
-            quest: {
-                title: `${chapterName}的威胁`,
-                desc: `肃清${map.name} · ${chapterName}（15 波）`,
-                intro: '', outro: '',
-                // 占位：首通核心币 20+5×图号；数值随经济校准调整。
-                reward: { coreCoins: 20 + 5 * m },
-                challenges: [],
-            },
             starter: starterPack(id),
         });
     }

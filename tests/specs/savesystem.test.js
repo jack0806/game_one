@@ -171,3 +171,26 @@ test('成就全集13个且id唯一(含滑稽猴隐藏成就)', () => {
         assert.ok(['挑战', '探索', '收集'].includes(a.category));
     }
 });
+
+test('存档码导出导入:三槽打包恢复,无效码拒改现有存档', () => {
+    cc.sys.localStorage._clear();
+    SaveSystem.resetCache();
+    SaveSystem.selectSlot(0);
+    // 槽 1 写入可辨识数据
+    SaveSystem.recordRun({ charId: 'kai', chapter: 3, wave: 10, kills: 120, bossKills: 2,
+        goldEarned: 1500, maxCombo: 40, augmentCount: 4, won: false });
+    const code = SaveSystem.exportSaveCode();
+    assert.ok(code.length > 20, '存档码非空');
+    // 清空全部槽位后导入应恢复
+    for (let i = 0; i < SaveSystem.SLOT_COUNT; i++) SaveSystem.deleteSlot(i);
+    assert.equal(SaveSystem.listSlots().filter(s => s.exists).length, 0, '导入前槽位为空');
+    assert.ok(SaveSystem.importSaveCode(code), '合法存档码导入成功');
+    const restored = SaveSystem.listSlots();
+    assert.ok(restored[0].exists, '槽 1 恢复');
+    assert.equal(restored[0].profile.totalRuns, 1);
+    assert.equal(restored[0].profile.totalKills, 120);
+    // 无效存档码：返回 false 且不动现有存档
+    assert.equal(SaveSystem.importSaveCode('not-a-valid-code'), false);
+    assert.equal(SaveSystem.importSaveCode('==='), false);
+    assert.ok(SaveSystem.listSlots()[0].exists, '无效导入不破坏现有存档');
+});

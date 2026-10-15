@@ -26,6 +26,7 @@ import {
     globalChapter, goldStageMult,
 } from '../data/LevelIndex';
 import { rollEquipmentDrop, equipmentLabel, equipmentSellValue, applyEquipmentToStats } from '../data/EquipmentDB';
+import { GameConfig } from '../data/GameConfig';
 import { ArenaLayout, EMPTY_ARENA } from '../data/ChapterArenaDB';
 import { arenaLineClear, arenaSteerTarget, dashInArena, firstArenaBulletHit, isArenaFree, moveInArena,
     randomArenaForChapter, safeArenaPoint } from './ArenaGeometry';
@@ -746,13 +747,14 @@ export class GameManager extends Component {
         this._coinsEarned = 0;
         this._economy.reset();
         // v4 9.6 层1：击杀掉落产出硬上限（预算×1.25，防崩塌保险丝；
-        // 测试房走 reset 后的 Infinity，不受限）
+        // 测试房走 reset 后的 Infinity，不受限）；后台可调上限系数
         this._economy.killGoldCap = Math.round(
-            2000 * goldStageMult(this._chapter) * difficultyGoldMult(this._difficulty?.id));
+            2000 * goldStageMult(this._chapter) * difficultyGoldMult(this._difficulty?.id)
+            * GameConfig.get('killGoldCapMult'));
         this._augMgr.reset();
         this._waveMgr.reset();
-        // v4：难度数量倍率注入（简单 0.85 / 普通 1 / 困难 1.1 / 地狱 1.2）
-        this._waveMgr.countMult = this._difficulty?.countMult ?? 1;
+        // v4：难度数量倍率注入（简单 0.85 / 普通 1 / 困难 1.1 / 地狱 1.2）× 后台难度数量乘区
+        this._waveMgr.countMult = (this._difficulty?.countMult ?? 1) * GameConfig.get('diffCountMult');
         this._bullets.reset();
         this._particles.clear();
         this._arena = EMPTY_ARENA;
@@ -2236,9 +2238,11 @@ export class GameManager extends Component {
         if (this._waveMgr.isBossWave()) {
             this._recordRun(true);
             // 通关结算：金币按 20% 折算核心币，封顶 80（v4 9.6 层3，防元进度通胀）。
+            // 折算率/封顶可在后台配置（coreCoinsRate / coreCoinsCap）。
             // 解锁与核心币在进入结算面板时就写档——玩家点"领取奖励"或"返回大厅"
             // 任意按钮都不能漏记（旧实现只在领取按钮回调里记，点返回会丢解锁）。
-            this._coinsEarned = Math.min(80, Math.round(this._economy.gold * 0.2));
+            this._coinsEarned = Math.min(GameConfig.get('coreCoinsCap'),
+                Math.round(this._economy.gold * GameConfig.get('coreCoinsRate')));
             SaveSystem.addCoreCoins(this._coinsEarned);
             SaveSystem.recordChapterCleared(this._chapter);
             this._setState('chapterClear');
@@ -2251,8 +2255,8 @@ export class GameManager extends Component {
         this._audio.playSfx('levelup');
         this._augRefreshCount = 0;
         this._augOfferRefreshed = false;
-        // 再来一次·强化版(hex29)：每次遇到强化选择重置5次免费刷新
-        this._augMgr.freeRefreshes = this._augMgr.ownedOf('hex29') ? 5 : 0;
+        // 再来一次·强化版(hex29)：每次遇到强化选择重置免费刷新（次数后台可调）
+        this._augMgr.freeRefreshes = this._augMgr.ownedOf('hex29') ? GameConfig.get('freeRefreshCount') : 0;
         // 每章 W1 开局送三张功能性银卡（一局一章后每局的 W1 都触发；
         // 10~50 银档=开局送卡，文档 9.4 检查点）
         // shopOptions：固定强化的卡占前置槽位（跨波次保留）
@@ -4392,7 +4396,7 @@ export class GameManager extends Component {
 
     /** Called by EnemyBase when it dies. */
     onEnemyKilled(e: EnemyBase) {
-        this._economy.spawnDrop(e.x, e.y, e.goldValue ?? 1);
+        this._economy.spawnDrop(e.x, e.y, (e.goldValue ?? 1) * GameConfig.get('killGoldMult'));
         this._augMgr.dispatchKill(this._player, e, 0, this);
         this._particles.explode(e.x, e.y, e.color ?? '#cc4444');
         this.removeEnemy(e);
@@ -5133,6 +5137,13 @@ export class GameManager extends Component {
         const chapterId = Math.max(1, Math.min(TOTAL_CHAPTERS,
             (boss.chapter ? globalChapter(boss.chapter, 1) : this._chapter)));
         const owned = SaveSystem.ownedEquipmentKeys();
+        // 后台 Boss 装备掉率：未掷中改发核心币包（图鉴集齐路径不变）
+        if (!Rng.chance(GameConfig.get('bossEquipChance'))) {
+            SaveSystem.addCoreCoins(40);
+            this._floatText.spawn(CANVAS_W / 2, 240, '战利品溜走了 → 核心币 ×40', '#ffd655', 18, true);
+            this._audio.playSfx('augment_pick');
+            return;
+        }
         const equip = rollEquipmentDrop(chapterId, owned);
         if (equip) {
             SaveSystem.addEquipment(equip);

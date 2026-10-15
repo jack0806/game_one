@@ -6,6 +6,7 @@ import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats, SKILL_Q_CD, SKILL_E_CD, fireStoredAttacks } from '../data/CharacterDB';
+import { GameConfig } from '../data/GameConfig';
 import { applyArtSprite, preloadArt } from '../core/SpriteUtils';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import {
@@ -187,8 +188,11 @@ export class PlayerController extends Component {
         this.locomotionKind = playerLocomotionKind(charId);
 
         this.stats = {
-            maxHp: def.stats.maxHp, speed: def.stats.speed,
-            damage: def.stats.damage, attackSpeed: def.stats.attackSpeed,
+            // 后台玩家调试乘区（默认 1 = 原值；伤害/生命/移速在基础值上生效）
+            maxHp: def.stats.maxHp * GameConfig.get('playerHpMult'),
+            speed: def.stats.speed * GameConfig.get('playerSpeedMult'),
+            damage: def.stats.damage * GameConfig.get('playerDamageMult'),
+            attackSpeed: def.stats.attackSpeed,
             armor: def.stats.armor, critRate: def.stats.critRate, critDmg: def.stats.critDmg,
             pierce: def.stats.pierce || 0,
             extraBullets: 0, bulletBounce: 0,
@@ -463,8 +467,9 @@ export class PlayerController extends Component {
         this._cosmosCd    = Math.max(0, this._cosmosCd - dt);
         // 大招R为固定冷却制，冷却时长按角色大招强度分档(见 CharacterDB.ultCd，
         // 强爆发20s/功能型18s/依赖词条15s)。ultChargeRate(储能核心等词条)沿用
-        // "充能速度"语义，等比缩短恢复时间。
-        const ultCd = this._charDef?.ultCd || 20;
+        // "充能速度"语义，等比缩短恢复时间；后台冷却系数（playerCooldownMult）
+        // 乘在充能时长上（>1 充能更慢，<1 更快）。
+        const ultCd = (this._charDef?.ultCd || 20) * GameConfig.get('playerCooldownMult');
         // 加速(海克斯31)：cdReduction 同时作用于大招充能（技能与强化冷却统一缩减）
         this._rCharge     = Math.min(1, this._rCharge + dt / ultCd * (this.stats.ultChargeRate || 1) * (1 + (this.stats.cdReduction || 0)));
 
@@ -554,10 +559,11 @@ export class PlayerController extends Component {
             })) {
                 if (this.stats.deferQcd) { this._qCd = 0; }
                 else if (this.stats.qCdNext) {
-                    this._qCd = this.stats.qCdNext * (1 - this.stats.cdReduction);
+                    this._qCd = this.stats.qCdNext * (1 - this.stats.cdReduction) * GameConfig.get('playerCooldownMult');
                     this.stats.qCdNext = 0;
                 }
-                else this._qCd = (this._charDef.qCd ?? SKILL_Q_CD) * (1 - this.stats.cdReduction);
+                else this._qCd = (this._charDef.qCd ?? SKILL_Q_CD)
+                    * (1 - this.stats.cdReduction) * GameConfig.get('playerCooldownMult');
             }
         }
         // 技能 E（CD 可按角色定制：eCd ?? 默认SKILL_E_CD=10秒）
@@ -638,12 +644,13 @@ export class PlayerController extends Component {
         game.augmentManager?.dispatchSkill(this, game);
     }
 
-    /** E 冷却启动（盗神 deferEcd 挂起；亡灵法师灵魂层数扁平缩减）。 */
+    /** E 冷却启动（盗神 deferEcd 挂起；亡灵法师灵魂层数扁平缩减）；后台冷却系数在此生效。 */
     private _startECd(): void {
         if (this.stats.deferEcd) { this._eCd = 0; }
         else {
             this._eCd = Math.max(1, ((this._charDef.eCd ?? SKILL_E_CD)
-                - (this.stats.eCdFlatReduction || 0)) * (1 - this.stats.cdReduction));
+                - (this.stats.eCdFlatReduction || 0)) * (1 - this.stats.cdReduction)
+                * GameConfig.get('playerCooldownMult'));
         }
     }
 

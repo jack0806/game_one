@@ -13,6 +13,7 @@
 // （攻速/攻击/暴击 1%/2%/5%，血量 1%/5%/10%，射程 +10/15/30 码），
 // 定价随之下调（银 10-18 / 金 40-60 / 彩 150-220），不再受文档区间约束。
 import { Rng, Vec } from '../core/MathUtils';
+import { GameConfig } from './GameConfig';
 
 export type HexRarity = 'silver' | 'gold' | 'prismatic';
 
@@ -574,7 +575,8 @@ export const AUGMENT_DB: AugmentDef[] = [
       onLevel(_p, game, _from, to) {
           const am = game?.augmentManager;
           if (!am) return;
-          if (to > 0) am.freeRefreshes = Math.max(am.freeRefreshes || 0, 5);
+          // 免费刷新次数后台可调（freeRefreshCount，默认 5）
+          if (to > 0) am.freeRefreshes = Math.max(am.freeRefreshes || 0, GameConfig.get('freeRefreshCount'));
           else am.freeRefreshes = 0;
       } },
 

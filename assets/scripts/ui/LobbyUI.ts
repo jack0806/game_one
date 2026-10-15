@@ -1,7 +1,7 @@
 // ============================================================
 //  LobbyUI.ts — 存档大厅（选定存档后的中枢页面）
 // ============================================================
-// 左侧：存档概要 + 任务树/图鉴/成就档案入口（自首页迁移而来）。
+// 左侧：存档概要 + 图鉴/成就档案入口（自首页迁移而来）。
 // 右侧：出击传送门——半透明全息门场、能量核心与旋转刻度环，
 // 点击进入角色选择开战。页面由代码构建，不依赖 prefab。
 
@@ -11,6 +11,7 @@ import {
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { mapOf, chapterInMap } from '../data/LevelIndex';
+import { GameConfig } from '../data/GameConfig';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
@@ -24,7 +25,7 @@ import {
 export interface LobbyCallbacks {
     /** 点击右侧出击传送门（进入角色选择）。 */
     onPortalPressed: () => void;
-    /** 左侧元进度入口（任务树/图鉴/成就档案）。 */
+    /** 左侧元进度入口（图鉴/成就档案）。 */
     onMetaPage: (page: MetaPageName) => void;
     onBack: () => void;
     onButtonSfx: () => void;
@@ -157,7 +158,7 @@ export class LobbyUI {
         }
     }
 
-    /** 左下：任务树/图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。 */
+    /** 左下：图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。 */
     private _buildMetaDock(page: Node): void {
         const dock = new Node('MetaDock'); dock.setParent(page);
         dock.setPosition(new Vec3(-431, -160, 0));
@@ -165,7 +166,6 @@ export class LobbyUI {
 
         this._mkLabel(dock, 0, 128, 334, 22, '情报终端', 14, MUTED, HorizontalTextAlignment.LEFT);
         const entries: [MetaPageName, string, Color][] = [
-            ['tasks', '任务树', CYAN],
             ['codex', '图鉴', new Color(62, 164, 235, 255)],
             ['achievements', '成就档案', GOLD],
         ];
@@ -174,8 +174,8 @@ export class LobbyUI {
                 sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 64 : 54, accent);
             btn.on(Node.EventType.TOUCH_END, () => this._callbacks.onMetaPage(name));
         });
-        // v4：装备库入口（本页浮层，不走路由）；按钮位置在三个元进度入口下方
-        const armoryBtn = this._mkButton(dock, '装备库', 0, -128 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
+        // v4：装备库入口（本页浮层，不走路由）；按钮位置在两个元进度入口下方
+        const armoryBtn = this._mkButton(dock, '装备库', 0, -62 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
             sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 56 : 46, new Color(150, 108, 220, 255));
         armoryBtn.on(Node.EventType.TOUCH_END, () => {
             this._callbacks.onButtonSfx();
@@ -316,7 +316,8 @@ export class LobbyUI {
                     if (l) l.string = '确认?';
                     return;
                 }
-                const coins = Math.max(1, Math.round(equipmentSellValue(eq.quality) * 0.2));
+                // 卖出折算率后台可调（equipSellRate，默认 20%），至少 1 金
+                const coins = Math.max(1, Math.round(equipmentSellValue(eq.quality) * GameConfig.get('equipSellRate')));
                 SaveSystem.removeEquipment(eq.uid);
                 SaveSystem.addCoreCoins(coins);
                 this._callbacks.onButtonSfx();
