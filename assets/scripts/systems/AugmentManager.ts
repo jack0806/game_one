@@ -104,15 +104,16 @@ export class AugmentManager {
 
     /**
      * 当前波次的三档稀有度权重（商店页"出现率"标注与 rollOptions 共用）。
-     * 2026-09-21 玩家调整：金色只以概率出现（永不过半）、彩色全程极小概率
-     * （第 5 波起才有，封顶约 4%）。
+     * 2026-10-20 玩家调整：金银彩占比随波次显著上升——开局约 银83/金17/彩0，
+     * W10 约 银63/金30/彩7，末段（W15）约 银52/金37/彩12（luck=1；
+     * 后台 augRarityLuck 仍可整体加成金彩）。
      */
     rarityWeights(wave: number): Record<HexRarity, number> {
-        const silver = Math.max(50, 80 - wave);
-        const gold = Math.min(40, 18 + wave) * GameConfig.get('augRarityLuck');
-        const prismatic = Math.min(4, Math.max(0, wave - 4) * 0.25) * GameConfig.get('augRarityLuck');
+        const silver = Math.max(48, 78 - wave * 2);
+        const gold = Math.min(34, 14 + wave * 1.4) * GameConfig.get('augRarityLuck');
+        const prismatic = Math.min(12, Math.max(0, wave - 3) * 0.9) * GameConfig.get('augRarityLuck');
         // 加成砍掉/加上的权重回填银色，保持三档总量近似不变（luck=1 即原值）
-        return { silver: silver + (Math.min(40, 18 + wave) - gold) + (Math.min(4, Math.max(0, wave - 4) * 0.25) - prismatic), gold, prismatic };
+        return { silver: silver + (Math.min(34, 14 + wave * 1.4) - gold) + (Math.min(12, Math.max(0, wave - 3) * 0.9) - prismatic), gold, prismatic };
     }
 
     /**

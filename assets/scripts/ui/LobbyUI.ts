@@ -17,6 +17,7 @@ import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { DT_MAX } from '../core/Constants';
 import { ACHIEVEMENTS, SaveSystem } from '../systems/SaveSystem';
+import { CHARS } from '../data/CharacterDB';
 import { MetaPageName } from './MetaPageUI';
 import {
     EQUIP_AFFIXES, equipmentLabel, equipmentSellValue, equipmentValue,
@@ -27,6 +28,8 @@ export interface LobbyCallbacks {
     onPortalPressed: () => void;
     /** 左侧元进度入口（图鉴/成就档案）。 */
     onMetaPage: (page: MetaPageName) => void;
+    /** 当前档案面板「切换档案」：打开档案列表（选择后退回大厅）。 */
+    onSwitchSave: () => void;
     onBack: () => void;
     onButtonSfx: () => void;
 }
@@ -99,8 +102,9 @@ export class LobbyUI {
         this._summaryTitle.string = SLOT_TITLES[slot] ?? `存档 ${slot + 1}`;
         this._summaryLines[0].string = `总局数 ${p.totalRuns}  ·  通关 ${p.totalWins}`;
         this._summaryLines[1].string = `最远进度  图${mapOf(Math.max(1, p.bestChapter))}-${chapterInMap(Math.max(1, p.bestChapter))} · 第${Math.max(1, p.bestWave)}波`;
-        this._summaryLines[2].string = `累计击杀 ${p.totalKills}  ·  Boss ${p.bossKills}`;
-        this._summaryLines[3].string = `成就 ${p.achievements.length}/${ACHIEVEMENTS.length}  ·  英雄 ${p.charsPlayed.length}/6`;
+        this._summaryLines[2].string = `累计击杀 ${p.totalKills}  ·  精英 ${p.eliteKills ?? 0} · 小首领 ${p.miniBossKills ?? 0} · Boss ${p.bossKills}`;
+        // 英雄总数对齐 CHARS（v5 全明星成就同源，避免图标与实际解锁数漂移）
+        this._summaryLines[3].string = `成就 ${p.achievements.length}/${ACHIEVEMENTS.length}  ·  英雄 ${p.charsPlayed.length}/${CHARS.length}`;
     }
 
     /** 由 ScreenManager.update 每帧转发；大厅隐藏时不推进动画也不重绘。 */
@@ -144,18 +148,21 @@ export class LobbyUI {
         return page;
     }
 
-    /** 左上：当前存档概要面板（refresh 按选中槽填充）。 */
+    /** 左上：当前存档概要面板 + 切换档案入口（refresh 按选中槽填充）。 */
     private _buildSummaryPanel(page: Node): void {
         const panel = new Node('SaveSummary'); panel.setParent(page);
-        panel.setPosition(new Vec3(-431, 104, 0));
-        const g = panel.addComponent(Graphics); drawPanel(g, 334, 226, CYAN);
-        this._mkLabel(panel, 0, 88, 268, 24, '当前档案', 14, MUTED, HorizontalTextAlignment.LEFT);
-        this._summaryTitle = this._mkLabel(panel, 0, 56, 268, 34, '', 22, GOLD, HorizontalTextAlignment.LEFT);
-        const rowY = [12, -24, -60, -92];
+        panel.setPosition(new Vec3(-431, 90, 0));
+        const g = panel.addComponent(Graphics); drawPanel(g, 334, 272, CYAN);
+        this._mkLabel(panel, 0, 106, 268, 24, '当前档案', 14, MUTED, HorizontalTextAlignment.LEFT);
+        this._summaryTitle = this._mkLabel(panel, 0, 74, 268, 34, '', 22, GOLD, HorizontalTextAlignment.LEFT);
+        const rowY = [28, -6, -40, -70];
         for (let i = 0; i < 4; i++) {
             this._summaryLines.push(this._mkLabel(panel, 0, rowY[i], 292, 26, '', 14,
                 new Color(197, 214, 226, 255), HorizontalTextAlignment.LEFT));
         }
+        // 档案切换入口：打开档案列表（3 槽），选定后退回大厅并切换当前档案
+        const switchBtn = this._mkButton(panel, '切换档案', 0, -106, 292, 40, new Color(56, 96, 122, 255));
+        switchBtn.on(Node.EventType.TOUCH_END, () => this._callbacks.onSwitchSave());
     }
 
     /** 左下：图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。 */
@@ -164,7 +171,8 @@ export class LobbyUI {
         dock.setPosition(new Vec3(-431, -160, 0));
         dock.addComponent(UITransform).setContentSize(334, 300);
 
-        this._mkLabel(dock, 0, 128, 334, 22, '情报终端', 14, MUTED, HorizontalTextAlignment.LEFT);
+        // 旧「情报终端」分组标题已按玩家要求移除（按钮自明，且加高的档案
+        // 面板会压住该标题位置）
         const entries: [MetaPageName, string, Color][] = [
             ['codex', '图鉴', new Color(62, 164, 235, 255)],
             ['achievements', '成就档案', GOLD],

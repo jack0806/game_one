@@ -54,9 +54,12 @@ test('图鉴/成就档案入口迁入存档大厅,任务树入口已移除,首�
     assert.doesNotMatch(metaSource, /'返回首页'/);
 });
 
-test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,对局退出回大厅', () => {
-    // 开始游戏 → 存档选择
-    assert.match(gameSource, /onPlayPressed     = \(\) => this\._setState\('saveSelect'\)/);
+test('进入游戏直达作战大厅:档案切换在大厅内,传送门经地图和难度进选人,对局退出回大厅', () => {
+    // 2026-10-20 流程改版：开始游戏直达大厅（档案选择挪进大厅，存档页变切换器）
+    assert.match(gameSource, /onPlayPressed     = \(\) => \{\s*this\._setState\('lobby'\);\s*this\._maybeStartLobbyTutorial\(\);/);
+    assert.match(gameSource, /onSaveSelectBack  = \(\) => this\._setState\('lobby'\)/, '档案列表返回回大厅');
+    assert.match(gameSource, /onSwitchSave      = \(\) => this\._setState\('saveSelect'\)/, '大厅切换档案 → 档案列表');
+    assert.match(lobbySource, /切换档案/, '大厅档案面板带切换入口');
     // 选定槽位 → 切换 SaveSystem 当前槽并进入大厅
     assert.match(gameSource, /onSlotPicked      = \(slot\) => \{[\s\S]*?SaveSystem\.selectSlot\(slot\);[\s\S]*?this\._setState\('lobby'\);/);
     // 大厅传送门 → 选图 → 图内章节 → 难度选择 → 选人页；难度页/选人页都可返回大厅
@@ -77,7 +80,7 @@ test('进入游戏先选存档再进大厅:传送门经地图和难度进选人,
     assert.match(gameSource, /'menu' \| 'saveSelect' \| 'lobby' \| 'difficultySelect' \| 'charSelect' \| 'playing'/);
     assert.match(gameSource, /case 'saveSelect':[\s\S]*?this\._screenMgr\.show\('saveSelect'\)/);
     assert.match(gameSource, /case 'lobby':[\s\S]*?this\._screenMgr\.show\('lobby'\)/);
-    assert.match(gameSource, /onSaveSelectBack\s*= \(\) => this\._setState\('menu'\)/);
+    assert.match(gameSource, /onSaveSelectBack  = \(\) => this\._setState\('lobby'\)/, '存档页(切换器)返回回大厅');
     assert.match(gameSource, /onLobbyBack\s*= \(\) => this\._setState\('menu'\)/);
     assert.match(screenSource, /onBack: \(\) => this\.onSaveSelectBack\?\.\(\)/);
     assert.match(screenSource, /onBack: \(\) => this\.onLobbyBack\?\.\(\)/);
@@ -154,15 +157,24 @@ test('图鉴显示怪物英雄统计、条目图片和未解锁问号详情', ()
     assert.match(metaSource, /未解锁条目使用问号隐藏视觉与身份信息/);
 });
 
-test('成就墙按类型页签+等级梯度重建,滚动容器修复下翻,数据走后台合并列表', () => {
-    assert.match(metaSource, /AchievementAdmin\.categories\(\)/, '类型页签来自后台分类数据');
+test('成就墙按稀有度页签重建(2026-10-19定稿),排版游标=本地顶缘,未解锁置灰', () => {
+    // 页签 = 普通/稀有/史诗/传奇（玩家定稿：不再按 挑战/探索/收集 分类分组）
     assert.match(metaSource, /_rebuildAchievementTabs/, '页签重建');
+    assert.match(metaSource, /\['普通', '稀有', '史诗', '传奇'\]/, '页签即四档稀有度');
+    assert.match(metaSource, /_achieveRarity/, '选中态按稀有度记忆');
     assert.match(metaSource, /_rebuildAchievementCards/, '卡片按页签重建');
     assert.match(metaSource, /SaveSystem\.allAchievements\(\)/, '数据走后台合并列表');
-    assert.match(metaSource, /'普通', '稀有', '史诗', '传奇'/, '类型内等级排序');
+    assert.match(metaSource, /a\.rarity === this\._achieveRarity/, '页签过滤本稀有度成就');
     assert.match(metaSource, /`ui_icon_\$\{def\.artKey\}`/);
     assert.match(metaSource, /`奖励  \$\{def\.reward\}`/);
     assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{total\}/);
+    // 排版游标从内容节点本地顶缘(contentH/2)起步——contentH 顶缘会把整卡
+    // 顶出 Mask 视口（2026-10-19 修复"还有遮掩"）
+    assert.match(metaSource, /let y = contentH \/ 2 - 6/);
+    // 内容高度按"行数"（每行3张）估算，不再按卡片张数
+    assert.match(metaSource, /Math\.ceil\(list\.length \/ 3\)/);
+    // 未解锁整卡置灰 / 解锁彩色
+    assert.match(metaSource, /view\.reward\.color = done \? GOLD : new Color\(/, '奖励行随解锁状态变色');
     // 滚动容器：Mask 视口 + 内容节点钳制滚动 + 滚轮/拖拽与滚动条（修复"下翻不了"）
     assert.match(metaSource, /AchieveViewport/);
     assert.match(metaSource, /Mask\.Type\.GRAPHICS_STENCIL/);
@@ -188,10 +200,11 @@ test('设置页接入后台管理入口,面板含密码门/参数配置/成就�
     assert.match(adminSource, /GameConfig\.set\(item\.key, v\)/);
     assert.match(adminSource, /全部恢复默认/);
     assert.match(configSource, /hexblast_admin_config_v1/);
-    // 页签2 成就管理：分类/新增/编辑/下架/删除
+    // 页签2 成就管理：稀有度分组（2026-10-19 分类改版）/新增/编辑/下架/删除
     assert.match(adminSource, /_renderAchievementsTab/);
-    assert.match(adminSource, /\+ 新建分类/);
     assert.match(adminSource, /\+ 新增成就/);
+    assert.match(adminSource, /稀有度（分组）/, '左栏按稀有度分组');
+    assert.doesNotMatch(adminSource, /新建分类/, '分类体系已移除');
     assert.match(adminSource, /AchievementAdmin\.setOverride/);
     assert.match(adminSource, /AchievementAdmin\.deleteCustom/);
     assert.match(adminData, /hexblast_admin_achievements_v1/);
@@ -528,43 +541,48 @@ test('暂停与属性页清理上一帧浮字但不销毁持续战斗特效', ()
     assert.doesNotMatch(gameSource, /if \(s === 'paused' \|\| s === 'stats'\) \{[\s\S]{0,180}this\._particles\?\.clear\(\)/);
 });
 
-test('海克斯商店固定强化:页签按钮阻断冒泡,刷新保留固定卡,+5%一次性', () => {
+test('海克斯卡片改版:固定+5%机制移除,每卡显示本波出现率(数据层pin保留备用)', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
-    // 点击固定页签不能连带触发整卡购买
-    assert.match(augSource, /ev\.propagationStopped = true;\s*this\._togglePin\(idx\)/);
-    // 刷新时固定卡保持原槽位
-    assert.match(augSource, /const pinnedKeep = this\._options\.map\(a => \(a && this\._pinned\.has\(a\.id\)\) \? a : null\)/);
-    // 定价+5%走管理器按id去重（同一强化只收一次）
-    assert.match(augSource, /this\._ctx\?\.pin\?\.\(aug\)/);
+    // 固定机制 UI 整体移除（2026-10-20 新稀有度曲线改版）
+    assert.doesNotMatch(augSource, /'固定 \+5%'/);
+    assert.doesNotMatch(augSource, /_togglePin/);
+    assert.doesNotMatch(augSource, /pinBtn/);
+    // 每张卡左上角出现率徽标：按稀有度从 ctx.odds() 取本波概率，随刷新更新
+    assert.match(augSource, /const oddsLbl = oddsN\.addComponent\(Label\)/);
+    assert.match(augSource, /出现率 \$\{pct \?\? 0\}%/);
+    assert.match(augSource, /_paintCard\(c, aug, gold, (?:true|false), odds\)/);
+    // 数据层 pin 契约保留（GameManager 侧备用），但 UI 不再调用
     assert.match(gameSource, /pin: \(card\) => this\._augMgr\.pinCard\(card\)/);
+    // 波间商店开页仍走 shopOptions
+    assert.match(gameSource, /this\._augMgr\.shopOptions\(3, this\._waveMgr\.templateWave\(\)/);
 });
 
-test('固定强化跨波次保留:开页恢复固定状态,取消走unpin,三处开页带出固定卡', () => {
+test('固定强化数据层保留但UI不调用:开页不带固定状态,unpin仍由管理器提供', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
-    // 开页从管理器恢复"已固定"回显与刷新保留
-    assert.match(augSource, /this\._pinned\s*=\s*new Set\(ctx\.pinnedIds\(\)\)/);
-    // 取消固定回写管理器（解除跨波保留）
-    assert.match(augSource, /this\._ctx\?\.unpin\?\.\(aug\)/);
+    assert.doesNotMatch(augSource, /_pinned/);
     assert.match(gameSource, /unpin: \(card\) => this\._augMgr\.unpinCard\(card\.id\)/);
     assert.match(gameSource, /pinnedIds: \(\) => this\._augMgr\.pinnedCards\.map\(p => p\.id\)/);
-    // 波间商店/开局战备/神秘强化开页都走 shopOptions 带出固定卡
+    // 波间商店/开局战备/神秘强化开页都走 shopOptions
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, this\._waveMgr\.templateWave\(\)/);
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, 1, \{\}\)/);
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, Math\.max\(1, this\._waveMgr\.templateWave\(\)\)\)/);
 });
 
-test('海克斯卖出两步确认:首点仅进入确认态,再点同一标签才真正卖出', () => {
+test('海克斯卖出=显式按钮+确认弹窗:标签本体不绑定卖出,确认后才调ctx.sell', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
-    // 首点只记录待确认槽位与 id 并重绘，不触发 ctx.sell
-    assert.match(augSource, /if \(i !== this\._sellPendingIdx \|\| chip\.id !== this\._sellPendingId\) \{[\s\S]*?this\._refreshChips\(\);\s*return;/);
-    // 确认态标签与红边提示
-    assert.match(augSource, /'再点一次确认卖出'/);
-    assert.match(augSource, /confirming \? new Color\(232, 96, 84, 230\)/);
-    // 真正卖出只出现在确认通过之后
-    assert.match(augSource, /this\._ctx\?\.sell\(\{ id: chip\.id \} as AugDef\)/);
-    // 开页与换页都会重置确认态（槽位内容已变）
-    assert.match(augSource, /this\._chipPage = 0;\s*this\._sellPendingIdx = -1;/);
-    assert.match(augSource, /this\._chipPage = next;\s*[\s\S]*?this\._sellPendingIdx = -1;\s*this\._sellPendingId  = '';/);
-    // 底部提示文字同步两步确认玩法
-    assert.match(augSource, /点击持有标签两次确认卖出/);
+    // 每格右缘内嵌「卖 N」按钮，是唯一卖出入口；按钮直接标注回收额
+    assert.match(augSource, /const sellSkin = applyHexButtonSkin\(sellBtn, 52, 36/);
+    assert.match(augSource, /sellBtn\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._requestSell\(i\), this\)/);
+    assert.match(augSource, /chip\.sellLabel\.string = `卖 \$\{Math\.round\(\(inst\.paid \?\? 0\) \* 0\.75\)\}`/);
+    // 标签本体不再绑定 TOUCH_END 卖出（防连点误卖）
+    assert.doesNotMatch(augSource, /chip\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._sell\(i\), this\)/);
+    assert.doesNotMatch(augSource, /再点一次确认卖出/);
+    // 确认弹窗：模态（BlockInputEvents + keyboardModalScope），确认后才调 ctx.sell
+    assert.match(augSource, /private _buildSellConfirm\(\)/);
+    assert.match(augSource, /registerKeyboardModalScope\(n\)/);
+    assert.match(augSource, /private _confirmSell\(\)[\s\S]*?this\._closeConfirm\(\);[\s\S]*?if \(id\) this\._ctx\?\.sell\(\{ id \} as AugDef\)/);
+    // 开页重置弹窗（不残留上一次确认目标）
+    assert.match(augSource, /this\._chipPage = 0;\s*this\._closeConfirm\(\);/);
+    // 底部提示文字同步新玩法
+    assert.match(augSource, /点「卖」按钮并确认后回收 75% 购价/);
 });

@@ -53,9 +53,9 @@ test('recordRun累计跨局并按最大值更新纪录字段', () => {
     assert.deepEqual(p.charsPlayed, ['kai', 'reik'], '角色使用记录去重追加');
 });
 
-test('成就判定:累计击杀到100时解锁百人斩', () => {
+test('成就判定:累计击杀到1000时解锁千人斩(v5档位)', () => {
     freshProfile();
-    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 5, kills: 99, bossKills: 0,
+    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 5, kills: 999, bossKills: 0,
         goldEarned: 0, maxCombo: 0, augmentCount: 0, won: false });
     assert.ok(!SaveSystem.isUnlocked(ACHIEVEMENTS.find(a => a.id === 'kills_100')));
     const unlocked = SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 5, kills: 5, bossKills: 0,
@@ -64,15 +64,52 @@ test('成就判定:累计击杀到100时解锁百人斩', () => {
     assert.ok(unlocked.some(a => a.id === 'kills_100'), '当次解锁的成就应出现在返回列表');
 });
 
+test('v5统计挂点:精英/小首领击杀跨局累计入档', () => {
+    freshProfile();
+    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 4, kills: 30, bossKills: 0,
+        eliteKills: 9, miniBossKills: 1,
+        goldEarned: 0, maxCombo: 0, augmentCount: 0, won: false });
+    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 8, kills: 45, bossKills: 1,
+        eliteKills: 11, miniBossKills: 2,
+        goldEarned: 0, maxCombo: 0, augmentCount: 0, won: false });
+    const p = SaveSystem.load();
+    assert.equal(p.eliteKills, 20, '精英击杀跨局累计');
+    assert.equal(p.miniBossKills, 3, '小首领击杀跨局累计');
+});
+
 test('存档持久化:重新load(清缓存)后数据仍在', () => {
     freshProfile();
+    // v5：chapter_2 读 chaptersCleared（通关链真源）。真实时序=通关时先写
+    // 解锁链再结算本局（GameManager._onWaveCleared 同序），成就当次即判。
+    SaveSystem.recordChapterCleared(11);
     SaveSystem.recordRun({ charId: 'olia', chapter: 11, wave: 12, kills: 10, bossKills: 1,
         goldEarned: 50, maxCombo: 8, augmentCount: 1, won: false });
     SaveSystem.resetCache(); // 模拟下次启动游戏
     const p = SaveSystem.load();
     assert.equal(p.totalRuns, 1);
     assert.equal(p.bestChapter, 11);
-    assert.ok(p.achievements.indexOf('chapter_2') >= 0, '到达图3(全局11节点)应已解锁初入混沌');
+    assert.ok(p.achievements.indexOf('chapter_2') >= 0, '通关图3(全局11节点)应已解锁初入混沌');
+});
+
+test('v5.1进度自愈:chaptersCleared低于bestChapter-1时load自动对齐并落盘', () => {
+    freshProfile();
+    // 模拟通关链丢失的老档：最远到达全局 20（图4-5），通关链字段只剩 0
+    cc.sys.localStorage.setItem(SaveSystem.slotKey(0), JSON.stringify({
+        version: 2, migratedV4: true, totalRuns: 7, bestChapter: 20, chaptersCleared: 0,
+    }));
+    SaveSystem.resetCache();
+    const p = SaveSystem.load();
+    assert.equal(p.chaptersCleared, 19, '自愈到 bestChapter-1（图1-3全通+图4前四章可达）');
+    // 幂等：清缓存再 load 不变，且已写回存储
+    SaveSystem.resetCache();
+    assert.equal(SaveSystem.load().chaptersCleared, 19);
+    assert.equal(JSON.parse(cc.sys.localStorage.getItem(SaveSystem.slotKey(0))).chaptersCleared, 19);
+    // 正常档不受影响：cleared ≥ bestChapter-1 时保持原值
+    cc.sys.localStorage.setItem(SaveSystem.slotKey(0), JSON.stringify({
+        version: 2, migratedV4: true, bestChapter: 5, chaptersCleared: 5,
+    }));
+    SaveSystem.resetCache();
+    assert.equal(SaveSystem.load().chaptersCleared, 5, '一致档案不被改写');
 });
 
 test('损坏存档容错:非法JSON回退空白档案不抛错', () => {
@@ -161,8 +198,8 @@ test('旧单档案迁移:legacy档案在所有槽为空时迁入1号槽,且只�
     assert.equal(SaveSystem.listSlots()[0].exists, false, '已有槽位数据时旧档不再迁移');
 });
 
-test('成就全集13个且id唯一(含滑稽猴隐藏成就)', () => {
-    assert.equal(ACHIEVEMENTS.length, 13);
+test('成就全集v5共42个且id唯一(含滑稽猴隐藏成就)', () => {
+    assert.equal(ACHIEVEMENTS.length, 42);
     const ids = ACHIEVEMENTS.map(a => a.id);
     assert.equal(new Set(ids).size, ids.length);
     for (const a of ACHIEVEMENTS) {
@@ -170,6 +207,43 @@ test('成就全集13个且id唯一(含滑稽猴隐藏成就)', () => {
         assert.ok(['普通', '稀有', '史诗', '传奇'].includes(a.rarity));
         assert.ok(['挑战', '探索', '收集'].includes(a.category));
     }
+    // 数量金字塔（2026-10-19 玩家定稿）：普通 > 稀有 > 史诗 > 传奇 严格递减
+    const byRarity = { 普通: 0, 稀有: 0, 史诗: 0, 传奇: 0 };
+    for (const a of ACHIEVEMENTS) byRarity[a.rarity]++;
+    assert.deepEqual(byRarity, { 普通: 15, 稀有: 12, 史诗: 9, 传奇: 6 });
+    assert.ok(byRarity.普通 > byRarity.稀有, '普通应多于稀有');
+    assert.ok(byRarity.稀有 > byRarity.史诗, '稀有应多于史诗');
+    assert.ok(byRarity.史诗 > byRarity.传奇, '史诗应多于传奇');
+});
+
+test('v5同指标成就目标值随档位严格递增(防止高档成就反而容易达成)', () => {
+    const goalOf = id => ACHIEVEMENTS.find(a => a.id === id).goal;
+    // 累计击杀 4 档
+    assert.ok(goalOf('kills_100') < goalOf('kills_1000'));
+    assert.ok(goalOf('kills_1000') < goalOf('kills_100000'));
+    assert.ok(goalOf('kills_100000') < goalOf('kills_300000'));
+    // 精英 4 档
+    assert.ok(goalOf('elite_10') < goalOf('elite_100'));
+    assert.ok(goalOf('elite_100') < goalOf('elite_2000'));
+    assert.ok(goalOf('elite_2000') < goalOf('elite_20000'));
+    // 小首领 3 档 / 大首领 4 档
+    assert.ok(goalOf('mini_1') < goalOf('mini_50'));
+    assert.ok(goalOf('mini_50') < goalOf('mini_1000'));
+    assert.ok(goalOf('boss_1') < goalOf('boss_10'));
+    assert.ok(goalOf('boss_10') < goalOf('boss_100'));
+    assert.ok(goalOf('boss_100') < goalOf('boss_300'));
+    // 单局击杀 / 连击 / 局数 / 金币 / 波次 / 强化
+    assert.ok(goalOf('run_150') < goalOf('run_1000'));
+    assert.ok(goalOf('combo_100') < goalOf('combo_50'));
+    assert.ok(goalOf('combo_50') < goalOf('combo_1000'));
+    assert.ok(goalOf('runs_5') < goalOf('runs_25'));
+    assert.ok(goalOf('runs_25') < goalOf('runs_100'));
+    assert.ok(goalOf('gold_1000') < goalOf('gold_5000'));
+    assert.ok(goalOf('gold_5000') < goalOf('gold_200000'));
+    assert.ok(goalOf('wave_5') < goalOf('wave_12'));
+    assert.ok(goalOf('aug_3') < goalOf('aug_6'));
+    // 单局击杀天花板实算≈1100（地狱）——战场主宰 1000 必须可达且不超天花板
+    assert.ok(goalOf('run_1000') <= 1100, '单局击杀档位不得高于实算天花板');
 });
 
 test('存档码导出导入:三槽打包恢复,无效码拒改现有存档', () => {

@@ -17,7 +17,7 @@ import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyHexButtonSkin, drawHexPanel, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
 import { CONFIG_ITEMS, ConfigItemDef, GameConfig } from '../data/GameConfig';
-import { AchievementAdmin, DEFAULT_ACHIEVEMENT_CATEGORIES } from '../systems/AchievementAdmin';
+import { AchievementAdmin } from '../systems/AchievementAdmin';
 import { ACHIEVEMENT_STAT_FIELDS, SaveSystem } from '../systems/SaveSystem';
 
 const ADMIN_KEY = 'hexblast_admin_v1';
@@ -53,17 +53,30 @@ export interface AdminUICallbacks {
     onAchievementsChanged?: () => void;
 }
 
-/** 面板内滚动区：Mask 视口 + 内容节点 + 滚轮/拖拽 + 右缘滚动条（同成就墙实现）。 */
+/** 面板内滚动区：Mask 视口 + 内容节点 + 行进滚轮/内容拖拽 + 可拖拽滚动条。 */
 class ScrollArea {
     readonly content: Node;
     private readonly viewport: Node;
     private readonly sb: Graphics;
+    private readonly sbNode: Node;
+    /** 滚轮步进粒度 = 列表行高（一格滚轮走一行数据）。 */
+    private readonly rowHeight: number;
     private scroll = 0;
     private maxScroll = 0;
     private dragY = 0;
     private dragging = false;
+    /** 滚轮增量累积器：鼠标一格（≈120）走一行；触控板小增量攒够阈值才步进。 */
+    private wheelAcc = 0;
+    /** 滚动条几何缓存（apply 时更新，供滑块拖拽换算）。 */
+    private trackH = 0;
+    private thumbH = 0;
+    private thumbY = 0;
+    /** 滑块拖拽中：记录按下点相对滑块中心的纵向偏移。 */
+    private thumbDrag = false;
+    private thumbGrab = 0;
 
-    constructor(parent: Node, x: number, y: number, w: number, h: number) {
+    constructor(parent: Node, x: number, y: number, w: number, h: number, rowHeight = 62) {
+        this.rowHeight = rowHeight;
         const vp = new Node(`Scroll_${w}x${h}`); vp.setParent(parent);
         vp.setPosition(new Vec3(x, y, 0));
         vp.addComponent(UITransform).setContentSize(w, h);
@@ -76,10 +89,19 @@ class ScrollArea {
         this.content.addComponent(UITransform).setContentSize(w, h);
         const sbN = new Node('SB'); sbN.setParent(parent);
         sbN.setPosition(new Vec3(x + w / 2 + 12, y, 0));
+        sbN.addComponent(UITransform).setContentSize(20, h);
+        this.sbNode = sbN;
         this.sb = sbN.addComponent(Graphics);
 
+        // 滚轮按行步进：一格滚轮走一行数据；触控板的小增量攒够阈值才步进一格
         vp.on(Node.EventType.MOUSE_WHEEL, (ev: any) => {
-            this.set(this.scroll - (ev.getScrollY?.() ?? 0) * 0.5);
+            this.wheelAcc += (ev.getScrollY?.() ?? 0);
+            const NOTCH = 100;
+            while (Math.abs(this.wheelAcc) >= NOTCH) {
+                const dir = this.wheelAcc > 0 ? 1 : -1;   // 向上滚（scrollY>0）= 回退一行
+                this.wheelAcc -= dir * NOTCH;
+                this.set(this.scroll - dir * this.rowHeight);
+            }
         }, this);
         vp.on(Node.EventType.TOUCH_START, (ev: any) => {
             this.dragging = true;
@@ -93,6 +115,30 @@ class ScrollArea {
         }, this);
         vp.on(Node.EventType.TOUCH_END, () => this.dragging = false, this);
         vp.on(Node.EventType.TOUCH_CANCEL, () => this.dragging = false, this);
+
+        // 滚动条交互：拖滑块跟手滚动；点滑块上/下空白翻一页
+        const localOf = (ev: any): Vec3 => {
+            const ui = ev.getUILocation ? ev.getUILocation() : ev.getLocation();
+            return sbN.getComponent(UITransform)!.convertToNodeSpaceAR(new Vec3(ui.x, ui.y, 0));
+        };
+        sbN.on(Node.EventType.TOUCH_START, (ev: any) => {
+            const local = localOf(ev);
+            if (this.maxScroll > 0 && Math.abs(local.y - this.thumbY) <= this.thumbH / 2 + 6) {
+                this.thumbDrag = true;
+                this.thumbGrab = local.y - this.thumbY;
+            } else {
+                this.set(this.scroll + (local.y > this.thumbY ? -h : h));
+            }
+        }, this);
+        sbN.on(Node.EventType.TOUCH_MOVE, (ev: any) => {
+            if (!this.thumbDrag || this.maxScroll <= 0) return;
+            const local = localOf(ev);
+            const t = (this.trackH / 2 - this.thumbH / 2 - (local.y - this.thumbGrab)) / (this.trackH - this.thumbH);
+            this.set(t * this.maxScroll);
+        }, this);
+        const endThumb = () => this.thumbDrag = false;
+        sbN.on(Node.EventType.TOUCH_END, endThumb, this);
+        sbN.on(Node.EventType.TOUCH_CANCEL, endThumb, this);
     }
 
     /** 设定内容总高并重置到顶部（重建列表后调用）。 */
@@ -115,14 +161,14 @@ class ScrollArea {
         const g = this.sb;
         g.clear();
         if (this.maxScroll <= 0) return;
-        const trackH = viewH - 16;
-        const thumbH = Math.max(40, trackH * viewH / contentH);
+        this.trackH = viewH - 16;
+        this.thumbH = Math.max(40, this.trackH * viewH / contentH);
         const t = this.maxScroll > 0 ? this.scroll / this.maxScroll : 0;
-        const thumbY = trackH / 2 - thumbH / 2 - t * (trackH - thumbH);
+        this.thumbY = this.trackH / 2 - this.thumbH / 2 - t * (this.trackH - this.thumbH);
         g.fillColor = new Color(24, 33, 43, 200);
-        g.rect(0, -trackH / 2, 4, trackH); g.fill();
-        g.fillColor = new Color(255, 205, 82, 190);
-        g.rect(-1, thumbY - thumbH / 2, 6, thumbH); g.fill();
+        g.rect(0, -this.trackH / 2, 4, this.trackH); g.fill();
+        g.fillColor = this.thumbDrag ? new Color(255, 225, 130, 235) : new Color(255, 205, 82, 190);
+        g.rect(-1, this.thumbY - this.thumbH / 2, 6, this.thumbH); g.fill();
     }
 }
 
@@ -134,9 +180,8 @@ export class AdminUI {
     private _panel!: Node;
     private _body!: Node;
     private _tab: 'config' | 'achv' = 'config';
-    private _achvCategory = DEFAULT_ACHIEVEMENT_CATEGORIES[0];
-    /** 新建分类的输入行是否展开。 */
-    private _newCategoryOpen = false;
+    /** 成就管理页签：按稀有度分组（与成就档案库一致，2026-10-19 定稿）。 */
+    private _achvRarity: '普通' | '稀有' | '史诗' | '传奇' = '普通';
     /** 成就编辑表单：null=关闭；''=新增自建；其他=编辑目标 id（内置或自建）。 */
     private _editingId: string | null = null;
     private _gateStatus?: Label;
@@ -439,41 +484,23 @@ export class AdminUI {
     // ── 页签2：成就管理 ───────────────────────────────────────
 
     private _renderAchievementsTab(): void {
-        // 左：分类列表 + 新建分类（收紧行距，整体落在内容框架内）
-        const categories = AchievementAdmin.categories();
-        this._mkLabel(this._body, -430, 212, 190, 24, '类型（一级分组）', 14, MUTED, HorizontalTextAlignment.LEFT);
-        categories.forEach((cat, i) => {
-            const count = SaveSystem.allAchievements().filter(a => a.category === cat).length;
+        // 左：稀有度分组（与成就档案库一致；分组唯一维度 = 普通/稀有/史诗/传奇）
+        const rarities: AchievementRarity[] = ['普通', '稀有', '史诗', '传奇'];
+        const merged = SaveSystem.allAchievements();
+        this._mkLabel(this._body, -430, 212, 190, 24, '稀有度（分组）', 14, MUTED, HorizontalTextAlignment.LEFT);
+        rarities.forEach((r, i) => {
+            const count = merged.filter(a => a.rarity === r).length;
             const btn = this._mkButton(this._body,
-                `${cat} ${count}`, -430, 166 - i * 48, 190, 40,
-                this._achvCategory === cat ? PURPLE : new Color(56, 72, 92, 255));
+                `${r} ${count}`, -430, 166 - i * 48, 190, 40,
+                this._achvRarity === r ? PURPLE : new Color(56, 72, 92, 255));
             btn.on(Node.EventType.TOUCH_END, () => {
-                this._achvCategory = cat;
+                this._achvRarity = r;
                 this.onButtonSfx();
                 this._render();
             }, this);
         });
-        const addCatY = 166 - categories.length * 48;
-        const addCat = this._mkButton(this._body, '+ 新建分类', -430, addCatY, 190, 38, new Color(70, 105, 130, 255));
-        addCat.on(Node.EventType.TOUCH_END, () => {
-            this._newCategoryOpen = !this._newCategoryOpen;
-            this.onButtonSfx();
-            this._render();
-        }, this);
-        if (this._newCategoryOpen) {
-            const eb = this._mkEditBox(this._body, -430, addCatY - 54, 190, 36, '分类名', '', false);
-            const ok = this._mkButton(this._body, '确定', -430, addCatY - 100, 190, 34, new Color(60, 120, 90, 255));
-            ok.on(Node.EventType.TOUCH_END, () => {
-                if (AchievementAdmin.addCategory(eb.string)) {
-                    this._achvCategory = eb.string.trim();
-                    this._newCategoryOpen = false;
-                }
-                this.onButtonSfx();
-                this._render();
-            }, this);
-        }
 
-        // 右：该分类下成就列表（滚动），操作按钮在框架顶部一行
+        // 右：该稀有度下成就列表（滚动），操作按钮在框架顶部一行
         const rightX = 120;
         const addBtn = this._mkButton(this._body, '+ 新增成就', -220, 206, 160, 38, new Color(60, 120, 90, 255));
         addBtn.on(Node.EventType.TOUCH_END, () => {
@@ -488,8 +515,8 @@ export class AdminUI {
             this._render();
         }, this);
 
-        const scroll = new ScrollArea(this._body, rightX, -20, 800, 408);
-        const list = SaveSystem.allAchievements().filter(a => a.category === this._achvCategory);
+        const scroll = new ScrollArea(this._body, rightX, -20, 800, 408, 64);
+        const list = merged.filter(a => a.rarity === this._achvRarity);
         const overrides = AchievementAdmin.overrides();
         const customs = new Set(AchievementAdmin.custom().map(c => c.id));
         const ROW = 64;
@@ -544,8 +571,8 @@ export class AdminUI {
             : AchievementAdmin.custom().find(c => c.id === this._editingId) ?? null;
         const ov = target && !existingCustom ? AchievementAdmin.overrides()[target.id] ?? {} : {};
         const base = target ?? {
-            name: '', desc: '', rarity: '普通' as AchievementRarity,
-            category: this._achvCategory, goal: 10, reward: '', rewardCoins: 0, hidden: false,
+            name: '', desc: '', rarity: this._achvRarity,
+            goal: 10, reward: '', rewardCoins: 0, hidden: false,
             statField: existingCustom?.statField ?? 'totalKills',
         };
 
@@ -560,11 +587,10 @@ export class AdminUI {
         this._mkLabel(this._body, -20, 206, 60, 24, '描述', 14, MUTED, HorizontalTextAlignment.RIGHT);
         const descEb = this._mkEditBox(this._body, 250, 206, 360, 40, '达成条件描述', base.desc, false);
 
-        // 稀有度（类型内等级）
-        this._mkLabel(this._body, -478, 152, 70, 24, '等级', 14, MUTED, HorizontalTextAlignment.RIGHT);
+        // 稀有度（唯一的分组维度，2026-10-19 分类改版：新增/修改按稀有度入组）
+        this._mkLabel(this._body, -478, 152, 70, 24, '稀有度', 14, MUTED, HorizontalTextAlignment.RIGHT);
         const save = {
             rarity: (ov.rarity ?? existingCustom?.rarity ?? base.rarity) as AchievementRarity,
-            category: ov.category ?? existingCustom?.category ?? base.category,
             hidden: ov.hidden ?? existingCustom?.hidden ?? !!base.hidden,
             statField: existingCustom?.statField ?? 'totalKills',
         };
@@ -581,24 +607,6 @@ export class AdminUI {
             }, this);
         });
         highlightRarity();
-
-        // 分类（一级分组）
-        this._mkLabel(this._body, -478, 100, 70, 24, '类型', 14, MUTED, HorizontalTextAlignment.RIGHT);
-        const cats = AchievementAdmin.categories();
-        const catBtns: { node: Node; c: string }[] = [];
-        const highlightCat = () => catBtns.forEach(({ node, c }) =>
-            this._skins.get(node)?.setAccent(c === save.category ? this._achvCategoryColor(c) : new Color(56, 72, 92, 255)));
-        cats.forEach((c, i) => {
-            const btn = this._mkButton(this._body, c, -390 + (i % 6) * 110, 100 - Math.floor(i / 6) * 46, 100, 38,
-                this._achvCategoryColor(c));
-            catBtns.push({ node: btn, c });
-            btn.on(Node.EventType.TOUCH_END, () => {
-                save.category = c;
-                highlightCat();
-                this.onButtonSfx();
-            }, this);
-        });
-        highlightCat();
 
         // 目标值 / 奖励 / 核心币 / 隐藏
         this._mkLabel(this._body, -478, 40, 70, 24, '目标值', 14, MUTED, HorizontalTextAlignment.RIGHT);
@@ -653,16 +661,15 @@ export class AdminUI {
                 name,
                 desc: descEb.string.trim(),
                 rarity: save.rarity,
-                category: save.category,
                 goal,
                 reward: rewardEb.string.trim(),
                 rewardCoins: coins,
                 hidden: save.hidden,
             };
             if (isCustomNew) {
-                AchievementAdmin.addCustom({ ...patch, statField: save.statField });
+                AchievementAdmin.addCustom({ ...patch, category: save.rarity, statField: save.statField });
             } else if (existingCustom) {
-                AchievementAdmin.updateCustom(existingCustom.id, { ...patch, statField: save.statField });
+                AchievementAdmin.updateCustom(existingCustom.id, { ...patch, category: save.rarity, statField: save.statField });
             } else if (target) {
                 AchievementAdmin.setOverride(target.id, patch);
             }
@@ -673,14 +680,6 @@ export class AdminUI {
         }, this);
         const cancel = this._mkButton(this._body, '取消', 60, -122, 160, 48, new Color(70, 92, 110, 255));
         cancel.on(Node.EventType.TOUCH_END, () => { this._editingId = null; this.onButtonSfx(); this._render(); }, this);
-    }
-
-    private _achvCategoryColor(cat: string): Color {
-        const preset = DEFAULT_ACHIEVEMENT_CATEGORIES.indexOf(cat);
-        if (preset === 0) return new Color(200, 90, 80, 255);      // 挑战·红
-        if (preset === 1) return new Color(62, 164, 235, 255);     // 探索·蓝
-        if (preset === 2) return new Color(80, 160, 120, 255);     // 收集·绿
-        return PURPLE;                                             // 自建·紫
     }
 
     // ── 控件小工场 ────────────────────────────────────────────

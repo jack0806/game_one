@@ -1,5 +1,5 @@
 import {
-    _decorator, Component, Node, Label, Graphics, Sprite,
+    _decorator, Component, EditBox, Node, Label, Graphics, Sprite,
     Color, Vec3, UITransform, BlockInputEvents, HorizontalTextAlignment, VerticalTextAlignment,
     Input, input, KeyCode, EventKeyboard, game, sys,
 } from 'cc';
@@ -24,11 +24,12 @@ import { MetaPageName, MetaPageUI } from './MetaPageUI';
 import { AdminUI } from './AdminUI';
 import { SaveSelectUI } from './SaveSelectUI';
 import { LobbyUI } from './LobbyUI';
+import { defaultTutorialStorage, setTutorialEnabled, tutorialEnabled } from './TutorialState';
 
 const { ccclass } = _decorator;
 
 export type ScreenName =
-    | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
+    | 'menu' | 'login' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
     | 'playing'
     | 'gameover' | 'chapterClear' | 'pause' | 'settings' | 'exitVeil' | 'mapSelect'
     | 'chapterSelect'
@@ -47,6 +48,8 @@ export interface RunReportData {
     finalChapter: boolean;
     /** v4：通关结算折算的核心币（20% 封顶 80）；gameover 恒 0。 */
     coinsEarned?: number;
+    /** v5：本局新解锁成就名（含图标），空数组/缺省隐藏"本局新解锁"行。 */
+    newAchievements?: string[];
 }
 
 interface RunReportView {
@@ -55,6 +58,8 @@ interface RunReportView {
     values: Label[];
     metrics: Label[];
     primary: Label;
+    /** v5："本局新解锁"成就行（无解锁时隐藏）。 */
+    achievements: Label;
     redraw: () => void;
 }
 
@@ -137,9 +142,16 @@ export class ScreenManager extends Component {
     getAudioVolumes?:      () => { bgm: number; sfx: number };
     /** 设置页拖动音量滑杆时回写（GameManager 负责应用与持久化）。 */
     onAudioVolumesChanged?: (bgm: number, sfx: number) => void;
+    /** 大厅「切换档案」：打开档案列表页（选定/返回都回大厅）。 */
+    onSwitchSave?:         BtnCallback;
+    /** 登录页「登录/注册」：GameManager 异步处理（同步档案到本机服务器）。 */
+    onLoginAction?:        (mode: 'login' | 'register', account: string, password: string) => void;
+    /** 登录页「游客离线」：跳过登录，纯本地游玩。 */
+    onGuestMode?:          BtnCallback;
     onButtonSfx?:          BtnCallback;
 
     onLoad() {
+        this._buildLoginPanel();
         this._buildMenuPanel();
         this._saveSelect = new SaveSelectUI(this.node, {
             onSlotPicked: (slot) => this.onSlotPicked?.(slot),
@@ -150,6 +162,7 @@ export class ScreenManager extends Component {
         this._lobby = new LobbyUI(this.node, {
             onPortalPressed: () => this.onLobbyPortal?.(),
             onMetaPage: (page) => this.transition('lobby', page),
+            onSwitchSave: () => this.onSwitchSave?.(),
             onBack: () => this.onLobbyBack?.(),
             onButtonSfx: () => this.onButtonSfx?.(),
         });
@@ -401,6 +414,12 @@ export class ScreenManager extends Component {
             label.string = won && i === 3 ? '核心币获得' : ['累计击败', '最高连击', '本局金币', '作战积分'][i];
         });
         view.primary.string = won ? '领取奖励' : '重新开始';
+        // v5：本局新解锁成就行（无解锁隐藏；触屏端按钮更大，行位随之上移）
+        const names = data.newAchievements ?? [];
+        view.achievements.node.active = names.length > 0;
+        if (names.length) {
+            view.achievements.string = `本局新解锁：${names.join('、')}`;
+        }
     }
 
     transition(from: ScreenName, to: ScreenName) {
@@ -494,12 +513,165 @@ export class ScreenManager extends Component {
         // 图鉴/成就档案入口已迁入存档大厅（LobbyUI 情报终端），首页不再展示。
     }
 
+    // ── 登录页（存档服务器账号体系，方案 B） ──────────────────
+
+    private _loginStatus?: Label;
+    private _loginAccount?: EditBox;
+    private _loginPassword?: EditBox;
+
+    /** 登录页状态文字（登录中/同步中/错误提示），由 GameManager 异步更新。 */
+    setLoginStatus(text: string): void {
+        if (this._loginStatus) this._loginStatus.string = text;
+    }
+
+    /**
+     * 登录页：账号+密码（注册/登录共用输入）+ 游客离线。
+     * 按钮只回调 onLoginAction/onGuestMode，网络与档案合并由 GameManager 处理。
+     */
+    private _buildLoginPanel(): void {
+        const p = this._mkPanel('login', 1280, 720);
+        const bg = p.addComponent(Graphics);
+        bg.fillColor = new Color(12, 8, 22, 255);
+        bg.fillRect(-1600, -360, 3200, 720);
+
+        const tn = new Node('Title'); tn.setParent(p);
+        tn.setPosition(new Vec3(0, 220, 0));
+        tn.addComponent(UITransform).setContentSize(600, 52);
+        const tl = tn.addComponent(Label);
+        tl.string = 'HEXBLAST'; tl.fontSize = 40; tl.color = UI_PALETTE.text;
+        styleLabel(tl, { outlineWidth: 3 });
+
+        const st = new Node('SubTitle'); st.setParent(p);
+        st.setPosition(new Vec3(0, 172, 0));
+        st.addComponent(UITransform).setContentSize(600, 28);
+        const sl = st.addComponent(Label);
+        sl.string = '账号登录 · 存档随账号走（同一账号登录即恢复档案）';
+        sl.fontSize = 16; sl.color = UI_PALETTE.muted;
+        styleLabel(sl, { outline: false });
+
+        // 登录表单居中一列：标签(60) + 间距 + 输入框(380)，整行宽 460 居中
+        this._mkLabel(p, -200, 108, 60, 26, '账号', 16, UI_PALETTE.text, HorizontalTextAlignment.RIGHT);
+        this._loginAccount = this._mkEditBox(p, 40, 108, 380, 44, '手机号 / 昵称', '', false);
+        this._mkLabel(p, -200, 52, 60, 26, '密码', 16, UI_PALETTE.text, HorizontalTextAlignment.RIGHT);
+        this._loginPassword = this._mkEditBox(p, 40, 52, 380, 44, '至少 4 位', '', true);
+
+        const status = new Node('Status'); status.setParent(p);
+        status.setPosition(new Vec3(0, -4, 0));
+        status.addComponent(UITransform).setContentSize(560, 24);
+        this._loginStatus = status.addComponent(Label);
+        this._loginStatus.string = '';
+        this._loginStatus.fontSize = 14; this._loginStatus.lineHeight = 20;
+        this._loginStatus.color = new Color(255, 214, 90, 255);
+        this._loginStatus.horizontalAlign = HorizontalTextAlignment.CENTER;
+        styleLabel(this._loginStatus, { outline: false });
+
+        const doLogin = this._mkBtn(p, '登录', -140, -62, 190, 48, new Color(24, 170, 120, 255));
+        doLogin.on(Node.EventType.TOUCH_END, () => {
+            this.onLoginAction?.('login', this._loginAccount?.string ?? '', this._loginPassword?.string ?? '');
+        }, this);
+        const doRegister = this._mkBtn(p, '注册并登录', 140, -62, 190, 48, new Color(42, 158, 207, 255));
+        doRegister.on(Node.EventType.TOUCH_END, () => {
+            this.onLoginAction?.('register', this._loginAccount?.string ?? '', this._loginPassword?.string ?? '');
+        }, this);
+
+        const guest = this._mkBtn(p, '游客离线（本地游玩，不上传）', 0, -132, 360, 44, new Color(70, 92, 110, 255));
+        guest.on(Node.EventType.TOUCH_END, () => this.onGuestMode?.(), this);
+
+        // 描述性语言统一放页面底部
+        const hint = new Node('Hint'); hint.setParent(p);
+        hint.setPosition(new Vec3(0, -216, 0));
+        hint.addComponent(UITransform).setContentSize(760, 60);
+        const hl = hint.addComponent(Label);
+        hl.string = '需先启动本机存档服务器：node server/server.mjs\n（局域网设备请用同一网络访问）';
+        hl.fontSize = 13; hl.lineHeight = 20;
+        hl.color = new Color(140, 158, 174, 220);
+        hl.horizontalAlign = HorizontalTextAlignment.CENTER;
+        hl.verticalAlign = VerticalTextAlignment.CENTER;
+        hl.overflow = Label.Overflow.SHRINK;
+        hl.enableWrapText = true;
+        styleLabel(hl, { outline: false });
+    }
+
+    /** 登录输入框（AdminUI._mkEditBox 同款约定：锚点(0,1) + 预建内部标签）。 */
+    private _mkEditBox(parent: Node, x: number, y: number, w: number, h: number,
+                       placeholder: string, init: string, password: boolean): EditBox {
+        const n = new Node(`EB_${placeholder.slice(0, 4)}`); n.setParent(parent);
+        n.setPosition(new Vec3(x, y, 0));
+        n.addComponent(UITransform).setContentSize(w, h);
+        const g = n.addComponent(Graphics);
+        g.fillColor = new Color(8, 13, 22, 245);
+        g.roundRect(-w / 2, -h / 2, w, h, 6); g.fill();
+        g.strokeColor = new Color(90, 110, 140, 200);
+        g.lineWidth = 1.2; g.roundRect(-w / 2, -h / 2, w, h, 6); g.stroke();
+
+        // 引擎约定：内部标签节点名 TEXT_LABEL / PLACEHOLDER_LABEL，锚点 (0,1)
+        // 顶左——纯代码创建默认中心锚点会让文字飘出框外（真机验证过的坑）。
+        const mkInner = (name: string, color: Color): Label => {
+            const ln = new Node(name); ln.setParent(n);
+            ln.addComponent(UITransform).setAnchorPoint(0, 1);
+            const l = ln.addComponent(Label);
+            l.fontSize = 15; l.lineHeight = h;
+            l.color = color;
+            l.verticalAlign = VerticalTextAlignment.CENTER;
+            l.horizontalAlign = HorizontalTextAlignment.LEFT;
+            l.overflow = Label.Overflow.SHRINK;
+            styleLabel(l);
+            return l;
+        };
+        const textLabel = mkInner('TEXT_LABEL', new Color(232, 244, 250, 255));
+        const phLabel = mkInner('PLACEHOLDER_LABEL', new Color(120, 140, 160, 255));
+
+        const eb = n.addComponent(EditBox);
+        eb.textLabel = textLabel;
+        eb.placeholderLabel = phLabel;
+        eb.placeholder = placeholder;
+        eb.string = init;
+        eb.inputFlag = password ? EditBox.InputFlag.PASSWORD : EditBox.InputFlag.DEFAULT;
+        const enforceLayout = (): void => {
+            if (!n.isValid || !textLabel.isValid) return;
+            for (const ln of [textLabel.node, phLabel.node]) {
+                const ut = ln.getComponent(UITransform)!;
+                ut.setAnchorPoint(0, 1);
+                ut.setContentSize(w - 4, h);
+                ln.setPosition(-w / 2 + 2, h / 2);
+            }
+        };
+        enforceLayout();
+        if (sys.isBrowser) {
+            setTimeout(enforceLayout, 60);
+            setTimeout(enforceLayout, 600);
+        }
+        return eb;
+    }
+
+    /** 行内小标签（登录页专用，中心锚点，挂载在登录面板内）。 */
+    private _mkLabel(parent: Node, x: number, y: number, w: number, h: number, text: string,
+                     size: number, color: Color, align: HorizontalTextAlignment): Label {
+        const n = new Node(`Lbl_${text}`); n.setParent(parent);
+        n.setPosition(new Vec3(x, y, 0));
+        n.addComponent(UITransform).setContentSize(w, h);
+        const l = n.addComponent(Label);
+        l.string = text; l.fontSize = size; l.color = color;
+        l.horizontalAlign = align; l.verticalAlign = VerticalTextAlignment.CENTER;
+        l.overflow = Label.Overflow.SHRINK;
+        styleLabel(l, { outline: false });
+        return l;
+    }
+
     /** 返回按钮只会在两个元进度页面内触发；取当前激活页作为 transition 来源。 */
     private _currentMetaPage(): MetaPageName {
         for (const name of ['codex', 'achievements'] as MetaPageName[]) {
             if (this._panels.get(name)?.active) return name;
         }
         return 'codex';
+    }
+
+    /** 当前打开的元进度页（图鉴/成就），未打开返回 null——新手引导轮询用。 */
+    openMetaPage(): MetaPageName | null {
+        for (const name of ['codex', 'achievements'] as MetaPageName[]) {
+            if (this._panels.get(name)?.activeInHierarchy) return name;
+        }
+        return null;
     }
 
     // ── 作战地图选择页 ─────────────────────────────────────────
@@ -1305,7 +1477,19 @@ export class ScreenManager extends Component {
         }, this);
         backBtn.on(Node.EventType.TOUCH_END, () => this.onMainMenuPressed?.(), this);
         const primary = primaryBtn.getChildByName('L')!.getComponent(Label)!;
-        this._runReports.set(name, { title, subtitle, values, metrics: metricsLabels, primary, redraw });
+        // v5："本局新解锁"成就行——贴面板底缘，按钮布局保持不动
+        const achNode = new Node('NewAchievements'); achNode.setParent(p);
+        achNode.setPosition(new Vec3(0, touch ? -232 : -238, 0));
+        achNode.addComponent(UITransform).setContentSize(690, 22);
+        const achLabel = achNode.addComponent(Label);
+        achLabel.fontSize = 14; achLabel.lineHeight = 18;
+        achLabel.color = new Color(255, 214, 96, 245);
+        achLabel.horizontalAlign = HorizontalTextAlignment.CENTER;
+        achLabel.verticalAlign = VerticalTextAlignment.CENTER;
+        achLabel.overflow = Label.Overflow.SHRINK;
+        styleLabel(achLabel, { outline: false });
+        achNode.active = false;
+        this._runReports.set(name, { title, subtitle, values, metrics: metricsLabels, primary, achievements: achLabel, redraw });
     }
 
     private _buildPausePanel() {
@@ -1443,11 +1627,28 @@ export class ScreenManager extends Component {
         const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
 
         // 后台管理入口（管理员验证后进入：系统参数配置 + 成就管理）
-        const adminBtn = this._mkBtn(p, '后台管理', 0, -92, 240,
+        const adminBtn = this._mkBtn(p, '后台管理', 0, -80, 240,
             touch ? 56 : 44, new Color(150, 108, 220, 255));
         adminBtn.on(Node.EventType.TOUCH_END, () => this._adminUI?.open(), this);
 
-        const close = this._mkBtn(p, '关闭', 0, -166, touch ? 240 : 200,
+        // 新手引导开关（2026-10-19 玩家定稿：引导在第一局实战中进行，设置页
+        // 只控制启停）：点击切换 开/关，设备级持久化（hexblast_tutorial_enabled_v1）。
+        const tutorialBtn = this._mkBtn(p, '', 0, -130, 240,
+            touch ? 56 : 44, new Color(42, 140, 168, 255));
+        const tutorialLbl = tutorialBtn.getChildByName('L')!.getComponent(Label)!;
+        const refreshTutorialBtn = () => {
+            const on = tutorialEnabled(defaultTutorialStorage());
+            tutorialLbl.string = `新手引导：${on ? '开' : '关'}`;
+            tutorialLbl.color = on ? new Color(140, 235, 255, 255) : new Color(150, 162, 172, 235);
+        };
+        tutorialBtn.on(Node.EventType.TOUCH_END, () => {
+            const next = !tutorialEnabled(defaultTutorialStorage());
+            setTutorialEnabled(defaultTutorialStorage(), next);
+            refreshTutorialBtn();
+        }, this);
+        refreshTutorialBtn();
+
+        const close = this._mkBtn(p, '关闭', 0, -182, touch ? 240 : 200,
             touch ? 64 : 42, new Color(60, 100, 80, 235));
         close.on(Node.EventType.TOUCH_END, () => this.hide('settings'), this);
     }

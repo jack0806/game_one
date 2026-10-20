@@ -569,8 +569,10 @@ export class EnemyBase {
         if ((this as any).bossKind === 'joker' && Rng.chance(GameConfig.get('jokerDollChance'))) {
             game.economy?.spawnDrop?.(this.x, this.y, 0, 'joker_doll');
         }
-        // 成就存档统计：Boss 击杀数、单局最高连击（GameManager 局末读取）
+        // 成就存档统计：大Boss/精英/小首领击杀数、单局最高连击（GameManager 局末读取）
         if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
+        if (this.isElite) game.eliteKills = (game.eliteKills || 0) + 1;
+        if (this.isMiniBoss) game.miniBossKills = (game.miniBossKills || 0) + 1;
         if (game.comboCount > (game.maxCombo || 0)) game.maxCombo = game.comboCount;
         game.comboTimer = 3;
         game.particles?.explode(this.x, this.y, this.color, this.isBoss ? 80 : 30);

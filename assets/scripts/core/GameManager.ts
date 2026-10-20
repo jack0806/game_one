@@ -38,7 +38,7 @@ import { BulletPool }        from '../entities/BulletController';
 import { AugmentManager }    from '../systems/AugmentManager';
 import { WaveManager }       from '../systems/WaveManager';
 import { Economy, ShopItem, nextAugRefreshCost, difficultyGoldMult } from '../systems/Economy';
-import { SaveSystem }        from '../systems/SaveSystem';
+import { SaveSystem, PlayerProfile } from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
 import { ParticleManager, spriteFxFrame } from '../systems/ParticleManager';
@@ -51,6 +51,13 @@ import { AugShopCtx }        from '../ui/AugSelectUI';
 import { TouchControls }     from '../ui/TouchControls';
 import { StatsPanel, StatsPanelData } from '../ui/StatsPanel';
 import { TestRoomUI } from '../ui/TestRoomUI';
+import { defaultTutorialStorage, markTutorialDone, shouldAutoShowTutorial,
+    TUTORIAL_REWARD_COINS, tutorialHintKill, tutorialHintMove, tutorialHintSkill,
+    tutorialHintPortal, GuideStepDef, lobbyGuideSteps, mapGuideSteps, chapterGuideSteps,
+    diffGuideSteps, charGuideSteps } from '../ui/TutorialState';
+import { TutorialHints } from '../ui/TutorialHints';
+import { GuideMask } from '../ui/GuideMask';
+import { AccountService, mergeAction } from '../systems/AccountService';
 import { advanceLocomotion, LocomotionPose } from './Locomotion';
 import {
     createDirectionalFacingState, directionalArtKey, directionalArtKeys,
@@ -58,6 +65,10 @@ import {
 } from './DirectionalFacing';
 
 const { ccclass, property } = _decorator;
+
+/** 新手引导战斗段操作步（移动→技能→击杀；大厅段走遮罩聚光卡）。 */
+type TutorialStep = 'move' | 'skill' | 'kill';
+const TUTORIAL_STEP_ORDER: TutorialStep[] = ['move', 'skill', 'kill'];
 
 /** 测试房间水体系召唤单位共享上限：水柱 + 水分身 + 深海鱿鱼 合计最多 12。 */
 const MAX_TEST_WATER_UNITS = 12;
@@ -78,6 +89,7 @@ const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
 ];
 
 export type GameState =
+    | 'login'
     | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'playing'
     | 'mapSelect' | 'chapterSelect' | 'augSelect' | 'shop' | 'gameover'
     | 'chapterClear' | 'paused' | 'stats'
@@ -223,12 +235,41 @@ export class GameManager extends Component {
     /** Written by EnemyBase._die() / read by combo-related augments & HUD. */
     score       = 0;
     kills       = 0;
+    /** v5：本局精英击杀（EnemyBase 死亡结算累加，局末写入存档）。 */
+    eliteKills  = 0;
+    /** v5：本局小首领击杀（EnemyBase 死亡结算累加，局末写入存档）。 */
+    miniBossKills = 0;
     comboCount  = 0;
     comboTimer  = 0;
     /** 本局统计（EnemyBase._die 累加），局末写入玩家档案。 */
     bossKills   = 0;
     maxCombo    = 0;
     private _runRecorded = false;
+    /** 本局新解锁成就名（局末 _recordRun 填充，结算面板"本局新解锁"行展示）。 */
+    private _newAchievements: string[] = [];
+    /** 开局战备包模式：免费刷新扣战备次数不扣金币，横幅实时显示余量。 */
+    private _starterMode = false;
+    /**
+     * 正式游戏内新手引导阶段：lobby/map/chapter/diff/char = 各页面聚光步；
+     * battle = 出战后的操作三步；none = 未在引导。
+     */
+    private _tutorialStage: 'none' | 'lobby' | 'map' | 'chapter' | 'diff' | 'char' | 'battle' = 'none';
+    /** 当前页聚光步序号（1-based，「下一步」推进）。 */
+    private _tourIndex = 1;
+    /** 行动门：聚光步走完后等玩家真的打开的状态（到页即开下一段聚光）。 */
+    private _guideGate: 'mapSelect' | 'chapterSelect' | 'difficultySelect' | 'charSelect' | 'playing' | null = null;
+    /** 战斗段操作步：none=未在引导 / move=移动 / skill=技能 / kill=击杀。 */
+    private _tutorialHintStep: 'none' | TutorialStep = 'none';
+    /** 当前步条件是否已达成（达成→带 ✓ 停留一拍→进下一步）。 */
+    private _tutorialStepDone = false;
+    /** 当前提示步的剩余秒数（达成条件或超时即收起/切换）。 */
+    private _tutorialHintTimer = 0;
+    /** 顶部提示条（ui/TutorialHints，非阻塞；挂在屏幕层之上保证大厅内可见）。 */
+    private _tutorialHints?: TutorialHints;
+    /** 遮罩聚光引导层（ui/GuideMask，整页置灰+高亮+下一步）。 */
+    private _guideMask?: GuideMask;
+    /** 引导完成奖励是否已发（每设备一次：完成标记保证提示段只走一遍）。 */
+    private _tutorialRewarded = false;
 
     /** Written by WaveData mutation defs' apply(game) hooks. */
     _mutationMods: Record<string, any> = {};
@@ -299,7 +340,25 @@ export class GameManager extends Component {
         preloadArt(Array.from(new Set(Object.keys(EFFECT_ANIMATIONS).map(key => EFFECT_ANIMATIONS[key].sheet))));
         // 亡灵法师技能专属贴图（2026-10-10 入库）：腐雾地面雾 / 天灾冲击波 / 骸骨仆从
         preloadArt(['fx_rot_fog', 'fx_plague_wave', 'unit_skeleton']);
-        this._setState('menu');
+        // 启动即进登录页（方案 B 存档服务器）；有留存 token 自动登录并同步档案
+        this._setState('login');
+        const savedSession = AccountService.session;
+        if (savedSession) {
+            this._screenMgr.setLoginStatus('自动登录中…');
+            void AccountService.resume(savedSession.token).then(async (res) => {
+                if (!this.isValid) return;
+                if (!res.ok) {
+                    AccountService.clearSession();
+                    this._screenMgr.setLoginStatus(res.error ?? '登录已过期，请重新登录');
+                    return;
+                }
+                this._screenMgr.setLoginStatus('同步档案中…');
+                await this._applyServerProfiles(res.slots ?? []);
+                this._setState('menu');
+            }).catch(() => {
+                if (this.isValid) this._screenMgr.setLoginStatus('无法连接存档服务器，可点「游客离线」');
+            });
+        }
         loadArtSprite('title_screen', () => {
             if (this.isValid) this._audio.preloadAll();
         });
@@ -313,6 +372,8 @@ export class GameManager extends Component {
         this._visualTime += dt;
         this._visualDt = dt;
         this._audio.update(dt);
+        // 新手引导步进（大厅段/战斗段共用，状态机内部自判条件）
+        this._updateTutorial(dt);
 
         // Hit-stop pauses combat simulation, but movement/input must stay responsive.
         if (this._hitStop.active) {
@@ -481,6 +542,17 @@ export class GameManager extends Component {
         const testNode = new Node('TestRoom'); testNode.setParent(ul);
         this._testUI = testNode.addComponent(TestRoomUI);
 
+        // 第一局实战引导：遮罩聚光层（各页面分步）+ 顶部提示条（行动门/战斗段）
+        this._guideMask = new GuideMask(ul, {
+            onNext: () => this._advanceGuideTour(),
+            onSkip: () => this._finishTutorial(),
+            onButtonSfx: () => this._audio.playSfx('button'),
+        });
+        this._tutorialHints = new TutorialHints(ul, {
+            onSkip: () => this._finishTutorial(),
+            onButtonSfx: () => this._audio.playSfx('button'),
+        });
+
         // 移动端虚拟操控：摇杆/技能按钮写入 InputManager，右上角按钮回调这里。
         // 触屏设备上 HUD 右下技能环与技能按钮重叠，改由触摸按钮展示冷却。
         const touchNode = new Node('TouchControls'); touchNode.setParent(ul);
@@ -516,13 +588,18 @@ export class GameManager extends Component {
         };
 
         // Wire screen callbacks
-        // 新流程：首页开始游戏 → 存档选择 → 存档大厅（传送门/任务/成就）→ 难度选择 → 选人开战
-        this._screenMgr.onPlayPressed     = () => this._setState('saveSelect');
-        this._screenMgr.onSaveSelectBack  = () => this._setState('menu');
+        // 2026-10-20 流程改版：首页「开始游戏」直达作战大厅（档案选择挪进大厅，
+        // 存档页降级为大厅内的「切换档案」列表——选定/返回都回大厅）。
+        this._screenMgr.onPlayPressed     = () => {
+            this._setState('lobby');
+            this._maybeStartLobbyTutorial();
+        };
+        this._screenMgr.onSaveSelectBack  = () => this._setState('lobby');
         this._screenMgr.onSlotPicked      = (slot) => {
             SaveSystem.selectSlot(slot);
             this._setState('lobby');
         };
+        this._screenMgr.onSwitchSave      = () => this._setState('saveSelect');
         this._screenMgr.onLobbyPortal     = () => this._setState('mapSelect');
         this._screenMgr.onLobbyBack       = () => this._setState('menu');
         // v5：选图（6 图）→ 图内章节（5 章）→ 难度选择 → 英雄选择 → 开战。
@@ -587,6 +664,18 @@ export class GameManager extends Component {
             this._clearRunEntities();
             this._setState('menu');
         };
+        // 登录页（方案 B 存档服务器）：注册/登录/游客离线
+        this._screenMgr.onLoginAction = (mode, account, password) => {
+            void this._handleLoginAction(mode, account, password);
+        };
+        this._screenMgr.onGuestMode = () => this._setState('menu');
+        // 档案落盘后镜像同步到存档服务器（游客离线时内部自行跳过）
+        SaveSystem.onSlotSaved = (slot, profile) => {
+            if (!AccountService.session) return;
+            AccountService.uploadSlot(slot, profile as unknown as Record<string, unknown>).catch(() => {
+                console.warn('[AccountService] 存档同步失败，将在下次存档时重试');
+            });
+        };
     }
 
     // ── state machine ─────────────────────────────────────────
@@ -622,7 +711,7 @@ export class GameManager extends Component {
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
         if (s === 'chapterClear' || s === 'gameover' || s === 'menu' || s === 'charSelect'
             || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect' || s === 'mapSelect'
-            || s === 'chapterSelect') {
+            || s === 'chapterSelect' || s === 'login') {
             this._floatText?.clear();
             for (const label of this._floatLabels) label.active = false;
             for (const enemy of this._enemies) {
@@ -637,6 +726,10 @@ export class GameManager extends Component {
         switch (s) {
             case 'menu':
                 this._screenMgr.show('menu');
+                this._audio.playBgm('title');
+                break;
+            case 'login':
+                this._screenMgr.show('login');
                 this._audio.playBgm('title');
                 break;
             case 'saveSelect':
@@ -673,6 +766,7 @@ export class GameManager extends Component {
                     score: this.score,
                     finalChapter: this._chapter >= TOTAL_CHAPTERS,
                     coinsEarned: 0,
+                    newAchievements: this._newAchievements,
                 });
                 this._screenMgr.show('gameover');
                 this._audio.playBgm('title');
@@ -688,6 +782,7 @@ export class GameManager extends Component {
                     score: this.score,
                     finalChapter: this._chapter >= TOTAL_CHAPTERS,
                     coinsEarned: this._coinsEarned,
+                    newAchievements: this._newAchievements,
                 });
                 this._screenMgr.show('chapterClear');
                 break;
@@ -741,6 +836,8 @@ export class GameManager extends Component {
         this._iceZones   = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
+        this.eliteKills = 0; this.miniBossKills = 0;
+        this._newAchievements = [];
         this._mutationMods = {};
         this._augRefreshCount = 0;
         this._augOfferRefreshed = false;
@@ -791,20 +888,240 @@ export class GameManager extends Component {
         }
     }
 
-    /** v4 2.3：战备包三选一连抽（选完次数才开 W1，不进战斗）。 */
-    private _openStarterPacks(left: number): void {
-        if (left <= 0) {
-            this._setState('playing');
-            this._waveMgr.startWave(this);
+    /** 是否播放新手引导：设置开关开 + 本设备未播过（大厅入口判定）。 */
+    private _shouldPlayTutorial(): boolean {
+        return shouldAutoShowTutorial(defaultTutorialStorage());
+    }
+
+    // ── 存档服务器（方案 B）：登录 + 逐槽合并同步 ─────────────
+
+    private async _handleLoginAction(
+        mode: 'login' | 'register', account: string, password: string,
+    ): Promise<void> {
+        if (!account.trim() || account.trim().length > 32 || password.length < 4) {
+            this._screenMgr.setLoginStatus('请输入账号（2~32 字符）与至少 4 位密码');
             return;
         }
+        this._screenMgr.setLoginStatus(mode === 'login' ? '登录中…' : '注册中…');
+        const res = mode === 'login'
+            ? await AccountService.login(account, password)
+            : await AccountService.register(account, password);
+        if (!this.isValid) return;
+        if (!res.ok) { this._screenMgr.setLoginStatus(res.error ?? '操作失败，请重试'); return; }
+        this._screenMgr.setLoginStatus('同步档案中…');
+        await this._applyServerProfiles(res.slots ?? []);
+        if (!this.isValid) return;
+        this._setState('menu');
+    }
+
+    /**
+     * 登录/注册成功后的**逐槽合并同步**（玩家红线：设备上原有档案不能丢）：
+     * 每个槽位本地与服务器各有一份时，按 updatedAt 谁新谁赢——
+     * 只有本地 → 上传备份；只有服务器 → 下载恢复；都没有 → 跳过。
+     */
+    private async _applyServerProfiles(slots: (Record<string, unknown> | null)[]): Promise<void> {
+        for (let slot = 0; slot < SaveSystem.SLOT_COUNT; slot++) {
+            const local = SaveSystem.exportSlot(slot);
+            const server = slots[slot] ?? null;
+            const action = mergeAction(!!local, !!server,
+                local ? Number(local.updatedAt ?? 0) : 0,
+                server ? Number((server as any).updatedAt ?? 0) : 0);
+            if (action === 'download' && server) {
+                SaveSystem.importSlot(slot, server as unknown as PlayerProfile);
+            } else if (action === 'upload' && local) {
+                try { await AccountService.uploadSlot(slot, local as unknown as Record<string, unknown>); }
+                catch { console.warn('[AccountService] 本地档案上传失败，游戏中下次存档会重试'); }
+            }
+        }
+    }
+
+    /** 进入作战大厅时调用：命中引导条件且未开始 → 开大厅聚光引导。 */
+    private _maybeStartLobbyTutorial(): void {
+        if (this._tutorialStage !== 'none' || this.state !== 'lobby') return;
+        if (!this._shouldPlayTutorial()) return;
+        this._tutorialStage = 'lobby';
+        this._tourIndex = 1;
+        this._showGuideStep();
+    }
+
+    private _guideStepsForPage(): GuideStepDef[] {
+        switch (this._tutorialStage) {
+            case 'lobby': return lobbyGuideSteps();
+            case 'map': return mapGuideSteps();
+            case 'chapter': return chapterGuideSteps();
+            case 'diff': return diffGuideSteps();
+            case 'char': return charGuideSteps();
+            default: return [];
+        }
+    }
+
+    private _showGuideStep(): void {
+        const steps = this._guideStepsForPage();
+        if (!steps.length) { this._endGuideTour(); return; }
+        this._guideMask?.showStep(steps, this._tourIndex);
+    }
+
+    /** 「下一步」：推进当前页聚光步；本页走完 → 收起遮罩，开"行动门"等玩家实操。 */
+    private _advanceGuideTour(): void {
+        const steps = this._guideStepsForPage();
+        if (this._tourIndex < steps.length) {
+            this._tourIndex++;
+            this._showGuideStep();
+            return;
+        }
+        this._endGuideTour();
+    }
+
+    /** 本页聚光步走完：按页面开对应的行动门（等玩家真的点到下一页）。 */
+    private _endGuideTour(): void {
+        this._guideMask?.hide();
+        switch (this._tutorialStage) {
+            case 'lobby':
+                this._guideGate = 'mapSelect';
+                this._tutorialHints?.showGate(tutorialHintPortal());
+                break;
+            case 'map':
+                this._guideGate = 'chapterSelect';
+                this._tutorialHints?.showGate('点击战区卡，进入章节列表');
+                break;
+            case 'chapter':
+                this._guideGate = 'difficultySelect';
+                this._tutorialHints?.showGate('点击章节卡，确定出战章节');
+                break;
+            case 'diff':
+                this._guideGate = 'charSelect';
+                this._tutorialHints?.showGate('点击难度卡，选定作战难度');
+                break;
+            case 'char':
+                this._guideGate = 'playing';
+                this._tutorialHints?.showGate('点「确认出战」，开战！');
+                break;
+            default:
+                this._finishTutorial();
+        }
+    }
+
+    /** 战斗段操作引导（移动 → 技能 → 击杀，条件达成打勾，超时放行）。 */
+    private _startTutorialHints(): void {
+        this._guideGate = null;
+        this._tutorialHintStep = 'move';
+        this._tutorialStepDone = false;
+        this._tutorialHintTimer = 15;
+        this._showTutorialStep();
+    }
+
+    private _showTutorialStep(): void {
+        const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
+        const cur = this._tutorialHintStep === 'none' ? 'move' : this._tutorialHintStep;
+        const idx = TUTORIAL_STEP_ORDER.indexOf(cur) + 1;
+        const text = this._tutorialHintStep === 'move' ? tutorialHintMove(touch)
+            : this._tutorialHintStep === 'skill' ? tutorialHintSkill(touch)
+            : tutorialHintKill();
+        this._tutorialHints?.showStep(Math.max(1, idx), TUTORIAL_STEP_ORDER.length, text, this._tutorialStepDone);
+    }
+
+    /** 战斗步进下一步（走完三步 = 整段引导完成）。 */
+    private _advanceTutorialStep(): void {
+        this._tutorialStepDone = false;
+        const cur = this._tutorialHintStep === 'none' ? 'move' : this._tutorialHintStep;
+        const i = TUTORIAL_STEP_ORDER.indexOf(cur);
+        if (i < 0 || i >= TUTORIAL_STEP_ORDER.length - 1) { this._finishTutorial(); return; }
+        this._tutorialHintStep = TUTORIAL_STEP_ORDER[i + 1];
+        this._tutorialHintTimer = 20;
+        this._showTutorialStep();
+    }
+
+    /** 整段引导结束：写设备完成标记 + 一次性奖励（完成或跳过同路径）。 */
+    private _finishTutorial(): void {
+        this._tutorialHintStep = 'none';
+        this._tutorialStepDone = false;
+        this._tutorialStage = 'none';
+        this._guideGate = null;
+        this._guideMask?.hide();
+        this._tutorialHints?.hide();
+        markTutorialDone(defaultTutorialStorage());
+        if (!this._tutorialRewarded) {
+            this._tutorialRewarded = true;
+            SaveSystem.addCoreCoins(TUTORIAL_REWARD_COINS);
+            this._floatText.spawn(CANVAS_W / 2, 190,
+                `新手引导完成 · 核心币 ×${TUTORIAL_REWARD_COINS}`, '#7dffbe', 19, true);
+        }
+    }
+
+    /**
+     * 引导总驱动（update 每帧调用，不限状态）：
+     * 聚光步由「下一步」按钮推进（此处只等门）；行动门 = 等玩家真的打开
+     * 下一页（状态轮询）；战斗段 = 操作条件（移动/技能/击杀）。
+     */
+    private _updateTutorial(dt: number): void {
+        if (this._tutorialStage === 'none') return;
+        // 聚光步进行中：由下一步按钮推进，不做条件轮询
+        if (this._guideMask && this._guideMask.showing && !this._guideGate) return;
+
+        if (this._guideGate) {
+            if (this.state === this._guideGate) {
+                const gate = this._guideGate;
+                this._guideGate = null;
+                this._tutorialHints?.hide();
+                if (gate === 'playing') {
+                    this._tutorialStage = 'battle';
+                    this._startTutorialHints();
+                } else {
+                    this._tutorialStage =
+                        gate === 'mapSelect' ? 'map'
+                        : gate === 'chapterSelect' ? 'chapter'
+                        : gate === 'difficultySelect' ? 'diff'
+                        : 'char';
+                    this._tourIndex = 1;
+                    this._showGuideStep();
+                }
+            }
+            return;
+        }
+
+        // 战斗段操作步（move/skill/kill）
+        if (this._tutorialStage === 'battle' && this._tutorialHintStep !== 'none') {
+            this._tutorialHintTimer -= dt;
+            if (this._tutorialStepDone) {
+                if (this._tutorialHintTimer <= 0) this._advanceTutorialStep();
+                return;
+            }
+            const input = this._input;
+            let met = false;
+            if (this._tutorialHintStep === 'move') met = input.moveX !== 0 || input.moveY !== 0;
+            else if (this._tutorialHintStep === 'skill') met = input.isKeyQPressed?.() ?? false;
+            else if (this._tutorialHintStep === 'kill') met = this.kills > 0;
+            if (met) {
+                this._tutorialStepDone = true;
+                this._tutorialHintTimer = 0.7;
+                this._showTutorialStep();
+            } else if (this._tutorialHintTimer <= 0) {
+                this._advanceTutorialStep();
+            }
+        }
+    }
+
+    /**
+     * v4 2.3：开局战备包（2026-10-20 玩家定稿规则）——N 次免费刷新不扣金币，
+     * 买卡照常花金币；顶部横幅实时显示剩余次数；「开始战斗」随时可点
+     * （次数用完 / 金币不够 / 不想抽了，直接开战）。
+     */
+    private _openStarterPacks(draws: number): void {
         this._setState('augSelect');
+        this._starterMode = true;
         this._augRefreshCount = 0;
         this._augOfferRefreshed = false;
-        this._augMgr.freeRefreshes = 0;
-        this._floatText.spawn(CANVAS_W / 2, 240, `开局战备 ×${left}`, '#ffd655', 20, true);
+        this._augMgr.freeRefreshes = draws;   // 免费刷新次数 = 战备连抽次数
         const options = this._augMgr.shopOptions(3, 1, {});
-        this._augUI.show(options, this._buildAugShopCtx(() => this._openStarterPacks(left - 1)));
+        this._augUI.show(
+            options,
+            this._buildAugShopCtx(() => {
+                this._starterMode = false;
+                this._setState('playing');
+                this._waveMgr.startWave(this);
+            }),
+            true,
+        );
     }
 
     /** Load & apply 地图背景（mapDef(mapOf(_chapter)).bgKey）onto _bgSprite（经 ArtRemap 解析）。 */
@@ -1006,6 +1323,7 @@ export class GameManager extends Component {
         this._telegraphZones = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
+        this.eliteKills = 0; this.miniBossKills = 0;
         // 清空无尽变异乘区：测试房间要求单位数值精确等于表内数值。
         // 难度乘区同理置空（不注入 _difficulty），Boss 技能也不削减。
         this._mutationMods = {};
@@ -2192,6 +2510,15 @@ export class GameManager extends Component {
         this._corpses.clear();
         this._playerDeathPending = false;
         this._timers = [];   // 换局/清场：作废全部引导与延迟回调
+        // 新手引导战斗段清场：收起提示条并回到移动步（未走完不写完成标记，
+        // 下次出战重播战斗三步；行动门重新等"进入 playing"）
+        if (this._tutorialStage === 'battle') {
+            this._tutorialHintStep = 'move';
+            this._tutorialStepDone = false;
+            this._tutorialHintTimer = 15;
+            this._guideGate = 'playing';
+            this._tutorialHints?.hide();
+        }
         if (this._player?.node?.isValid) {
             this._player.node.active = false;
             this._player.node.destroy();
@@ -2236,6 +2563,9 @@ export class GameManager extends Component {
 
         // v4：W15 = 大 Boss 波清空（含 Boss 击杀）→ 本局通关结算。
         if (this._waveMgr.isBossWave()) {
+            // 先写通关解锁链再结算本局：章节链成就（v5 起读 chaptersCleared）
+            // 在 _recordRun 的成就判定里当次即可解锁，不会迟一局。
+            SaveSystem.recordChapterCleared(this._chapter);
             this._recordRun(true);
             // 通关结算：金币按 20% 折算核心币，封顶 80（v4 9.6 层3，防元进度通胀）。
             // 折算率/封顶可在后台配置（coreCoinsRate / coreCoinsCap）。
@@ -2244,7 +2574,6 @@ export class GameManager extends Component {
             this._coinsEarned = Math.min(GameConfig.get('coreCoinsCap'),
                 Math.round(this._economy.gold * GameConfig.get('coreCoinsRate')));
             SaveSystem.addCoreCoins(this._coinsEarned);
-            SaveSystem.recordChapterCleared(this._chapter);
             this._setState('chapterClear');
             return;
         }
@@ -2297,6 +2626,7 @@ export class GameManager extends Component {
             unpin: (card) => this._augMgr.unpinCard(card.id),
             pinnedIds: () => this._augMgr.pinnedCards.map(p => p.id),
             refreshCost: () => this._augMgr.freeRefreshes > 0 ? 0 : this._nextAugRefreshCost(),
+            freeRefreshes: () => this._augMgr.freeRefreshes,
             refresh: () => {
                 // 再来一次·强化版(hex29)：每次强化选择页附带5次免费刷新，先用完再付费
                 if (this._augMgr.freeRefreshes > 0) {
@@ -4439,7 +4769,7 @@ export class GameManager extends Component {
         }, 3000);
     }
 
-    /** 局末：把本局数据写入玩家档案(SaveSystem)，新解锁成就弹中央浮字。 */
+    /** 局末：把本局数据写入玩家档案(SaveSystem)，新解锁成就弹中央浮字并记入结算面板。 */
     private _recordRun(won: boolean) {
         if (this._runRecorded) return; // 一局只记一次（先通关后死亡不重复计）
         this._runRecorded = true;
@@ -4452,11 +4782,14 @@ export class GameManager extends Component {
             wave:          this._waveMgr.wave,
             kills:         this.kills,
             bossKills:     this.bossKills,
+            eliteKills:    this.eliteKills,
+            miniBossKills: this.miniBossKills,
             goldEarned:    this._economy.earnedThisRun,
             maxCombo:      this.maxCombo,
             augmentCount:  this._augMgr.all().length,
             won,
         });
+        this._newAchievements = unlocked.map(a => `${a.icon} ${a.name}`);
         for (const a of unlocked) {
             this._floatText.spawn(CANVAS_W / 2, 180, `成就解锁：${a.icon} ${a.name}`, '#ffd655', 22, true);
         }

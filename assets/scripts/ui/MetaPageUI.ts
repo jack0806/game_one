@@ -15,7 +15,6 @@ import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } f
 import {
     CodexCategory, CodexEntry, CODEX_ENTRIES, codexByCategory,
 } from '../data/MetaProgressionDB';
-import { AchievementAdmin } from '../systems/AchievementAdmin';
 import { AchievementDef, SaveSystem } from '../systems/SaveSystem';
 
 export type MetaPageName = 'codex' | 'achievements';
@@ -32,6 +31,8 @@ interface AchievementCardView {
     /** 描述标签：隐藏成就未解锁时以占位文案遮掩。 */
     desc?: Label;
     rarity: Label;
+    /** 奖励行（称号/核心币文案）：未解锁置灰、解锁后金色。 */
+    reward: Label;
     progress: Label;
     progressGraphics: Graphics;
 }
@@ -82,8 +83,8 @@ export class MetaPageUI {
     private _achieveContent!: Node;
     private _achieveScrollbar!: Graphics;
     private _achieveTabs!: Node;
-    /** 当前选中的类型（一级分组；空 = 取第一个分类）。 */
-    private _achieveCategory = '';
+    /** 当前选中的稀有度页签（2026-10-19 玩家定稿：按 普通/稀有/史诗/传奇 一级分组）。 */
+    private _achieveRarity = '';
     private _achieveScroll = 0;
     private _achieveMaxScroll = 0;
     private _achieveDragY = 0;
@@ -283,10 +284,9 @@ export class MetaPageUI {
         const page = this._mkPage('achievements', '成就档案库', 'ACHIEVEMENT VAULT / 永久记录', 'bg_chapter4', GOLD);
         this._achievementSummary = this._mkLabel(page, -80, 292, 450, 38, '', 15, GOLD, HorizontalTextAlignment.RIGHT);
 
-        // 类型页签容器（一级分组，随后台分类数据重建）+ 右侧说明
+        // 稀有度页签容器（2026-10-19 玩家定稿：普通/稀有/史诗/传奇 一级分组）
         this._achieveTabs = new Node('AchTabs'); this._achieveTabs.setParent(page);
         this._achieveTabs.setPosition(new Vec3(0, 226, 0));
-        this._mkLabel(page, 500, 226, 200, 24, '等级：普通→稀有→史诗→传奇', 12, MUTED, HorizontalTextAlignment.RIGHT);
 
         // 滚动视口：Mask 裁剪 + 内容节点承载卡片；滚轮/拖拽滚动。
         const VIEW_W = 1180, VIEW_H = 520;
@@ -329,23 +329,23 @@ export class MetaPageUI {
         this._rebuildAchievementCards();
     }
 
-    /** 类型页签（一级分组，随后台成就管理分类数据重建，带已解锁/总数角标）。 */
+    /** 稀有度页签（一级分组：普通/稀有/史诗/传奇，带已解锁/总数角标）。 */
     private _rebuildAchievementTabs(): void {
         for (const child of [...this._achieveTabs.children]) child.destroy();
-        const cats = AchievementAdmin.categories();
+        const rarities: AchievementDef['rarity'][] = ['普通', '稀有', '史诗', '传奇'];
         const all = SaveSystem.allAchievements();
         const profile = SaveSystem.load();
-        if (cats.indexOf(this._achieveCategory) < 0) this._achieveCategory = cats[0] ?? '';
-        cats.forEach((cat, i) => {
-            const list = all.filter(a => a.category === cat);
+        if (rarities.indexOf(this._achieveRarity as any) < 0) this._achieveRarity = rarities[0];
+        rarities.forEach((rarity, i) => {
+            const list = all.filter(a => a.rarity === rarity);
             const done = list.filter(a => profile.achievements.indexOf(a.id) >= 0).length;
-            const selected = cat === this._achieveCategory;
-            const btn = this._mkButton(this._achieveTabs, `${cat} ${done}/${list.length}`,
-                -520 + i * 178, 0, 170, 40,
+            const selected = rarity === this._achieveRarity;
+            const btn = this._mkButton(this._achieveTabs, `${rarity} ${done}/${list.length}`,
+                -267 + i * 178, 0, 170, 40,
                 selected ? GOLD : new Color(56, 72, 92, 255));
             btn.on(Node.EventType.TOUCH_END, () => {
-                if (this._achieveCategory === cat) return;
-                this._achieveCategory = cat;
+                if (this._achieveRarity === rarity) return;
+                this._achieveRarity = rarity;
                 this._callbacks.onButtonSfx();
                 this._rebuildAchievementTabs();
                 this._rebuildAchievementCards();
@@ -354,68 +354,33 @@ export class MetaPageUI {
     }
 
     /**
-     * 按当前类型重建成就卡片：先按等级（普通→稀有→史诗→传奇）排序，
-     * 等级之间插细分隔行；排序键 = 类型 + 等级 + 定义顺序（与达成状态无关，
-     * 解锁新成就不会引起卡片跳动）。后台改动后每次进入页面/切页签都重建。
+     * 按当前稀有度页签重建成就卡片（每行 3 张，定义顺序即展示顺序，与达成
+     * 状态无关——解锁新成就不会引起卡片跳动）。后台改动后每次进入页面/切
+     * 页签都重建。
+     * 排版游标从内容节点的**本地顶缘**（contentH/2）起步——此前用 contentH
+     * 当顶缘导致卡片整体高出节点一倍、被 Mask 裁掉（2026-10-19 修复）。
      */
     private _rebuildAchievementCards(): void {
         const content = this._achieveContent;
         for (const child of [...content.children]) child.destroy();
         this._achievementCards = [];
 
-        const cats = AchievementAdmin.categories();
-        if (cats.indexOf(this._achieveCategory) < 0) this._achieveCategory = cats[0] ?? '';
-        const order = ['普通', '稀有', '史诗', '传奇'];
-        const list = SaveSystem.allAchievements()
-            .filter(a => a.category === this._achieveCategory)
-            .map((def, i) => ({ def, i }))
-            .sort((a, b) =>
-                (order.indexOf(a.def.rarity) - order.indexOf(b.def.rarity)) || (a.i - b.i))
-            .map(x => x.def);
+        const rarities: AchievementDef['rarity'][] = ['普通', '稀有', '史诗', '传奇'];
+        if (rarities.indexOf(this._achieveRarity as any) < 0) this._achieveRarity = rarities[0];
+        const list = SaveSystem.allAchievements().filter(a => a.rarity === this._achieveRarity);
 
         const VIEW_H = 520, VIEW_W = 1180;
-        const COL_X = [-390, 0, 390], ROW_H = 128, DIV_H = 30;
-        // 预排版：条目序列 = 等级分隔行 + 卡片（每行 3 张）
-        type Entry = { kind: 'div'; rarity: AchievementDef['rarity'] } | { kind: 'card'; def: AchievementDef; col: number };
-        const entries: Entry[] = [];
-        let prevRarity = '';
-        let col = 0;
-        for (const def of list) {
-            if (def.rarity !== prevRarity) {
-                prevRarity = def.rarity;
-                entries.push({ kind: 'div', rarity: def.rarity });
-                col = 0;
-            }
-            entries.push({ kind: 'card', def, col });
-            col++;
-        }
-        const divCount = entries.filter(e => e.kind === 'div').length;
-        const cardCount = entries.filter(e => e.kind === 'card').length;
-        const contentH = Math.max(VIEW_H, divCount * DIV_H + cardCount * ROW_H + 12);
+        const COL_X = [-390, 0, 390], ROW_H = 128;
+        const rowCount = Math.max(1, Math.ceil(list.length / 3));
+        const contentH = Math.max(VIEW_H, rowCount * ROW_H + 12);
         content.getComponent(UITransform)!.setContentSize(VIEW_W, contentH);
         this._achieveMaxScroll = Math.max(0, contentH - VIEW_H);
 
-        // 顶部原点游标（自上而下）：分隔行占 DIV_H 且独占一行，卡片按 3 列排布
-        let y = contentH - 6;
-        let rowCols = 0;
-        for (const e of entries) {
-            if (e.kind === 'div') {
-                const c = this._achievementRarityColor(e.rarity);
-                const dn = new Node(`Div_${e.rarity}`); dn.setParent(content);
-                dn.setPosition(new Vec3(0, y - DIV_H / 2, 0));
-                const dg = dn.addComponent(Graphics);
-                dg.strokeColor = new Color(c.r, c.g, c.b, 120); dg.lineWidth = 1;
-                dg.moveTo(-570, 0); dg.lineTo(570, 0); dg.stroke();
-                dg.fillColor = c; dg.circle(-578, 0, 3); dg.circle(578, 0, 3); dg.fill();
-                this._mkLabel(dn, -520, 0, 120, 22, e.rarity, 13, c, HorizontalTextAlignment.LEFT);
-                y -= DIV_H;
-                rowCols = 0;
-                continue;
-            }
-            if (rowCols === 0) y -= ROW_H;
-            this._mkAchievementCard(e.def, COL_X[e.col], y + ROW_H / 2);
-            rowCols++;
-        }
+        let y = contentH / 2 - 6;
+        list.forEach((def, i) => {
+            if (i % 3 === 0) y -= ROW_H;
+            this._mkAchievementCard(def, COL_X[i % 3], y + ROW_H / 2);
+        });
         this._scrollAchievements(0);
         this._refreshAchievements();
     }
@@ -430,11 +395,11 @@ export class MetaPageUI {
         const name = this._mkLabel(card, -24, 30, 200, 30, def.name, 19, WHITE, HorizontalTextAlignment.LEFT);
         const rarity = this._mkLabel(card, 146, 31, 62, 24, def.rarity, 14, GOLD, HorizontalTextAlignment.RIGHT);
         const desc = this._mkLabel(card, 14, 2, 276, 24, def.desc, 15, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT);
-        this._mkLabel(card, -38, -24, 200, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
+        const reward = this._mkLabel(card, -38, -24, 260, 22, `奖励  ${def.reward}`, 14, GOLD, HorizontalTextAlignment.LEFT);
         const progress = this._mkLabel(card, 145, -45, 70, 22, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
         const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(-28, -47, 0));
         const pg = bar.addComponent(Graphics);
-        this._achievementCards.push({ def, graphics: g, name, desc, rarity, progress, progressGraphics: pg });
+        this._achievementCards.push({ def, graphics: g, name, desc, rarity, reward, progress, progressGraphics: pg });
         return card;
     }
 
@@ -469,28 +434,34 @@ export class MetaPageUI {
             const ratio = view.def.goal > 0 ? current / view.def.goal : 0;
             const c = this._achievementRarityColor(view.def.rarity);
 
+            // 2026-10-19 玩家定稿：未解锁整卡置灰（名称/描述/稀有度/奖励/进度全部
+            // 灰阶），解锁后彩色（白名 + 稀有度色边 + 金色奖励 + 绿色进度）。
             view.graphics.clear();
-            view.graphics.fillColor = done ? new Color(22, 20, 10, 248) : new Color(7, 13, 23, 246);
+            view.graphics.fillColor = done ? new Color(22, 20, 10, 248) : new Color(10, 14, 21, 240);
             clippedPath(view.graphics, 370, 116, 12); view.graphics.fill();
-            view.graphics.fillColor = new Color(c.r, c.g, c.b, done ? 32 : 12);
+            view.graphics.fillColor = new Color(c.r, c.g, c.b, done ? 32 : 8);
             clippedPath(view.graphics, 364, 110, 10); view.graphics.fill();
-            view.graphics.strokeColor = new Color(c.r, c.g, c.b, done ? 235 : 115);
-            view.graphics.lineWidth = done ? 2.5 : 1.2;
+            view.graphics.strokeColor = new Color(c.r, c.g, c.b, done ? 235 : 60);
+            view.graphics.lineWidth = done ? 2.5 : 1;
             clippedPath(view.graphics, 370, 116, 12); view.graphics.stroke();
-            view.graphics.strokeColor = new Color(c.r, c.g, c.b, 220); view.graphics.lineWidth = 3;
+            view.graphics.strokeColor = new Color(c.r, c.g, c.b, done ? 220 : 45); view.graphics.lineWidth = 3;
             view.graphics.moveTo(-157, 54); view.graphics.lineTo(157, 54); view.graphics.stroke();
 
-            view.name.color = done ? WHITE : new Color(165, 179, 191, 255);
-            view.rarity.color = c;
+            view.name.color = done ? WHITE : new Color(132, 146, 158, 255);
+            view.rarity.color = done ? c : new Color(120, 136, 150, 255);
+            view.reward.color = done ? GOLD : new Color(116, 132, 146, 255);
             // 隐藏成就（滑稽猴彩蛋等）：未解锁时以"？？？"遮掩名称/描述与进度
             const secretPending = !!view.def.hidden && !done;
             view.name.string = secretPending ? '？？？' : view.def.name;
-            if (view.desc) view.desc.string = secretPending ? '隐藏成就：达成后揭晓' : view.def.desc;
+            if (view.desc) {
+                view.desc.string = secretPending ? '隐藏成就：达成后揭晓' : view.def.desc;
+                view.desc.color = done ? new Color(182, 201, 215, 255) : new Color(108, 122, 136, 255);
+            }
             view.progress.string = done ? '已达成' : secretPending ? '?' : `${Math.floor(current)}/${view.def.goal}`;
-            view.progress.color = done ? new Color(104, 230, 150, 255) : MUTED;
+            view.progress.color = done ? new Color(104, 230, 150, 255) : new Color(116, 132, 146, 255);
             const pg = view.progressGraphics; pg.clear();
             pg.fillColor = new Color(24, 33, 43, 255); pg.fillRect(-122, -3, 240, 6);
-            pg.fillColor = done ? new Color(89, 222, 143, 255) : c;
+            pg.fillColor = done ? new Color(89, 222, 143, 255) : new Color(96, 110, 122, 255);
             pg.fillRect(-122, -3, 240 * (secretPending ? 0 : Math.max(0, Math.min(1, ratio))), 6);
         }
         const legendary = SaveSystem.allAchievements().filter(a => a.rarity === '传奇' && !a.hidden).length;

@@ -323,12 +323,15 @@ test('刷新降权：金色显著低于基础货架且≤20%，彩色极小概�
     };
     const base = sample(undefined);
     const ref = sample({ refresh: true });
-    // 第20波基础权重：银60/金38/彩4 → 金≈37%；刷新：金×0.4≈15%、彩≤1%
+    // 2026-10-20 新曲线：第20波基础权重 银48/金34/彩12 → 金≈36%、彩≈12.8%；
+    // 刷新：金×0.4≈15%、彩压到≤1%
     assert.ok(ref.gold < base.gold,
         `刷新后金色占比应低于基础（${(ref.gold * 100).toFixed(1)}% < ${(base.gold * 100).toFixed(1)}%）`);
     assert.ok(ref.gold <= 0.20, `刷新后金色占比应≤20%，实际 ${(ref.gold * 100).toFixed(1)}%`);
     assert.ok(ref.prism <= 0.02, `刷新后彩色占比应≤2%，实际 ${(ref.prism * 100).toFixed(1)}%`);
-    assert.ok(base.prism <= 0.06, `基础货架彩色也应极小概率（≤6%），实际 ${(base.prism * 100).toFixed(1)}%`);
+    // 彩色随波次升至"合适比例"：W20 权重 12/总94 ≈ 12.8%（≤14% 容差）
+    assert.ok(base.prism <= 0.14, `基础货架彩色新曲线约12.8%，实际 ${(base.prism * 100).toFixed(1)}%`);
+    assert.ok(base.prism >= 0.08, `基础货架彩色应明显高于旧版4%（≥8%），实际 ${(base.prism * 100).toFixed(1)}%`);
 });
 
 test('v4章节金币乘数:一局一章温和上调 1.0~1.75（原5.5倍通胀已压平）', () => {
