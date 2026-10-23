@@ -92,7 +92,7 @@ export function tutorialHintKill(): string {
 // ── 作战大厅步骤提示（引导前段：图鉴 → 成就 → 传送门） ─────────
 
 export function tutorialHintCodex(): string {
-    return '打开 情报终端 →「图鉴」，查看敌我与掉落图鉴';
+    return '打开 情报终端 →「图鉴」，查看英雄与敌方单位档案';
 }
 
 export function tutorialHintAchieve(): string {
@@ -134,7 +134,7 @@ export function lobbyGuideSteps(): GuideStepDef[] {
         },
         {
             title: '情报终端 · 图鉴',
-            text: '图鉴收录敌人、英雄与掉落信息，遇到不认识的点开看。',
+            text: '图鉴收录英雄、首领、小首领和小兵，点开卡片可查看战斗特征与应对方法。',
             target: { x: -431, y: -86, w: 334, h: 54 },
             side: 'right',
         },

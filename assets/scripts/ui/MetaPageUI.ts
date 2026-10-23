@@ -1,5 +1,5 @@
 // ============================================================
-//  MetaPageUI.ts — 首页元进度页面（图鉴 / 成就墙）
+//  MetaPageUI.ts — 大厅元进度页面（图鉴 / 成就墙）
 // ============================================================
 // 两个页面均由代码构建，不依赖 prefab。页面只消费静态数据表与存档视图，
 // 后续替换图鉴和成就配置时不需要重做布局。
@@ -11,10 +11,9 @@ import {
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { loadArtSprite, applyArtSprite } from '../core/SpriteUtils';
+import { createPortraitViewport, fitPortraitFrame, loadPortraitArt } from '../core/PortraitArt';
 import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
-import {
-    CodexCategory, CodexEntry, CODEX_ENTRIES, codexByCategory,
-} from '../data/MetaProgressionDB';
+import { CodexCategory, CodexEntry, CODEX_ENTRIES, codexByCategory } from '../data/MetaProgressionDB';
 import { AchievementDef, SaveSystem } from '../systems/SaveSystem';
 
 export type MetaPageName = 'codex' | 'achievements';
@@ -64,17 +63,23 @@ export class MetaPageUI {
     private readonly _panels = new Map<MetaPageName, Node>();
     private readonly _pageAccents = new Map<MetaPageName, Color>();
 
-    private _codexCategory: CodexCategory = 'monster';
-    private _codexRoots = new Map<CodexCategory, Node>();
+    private _codexCategory: CodexCategory = 'hero';
+    private _codexPage = 0;
+    private _codexTabs!: Node;
+    private _codexGrid!: Node;
+    private _codexGridTitle!: Label;
+    private _codexPageLabel!: Label;
+    private _codexCardGraphics = new Map<string, Graphics>();
     private _codexSelectedId = '';
     private _codexStats!: Label;
     private _codexArtSprite!: Sprite;
-    private _codexQuestion!: Label;
+    private _codexArtFrame!: Graphics;
     private _codexDetailName!: Label;
     private _codexDetailSub!: Label;
     private _codexDetailDesc!: Label;
     private _codexDetailTraits!: Label;
-    private _codexLockHint!: Label;
+    private _codexDetailEncounter!: Label;
+    private _codexDetailCombat!: Label;
 
     private _achievementCards: AchievementCardView[] = [];
     private _achievementSummary!: Label;
@@ -168,116 +173,157 @@ export class MetaPageUI {
     }
 
     private _buildCodexPage(): void {
-        const page = this._mkPage('codex', '海克斯图鉴', 'ARCHIVE TERMINAL / 样本档案', 'bg_chapter3', new Color(69, 204, 255, 255));
-        const monsterTab = this._mkButton(page, '怪物档案', -507, 221, 154, 42, new Color(255, 95, 76, 255));
-        const heroTab = this._mkButton(page, '英雄档案', -337, 221, 154, 42, new Color(69, 204, 255, 255));
-        monsterTab.on(Node.EventType.TOUCH_END, () => this._showCodexCategory('monster'));
-        heroTab.on(Node.EventType.TOUCH_END, () => this._showCodexCategory('hero'));
-        this._codexStats = this._mkLabel(page, 38, 222, 380, 26, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
+        const cyan = UI_PALETTE.cyan;
+        const page = this._mkPage('codex', '战区图鉴', 'FIELD CODEX / 战区情报库', 'bg_chapter3', cyan);
+        this._codexTabs = new Node('CodexTabs'); this._codexTabs.setParent(page);
+        this._codexStats = this._mkLabel(page, 404, 225, 340, 25, '', 14, MUTED, HorizontalTextAlignment.RIGHT);
 
         const gridPanel = new Node('CodexGridPanel'); gridPanel.setParent(page);
-        gridPanel.setPosition(new Vec3(-178, -35, 0));
-        const gridG = gridPanel.addComponent(Graphics); drawPanel(gridG, 856, 478, new Color(69, 204, 255, 255));
-        this._mkLabel(gridPanel, -212, 208, 360, 24, '已收录样本 / 选择卡片读取完整档案', 14, MUTED, HorizontalTextAlignment.LEFT);
-
-        for (const category of ['monster', 'hero'] as CodexCategory[]) {
-            const root = new Node(`${category}_grid`); root.setParent(gridPanel);
-            this._codexRoots.set(category, root);
-            const defs = codexByCategory(category);
-            defs.slice(0, 8).forEach((def, i) => {
-                const col = i % 4, row = Math.floor(i / 4);
-                const card = new Node(`Codex_${def.id}`); card.setParent(root);
-                card.setPosition(new Vec3(-312 + col * 208, 80 - row * 196, 0));
-                card.addComponent(UITransform).setContentSize(184, 172);
-                registerKeyboardFocus(card, 184, 172);
-                const g = card.addComponent(Graphics);
-                this._drawCodexCard(g, def, 184, 172);
-
-                const frame = new Node('ImageFrame'); frame.setParent(card);
-                frame.setPosition(new Vec3(0, 27, 0));
-                const fg = frame.addComponent(Graphics);
-                fg.fillColor = new Color(3, 9, 16, 245); fg.rect(-47, -47, 94, 94); fg.fill();
-                fg.strokeColor = new Color(hexColor(def.color).r, hexColor(def.color).g, hexColor(def.color).b, 120);
-                fg.lineWidth = 1; fg.rect(-47, -47, 94, 94); fg.stroke();
-
-                if (def.unlocked) this._mkArt(card, def.artKey, 88, 88, 0, 27);
-                else this._mkLabel(card, 0, 28, 88, 88, '?', 56, new Color(105, 126, 143, 255));
-
-                this._mkLabel(card, 0, -47, 164, 26, def.unlocked ? def.name : '未知样本', 16,
-                    def.unlocked ? WHITE : new Color(126, 139, 151, 255));
-                this._mkLabel(card, 0, -70, 164, 20, def.unlocked ? def.rarity : '未解锁', 14,
-                    def.unlocked ? hexColor(def.color) : new Color(91, 105, 118, 255));
-                card.on(Node.EventType.TOUCH_END, () => this._selectCodex(def));
-            });
-        }
+        gridPanel.setPosition(new Vec3(-205, -43, 0));
+        drawPanel(gridPanel.addComponent(Graphics), 780, 490, cyan);
+        this._codexGridTitle = this._mkLabel(gridPanel, 0, 211, 700, 24, '', 15, WHITE, HorizontalTextAlignment.LEFT);
+        this._codexGrid = new Node('CodexGrid'); this._codexGrid.setParent(gridPanel);
+        const prev = this._mkButton(gridPanel, '上一页', -270, -212, 116, 36, new Color(86, 128, 153, 255));
+        const next = this._mkButton(gridPanel, '下一页', 270, -212, 116, 36, new Color(86, 128, 153, 255));
+        this._codexPageLabel = this._mkLabel(gridPanel, 0, -212, 150, 25, '', 15, WHITE);
+        prev.on(Node.EventType.TOUCH_END, () => this._turnCodexPage(-1));
+        next.on(Node.EventType.TOUCH_END, () => this._turnCodexPage(1));
 
         const detail = new Node('CodexDetail'); detail.setParent(page);
-        detail.setPosition(new Vec3(431, -35, 0));
-        const detailG = detail.addComponent(Graphics); drawPanel(detailG, 334, 478, new Color(69, 204, 255, 255));
-        this._mkLabel(detail, 0, 208, 268, 22, '样本分析', 14, new Color(69, 204, 255, 255), HorizontalTextAlignment.LEFT);
+        detail.setPosition(new Vec3(393, -43, 0));
+        drawPanel(detail.addComponent(Graphics), 396, 490, cyan);
+        this._mkLabel(detail, -3, 215, 338, 24, '战术档案 / 单位识别', 15, cyan, HorizontalTextAlignment.LEFT);
 
         const artFrame = new Node('DetailArtFrame'); artFrame.setParent(detail);
-        artFrame.setPosition(new Vec3(0, 103, 0));
-        artFrame.addComponent(UITransform).setContentSize(166, 166);
-        const afg = artFrame.addComponent(Graphics);
-        afg.fillColor = new Color(2, 8, 15, 245); afg.rect(-83, -83, 166, 166); afg.fill();
-        afg.strokeColor = new Color(69, 204, 255, 110); afg.lineWidth = 2; afg.rect(-83, -83, 166, 166); afg.stroke();
-        const detailArt = new Node('DetailArt'); detailArt.setParent(artFrame);
-        detailArt.addComponent(UITransform).setContentSize(156, 156);
-        this._codexArtSprite = detailArt.addComponent(Sprite);
-        this._codexArtSprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        this._codexQuestion = this._mkLabel(detail, 0, 103, 150, 150, '?', 74, new Color(107, 130, 148, 255));
+        artFrame.setPosition(new Vec3(0, 93, 0));
+        artFrame.addComponent(UITransform).setContentSize(352, 208);
+        this._codexArtFrame = artFrame.addComponent(Graphics);
+        this._codexArtSprite = createPortraitViewport(artFrame, 'DetailArt', 340, 196);
 
-        this._codexDetailName = this._mkLabel(detail, 0, 2, 268, 32, '', 20, WHITE, HorizontalTextAlignment.LEFT);
-        this._codexDetailSub = this._mkLabel(detail, 0, -29, 268, 22, '', 14, new Color(69, 204, 255, 255), HorizontalTextAlignment.LEFT);
-        this._mkDivider(detail, 0, -53, 268, new Color(69, 204, 255, 255));
-        this._codexDetailDesc = this._mkLabel(detail, 0, -111, 268, 94, '', 16, new Color(194, 211, 224, 255), HorizontalTextAlignment.LEFT, true);
-        this._codexDetailTraits = this._mkLabel(detail, 0, -174, 268, 28, '', 14, GOLD, HorizontalTextAlignment.LEFT);
-        this._codexLockHint = this._mkLabel(detail, 0, -205, 300, 22, '', 14, MUTED, HorizontalTextAlignment.LEFT);
-
-        this._showCodexCategory('monster');
+        this._codexDetailName = this._mkLabel(detail, 0, -33, 344, 32, '', 22, WHITE, HorizontalTextAlignment.LEFT);
+        this._codexDetailSub = this._mkLabel(detail, 0, -61, 344, 21, '', 14, cyan, HorizontalTextAlignment.LEFT);
+        this._mkDivider(detail, 0, -78, 344, cyan);
+        this._codexDetailDesc = this._mkLabel(detail, 0, -116, 344, 61, '', 15, WHITE, HorizontalTextAlignment.LEFT, true);
+        this._codexDetailCombat = this._mkLabel(detail, 0, -171, 344, 45, '', 14, new Color(190, 213, 226, 255), HorizontalTextAlignment.LEFT, true);
+        this._codexDetailTraits = this._mkLabel(detail, 0, -208, 344, 22, '', 14, GOLD, HorizontalTextAlignment.LEFT);
+        this._codexDetailEncounter = this._mkLabel(detail, 0, -230, 344, 18, '', 13, MUTED, HorizontalTextAlignment.LEFT);
+        this._showCodexCategory('hero');
     }
 
-    private _drawCodexCard(g: Graphics, def: CodexEntry, w: number, h: number): void {
-        const c = def.unlocked ? hexColor(def.color) : new Color(80, 96, 110, 255);
-        g.fillColor = new Color(6, 14, 24, 246); clippedPath(g, w, h, 12); g.fill();
-        g.fillColor = new Color(c.r, c.g, c.b, def.unlocked ? 18 : 8); clippedPath(g, w - 5, h - 5, 10); g.fill();
-        g.strokeColor = new Color(c.r, c.g, c.b, def.unlocked ? 160 : 75);
-        g.lineWidth = 1.5; clippedPath(g, w, h, 12); g.stroke();
-        g.strokeColor = new Color(c.r, c.g, c.b, 180); g.lineWidth = 3;
-        g.moveTo(-w / 2 + 22, h / 2 - 5); g.lineTo(w / 2 - 22, h / 2 - 5); g.stroke();
+    private _buildCodexTabs(): void {
+        for (const child of [...this._codexTabs.children]) { child.active = false; child.destroy(); }
+        const tabs: [CodexCategory, string, Color][] = [
+            ['hero', '英雄', UI_PALETTE.cyan],
+            ['boss', '首领', UI_PALETTE.reward],
+            ['miniboss', '小首领', new Color(190, 136, 239, 255)],
+            ['grunt', '小兵', UI_PALETTE.danger],
+        ];
+        tabs.forEach(([category, title, color], i) => {
+            const selected = category === this._codexCategory;
+            const btn = this._mkButton(this._codexTabs, `${title}  ${codexByCategory(category).length}`,
+                -500 + i * 168, 224, 156, 42, selected ? color : new Color(77, 103, 126, 255));
+            btn.on(Node.EventType.TOUCH_END, () => {
+                if (this._codexCategory !== category) this._showCodexCategory(category);
+            });
+        });
+    }
+
+    private _drawCodexCard(g: Graphics, def: CodexEntry, selected: boolean): void {
+        const c = hexColor(def.color);
+        g.clear();
+        g.fillColor = new Color(8, 21, 33, 250);
+        g.roundRect(-114, -75, 228, 150, 12); g.fill();
+        g.fillColor = new Color(c.r, c.g, c.b, selected ? 41 : 15);
+        g.roundRect(-110, -71, 220, 142, 10); g.fill();
+        g.strokeColor = new Color(c.r, c.g, c.b, selected ? 255 : 138);
+        g.lineWidth = selected ? 2.5 : 1.5;
+        g.roundRect(-113, -74, 226, 148, 11); g.stroke();
+        g.fillColor = new Color(c.r, c.g, c.b, selected ? 245 : 169);
+        g.roundRect(-103, 66, 206, 3, 1); g.fill();
+        g.fillColor = new Color(4, 14, 24, 154);
+        g.roundRect(-103, -69, 206, 34, 5); g.fill();
+    }
+
+    private _renderCodexPage(): void {
+        for (const child of [...this._codexGrid.children]) { child.active = false; child.destroy(); }
+        this._codexCardGraphics.clear();
+        const defs = codexByCategory(this._codexCategory);
+        const pages = Math.max(1, Math.ceil(defs.length / 6));
+        this._codexPage = Math.max(0, Math.min(pages - 1, this._codexPage));
+        const current = defs.slice(this._codexPage * 6, this._codexPage * 6 + 6);
+        const names: Record<CodexCategory, string> = { hero: '英雄阵容', boss: '区域首领', miniboss: '小首领', grunt: '战场小兵' };
+        this._codexGridTitle.string = `${names[this._codexCategory]}  /  点击单位读取战术档案`;
+        this._codexPageLabel.string = `${this._codexPage + 1} / ${pages}`;
+        this._codexStats.string = `已收录 ${CODEX_ENTRIES.length} 份单位档案`;
+
+        current.forEach((def, i) => {
+            const card = new Node(`Codex_${def.id}`); card.setParent(this._codexGrid);
+            card.setPosition(new Vec3(-250 + (i % 3) * 250, 86 - Math.floor(i / 3) * 163, 0));
+            card.addComponent(UITransform).setContentSize(228, 150);
+            registerKeyboardFocus(card, 228, 150, { activate: () => this._selectCodex(def) });
+            const g = card.addComponent(Graphics);
+            this._codexCardGraphics.set(def.id, g);
+            if (def.category === 'hero') {
+                loadPortraitArt(card, def.artKey, 208, 99, 0, 16, 'cover', true);
+            } else {
+                loadPortraitArt(card, def.artKey, 196, 99, 0, 16);
+            }
+            this._mkLabel(card, 0, -48, 208, 24, def.name, 16, WHITE);
+            this._mkLabel(card, 0, -66, 208, 17, def.subtitle, 12, hexColor(def.color));
+            card.on(Node.EventType.TOUCH_END, () => this._selectCodex(def));
+        });
+        const selected = current.find(x => x.id === this._codexSelectedId) ?? current[0];
+        if (selected) this._selectCodex(selected);
+    }
+
+    private _turnCodexPage(delta: number): void {
+        const pages = Math.ceil(codexByCategory(this._codexCategory).length / 6);
+        const next = Math.max(0, Math.min(pages - 1, this._codexPage + delta));
+        if (next === this._codexPage) return;
+        this._codexPage = next;
+        this._renderCodexPage();
     }
 
     private _showCodexCategory(category: CodexCategory): void {
+        if (category !== this._codexCategory) {
+            this._codexPage = 0;
+            this._codexSelectedId = '';
+        }
         this._codexCategory = category;
-        this._codexRoots.forEach((root, key) => root.active = key === category);
-        const defs = codexByCategory(category);
-        const unlocked = defs.filter(d => d.unlocked).length;
-        const monsters = codexByCategory('monster');
-        const heroes = codexByCategory('hero');
-        this._codexStats.string = `怪物 ${monsters.filter(x => x.unlocked).length}/${monsters.length}   ·   英雄 ${heroes.filter(x => x.unlocked).length}/${heroes.length}`;
-        const selected = defs.find(d => d.id === this._codexSelectedId) ?? defs.find(d => d.unlocked) ?? defs[0];
-        if (selected) this._selectCodex(selected);
-        void unlocked;
+        this._buildCodexTabs();
+        this._renderCodexPage();
     }
 
     private _selectCodex(def: CodexEntry): void {
         this._codexSelectedId = def.id;
-        this._codexDetailName.string = def.unlocked ? def.name : '未知样本';
-        this._codexDetailSub.string = def.unlocked ? `${def.rarity} · ${def.subtitle}` : '数据未解锁';
-        this._codexDetailDesc.string = def.unlocked ? def.desc : '该档案仍处于加密状态。完成对应遭遇或解锁条件后，将显示图片、名称与完整介绍。';
-        this._codexDetailTraits.string = def.unlocked ? def.traits.map(t => `[ ${t} ]`).join('  ') : '[ ??? ]';
-        this._codexLockHint.string = def.unlocked ? '档案已同步' : '未解锁条目使用问号隐藏视觉与身份信息';
-        this._codexQuestion.node.active = !def.unlocked;
+        this._codexCardGraphics.forEach((g, id) => {
+            const entry = codexByCategory(this._codexCategory).find(x => x.id === id);
+            if (entry) this._drawCodexCard(g, entry, id === def.id);
+        });
+        const c = hexColor(def.color);
+        const frame = this._codexArtFrame; frame.clear();
+        frame.fillColor = new Color(5, 17, 28, 245);
+        frame.roundRect(-176, -104, 352, 208, 12); frame.fill();
+        frame.fillColor = new Color(c.r, c.g, c.b, 18);
+        frame.roundRect(-170, -98, 340, 196, 10); frame.fill();
+        frame.strokeColor = new Color(c.r, c.g, c.b, 150); frame.lineWidth = 1.5;
+        frame.roundRect(-175, -103, 350, 206, 11); frame.stroke();
+        frame.strokeColor = new Color(c.r, c.g, c.b, 90); frame.lineWidth = 1;
+        frame.moveTo(-136, -83); frame.lineTo(136, -83); frame.stroke();
+        this._codexDetailName.string = def.name;
+        this._codexDetailSub.string = def.subtitle;
+        this._codexDetailDesc.string = def.desc;
+        this._codexDetailCombat.string = `应对 / ${def.combat}`;
+        this._codexDetailTraits.string = def.traits.map(t => `[ ${t} ]`).join('  ');
+        this._codexDetailEncounter.string = `发现地 / ${def.encounter}`;
         this._codexArtSprite.spriteFrame = null;
-        if (def.unlocked) {
-            const selectedId = def.id;
-            loadArtSprite(def.artKey, frame => {
-                if (this._codexSelectedId === selectedId && this._codexArtSprite.isValid) {
-                    this._codexArtSprite.spriteFrame = frame;
-                }
-            });
-        }
+        const selectedId = def.id;
+        loadArtSprite(def.artKey, art => {
+            if (art && this._codexSelectedId === selectedId && this._codexArtSprite.isValid) {
+                fitPortraitFrame(this._codexArtSprite, art, 340, 196,
+                    def.category === 'hero' ? 'cover' : 'contain', def.category === 'hero');
+            }
+        });
     }
 
     private _buildAchievementPage(): void {
@@ -513,12 +559,6 @@ export class MetaPageUI {
     }
 
     private _mkArt(parent: Node, key: string, width: number, height: number, x: number, y: number): Sprite {
-        const n = new Node(`Art_${key}`); n.setParent(parent); n.setPosition(new Vec3(x, y, 0));
-        n.addComponent(UITransform).setContentSize(width, height);
-        const sprite = n.addComponent(Sprite); sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        loadArtSprite(key, frame => {
-            if (sprite.isValid) sprite.spriteFrame = frame;
-        });
-        return sprite;
+        return loadPortraitArt(parent, key, width, height, x, y);
     }
 }

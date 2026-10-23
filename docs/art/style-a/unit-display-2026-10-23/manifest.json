@@ -1,0 +1,572 @@
+[
+  {
+    "id": "grunt",
+    "category": "grunt",
+    "artKey": "ui_unit_display_grunt",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/grunt.png",
+    "combatArtKey": "enemy_grunt",
+    "width": 564,
+    "height": 638,
+    "alphaBounds": [
+      24,
+      24,
+      540,
+      614
+    ]
+  },
+  {
+    "id": "shield",
+    "category": "grunt",
+    "artKey": "ui_unit_display_shield",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/shield.png",
+    "combatArtKey": "enemy_shield",
+    "width": 590,
+    "height": 638,
+    "alphaBounds": [
+      24,
+      24,
+      566,
+      614
+    ]
+  },
+  {
+    "id": "exploder",
+    "category": "grunt",
+    "artKey": "ui_unit_display_exploder",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/exploder.png",
+    "combatArtKey": "enemy_exploder",
+    "width": 546,
+    "height": 546,
+    "alphaBounds": [
+      24,
+      24,
+      522,
+      522
+    ]
+  },
+  {
+    "id": "golem",
+    "category": "grunt",
+    "artKey": "ui_unit_display_golem",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/golem.png",
+    "combatArtKey": "enemy_golem",
+    "width": 660,
+    "height": 619,
+    "alphaBounds": [
+      24,
+      24,
+      636,
+      595
+    ]
+  },
+  {
+    "id": "elite_grunt",
+    "category": "grunt",
+    "artKey": "ui_unit_display_elite_grunt",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/elite_grunt.png",
+    "combatArtKey": "enemy_elite",
+    "width": 663,
+    "height": 638,
+    "alphaBounds": [
+      24,
+      24,
+      639,
+      614
+    ]
+  },
+  {
+    "id": "archer",
+    "category": "grunt",
+    "artKey": "ui_unit_display_archer",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/archer.png",
+    "combatArtKey": "enemy_archer",
+    "width": 682,
+    "height": 638,
+    "alphaBounds": [
+      24,
+      24,
+      658,
+      614
+    ]
+  },
+  {
+    "id": "miniboss",
+    "category": "grunt",
+    "artKey": "ui_unit_display_miniboss",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/miniboss.png",
+    "combatArtKey": "enemy_shadow_hunter",
+    "width": 570,
+    "height": 365,
+    "alphaBounds": [
+      24,
+      24,
+      546,
+      341
+    ]
+  },
+  {
+    "id": "rust_biter",
+    "category": "grunt",
+    "artKey": "ui_unit_display_rust_biter",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/rust_biter.png",
+    "combatArtKey": "enemy_rust_biter",
+    "width": 558,
+    "height": 507,
+    "alphaBounds": [
+      24,
+      24,
+      534,
+      483
+    ]
+  },
+  {
+    "id": "needle_gunner",
+    "category": "grunt",
+    "artKey": "ui_unit_display_needle_gunner",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/needle_gunner.png",
+    "combatArtKey": "enemy_needle_gunner",
+    "width": 512,
+    "height": 407,
+    "alphaBounds": [
+      24,
+      24,
+      488,
+      383
+    ]
+  },
+  {
+    "id": "ember_acolyte",
+    "category": "grunt",
+    "artKey": "ui_unit_display_ember_acolyte",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/ember_acolyte.png",
+    "combatArtKey": "enemy_ember_acolyte",
+    "width": 433,
+    "height": 576,
+    "alphaBounds": [
+      24,
+      24,
+      409,
+      552
+    ]
+  },
+  {
+    "id": "frost_acolyte",
+    "category": "grunt",
+    "artKey": "ui_unit_display_frost_acolyte",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/frost_acolyte.png",
+    "combatArtKey": "enemy_frost_acolyte",
+    "width": 578,
+    "height": 489,
+    "alphaBounds": [
+      24,
+      24,
+      554,
+      465
+    ]
+  },
+  {
+    "id": "acid_sac",
+    "category": "grunt",
+    "artKey": "ui_unit_display_acid_sac",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/acid_sac.png",
+    "combatArtKey": "enemy_acid_sac",
+    "width": 569,
+    "height": 533,
+    "alphaBounds": [
+      24,
+      24,
+      545,
+      509
+    ]
+  },
+  {
+    "id": "rivet_beast",
+    "category": "grunt",
+    "artKey": "ui_unit_display_rivet_beast",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/rivet_beast.png",
+    "combatArtKey": "enemy_rivet_beast",
+    "width": 546,
+    "height": 503,
+    "alphaBounds": [
+      24,
+      24,
+      522,
+      479
+    ]
+  },
+  {
+    "id": "arc_leech",
+    "category": "grunt",
+    "artKey": "ui_unit_display_arc_leech",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/arc_leech.png",
+    "combatArtKey": "enemy_arc_leech",
+    "width": 444,
+    "height": 587,
+    "alphaBounds": [
+      24,
+      24,
+      420,
+      563
+    ]
+  },
+  {
+    "id": "gold_scavenger",
+    "category": "grunt",
+    "artKey": "ui_unit_display_gold_scavenger",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/gold_scavenger.png",
+    "combatArtKey": "enemy_gold_scavenger",
+    "width": 546,
+    "height": 504,
+    "alphaBounds": [
+      24,
+      24,
+      522,
+      480
+    ]
+  },
+  {
+    "id": "blast_tick",
+    "category": "grunt",
+    "artKey": "ui_unit_display_blast_tick",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/blast_tick.png",
+    "combatArtKey": "enemy_blast_tick",
+    "width": 430,
+    "height": 325,
+    "alphaBounds": [
+      24,
+      24,
+      406,
+      301
+    ]
+  },
+  {
+    "id": "squid",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_squid",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/squid.png",
+    "combatArtKey": "enemy_squid",
+    "width": 601,
+    "height": 700,
+    "alphaBounds": [
+      24,
+      24,
+      577,
+      676
+    ]
+  },
+  {
+    "id": "turtle",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_turtle",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/turtle.png",
+    "combatArtKey": "enemy_turtle",
+    "width": 525,
+    "height": 533,
+    "alphaBounds": [
+      24,
+      24,
+      501,
+      509
+    ]
+  },
+  {
+    "id": "shrimp",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_shrimp",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/shrimp.png",
+    "combatArtKey": "enemy_shrimp",
+    "width": 546,
+    "height": 518,
+    "alphaBounds": [
+      24,
+      24,
+      522,
+      494
+    ]
+  },
+  {
+    "id": "jelly",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_jelly",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/jelly.png",
+    "combatArtKey": "enemy_jelly",
+    "width": 509,
+    "height": 545,
+    "alphaBounds": [
+      24,
+      24,
+      485,
+      521
+    ]
+  },
+  {
+    "id": "drone_a",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_drone_a",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/drone_a.png",
+    "combatArtKey": "enemy_drone_attack",
+    "width": 519,
+    "height": 441,
+    "alphaBounds": [
+      24,
+      24,
+      495,
+      417
+    ]
+  },
+  {
+    "id": "drone_s",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_drone_s",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/drone_s.png",
+    "combatArtKey": "enemy_drone_support",
+    "width": 549,
+    "height": 441,
+    "alphaBounds": [
+      24,
+      24,
+      525,
+      417
+    ]
+  },
+  {
+    "id": "chain_hound",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_chain_hound",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/chain_hound.png",
+    "combatArtKey": "enemy_chain_hound",
+    "width": 654,
+    "height": 373,
+    "alphaBounds": [
+      24,
+      24,
+      630,
+      349
+    ]
+  },
+  {
+    "id": "prism_snail",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_prism_snail",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/prism_snail.png",
+    "combatArtKey": "enemy_prism_snail",
+    "width": 547,
+    "height": 501,
+    "alphaBounds": [
+      24,
+      24,
+      523,
+      477
+    ]
+  },
+  {
+    "id": "triune_priest",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_triune_priest",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/triune_priest.png",
+    "combatArtKey": "enemy_triune_priest",
+    "width": 491,
+    "height": 538,
+    "alphaBounds": [
+      24,
+      24,
+      467,
+      514
+    ]
+  },
+  {
+    "id": "rail_butcher",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_rail_butcher",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/rail_butcher.png",
+    "combatArtKey": "enemy_rail_butcher",
+    "width": 683,
+    "height": 638,
+    "alphaBounds": [
+      24,
+      24,
+      659,
+      614
+    ]
+  },
+  {
+    "id": "bell_devourer",
+    "category": "miniboss",
+    "artKey": "ui_unit_display_bell_devourer",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/bell_devourer.png",
+    "combatArtKey": "enemy_bell_devourer",
+    "width": 517,
+    "height": 469,
+    "alphaBounds": [
+      24,
+      24,
+      493,
+      445
+    ]
+  },
+  {
+    "id": "boss_ch1",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_ch1",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_ch1.png",
+    "combatArtKey": "enemy_boss_ch1",
+    "width": 605,
+    "height": 619,
+    "alphaBounds": [
+      24,
+      24,
+      581,
+      595
+    ]
+  },
+  {
+    "id": "boss_ch2",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_ch2",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_ch2.png",
+    "combatArtKey": "enemy_boss_ch2",
+    "width": 689,
+    "height": 619,
+    "alphaBounds": [
+      24,
+      24,
+      665,
+      595
+    ]
+  },
+  {
+    "id": "boss_ch3",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_ch3",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_ch3.png",
+    "combatArtKey": "enemy_boss_ch3",
+    "width": 483,
+    "height": 570,
+    "alphaBounds": [
+      24,
+      24,
+      459,
+      546
+    ]
+  },
+  {
+    "id": "boss_ch4",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_ch4",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_ch4.png",
+    "combatArtKey": "enemy_boss_ch4",
+    "width": 553,
+    "height": 574,
+    "alphaBounds": [
+      24,
+      24,
+      529,
+      550
+    ]
+  },
+  {
+    "id": "boss_mech",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_mech",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_mech.png",
+    "combatArtKey": "enemy_boss_mech",
+    "width": 802,
+    "height": 642,
+    "alphaBounds": [
+      24,
+      24,
+      778,
+      618
+    ]
+  },
+  {
+    "id": "boss_abyss",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_abyss",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_abyss.png",
+    "combatArtKey": "enemy_boss_abyss",
+    "width": 542,
+    "height": 576,
+    "alphaBounds": [
+      24,
+      24,
+      518,
+      552
+    ]
+  },
+  {
+    "id": "boss_vespa",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_vespa",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_vespa.png",
+    "combatArtKey": "enemy_boss_vespa",
+    "width": 630,
+    "height": 496,
+    "alphaBounds": [
+      24,
+      24,
+      606,
+      472
+    ]
+  },
+  {
+    "id": "boss_crucible_city",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_crucible_city",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_crucible_city.png",
+    "combatArtKey": "enemy_boss_crucible_city",
+    "width": 530,
+    "height": 712,
+    "alphaBounds": [
+      24,
+      24,
+      506,
+      688
+    ]
+  },
+  {
+    "id": "boss_manyfold",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_manyfold",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_manyfold.png",
+    "combatArtKey": "enemy_boss_manyfold",
+    "width": 813,
+    "height": 696,
+    "alphaBounds": [
+      24,
+      24,
+      789,
+      672
+    ]
+  },
+  {
+    "id": "boss_invader",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_invader",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_invader.png",
+    "combatArtKey": "enemy_boss",
+    "width": 725,
+    "height": 619,
+    "alphaBounds": [
+      24,
+      24,
+      701,
+      595
+    ]
+  },
+  {
+    "id": "boss_joker",
+    "category": "boss",
+    "artKey": "ui_unit_display_boss_joker",
+    "sourceRig": "docs/art/style-a/enemy-redesign/rigs/boss_joker.png",
+    "combatArtKey": "enemy_boss_joker",
+    "width": 575,
+    "height": 677,
+    "alphaBounds": [
+      24,
+      24,
+      551,
+      653
+    ]
+  }
+]

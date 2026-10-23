@@ -13,6 +13,7 @@ import {
 import { MUTATIONS } from '../data/WaveData';
 import { getBossDefById } from '../data/BossDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
+import { createPortraitViewport, fitPortraitFrame, loadPortraitArt } from '../core/PortraitArt';
 import { styleLabel } from '../core/LabelUtils';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
     isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus,
@@ -1067,8 +1068,11 @@ export class ScreenManager extends Component {
             markers.forEach((g, i) => {
                 g.clear();
                 if (i !== idx) return;
+                g.strokeColor = UI_PALETTE.reward;
+                g.lineWidth = 2.5;
+                g.roundRect(-74, -59, 148, 118, 10); g.stroke();
                 g.fillColor = UI_PALETTE.reward;
-                g.fillRect(-76, -62, 152, 4);
+                g.roundRect(-59, -60, 118, 4, 2); g.fill();
             });
         };
         const roles = ['贯穿射击 / 爆发输出', '炮台部署 / 火力支援', '近身作战 / 吸血续航',
@@ -1087,8 +1091,8 @@ export class ScreenManager extends Component {
                 g.fillColor = accent; g.fillRect(-225, -146, 3, 290);
             };
             draw(); attachEnableRedraw(focus, draw);
-            const portrait = new Node('PortraitMount'); portrait.setParent(focus); portrait.setPosition(-407, 6);
-            this._loadPortrait(portrait, `char_${def.id}`, 296, 0);
+            const portrait = new Node('PortraitMount'); portrait.setParent(focus); portrait.setPosition(-407, 0);
+            loadPortraitArt(portrait, `ui_hero_display_${def.id}`, 306, 306);
             label(focus, 'HeroName', def.name, 170, 125, 730, 48, 34);
             label(focus, 'Role', roles[i], 170, 81, 730, 28, 17, accent);
             label(focus, 'Passive', `被动  ${def.desc}`, 170, 30, 730, 66, 19, UI_PALETTE.muted);
@@ -1113,18 +1117,25 @@ export class ScreenManager extends Component {
                 detail.on(Node.EventType.TOUCH_END, () => this.showCharDetail(def), this);
             }
             focusPanels.push(focus);
-            const tile = this._mkBtn(p, def.name.split('·').pop()!.trim(), -560 + i * 160, -254,
-                150, 120, new Color(83, 114, 137));
-            tile.name = `HeroTile_${i}`;
-            const name = tile.getChildByName('L')!;
-            name.setPosition(0, -39);
-            name.getComponent(Label)!.fontSize = 19;
-            name.getComponent(Label)!.lineHeight = 26;
-            name.getComponent(UITransform)!.setContentSize(142, 28);
-            const portraitKey = def.id === 'via' || def.id === 'mortis'
-                ? `ui_portrait_${def.id}` : `char_${def.id}`;
-            this._loadPortrait(tile, portraitKey, 76, 16);
-            if (locked) label(tile, 'Locked', '未解锁', 0, 12, 78, 28, 15, UI_PALETTE.reward);
+            // 专门绘制的高清半身像；名单显示头肩，完整展示图在主卡中等比呈现。
+            const tile = new Node(`HeroTile_${i}`); tile.setParent(p);
+            tile.setPosition(-560 + i * 160, -254);
+            tile.addComponent(UITransform).setContentSize(150, 120);
+            const tileG = tile.addComponent(Graphics);
+            const drawTile = () => {
+                tileG.clear();
+                drawHexPanel(tileG, -75, -60, 150, 120, accent, 244);
+                tileG.fillColor = new Color(6, 18, 29, 190);
+                tileG.roundRect(-69, -29, 138, 82, 8); tileG.fill();
+                tileG.fillColor = new Color(accent.r, accent.g, accent.b, 180);
+                tileG.roundRect(-65, -31, 130, 2, 1); tileG.fill();
+            };
+            drawTile(); attachEnableRedraw(tile, drawTile);
+            registerKeyboardFocus(tile, 150, 120, { activate: () => focusHero(i) });
+            loadPortraitArt(tile, `ui_hero_display_${def.id}`, 138, 82, 0, 12, 'cover', true);
+            label(tile, 'HeroTileName', def.name.split('·').pop()!.trim(), 0, -43, 132, 27, 16)
+                .horizontalAlign = HorizontalTextAlignment.CENTER;
+            if (locked) label(tile, 'Locked', '未解锁', 42, -15, 58, 18, 11, UI_PALETTE.reward);
             const marker = new Node('Selected'); marker.setParent(tile);
             markers.push(marker.addComponent(Graphics));
             tile.on(Node.EventType.TOUCH_END, () => focusHero(i), this);
@@ -1202,11 +1213,7 @@ export class ScreenManager extends Component {
         pf.addComponent(UITransform).setContentSize(246, 246);
         this._detailPortraitGfx = pf.addComponent(Graphics);
 
-        const pn = new Node('Portrait'); pn.setParent(dlg);
-        pn.setPosition(new Vec3(-350, 94, 0));
-        pn.addComponent(UITransform).setContentSize(230, 230);
-        this._detailPortrait = pn.addComponent(Sprite);
-        this._detailPortrait.sizeMode = Sprite.SizeMode.CUSTOM;
+        this._detailPortrait = createPortraitViewport(dlg, 'HeroDetailPortrait', 230, 230, -350, 94);
 
         const stN = new Node('Stats'); stN.setParent(dlg);
         stN.setPosition(new Vec3(-350, -136, 0));
@@ -1351,8 +1358,11 @@ export class ScreenManager extends Component {
         this._detailTitle.string = def.name;
         this._detailTitle.color = col;
 
-        loadArtSprite(`char_${def.id}`, (frame) => {
-            if (frame && this._detailPortrait.isValid) this._detailPortrait.spriteFrame = frame;
+        this._detailPortrait.spriteFrame = null;
+        loadArtSprite(`ui_hero_display_${def.id}`, (frame) => {
+            if (frame && this._detailPortrait.isValid && this._detailDef?.id === def.id) {
+                fitPortraitFrame(this._detailPortrait, frame, 230, 230);
+            }
         });
 
         this._detailStats.string =
@@ -1755,33 +1765,6 @@ export class ScreenManager extends Component {
         p.addComponent(UITransform).setContentSize(w, h);
         this._panels.set(name, p);
         return p;
-    }
-
-    /**
-     * Loads the art resource keyed by `key` (e.g. 'char_kai', WITHOUT the 'art/'
-     * prefix) and shows it as a Sprite centered in `size` pixels, anchored
-     * `yOffset` above the parent's local origin. Goes through SpriteUtils.loadArtSprite
-     * so the key is first resolved by ArtRemap (in case the on-disk file for this
-     * key is mis-mapped) and shares the common SpriteFrame cache. Fails silently
-     * (logs a warning) if the asset can't be found, so missing art never breaks UI.
-     */
-    private _loadPortrait(parent: Node, key: string, size: number, yOffset: number, extra = 0) {
-        const pn = new Node('Portrait'); pn.setParent(parent);
-        pn.setPosition(new Vec3(0, yOffset + extra, 0));
-        // PortraitFrame 固定在卡片 sibling 0，立绘必须位于它上方；此前把立绘也
-        // 塞到 0 会将深色框底板顶到前景，实际预览中六张角色图都被遮暗。
-        pn.setSiblingIndex(1);
-        const ui = pn.addComponent(UITransform);
-        ui.setContentSize(size, size);
-        const sp = pn.addComponent(Sprite);
-        sp.sizeMode = Sprite.SizeMode.CUSTOM;
-        loadArtSprite(key, (frame) => {
-            if (!frame || !sp.isValid) {
-                console.warn(`[ScreenManager] portrait not found: ${key}`);
-                return;
-            }
-            sp.spriteFrame = frame;
-        });
     }
 
     private _mkBtn(parent: Node, text: string,

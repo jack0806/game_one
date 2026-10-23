@@ -19,6 +19,7 @@
     "assets/scripts/core/Constants.ts",
     "assets/scripts/core/DirectionalFacing.ts",
     "assets/scripts/core/EntityVisual.ts",
+    "assets/scripts/core/ImageLayout.ts",
     "assets/scripts/core/Locomotion.ts",
     "assets/scripts/core/MathUtils.ts",
     "assets/scripts/data/AugmentDB.ts",

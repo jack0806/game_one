@@ -149,12 +149,14 @@ test('任务树页与章节任务线已按玩家要求整体移除', () => {
     assert.doesNotMatch(mpSource, /QuestDef/);
 });
 
-test('图鉴显示怪物英雄统计、条目图片和未解锁问号详情', () => {
-    assert.match(metaSource, /'怪物档案'/);
-    assert.match(metaSource, /'英雄档案'/);
-    assert.match(metaSource, /怪物 \$\{monsters/);
-    assert.match(metaSource, /this\._mkLabel\(card, 0, 28, 88, 88, '\?'/);
-    assert.match(metaSource, /未解锁条目使用问号隐藏视觉与身份信息/);
+test('图鉴以四类单位分页，原画和详情可阅读', () => {
+    for (const type of ["'hero'", "'boss'", "'miniboss'", "'grunt'"]) assert.ok(metaSource.includes(type));
+    assert.match(metaSource, /_turnCodexPage/);
+    assert.match(metaSource, /defs\.slice\(this\._codexPage \* 6/);
+    assert.match(metaSource, /loadPortraitArt\(card, def\.artKey/);
+    assert.match(metaSource, /fitPortraitFrame\(this\._codexArtSprite/);
+    assert.match(metaSource, /发现地 \/ /);
+    assert.match(screenSource, /ui_hero_display_\$\{def\.id\}/, '选人页使用专门绘制的高清展示图');
 });
 
 test('成就墙按稀有度页签重建(2026-10-19定稿),排版游标=本地顶缘,未解锁置灰', () => {
@@ -241,7 +243,7 @@ test('英雄介绍弹窗展示被动与Q/E/R详细描述、冷却与基础属性
     assert.match(screenSource, /splitSkillText\(def\.skills\.q\)\[1\]/);
     // 基础属性与立绘
     assert.match(screenSource, /攻击方式  \$\{def\.attackType === 'melee' \? '近战' : '远程'\}/);
-    assert.match(screenSource, /loadArtSprite\(`char_\$\{def\.id\}`/);
+    assert.match(screenSource, /loadArtSprite\(`ui_hero_display_\$\{def\.id\}`/);
     assert.match(screenSource, /ui_icon_\$\{def\.skillIcons/);
     // 弹窗内可直接出战或返回
     assert.match(screenSource, /if \(this\._detailDef\) this\.onCharSelected\?\.\(this\._detailDef\);/);
@@ -252,7 +254,7 @@ test('英雄介绍弹窗以大幅立绘和四张技能卡呈现，文字保持�
     assert.match(screenSource, /this\._detailTitle\.fontSize = 32/);
     assert.match(screenSource, /this\._detailStats\.fontSize = 16/);
     assert.match(screenSource, /this\._detailStats\.lineHeight = 23/);
-    assert.match(screenSource, /pn\.addComponent\(UITransform\)\.setContentSize\(230, 230\)/);
+    assert.match(screenSource, /createPortraitViewport\(dlg, 'HeroDetailPortrait', 230, 230/);
     assert.match(screenSource, /for \(const y of \[127, 27, -73, -173\]\)/);
     assert.match(screenSource, /tap\.on\(Node\.EventType\.TOUCH_END, \(\) => this\._showCharSkillDetail\(k\)\)/);
     assert.match(screenSource, /this\._detailSkillFullDesc\.string = slot === 0 \? def\.desc : skill!\[1\]/);

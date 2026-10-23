@@ -1,5 +1,6 @@
 """敌人局部关节动作曲线；所有坐标仅影响身体画面，不参与伤害与碰撞。"""
 import math
+from functools import partial
 from PIL import Image
 
 SIZE = 256
@@ -9,9 +10,9 @@ HEAVY = {'golem','bell_devourer','boss_ch1','boss_ch2','boss_mech','boss_invader
 _SCALED = {}
 
 
-def draw_part(canvas, part, height, pivot, joint, angle=0, tip=None):
-    ratio = height/part.height
-    w, h = max(1,round(part.width*ratio)), max(1,round(height))
+def _draw_part(canvas, part, height, pivot, joint, angle=0, tip=None, pixel_scale=1):
+    ratio = height*pixel_scale/part.height
+    w, h = max(1,round(part.width*ratio)), max(1,round(height*pixel_scale))
     key = (id(part),h)
     if key not in _SCALED:
         _SCALED[key] = (part,part.resize((w,h),Image.Resampling.LANCZOS))
@@ -24,17 +25,20 @@ def draw_part(canvas, part, height, pivot, joint, angle=0, tip=None):
         dx,dy = px-w/2,py-h/2
         px=layer.width/2+math.cos(a)*dx+math.sin(a)*dy
         py=layer.height/2-math.sin(a)*dx+math.cos(a)*dy
-    canvas.alpha_composite(layer,(round(joint[0]-px+128),round(joint[1]-py+128)))
+    canvas.alpha_composite(layer,(round(joint[0]*pixel_scale-px+128*pixel_scale),round(joint[1]*pixel_scale-py+128*pixel_scale)))
     if tip is not None:
         dx,dy=(tip[0]-pivot[0])*w,(tip[1]-pivot[1])*h
         a=math.radians(angle)
-        return (joint[0]+math.cos(a)*dx+math.sin(a)*dy,joint[1]-math.sin(a)*dx+math.cos(a)*dy)
-    return w,h
+        return (joint[0]+(math.cos(a)*dx+math.sin(a)*dy)/pixel_scale,
+                joint[1]+(-math.sin(a)*dx+math.cos(a)*dy)/pixel_scale)
+    return w/pixel_scale,h/pixel_scale
 
 
-def render_pose(parts, view, action, t, unit, markers=None):
+def render_pose(parts, view, action, t, unit, markers=None, pixel_scale=1):
     uid, kind = unit.get('sourceId', unit['id']), unit['rig']
-    canvas = Image.new('RGBA',(SIZE*2,SIZE*2))
+    # 展示图直接以原始部件在目标像素密度绘制，避免把低分辨率战斗帧二次放大。
+    canvas = Image.new('RGBA',(SIZE*2*pixel_scale,SIZE*2*pixel_scale))
+    draw_part = partial(_draw_part, pixel_scale=pixel_scale)
     side, back = view == 'side', view == 'back'
     moving = action in ('walk','run')
     cycle = t*math.tau
@@ -374,5 +378,5 @@ def render_pose(parts, view, action, t, unit, markers=None):
     if fall:
         # 保留关节塌落；末态围绕身体中部倾倒，固定脚底基准且不裁边。
         angle = -fall*(63 if kind=='biped' else 26)
-        canvas = canvas.rotate(angle,Image.Resampling.BICUBIC,center=(256,271))
+        canvas = canvas.rotate(angle,Image.Resampling.BICUBIC,center=(256*pixel_scale,271*pixel_scale))
     return canvas

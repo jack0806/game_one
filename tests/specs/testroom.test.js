@@ -57,11 +57,11 @@ test('行2:首领/小boss/小兵三页签,单位卡由UNIT_CATALOG驱动', () =>
     assert.match(testroomSource, /this\.onSpawnUnit\?\.\(entry\.id, this\._count\)/);
 });
 
-test('工具条含英雄选择入口,浮层3×2角色卡并可查询当前英雄高亮', () => {
+test('工具条含英雄选择入口,浮层4×2角色卡并可查询当前英雄高亮', () => {
     assert.match(testroomSource, /_mkSmallBtn\(this\.node, '英雄', -160, 20, 90, 30/);
     assert.match(testroomSource, /'— 选择出战英雄 —'/);
     assert.match(testroomSource, /for \(let i = 0; i < CHARS\.length; i\+\+\) \{/);
-    assert.match(testroomSource, /applyArtSprite\(sp, `char_token_\$\{def\.id\}`\)/);
+    assert.match(testroomSource, /loadPortraitArt\(card, `ui_hero_display_\$\{def\.id\}`/);
     assert.match(testroomSource, /this\.onSelectHero\?\.\(def\.id\)/);
     assert.match(testroomSource, /this\._heroId = this\.onGetHero\?\.\(\) \?\? this\._heroId;/);
     assert.match(testroomSource, /resetState\(\) \{/);

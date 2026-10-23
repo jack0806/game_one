@@ -8,6 +8,7 @@ import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel,
     registerKeyboardFocus, registerKeyboardModalScope, unregisterKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
+import { loadPortraitArt } from '../core/PortraitArt';
 import { clamp } from '../core/MathUtils';
 import { UNIT_CATALOG, UnitCategory } from '../data/BossDB';
 import { CHARS } from '../data/CharacterDB';
@@ -500,13 +501,7 @@ export class TestRoomUI extends Component {
             card.addComponent(UITransform).setContentSize(150, 108);
             const g = card.addComponent(Graphics);
 
-            const imgN = new Node('Img'); imgN.setParent(card);
-            imgN.setPosition(new Vec3(0, 22, 0));
-            imgN.addComponent(UITransform).setContentSize(58, 58);
-            const sp = imgN.addComponent(Sprite);
-            sp.sizeMode = Sprite.SizeMode.CUSTOM;
-            sp.trim = false;
-            applyArtSprite(sp, `char_token_${def.id}`);
+            loadPortraitArt(card, `ui_hero_display_${def.id}`, 134, 70, 0, 14, 'cover', true);
 
             const nameN = new Node('Nm'); nameN.setParent(card);
             nameN.setPosition(new Vec3(0, -36, 0));
