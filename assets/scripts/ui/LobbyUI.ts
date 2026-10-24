@@ -21,6 +21,7 @@ import { CHARS } from '../data/CharacterDB';
 import { MetaPageName } from './MetaPageUI';
 import {
     EQUIP_AFFIXES, equipmentLabel, equipmentSellValue, equipmentValue,
+    equipmentKey, rollEquipmentDrop,
 } from '../data/EquipmentDB';
 
 export interface LobbyCallbacks {
@@ -40,6 +41,24 @@ const CYAN = new Color(40, 224, 218, 255);
 const GOLD = new Color(255, 205, 82, 255);
 
 const SLOT_TITLES = ['存档 一', '存档 二', '存档 三'];
+
+/** 军需商店商品（v5：核心币购买；补给类只对购买后的下一局生效，可叠加）。 */
+interface LobbyShopItem {
+    id: 'box' | 'gold' | 'draws' | 'shield';
+    name: string;
+    desc: string;
+    price: number;
+}
+const SHOP_ITEMS: LobbyShopItem[] = [
+    { id: 'box',    name: '装备箱',   price: 60,
+      desc: '随机一件未拥有的装备入仓\n品质上限随通关进度提升' },
+    { id: 'gold',   name: '战备金库', price: 25,
+      desc: '下一局开局 +150 金币\n可重复购买，开局叠加生效' },
+    { id: 'draws',  name: '战备情报', price: 40,
+      desc: '下一局开局 +3 次海克斯三选一连抽\n可重复购买，开局叠加生效' },
+    { id: 'shield', name: '战备护盾', price: 30,
+      desc: '下一局开局 +60 护盾\n可重复购买，开局叠加生效' },
+];
 
 function drawPanel(g: Graphics, w: number, h: number, accent: Color): void {
     const draw = () => {
@@ -64,6 +83,10 @@ export class LobbyUI {
     private _armorySlots: Label[] = [];
     private _armoryGrid!: Node;
     private _armoryCoins!: Label;
+    /** v5 军需商店浮层（核心币购买装备箱与下一局战备补给）。 */
+    private _shop!: Node;
+    private _shopCoins!: Label;
+    private _shopCards: { note: Label; btnLabel: Label }[] = [];
 
     constructor(private readonly _root: Node, private readonly _callbacks: LobbyCallbacks) {
         this._panel = this._buildPage();
@@ -145,6 +168,7 @@ export class LobbyUI {
         this._buildMetaDock(page);
         this._buildPortal(page);
         this._armory = this._buildArmory();
+        this._shop = this._buildShop();
         return page;
     }
 
@@ -165,7 +189,8 @@ export class LobbyUI {
         switchBtn.on(Node.EventType.TOUCH_END, () => this._callbacks.onSwitchSave());
     }
 
-    /** 左下：图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。 */
+    /** 左下：商店/图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。
+     *  商店占旧「任务树」位（顶部）：核心币购买装备箱与下一局战备补给。 */
     private _buildMetaDock(page: Node): void {
         const dock = new Node('MetaDock'); dock.setParent(page);
         dock.setPosition(new Vec3(-431, -160, 0));
@@ -178,12 +203,19 @@ export class LobbyUI {
             ['achievements', '成就档案', GOLD],
         ];
         entries.forEach(([name, label, accent], i) => {
-            const btn = this._mkButton(dock, label, 0, 74 - i * 68, 334,
+            const btn = this._mkButton(dock, label, 0, 6 - i * 68, 334,
                 sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 64 : 54, accent);
             btn.on(Node.EventType.TOUCH_END, () => this._callbacks.onMetaPage(name));
         });
-        // v4：装备库入口（本页浮层，不走路由）；按钮位置在两个元进度入口下方
-        const armoryBtn = this._mkButton(dock, '装备库', 0, -62 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
+        // v5：军需商店入口（本页浮层，不走路由）——占旧任务树位，置于终端组顶部
+        const shopBtn = this._mkButton(dock, '商店', 0, 74, 334,
+            sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 64 : 54, new Color(86, 200, 120, 255));
+        shopBtn.on(Node.EventType.TOUCH_END, () => {
+            this._callbacks.onButtonSfx();
+            this._openShop();
+        });
+        // v4：装备库入口（本页浮层，不走路由）；按钮位置在终端组下方
+        const armoryBtn = this._mkButton(dock, '装备库', 0, -128 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
             sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 56 : 46, new Color(150, 108, 220, 255));
         armoryBtn.on(Node.EventType.TOUCH_END, () => {
             this._callbacks.onButtonSfx();
@@ -332,6 +364,118 @@ export class LobbyUI {
                 this._refreshArmory();
             });
         });
+    }
+
+    // ── v5 军需商店浮层 ───────────────────────────────────────
+
+    private _openShop(): void {
+        this._refreshShop();
+        this._shop.active = true;
+    }
+
+    private _closeShop(): void {
+        this._shop.active = false;
+    }
+
+    /** 商店购买：扣核心币 → 发货（装备箱入仓 / 补给记入下一局）。 */
+    private _buyShopItem(item: LobbyShopItem, note: Label): void {
+        if (item.id === 'box') {
+            // 先验货再扣款：仓库集齐（无可掉落组合）时直接提示，不动余额
+            const p = SaveSystem.load();
+            const owned = new Set((p.equipments ?? []).map((e: any) => equipmentKey(e)));
+            const equip = rollEquipmentDrop(SaveSystem.unlockedChapterCount(), owned);
+            if (!equip) {
+                note.string = '仓库已集齐，无可购装备';
+                note.color = new Color(255, 150, 120, 255);
+                return;
+            }
+            if (!SaveSystem.spendCoreCoins(item.price)) { this._shopShortCoins(note); return; }
+            SaveSystem.addEquipment(equip);
+        } else {
+            if (!SaveSystem.spendCoreCoins(item.price)) { this._shopShortCoins(note); return; }
+            if (item.id === 'gold') SaveSystem.addShopSupply(150, 0, 0);
+            else if (item.id === 'draws') SaveSystem.addShopSupply(0, 3, 0);
+            else SaveSystem.addShopSupply(0, 0, 60);
+        }
+        this._refreshShop();
+    }
+
+    private _shopShortCoins(note: Label): void {
+        note.string = '核心币不足';
+        note.color = new Color(255, 150, 120, 255);
+    }
+
+    /** 刷新余额与各卡片状态（打开/购买后调用）。 */
+    private _refreshShop(): void {
+        const p = SaveSystem.load();
+        this._shopCoins.string = `核心币 ${p.coreCoins ?? 0}`;
+        const supply = SaveSystem.shopSupply();
+        SHOP_ITEMS.forEach((item, i) => {
+            const card = this._shopCards[i];
+            if (!card) return;
+            card.btnLabel.string = `购买 ${item.price} 币`;
+            card.note.color = new Color(140, 255, 170, 255);
+            if (item.id === 'box') {
+                card.note.string = '永久资产 · 入仓可在装备库配装';
+            } else if (item.id === 'gold') {
+                card.note.string = supply.gold > 0 ? `待生效：开局 +${supply.gold} 金币` : '尚未购买';
+            } else if (item.id === 'draws') {
+                card.note.string = supply.draws > 0 ? `待生效：开局 +${supply.draws} 连抽` : '尚未购买';
+            } else {
+                card.note.string = supply.shield > 0 ? `待生效：开局 +${supply.shield} 护盾` : '尚未购买';
+            }
+        });
+    }
+
+    private _buildShop(): Node {
+        const layer = new Node('Shop'); layer.setParent(this._panel);
+        layer.addComponent(UITransform).setContentSize(1280, 720);
+        layer.active = false;
+
+        // 半透明遮罩：点遮罩不关闭（防误触），仅按钮关闭
+        const dim = new Node('Dim'); dim.setParent(layer);
+        dim.addComponent(UITransform).setContentSize(1280, 720);
+        const dg = dim.addComponent(Graphics);
+        dg.fillColor = new Color(4, 8, 16, 225); dg.fillRect(-640, -360, 1280, 720);
+
+        const panel = new Node('Panel'); panel.setParent(layer);
+        panel.addComponent(UITransform).setContentSize(1000, 620);
+        const pg = panel.addComponent(Graphics);
+        drawPanel(pg, 1000, 620, new Color(86, 200, 120, 255));
+
+        this._mkLabel(panel, 0, 272, 600, 36, '— 军需商店 —', 26, GOLD);
+        this._mkLabel(panel, 0, 234, 760, 22,
+            '核心币购买 · 战备补给下一局生效（可叠加）· 装备永久入仓', 14, MUTED);
+        this._shopCoins = this._mkLabel(panel, 420, 234, 200, 22, '', 15, GOLD);
+
+        // 2×2 商品卡
+        const xs = [-250, 250], ys = [104, -158];
+        SHOP_ITEMS.forEach((item, i) => {
+            const card = new Node(`Shop_${item.id}`); card.setParent(panel);
+            card.setPosition(new Vec3(xs[i % 2], ys[Math.floor(i / 2)], 0));
+            card.addComponent(UITransform).setContentSize(460, 226);
+            const g = card.addComponent(Graphics);
+            drawPanel(g, 460, 226, new Color(52, 92, 76, 255));
+
+            this._mkLabel(card, 0, 84, 420, 30, item.name, 22, WHITE);
+            const desc = this._mkLabel(card, 0, 22, 420, 60, item.desc, 14,
+                new Color(197, 214, 226, 255));
+            desc.verticalAlign = VerticalTextAlignment.TOP;
+            desc.overflow = Label.Overflow.SHRINK;
+            const note = this._mkLabel(card, 0, -52, 420, 22, '', 13,
+                new Color(140, 255, 170, 255));
+            const buyBtn = this._mkButton(card, '', 0, -88, 240, 44, new Color(60, 130, 105, 255));
+            const btnLabel = buyBtn.children[0]?.getComponent(Label)!;
+            buyBtn.on(Node.EventType.TOUCH_END, () => this._buyShopItem(item, note), this);
+            this._shopCards.push({ note, btnLabel });
+        });
+
+        const close = this._mkButton(panel, '关闭', 430, 272, 120, 44, new Color(78, 111, 135, 255));
+        close.on(Node.EventType.TOUCH_END, () => {
+            this._callbacks.onButtonSfx();
+            this._closeShop();
+        });
+        return layer;
     }
 
     /** 右侧：代码绘制的全息刻度环，仅核心保留能量贴图。 */

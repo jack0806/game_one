@@ -352,7 +352,7 @@ export class BulletPool {
                 const verdict = kleptoCaptureBullet(b, player, game);
                 if (verdict !== 'pass') { this._release(b); continue; }
             }
-            if (b.homing && player.alive) {
+            if (b.homing && player.alive && !player.untargetable) {
                 const [dx, dy] = Vec.normalize(player.x - b.x, player.y - b.y);
                 const speed = Math.max(1, Math.hypot(b.vx, b.vy));
                 b.vx += dx * speed * dt * 2.5;
@@ -415,7 +415,8 @@ export class BulletPool {
             } else if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30) {
                 this._release(b); continue;
             }
-            if (player.alive && Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
+            if (player.alive && !player.untargetable &&
+                Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
                 // 破盾弹：先清空玩家护盾（锯齿剑虾尖刺/无人机声波）
                 if (b.pierceShield && player.shield > 0) {
                     player.shield = 0;

@@ -19,11 +19,12 @@ import { styleLabel, refreshAllLabels, loadUIFont } from './LabelUtils';
 import { drawCombatEnemyBar } from './UIStyle';
 import { CharDef, CHARS, spawnSkeletonServant } from '../data/CharacterDB';
 import { DifficultyDef } from '../data/DifficultyDB';
+import { loadTuning, tunedGoldStage } from '../data/DifficultyTuning';
 import { AUGMENT_DB, AugDef, spawnExplosion as spawnExplosionHelper } from '../data/AugmentDB';
 import { MUTATIONS } from '../data/WaveData';
 import {
     MAP_COUNT, TOTAL_CHAPTERS, mapDef, mapOf, chapterInMap, chapterNode,
-    globalChapter, goldStageMult,
+    globalChapter,
 } from '../data/LevelIndex';
 import { rollEquipmentDrop, equipmentLabel, equipmentSellValue, applyEquipmentToStats } from '../data/EquipmentDB';
 import { GameConfig } from '../data/GameConfig';
@@ -190,10 +191,20 @@ export class GameManager extends Component {
     private _testVisualGuides = false;
     /** 观摩模式只停用玩家普攻；移动与Q/E/R保持可用，便于完整看完Boss技能轮转。 */
     testCeasefire = false;
+    // ── 测试房「数值调试」面板开关（进正式局 _startGame 与重进测试房都会复位） ──
+    /** 无CD释放：Q/E/R 与宇宙法则不进冷却、R 不消耗充能。 */
+    testNoCd = false;
+    /** 玩家伤害全局倍率（PlayerController.getDamage 统一乘算，普攻/技能/召唤全覆盖）。 */
+    testPlayerDmgMult = 1;
+    /** 敌方伤害全局倍率（PlayerController.takeDamage 统一乘算，弹幕/近战/AoE 全覆盖）。 */
+    testEnemyDmgMult = 1;
+    /** 敌人血量全局倍率（spawnEnemy 时对新生成单位生效，已在场的单位不追溯）。 */
+    testEnemyHpMult = 1;
     /**
-     * 测试房间水柱（深海恐惧「海之霸主」）：固定 8 个方位点、每点 1 根、常驻不消失，
-     * 与水分身/深海鱿鱼共享 MAX_TEST_WATER_UNITS 上限。状态机：idle 待机 → flash 闪烁 2s →
-     * shoot 依次朝主角逐发水刺（6 发）→ 回 idle；pair 为对立水柱引用。
+     * 测试房间水柱（深海恐惧「海之霸主」）：固定 8 个方位点、每点 1 根、施法期间常驻
+     * （主人死亡时随 _dissolvePillars 消散），与水分身/深海鱿鱼共享 MAX_TEST_WATER_UNITS
+     * 上限。状态机：idle 待机 → flash 闪烁 2s → shoot 依次朝主角逐发水刺（6 发）→ 回 idle；
+     * pair 为对立水柱引用。
      */
     private _pillars: { x: number; y: number; r: number; spot: number; state: 'idle' | 'flash' | 'shoot'; flashT: number; shootLeft: number; shootCd: number; pair: any; hitCd: number }[] = [];
     /** 海之霸主对射完成计数（对立两根各射完一次后关闭护盾模式）。 */
@@ -326,6 +337,9 @@ export class GameManager extends Component {
     onLoad() {
         GameManager.inst = this;
         prioritizeStartupArt('title_screen');
+        // 关卡难度系数覆盖（测试房调试保存的逐关比例）：启动即载入，
+        // 正式局的 EnemyBase/WaveManager/金币乘率读取点统一走 tuned* 版本。
+        loadTuning();
         // 全面屏横屏铺满：宽于16:9的屏用FIXED_HEIGHT横向延展（无左右黑边），
         // 更方的屏回退SHOW_ALL保高留边，不能裁掉HUD/技能区。
         applyScreenPolicy();
@@ -660,6 +674,10 @@ export class GameManager extends Component {
         this._testUI.onAdvanceBossPhase = () => this.advanceTestBossPhase();
         this._testUI.onCycleChapter   = () => this.cycleTestChapter();
         this._testUI.onToggleTargetPause = (on) => this.setTestTargetPaused(on);
+        this._testUI.onToggleNoCd = (on) => this.setTestNoCd(on);
+        this._testUI.onSetTestMult = (kind, value) => this.setTestMult(kind, value);
+        this._testUI.onSetTestChapter = (ch) => this.setTestChapter(ch);
+        this._testUI.onGetTestChapter = () => this._chapter;
         this._testUI.onReturnMenu     = () => {
             this._clearRunEntities();
             this._setState('menu');
@@ -820,6 +838,8 @@ export class GameManager extends Component {
     private _startGame(char: CharDef) {
         this._clearRunEntities();
         this._runId++;
+        // 测试房调试开关不得泄漏进正式局（伤害/承伤/血量倍率与无CD全部复位）
+        this._resetTestDebugSwitches();
         // 对局内「退出战斗」按会话来源分流：正式局回大厅、测试房回首页。
         // 开局即固定，避免沿用上一场测试房遗留的 'testRoom' 值。
         this._pauseReturn = 'playing';
@@ -846,7 +866,7 @@ export class GameManager extends Component {
         // v4 9.6 层1：击杀掉落产出硬上限（预算×1.25，防崩塌保险丝；
         // 测试房走 reset 后的 Infinity，不受限）；后台可调上限系数
         this._economy.killGoldCap = Math.round(
-            2000 * goldStageMult(this._chapter) * difficultyGoldMult(this._difficulty?.id)
+            2000 * tunedGoldStage(this._chapter) * difficultyGoldMult(this._difficulty?.id)
             * GameConfig.get('killGoldCapMult'));
         this._augMgr.reset();
         this._waveMgr.reset();
@@ -880,9 +900,15 @@ export class GameManager extends Component {
         // v5 6.2：开局战备包（第 2 节点起）——起始金币直接入账，
         // N 次三选一连抽（复用 augSelect，不进战斗）抽完才开 W1
         const pack = node.starter;
+        // 大厅商店战备补给（开局一次性消费并清零，只对购买后的下一局生效）：
+        // 金币入账、护盾直接挂上、连抽并入战备包一起开
+        const supply = SaveSystem.consumeShopSupply();
+        if (supply.gold > 0) this._economy.addGold(supply.gold);
+        if (supply.shield > 0) this._player.shield += supply.shield;
         if (pack.gold > 0) this._economy.addGold(pack.gold);
-        if (pack.draws > 0) {
-            this._openStarterPacks(pack.draws);
+        const packDraws = pack.draws + supply.draws;
+        if (packDraws > 0) {
+            this._openStarterPacks(packDraws);
         } else {
             this._waveMgr.startWave(this);
         }
@@ -1348,6 +1374,7 @@ export class GameManager extends Component {
         this._testTargetPaused = false;
         this._testVisualGuides = false;
         this.testCeasefire = false;
+        this._resetTestDebugSwitches();
         this._testUI.resetState();
         this._floatText.spawn(CANVAS_W / 2, 200, '测试房间：点底部工具条生成单位', '#9adcff', 18, true);
     }
@@ -1510,7 +1537,7 @@ export class GameManager extends Component {
         this._floatText.spawn(CANVAS_W / 2, 160, '海之霸主！', '#33ccff', 26, true);
     }
 
-    /** 水柱推进：常驻不消失；碰柱减速 20%；flash 2s 后进入 shoot，依次朝主角逐发水刺（6 发）。 */
+    /** 水柱推进：施法期间常驻（主人死亡时消散）；碰柱减速 20%；flash 2s 后进入 shoot，依次朝主角逐发水刺（6 发）。 */
     private _updatePillars(dt: number): void {
         if (this._pillars.length === 0) return;
         const p = this._player;
@@ -1635,6 +1662,25 @@ export class GameManager extends Component {
         return map.id;
     }
 
+    /**
+     * 测试房「关卡难度系数」调试：直接切到指定全局章号（1~30）。
+     * 之后生成的单位/数量/金币都会按该关的基线 × 调试比例结算，
+     * 便于逐关验证难度曲线；正式局章节不受影响。
+     */
+    setTestChapter(globalChapterId: number): number {
+        if (this.state !== 'testRoom') return this._chapter;
+        this._chapter = Math.min(TOTAL_CHAPTERS, Math.max(1, Math.round(globalChapterId)));
+        this._updateBgForChapter();
+        const safe = safeArenaPoint(this._arena, this._player.x, this._player.y, this._player.radius);
+        this._player.x = safe.x;
+        this._player.y = safe.y;
+        if (!this._boss) this._audio.playBgm(this._chapterBgm());
+        const map = mapDef(mapOf(this._chapter));
+        this._floatText.spawn(CANVAS_W / 2, 200,
+            `图${map.id}-${chapterInMap(this._chapter)} ${map.name}`, '#9adcff', 17, true);
+        return this._chapter;
+    }
+
     /** 静止靶模式只停掉测试房敌方AI，仍保留受击、碰撞、血条与玩家技能闭环。 */
     setTestTargetPaused(on: boolean): void {
         if (this.state !== 'testRoom') return;
@@ -1650,6 +1696,27 @@ export class GameManager extends Component {
 
     setTestCeasefire(on: boolean): void {
         this.testCeasefire = on;
+    }
+
+    /** 数值调试开关全部复位（重进测试房 / 进正式局时调用，防倍率跨局泄漏）。 */
+    private _resetTestDebugSwitches(): void {
+        this.testNoCd = false;
+        this.testPlayerDmgMult = 1;
+        this.testEnemyDmgMult = 1;
+        this.testEnemyHpMult = 1;
+    }
+
+    /** 测试房「数值调试」面板：无CD释放开关。 */
+    setTestNoCd(on: boolean): void {
+        this.testNoCd = on;
+        if (on) this._player?.resetCooldowns?.();
+    }
+
+    /** 测试房「数值调试」面板：三路数值倍率（玩家伤害/敌方伤害/敌人血量）。 */
+    setTestMult(kind: 'playerDmg' | 'enemyDmg' | 'enemyHp', value: number): void {
+        if (kind === 'playerDmg') this.testPlayerDmgMult = value;
+        else if (kind === 'enemyDmg') this.testEnemyDmgMult = value;
+        else this.testEnemyHpMult = value;
     }
 
     /** 测试房验收工具：不改面板伤害，直接推进到66%/33%阶段门槛以观察完整Boss轮转。 */
@@ -4236,9 +4303,15 @@ export class GameManager extends Component {
                 p.facingY,
                 this._visualDt,
             );
-            // 只保留无色接触阴影。身份色椭圆会穿过双腿之间，看起来像一根绿线。
-            g.fillColor = new Color(0, 0, 0, 125);
+            // 实习刺客隐身：贴图与脚下阴影同步降为残影级透明（玩家仍能看清自己位置）
+            const stealthed = !!(p as any).untargetable;
+            g.fillColor = new Color(0, 0, 0, stealthed ? 45 : 125);
             g.ellipse(px, py - 25, 21 * walkPose.shadowScale, 6.5 * walkPose.shadowScale); g.fill();
+            if (p.sprite) {
+                const alpha = stealthed ? 85 : 255;
+                const cur = p.sprite.color;
+                if (cur.a !== alpha) p.sprite.color = new Color(cur.r, cur.g, cur.b, alpha);
+            }
             this._syncDirectionalFrame(p, walkPose, facingPose);
             if (p.actorAnimation.clip) {
                 p.node.setPosition(px, py, 0);
@@ -4608,6 +4681,12 @@ export class GameManager extends Component {
             // 尚为 0（_onWaveCleared 才自增），测试房 wm.wave 也为 0——统一钳到
             // 1，避免首波小兵/测试房数值被 (1-1×0.03) 悄悄打折。
             enemy.init(type, Math.max(1, this._waveMgr.wave), this);
+        }
+
+        // 测试房「数值调试」：敌人血量倍率，只对本次生成单位生效（不追溯在场单位）
+        if (this.testEnemyHpMult !== 1) {
+            enemy.maxHp = Math.max(1, Math.round(enemy.maxHp * this.testEnemyHpMult));
+            enemy.hp = Math.max(1, Math.min(enemy.maxHp, Math.round(enemy.hp * this.testEnemyHpMult)));
         }
 
         let ex: number, ey: number;
@@ -5310,10 +5389,26 @@ export class GameManager extends Component {
 
     /** 怪物死亡钩子：灵魂收割吸取1个灵魂（含仆从击杀）。
      *  （与既有 onEnemyKilled——经济掉落+词条分发——是两条独立钩子。） */
-    onEnemySlain(_e: any): void {
+    onEnemySlain(e: any): void {
+        // 深海恐惧死亡：常驻水柱随主人退场消散（多只 abyss 同场时等最后一只死）
+        if (e?.bossKind === 'abyss' && this.state === 'testRoom' &&
+            !this._enemies.some(x => x !== e && x.alive && (x as any).bossKind === 'abyss')) {
+            this._dissolvePillars();
+        }
         const p = this._player;
         if (!p?.stats?.soulHarvest) return;
         this.grantSoul(p);
+    }
+
+    /** 水柱消散：水花粒子反馈后清空（深海恐惧死亡时调用，清场走 clearTestField）。 */
+    private _dissolvePillars(): void {
+        if (!this._pillars.length) return;
+        for (const z of this._pillars) {
+            this._particles.enemyBurst(z.x, z.y, 'water', 26);
+        }
+        this._pillars = [];
+        this._abyssStormShots = 0;
+        if (this._boss?.bossKind === 'abyss') this._boss.abyssShieldMode = false;
     }
 
     /** 吸取1层灵魂（上限60），并按每满20层折算E冷却扁平缩减（-1秒/档）。 */
@@ -5492,7 +5587,7 @@ export class GameManager extends Component {
 
     /** 章节金币乘率（v5 30 档曲线 1.0~1.75）× 难度金币系数（金币不再吃 statMult）。 */
     get goldDropMult(): number {
-        return goldStageMult(this._chapter)
+        return tunedGoldStage(this._chapter)
             * difficultyGoldMult(this._difficulty?.id);
     }
 

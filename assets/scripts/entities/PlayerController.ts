@@ -245,6 +245,9 @@ export class PlayerController extends Component {
         if (this.stats._bloodAwakening && this.hp / this.stats.maxHp < 0.25) d *= 2;
         if (this.stats._overloadCheck && game?.augmentManager?.active?.length >= 5) d *= 1.5;
         if (this.stats.chaosGodActive) d *= 5;
+        // 测试房数值调试：全局玩家伤害倍率（不影响正式局，GameManager 进正式局会复位）
+        const testDmgMult = game?.testPlayerDmgMult ?? this._game?.testPlayerDmgMult;
+        if (testDmgMult && testDmgMult !== 1) d *= testDmgMult;
         return d;
     }
 
@@ -265,6 +268,14 @@ export class PlayerController extends Component {
         // 同名buff重挂时以新参数覆盖（时长+效果）：赃印层数靠刷新 mods 升档
         if (existing) { existing.duration = duration; existing.mods = mods; return; }
         this._buffs.push({ id, duration, mods });
+    }
+
+    /**
+     * 「不可选中」隐身状态（实习刺客 intern_stealth）：与怪物的 invisible 互为镜像——
+     * 敌人不再对其发起锁定攻击（远程停火/近战不起手），敌弹直接穿过不结算命中。
+     */
+    get untargetable(): boolean {
+        return this._buffs.some(b => b.id === 'intern_stealth');
     }
 
     heal(amount: number, feedback = true): number {
@@ -293,6 +304,9 @@ export class PlayerController extends Component {
             game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
             return;
         }
+        // 测试房数值调试：全局承伤倍率（敌人弹幕/近战/AoE 统一缩放，便于压测生存）
+        const testTakenMult = game?.testEnemyDmgMult ?? this._game?.testEnemyDmgMult;
+        if (testTakenMult && testTakenMult !== 1) amount *= testTakenMult;
         // 核心溢出保护
         if (this.stats._coreOverflow && !this.stats._coreUsed && this.hp / this.stats.maxHp < 0.2) {
             this.stats._coreUsed = true;
@@ -548,16 +562,18 @@ export class PlayerController extends Component {
         // 盗神·薇娅：窃取成功时 deferQcd 挂起冷却，赃技释放后再启动；
         // 窃取失败时 qSkill 写入 qCdNext=5（失败冷却5秒），下次必定成功的
         // 保底窗口用短CD兜底。眩晕（滑稽猴耳光）期间技能一并禁用。
-        if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && this._qCd <= 0 && !this._buffs.some(b => b.mods.stun)) {
+        // 测试房「无CD释放」：门控直接放行，施放后也不落冷却。
+        if ((input.isKeyQPressed?.() ?? input.isKeyQ()) && (this._qCd <= 0 || game?.testNoCd) && !this._buffs.some(b => b.mods.stun)) {
             if (this._requestSkill('q', () => {
                 game.audio?.playSfx?.('skill_q');
                 this._grantCastShield(game);
                 this._charDef.qSkill(this, game);
                 const qName = this._charDef.skills.q.split('—')[0].trim();
-                game.floatingText?.spawn?.(this.x, this.y - 55, qName, this.color, 15, true);
+                game.floatingText?.spawn(this.x, this.y - 55, qName, this.color, 15, true);
                 game.augmentManager?.dispatchSkill(this, game);
             })) {
-                if (this.stats.deferQcd) { this._qCd = 0; }
+                if (game?.testNoCd) this._qCd = 0;
+                else if (this.stats.deferQcd) { this._qCd = 0; }
                 else if (this.stats.qCdNext) {
                     this._qCd = this.stats.qCdNext * (1 - this.stats.cdReduction) * GameConfig.get('playerCooldownMult');
                     this.stats.qCdNext = 0;
@@ -589,7 +605,7 @@ export class PlayerController extends Component {
                     this._startECd();
                 }
             }
-        } else if ((eEdge || (input.isKeyE?.() ?? false)) && this._eCd <= 0 && !this._buffs.some(b => b.mods.stun)) {
+        } else if ((eEdge || (input.isKeyE?.() ?? false)) && (this._eCd <= 0 || game?.testNoCd) && !this._buffs.some(b => b.mods.stun)) {
             const targeted = this._charDef.targetedE;
             if (targeted && game.input?.mouse?.active) {
                 // 进入放置瞄准：清掉按下 E 前 250ms 内的旧点击，防止误放
@@ -607,18 +623,21 @@ export class PlayerController extends Component {
         // 持有 hasCosmos 且 CD 就绪时按 R 即激活，不消耗大招充能；
         // "互相攻击"部分沿用 hexblast-py 的半成品（变色+5s后AOE爆炸），
         // 这在 Python 原版中也未实现互攻 AI，记录为已知限制。
-        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this.stats.hasCosmos && this._cosmosCd <= 0) {
-            this._cosmosCd = 30;
+        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this.stats.hasCosmos && (this._cosmosCd <= 0 || game?.testNoCd)) {
+            this._cosmosCd = game?.testNoCd ? 0 : 30;
             game.activateCosmos?.(this);
         }
-        // 终极 R（眩晕期间同样禁用）
-        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && this._rCharge >= 1 && !this._buffs.some(b => b.mods.stun)) {
+        // 终极 R（眩晕期间同样禁用；测试房无CD不消耗充能）
+        if ((input.isKeyRPressed?.() ?? input.isKeyR()) && (this._rCharge >= 1 || game?.testNoCd) && !this._buffs.some(b => b.mods.stun)) {
             if (this._requestSkill('r', () => {
                 game.audio?.playSfx?.('skill_r');
                 this._grantCastShield(game);
                 this._charDef.ultimate(this, game);
                 game.hitStop?.trigger(0.1);
-            })) { this._rCharge = 0; this.ultReady = false; }
+            })) {
+                if (game?.testNoCd) { this._rCharge = 1; this.ultReady = true; }
+                else { this._rCharge = 0; this.ultReady = false; }
+            }
         }
         this._rCharge = Math.min(1, this._rCharge);
         if (this._rCharge >= 1) this.ultReady = true;
@@ -644,8 +663,9 @@ export class PlayerController extends Component {
         game.augmentManager?.dispatchSkill(this, game);
     }
 
-    /** E 冷却启动（盗神 deferEcd 挂起；亡灵法师灵魂层数扁平缩减）；后台冷却系数在此生效。 */
+    /** E 冷却启动（盗神 deferEcd 挂起；亡灵法师灵魂层数扁平缩减；后台冷却系数在此生效；测试房无CD不落冷却）。 */
     private _startECd(): void {
+        if (this._game?.testNoCd) { this._eCd = 0; return; }
         if (this.stats.deferEcd) { this._eCd = 0; }
         else {
             this._eCd = Math.max(1, ((this._charDef.eCd ?? SKILL_E_CD)

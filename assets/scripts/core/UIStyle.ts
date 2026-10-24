@@ -374,3 +374,13 @@ export function applyHexCardSkin(
         },
     };
 }
+
+/**
+ * Windows 原生模拟器的 EditBox 原生实现会直接段错误（2026-10-22 启动崩溃排查：
+ * 登录面板创建 EditBox 瞬间 SimulatorApp SIGSEGV，浏览器预览一切正常）。
+ * 原生平台一律降级为只读展示框：保留画框与占位文字，跳过 EditBox 组件挂载；
+ * 文本输入请在浏览器预览/网页构建中进行，原生端走「游客离线」。
+ */
+export function editBoxSupported(): boolean {
+    return typeof (globalThis as any).jsb === 'undefined';
+}

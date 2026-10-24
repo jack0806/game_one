@@ -13,6 +13,9 @@ import { clamp } from '../core/MathUtils';
 import { UNIT_CATALOG, UnitCategory } from '../data/BossDB';
 import { CHARS } from '../data/CharacterDB';
 import { AUGMENT_DB, rarityForLevel } from '../data/AugmentDB';
+import { statScaleFor, countScaleFor, goldStageMult, mapOf, chapterInMap, TOTAL_CHAPTERS } from '../data/LevelIndex';
+import { chapterTuning, setChapterTuning, clearChapterTuning, clearAllTuning,
+    saveTuning, hasUnsavedTuning, TUNING_STEP, ChapterTuning } from '../data/DifficultyTuning';
 import { RARITY_COLOR } from '../core/Constants';
 
 const { ccclass } = _decorator;
@@ -24,6 +27,7 @@ const AUG_PAGE_SIZE = 6;
  * 行1：数量 −/+、玩家无敌、英雄选择、停火观摩、清场、返回主页、推进Boss阶段；
  * 行2：分类页签（首领/小boss/小兵）+ 单位卡（点卡即按数量生成）。
  * 英雄选择为工具条上的浮层（3×2 角色卡），点击即切换出战英雄。
+ * 上沿右角「强化」授予海克斯、「调试」打开数值调试面板（无CD释放/三路倍率）。
  */
 @ccclass('TestRoomUI')
 export class TestRoomUI extends Component {
@@ -46,6 +50,14 @@ export class TestRoomUI extends Component {
     onCycleChapter?:   () => number;
     onToggleTargetPause?: (on: boolean) => void;
     onToggleVisualGuides?: (on: boolean) => void;
+    /** 数值调试面板：无CD释放开关。 */
+    onToggleNoCd?:     (on: boolean) => void;
+    /** 数值调试面板：三路倍率（玩家伤害/敌方伤害/敌人血量）。 */
+    onSetTestMult?:    (kind: 'playerDmg' | 'enemyDmg' | 'enemyHp', value: number) => void;
+    /** 关卡系数调试：切到指定全局章号（1~30），返回实际生效章号。 */
+    onSetTestChapter?: (globalChapterId: number) => number;
+    /** 关卡系数调试：查询测试房当前全局章号（打开面板时同步选择器）。 */
+    onGetTestChapter?: () => number;
 
     private _category: UnitCategory = 'boss';
     private _count = 5;
@@ -53,6 +65,11 @@ export class TestRoomUI extends Component {
     private _ceasefire = false;
     private _targetPaused = false;
     private _visualGuides = false;
+    // ── 数值调试面板状态（resetState 一并复位并回推 GameManager） ──
+    private _noCd = false;
+    private _pDmgMult = 1;
+    private _eDmgMult = 1;
+    private _eHpMult = 1;
     private _heroId = 'kai';
     private _unitPage = 0;
     private _countLbl!: Label;
@@ -61,6 +78,10 @@ export class TestRoomUI extends Component {
     private _chapterLbl!: Label;
     private _targetPauseLbl!: Label;
     private _guideLbl!: Label;
+    private _noCdLbl!: Label;
+    private _pDmgLbl!: Label;
+    private _eDmgLbl!: Label;
+    private _eHpLbl!: Label;
     private _unitCards: Node[] = [];
     private _tabs: { g: Graphics; key: UnitCategory }[] = [];
     private _heroPanel!: Node;
@@ -75,6 +96,17 @@ export class TestRoomUI extends Component {
     private _augPage = 0;
     private _augPageLbl!: Label;
     private _augCards: { node: Node; g: Graphics; id: string; lvLbl: Label }[] = [];
+    private _dbgPanel!: Node;
+    private _dbgDimNode!: Node;
+    private _dbgDimG!: Graphics;
+    private _dbgBoxG!: Graphics;
+    // ── 关卡难度系数调试状态 ──
+    /** 当前选中的全局章号（1~30）。 */
+    private _tuneChapter = 1;
+    private _tuneChapterLbl!: Label;
+    private _tuneBaseLbl!: Label;
+    private _tuneDirtyLbl!: Label;
+    private _tuneRows: { field: keyof ChapterTuning; val: Label; eff: Label }[] = [];
 
     onLoad() {
         // 工具条固定在画布底部（local y=-312 覆盖底部 96px，避开顶部 HUD 区）
@@ -82,6 +114,7 @@ export class TestRoomUI extends Component {
         this._buildToolbar();
         this._buildHeroPanel();
         this._buildAugPanel();
+        this._buildDebugPanel();
         this.node.active = false;
     }
 
@@ -92,25 +125,40 @@ export class TestRoomUI extends Component {
     onDisable() {
         this._hideAugPanel();
         this._hideHeroPanel();
+        this._hideDebugPanel();
     }
 
     fitToVisible(): void {
-        if (!this._heroDimNode || !this._augDimNode) return;
+        if (!this._heroDimNode || !this._augDimNode || !this._dbgDimNode) return;
         const width = visibleDesignWidth();
         this._heroDimNode.getComponent(UITransform)!.setContentSize(width, 720);
         this._augDimNode.getComponent(UITransform)!.setContentSize(width, 720);
+        this._dbgDimNode.getComponent(UITransform)!.setContentSize(width, 720);
         this._drawToolbarBg();
         this._drawHeroChrome();
         this._drawAugChrome();
+        this._drawDebugChrome();
     }
 
-    /** 每次进入测试房间时复位工具条状态（无敌/数量/分类不跨房保留）。 */
+    /** 每次进入测试房间时复位工具条状态（无敌/数量/分类/数值调试不跨房保留）。 */
     resetState() {
         this._invincible = false;
         this._ceasefire = false;
         this._targetPaused = false;
         this._visualGuides = false;
         this._guideLbl.string = '定位:关';
+        this._noCd = false;
+        this._pDmgMult = 1;
+        this._eDmgMult = 1;
+        this._eHpMult = 1;
+        this._refreshDebugSwitches();
+        this.onToggleNoCd?.(false);
+        this.onSetTestMult?.('playerDmg', 1);
+        this.onSetTestMult?.('enemyDmg', 1);
+        this.onSetTestMult?.('enemyHp', 1);
+        // 关卡系数选择回第 1 关（覆盖值本身保留——保存过的调参跨房生效）
+        this._tuneChapter = 1;
+        this._refreshTuningSection();
         this._count = 5;
         this._category = 'boss';
         this._unitPage = 0;
@@ -124,6 +172,7 @@ export class TestRoomUI extends Component {
         this._rebuildCards();
         this._hideHeroPanel();
         this._hideAugPanel();
+        this._hideDebugPanel();
     }
 
     // ── builders ──────────────────────────────────────────────
@@ -259,6 +308,13 @@ export class TestRoomUI extends Component {
         augBtn.on(Node.EventType.TOUCH_END, () => {
             this.onButtonSfx?.();
             this._showAugPanel();
+        }, this);
+
+        // 数值调试入口：与「强化」并排（无CD释放 / 三路数值倍率）
+        const dbgBtn = this._mkSmallBtn(this.node, '调试', 516, 66, 76, 30, new Color(40, 96, 132, 245));
+        dbgBtn.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._showDebugPanel();
         }, this);
 
         this._refreshCount();
@@ -714,6 +770,289 @@ export class TestRoomUI extends Component {
         styleLabel(this._augPageLbl);
         this._refreshAugPage();
         this._refreshAugCards();
+    }
+
+    // ── 数值调试浮层（无CD / 三路倍率） ─────────────────────
+
+    /** 倍率循环档位：点击一次换下一档（绕回 0.5）。 */
+    private static readonly DMULT_STEPS = [0.5, 1, 2, 5, 10, 50];
+
+    private _showDebugPanel() {
+        this._hideHeroPanel();
+        this._hideAugPanel();
+        // 选择器同步到测试房当前章节（地图轮换按钮可能已把章节切走）
+        if (this.onGetTestChapter) this._tuneChapter = this.onGetTestChapter();
+        this._refreshDebugSwitches();
+        this._refreshTuningSection();
+        this._dbgPanel.active = true;
+        this._dbgPanel.setSiblingIndex(this.node.children.length - 1);
+    }
+
+    private _hideDebugPanel() {
+        if (this._dbgPanel) this._dbgPanel.active = false;
+    }
+
+    /** 按当前本地状态刷新四个控件的文案与高亮（打开面板/切档后调用）。 */
+    private _refreshDebugSwitches() {
+        if (!this._noCdLbl) return;
+        this._noCdLbl.string = this._noCd ? '无CD:开' : '无CD:关';
+        this._noCdLbl.color = this._noCd
+            ? new Color(140, 255, 160, 255)
+            : new Color(160, 168, 180, 220);
+        this._pDmgLbl.string = `×${this._pDmgMult}`;
+        this._eDmgLbl.string = `×${this._eDmgMult}`;
+        this._eHpLbl.string = `×${this._eHpMult}`;
+    }
+
+    /** 调试浮层的遮罩 + 底板（一次性结构，可重复重绘）。 */
+    private _drawDebugChrome() {
+        this._dbgDimG.clear();
+        this._dbgDimG.fillColor = new Color(0, 0, 0, 160);
+        const width = visibleDesignWidth();
+        this._dbgDimG.fillRect(-width / 2, -360, width, 720);
+
+        const bg = this._dbgBoxG;
+        bg.clear();
+        drawHexPanel(bg, -330, -280, 660, 560, new Color(70, 130, 170, 255), 250);
+    }
+
+    /** 数值调试浮层：上半区四行开关 + 下半区关卡难度系数逐关调整。 */
+    private _buildDebugPanel() {
+        const panel = this._dbgPanel = new Node('DebugPanel'); panel.setParent(this.node);
+        registerKeyboardModalScope(panel);
+        panel.active = false;
+
+        const dim = new Node('Dim'); dim.setParent(panel);
+        dim.setPosition(new Vec3(0, 312, 0));
+        dim.addComponent(UITransform).setContentSize(visibleDesignWidth(), 720);
+        this._dbgDimNode = dim;
+        this._dbgDimG = dim.addComponent(Graphics);
+        dim.on(Node.EventType.TOUCH_END, () => this._hideDebugPanel(), this);
+
+        const box = new Node('Box'); box.setParent(panel);
+        box.setPosition(new Vec3(0, 312, 0));
+        box.addComponent(UITransform).setContentSize(660, 560);
+        box.addComponent(BlockInputEvents);
+        this._dbgBoxG = box.addComponent(Graphics);
+        this._drawDebugChrome();
+        attachEnableRedraw(dim, () => this._drawDebugChrome());
+        attachEnableRedraw(box, () => this._drawDebugChrome());
+
+        const tn = new Node('T'); tn.setParent(box);
+        tn.setPosition(new Vec3(0, 240, 0));
+        tn.addComponent(UITransform).setContentSize(400, 30);
+        const tl = tn.addComponent(Label);
+        tl.string = '— 数值调试 —';
+        tl.fontSize = 22; tl.color = new Color(255, 215, 90, 255);
+        styleLabel(tl);
+
+        const hint = new Node('Hint'); hint.setParent(box);
+        hint.setPosition(new Vec3(0, 216, 0));
+        hint.addComponent(UITransform).setContentSize(620, 18);
+        const hl = hint.addComponent(Label);
+        hl.string = '上半区开关退出测试房自动复位 · 下半区关卡系数保存后跨重启生效';
+        hl.fontSize = 13; hl.lineHeight = 16;
+        hl.color = UI_PALETTE.muted;
+        styleLabel(hl);
+
+        // 行工厂：左侧说明 + 右侧档位按钮（切档即回调 GameManager）
+        const mkRow = (y: number, label: string, note: string, accent: Color,
+            onCycle: () => void): Label => {
+            const ln = new Node('Lbl'); ln.setParent(box);
+            ln.setPosition(new Vec3(-215, y, 0));
+            ln.addComponent(UITransform).setContentSize(190, 26);
+            const ll = ln.addComponent(Label);
+            ll.string = label; ll.fontSize = 15;
+            ll.color = new Color(225, 234, 244, 255);
+            styleLabel(ll);
+            const nn = new Node('Note'); nn.setParent(box);
+            nn.setPosition(new Vec3(-215, y - 20, 0));
+            nn.addComponent(UITransform).setContentSize(210, 16);
+            const nl = nn.addComponent(Label);
+            nl.string = note; nl.fontSize = 12; nl.lineHeight = 15;
+            nl.color = UI_PALETTE.muted;
+            styleLabel(nl);
+            const btn = this._mkSmallBtn(box, '', 105, y - 8, 120, 32, accent);
+            const valueLbl = btn.getChildByName('L')!.getComponent(Label)!;
+            valueLbl.fontSize = 15;
+            btn.on(Node.EventType.TOUCH_END, () => {
+                this.onButtonSfx?.();
+                onCycle();
+                this._refreshDebugSwitches();
+            }, this);
+            return valueLbl;
+        };
+        const cycle = (cur: number): number => {
+            const steps = TestRoomUI.DMULT_STEPS;
+            return steps[(steps.indexOf(cur) + 1) % steps.length];
+        };
+
+        this._noCdLbl = mkRow(184, '无CD释放', 'Q/E/R 不进冷却，R 不消耗充能',
+            new Color(56, 108, 84, 245), () => {
+                this._noCd = !this._noCd;
+                this.onToggleNoCd?.(this._noCd);
+            });
+        this._pDmgLbl = mkRow(144, '玩家伤害', '普攻与技能全域倍率',
+            new Color(96, 78, 40, 245), () => {
+                this._pDmgMult = cycle(this._pDmgMult);
+                this.onSetTestMult?.('playerDmg', this._pDmgMult);
+            });
+        this._eDmgLbl = mkRow(104, '敌方伤害', '弹幕/近战/AoE 承伤倍率',
+            new Color(110, 52, 46, 245), () => {
+                this._eDmgMult = cycle(this._eDmgMult);
+                this.onSetTestMult?.('enemyDmg', this._eDmgMult);
+            });
+        this._eHpLbl = mkRow(64, '敌人血量', '生成新单位时按倍率缩放',
+            new Color(52, 60, 108, 245), () => {
+                this._eHpMult = cycle(this._eHpMult);
+                this.onSetTestMult?.('enemyHp', this._eHpMult);
+            });
+
+        // ── 下半区：关卡难度系数（逐关 stat/count/gold 比例） ──
+        const sec = new Node('Sec'); sec.setParent(box);
+        sec.setPosition(new Vec3(0, 30, 0));
+        sec.addComponent(UITransform).setContentSize(500, 22);
+        const sl = sec.addComponent(Label);
+        sl.string = '── 关卡难度系数 ──';
+        sl.fontSize = 16; sl.color = new Color(255, 215, 90, 255);
+        styleLabel(sl);
+        const dirty = new Node('Dirty'); dirty.setParent(box);
+        dirty.setPosition(new Vec3(245, 30, 0));
+        dirty.addComponent(UITransform).setContentSize(90, 18);
+        this._tuneDirtyLbl = dirty.addComponent(Label);
+        this._tuneDirtyLbl.fontSize = 12; this._tuneDirtyLbl.lineHeight = 15;
+        this._tuneDirtyLbl.color = new Color(255, 150, 120, 255);
+        styleLabel(this._tuneDirtyLbl);
+
+        // 关卡选择：‹ 图m-章c · 第k关 ›（切换同时把测试房章节切过去，便于即时验证）
+        const prevCh = this._mkSmallBtn(box, '‹', -170, 4, 40, 32, new Color(45, 70, 96, 245));
+        prevCh.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._tuneChapter = this.onSetTestChapter?.(this._tuneChapter - 1) ?? this._tuneChapter - 1;
+            this._refreshTuningSection();
+        }, this);
+        const chN = new Node('Ch'); chN.setParent(box);
+        chN.setPosition(new Vec3(-35, 4, 0));
+        chN.addComponent(UITransform).setContentSize(190, 26);
+        this._tuneChapterLbl = chN.addComponent(Label);
+        this._tuneChapterLbl.fontSize = 16;
+        this._tuneChapterLbl.color = new Color(255, 224, 130, 255);
+        this._tuneChapterLbl.horizontalAlign = HorizontalTextAlignment.CENTER;
+        styleLabel(this._tuneChapterLbl);
+        const nextCh = this._mkSmallBtn(box, '›', 85, 4, 40, 32, new Color(45, 70, 96, 245));
+        nextCh.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._tuneChapter = this.onSetTestChapter?.(this._tuneChapter + 1) ?? this._tuneChapter + 1;
+            this._refreshTuningSection();
+        }, this);
+
+        // 基线提示行：LevelIndex 曲线在该关的原值（比例 ×1 时有效值=基线）
+        const baseN = new Node('Base'); baseN.setParent(box);
+        baseN.setPosition(new Vec3(0, -20, 0));
+        baseN.addComponent(UITransform).setContentSize(620, 18);
+        this._tuneBaseLbl = baseN.addComponent(Label);
+        this._tuneBaseLbl.fontSize = 13; this._tuneBaseLbl.lineHeight = 16;
+        this._tuneBaseLbl.color = UI_PALETTE.muted;
+        styleLabel(this._tuneBaseLbl);
+
+        // 三路比例行：标签 | − | ×比例 | ＋ | 有效值（基线×比例）
+        const mkTuneRow = (y: number, label: string, field: keyof ChapterTuning, accent: Color) => {
+            const ln = new Node('Lbl'); ln.setParent(box);
+            ln.setPosition(new Vec3(-250, y, 0));
+            ln.addComponent(UITransform).setContentSize(110, 24);
+            const ll = ln.addComponent(Label);
+            ll.string = label; ll.fontSize = 15;
+            ll.color = new Color(225, 234, 244, 255);
+            styleLabel(ll);
+            const minus = this._mkSmallBtn(box, '−', -100, y - 4, 36, 30, accent);
+            const plus = this._mkSmallBtn(box, '＋', 50, y - 4, 36, 30, accent);
+            const valN = new Node('Val'); valN.setParent(box);
+            valN.setPosition(new Vec3(-25, y - 4, 0));
+            valN.addComponent(UITransform).setContentSize(100, 26);
+            const val = valN.addComponent(Label);
+            val.fontSize = 16; val.color = new Color(255, 224, 130, 255);
+            val.horizontalAlign = HorizontalTextAlignment.CENTER;
+            styleLabel(val);
+            const effN = new Node('Eff'); effN.setParent(box);
+            effN.setPosition(new Vec3(195, y - 4, 0));
+            effN.addComponent(UITransform).setContentSize(130, 26);
+            const eff = effN.addComponent(Label);
+            eff.fontSize = 14; eff.color = new Color(154, 220, 255, 255);
+            eff.horizontalAlign = HorizontalTextAlignment.CENTER;
+            styleLabel(eff);
+            minus.on(Node.EventType.TOUCH_END, () => {
+                this.onButtonSfx?.();
+                setChapterTuning(this._tuneChapter, field, chapterTuning(this._tuneChapter)[field] - TUNING_STEP);
+                this._refreshTuningSection();
+            }, this);
+            plus.on(Node.EventType.TOUCH_END, () => {
+                this.onButtonSfx?.();
+                setChapterTuning(this._tuneChapter, field, chapterTuning(this._tuneChapter)[field] + TUNING_STEP);
+                this._refreshTuningSection();
+            }, this);
+            this._tuneRows.push({ field, val, eff });
+        };
+        mkTuneRow(-50, '强度比例', 'stat', new Color(96, 78, 40, 245));
+        mkTuneRow(-84, '数量比例', 'count', new Color(52, 60, 108, 245));
+        mkTuneRow(-118, '金币比例', 'gold', new Color(56, 108, 84, 245));
+
+        // 底部操作行：重置本关 / 全部重置 / 保存到关卡（写 localStorage，重启保留）
+        const resetOne = this._mkSmallBtn(box, '重置本关', -180, -158, 110, 32, new Color(110, 60, 52, 245));
+        resetOne.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            clearChapterTuning(this._tuneChapter);
+            this._refreshTuningSection();
+        }, this);
+        const resetAll = this._mkSmallBtn(box, '全部重置', -40, -158, 110, 32, new Color(110, 60, 52, 245));
+        resetAll.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            clearAllTuning();
+            this._refreshTuningSection();
+        }, this);
+        const saveBtn = this._mkSmallBtn(box, '保存到关卡', 150, -158, 140, 32, new Color(40, 110, 88, 245));
+        saveBtn.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            saveTuning();
+            this._refreshTuningSection();
+        }, this);
+
+        const foot = new Node('Foot'); foot.setParent(box);
+        foot.setPosition(new Vec3(0, -192, 0));
+        foot.addComponent(UITransform).setContentSize(620, 16);
+        const fl = foot.addComponent(Label);
+        fl.string = '保存后正式局同关立即生效 · 重启保留 · 改基线曲线请回 LevelIndex.ts';
+        fl.fontSize = 12; fl.lineHeight = 15;
+        fl.color = UI_PALETTE.muted;
+        styleLabel(fl);
+
+        const close = this._mkSmallBtn(box, '关闭', 250, 240, 76, 30, UI_PALETTE.cyan);
+        close.on(Node.EventType.TOUCH_END, () => {
+            this.onButtonSfx?.();
+            this._hideDebugPanel();
+        }, this);
+        this._refreshDebugSwitches();
+        this._refreshTuningSection();
+    }
+
+    /** 刷新关卡系数区：选关标签 / 基线值 / 三路比例与有效值 / 未保存标记。 */
+    private _refreshTuningSection() {
+        if (!this._tuneChapterLbl) return;
+        this._tuneChapter = Math.min(TOTAL_CHAPTERS, Math.max(1, Math.round(this._tuneChapter)));
+        const ch = this._tuneChapter;
+        const map = mapOf(ch), c = chapterInMap(ch);
+        this._tuneChapterLbl.string = `图${map}-章${c} · 第${ch}/${TOTAL_CHAPTERS}关`;
+        const bases: Record<string, number> = {
+            stat: statScaleFor(ch), count: countScaleFor(ch), gold: goldStageMult(ch),
+        };
+        this._tuneBaseLbl.string =
+            `基线：强度×${bases.stat.toFixed(2)} · 数量×${bases.count.toFixed(2)} · 金币×${bases.gold.toFixed(2)}`;
+        const t = chapterTuning(ch);
+        for (const row of this._tuneRows) {
+            const ratio = t[row.field];
+            row.val.string = `×${ratio.toFixed(2)}`;
+            row.eff.string = `有效 ×${(bases[row.field] * ratio).toFixed(2)}`;
+        }
+        this._tuneDirtyLbl.string = hasUnsavedTuning() ? '未保存' : '已保存';
     }
 
     /** 小型按钮工厂：皮肤 + 居中文字（音效由调用方挂）。 */

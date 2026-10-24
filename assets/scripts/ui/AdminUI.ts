@@ -15,7 +15,7 @@ import {
 } from 'cc';
 import { styleLabel } from '../core/LabelUtils';
 import { visibleDesignWidth } from '../core/ScreenFit';
-import { applyHexButtonSkin, drawHexPanel, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, HexButtonSkin, UI_PALETTE, editBoxSupported } from '../core/UIStyle';
 import { CONFIG_ITEMS, ConfigItemDef, GameConfig } from '../data/GameConfig';
 import { AchievementAdmin } from '../systems/AchievementAdmin';
 import { ACHIEVEMENT_STAT_FIELDS, SaveSystem } from '../systems/SaveSystem';
@@ -81,7 +81,9 @@ class ScrollArea {
         vp.setPosition(new Vec3(x, y, 0));
         vp.addComponent(UITransform).setContentSize(w, h);
         const mask = vp.addComponent(Mask); mask.type = Mask.Type.GRAPHICS_STENCIL;
-        const mg = vp.addComponent(Graphics);
+        // Mask(GRAPHICS_STENCIL) 在 type 赋值时已在同节点创建内部 Graphics，必须复用；
+        // 再 addComponent 会挂上第二个渲染组件（uiComp 冲突 + 渲染管线崩溃）
+        const mg = vp.getComponent(Graphics)!;
         mg.fillColor = Color.WHITE; mg.rect(-w / 2, -h / 2, w, h); mg.fill();
         this.viewport = vp;
         // 裸 Node 不会自动带 UITransform，滚动定位与内容高度都依赖它
@@ -740,6 +742,11 @@ export class AdminUI {
         const textLabel = mkInner('TEXT_LABEL', WHITE.clone());
         const phLabel = mkInner('PLACEHOLDER_LABEL', new Color(120, 140, 160, 255));
 
+        if (!editBoxSupported()) {
+            // 原生模拟器 EditBox 段错误（见 UIStyle.editBoxSupported）：降级为只读展示
+            phLabel.string = placeholder + ' · 原生端不可输入';
+            return { string: init } as unknown as EditBox;
+        }
         const eb = n.addComponent(EditBox);
         eb.textLabel = textLabel;
         eb.placeholderLabel = phLabel;

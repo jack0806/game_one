@@ -340,7 +340,9 @@ export class MetaPageUI {
         viewport.setPosition(new Vec3(0, -80, 0));
         viewport.addComponent(UITransform).setContentSize(VIEW_W, VIEW_H);
         const mask = viewport.addComponent(Mask); mask.type = Mask.Type.GRAPHICS_STENCIL;
-        const mg = viewport.addComponent(Graphics);
+        // Mask(GRAPHICS_STENCIL) 在 type 赋值时已在同节点创建内部 Graphics，必须复用；
+        // 再 addComponent 会挂上第二个渲染组件（uiComp 冲突 + 渲染管线崩溃）
+        const mg = viewport.getComponent(Graphics)!;
         mg.fillColor = Color.WHITE; mg.rect(-VIEW_W / 2, -VIEW_H / 2, VIEW_W, VIEW_H); mg.fill();
         this._achieveViewport = viewport;
 

@@ -63,6 +63,12 @@ export interface PlayerProfile {
     migratedV4?: boolean;
     /** 滑稽猴彩蛋：已拾取的玩偶猴数量（≥1 解锁隐藏成就「这不是真的我哟」）。 */
     jokerDolls: number;
+    /** v5：大厅商店「下一局生效」战备补给——开局金币（开局入账后清零；旧档缺省 0）。 */
+    shopStartGold?: number;
+    /** v5：大厅商店「下一局生效」战备补给——开局海克斯连抽次数（开局消费后清零）。 */
+    shopStartDraws?: number;
+    /** v5：大厅商店「下一局生效」战备补给——开局护盾值（开局挂上后清零）。 */
+    shopStartShield?: number;
 }
 
 /** 存档槽概览（存档选择页渲染用；exists=false 即空槽）。 */
@@ -277,6 +283,7 @@ function freshProfile(): PlayerProfile {
         coreCoins: 0, chaptersCleared: 0,
         equipments: [], equipLoadout: [null, null, null],
         migratedV4: true, jokerDolls: 0,
+        shopStartGold: 0, shopStartDraws: 0, shopStartShield: 0,
     };
 }
 
@@ -528,6 +535,51 @@ export class SaveSystem {
     /** 当前核心币余额。 */
     static coreCoins(): number {
         return this.load().coreCoins ?? 0;
+    }
+
+    /** 大厅商店扣款（余额不足返回 false 且不扣）。 */
+    static spendCoreCoins(amount: number): boolean {
+        if (amount <= 0) return true;
+        const p = this.load();
+        if ((p.coreCoins ?? 0) < amount) return false;
+        p.coreCoins -= amount;
+        this.save();
+        return true;
+    }
+
+    /** 大厅商店：累加「下一局生效」战备补给（可重复购买，开局叠加）。 */
+    static addShopSupply(gold = 0, draws = 0, shield = 0): void {
+        if (gold <= 0 && draws <= 0 && shield <= 0) return;
+        const p = this.load();
+        p.shopStartGold   = (p.shopStartGold ?? 0) + Math.max(0, Math.round(gold));
+        p.shopStartDraws  = (p.shopStartDraws ?? 0) + Math.max(0, Math.round(draws));
+        p.shopStartShield = (p.shopStartShield ?? 0) + Math.max(0, Math.round(shield));
+        this.save();
+    }
+
+    /** 大厅商店补给当前累计值（商店页展示"待生效"用）。 */
+    static shopSupply(): { gold: number; draws: number; shield: number } {
+        const p = this.load();
+        return {
+            gold: p.shopStartGold ?? 0,
+            draws: p.shopStartDraws ?? 0,
+            shield: p.shopStartShield ?? 0,
+        };
+    }
+
+    /** 开局一次性消费全部战备补给并清零（只对购买后的下一局生效）。 */
+    static consumeShopSupply(): { gold: number; draws: number; shield: number } {
+        const p = this.load();
+        const out = {
+            gold: p.shopStartGold ?? 0,
+            draws: p.shopStartDraws ?? 0,
+            shield: p.shopStartShield ?? 0,
+        };
+        if (out.gold || out.draws || out.shield) {
+            p.shopStartGold = 0; p.shopStartDraws = 0; p.shopStartShield = 0;
+            this.save();
+        }
+        return out;
     }
 
     /** 记录通关全局章号（解锁链：通关第 k 节点解锁第 k+1 节点）。 */

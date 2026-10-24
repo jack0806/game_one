@@ -6,7 +6,7 @@
 // 关内 15 波节奏模板（波型/数量公式）与变异表。
 // v4（2026-10-03）遗留的 CHAPTERS/statScale 表/开局战备包/精英槽已上移。
 
-import { countScaleFor } from './LevelIndex';
+import { tunedCountScale } from './DifficultyTuning';
 import { GameConfig } from './GameConfig';
 
 export { starterPack, eliteSlots } from './LevelIndex';
@@ -64,7 +64,8 @@ export const ENEMY_COUNT_CAP = 128;
 export function enemyCountForWave(wave: number, globalChapterId: number, diffMult = 1): number {
     const base = 10 + 2.4 * wave;
     const kind = WAVE_KIND_MULT[waveKind(wave)];
-    const chapter = countScaleFor(globalChapterId);
+    // 章节数量走 tuned 曲线（测试房逐关比例调试可覆盖），再吃后台全局乘区与封顶
+    const chapter = tunedCountScale(globalChapterId);
     const cap = GameConfig.get('enemyCountCap');
     return Math.min(Math.round(base * kind * chapter * diffMult * GameConfig.get('waveCountMult')), cap);
 }

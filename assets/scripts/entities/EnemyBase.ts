@@ -5,7 +5,7 @@ import type { Node, Sprite } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
 import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { getMiniBossDef, getTestGruntDef } from '../data/BossDB';
-import { statScaleFor } from '../data/LevelIndex';
+import { tunedStatScale } from '../data/DifficultyTuning';
 import { GameConfig } from '../data/GameConfig';
 import { createLocomotionState, LocomotionKind, resetLocomotion } from '../core/Locomotion';
 import { createDirectionalFacingState, resetDirectionalFacing, resolveFacingView } from '../core/DirectionalFacing';
@@ -203,7 +203,7 @@ export class EnemyBase {
         // v5：wave 为关内波次（1~15），chapter 为全局章号 1~30（1-based 直读）；
         // 成长 = 章节血量系数 × 波内成长（W15 ≈ ×1.42）。
         this.chapter = Math.max(1, game?._chapter ?? 1);
-        const statScale = statScaleFor(this.chapter);
+        const statScale = tunedStatScale(this.chapter);
         const scale  = statScale * (1 + (wave - 1) * 0.03);
         this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false; this._skillStolen = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
@@ -325,7 +325,7 @@ export class EnemyBase {
             // 金币改档位值（普通 40 / 史诗 60 / 地狱 80，v4 9.2）。
             // W14 守卫波小首领单独 +10%：小首领不吃波内成长，同章内 W5/W14 等强，
             // 守卫波压轴需要比试炼波更硬（文档 6.3 调整）。
-            const ss = statScaleFor(this.chapter);
+            const ss = tunedStatScale(this.chapter);
             this.maxHp = Math.floor(miniDef.maxHp * ss * (wave === 14 ? 1.1 : 1));
             this.damage = miniDef.damage * ss * (wave === 14 ? 1.1 : 1);
             this.armor = miniDef.armor * ss;
@@ -869,7 +869,7 @@ export class EnemyBase {
                 game.floatingText?.spawn?.(this.x, this.y - 38, hound ? '撞墙失衡！' : '装甲破裂！', hound ? '#ff756d' : '#a9e5ff', 15, true);
                 return;
             }
-            if (this._chargeDmg > 0 && player.alive &&
+            if (this._chargeDmg > 0 && player.alive && !player.untargetable &&
                 Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 8) {
                 player.takeDamage(this._chargeDmg, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
                 if (this._chargePush > 0) {
@@ -1049,7 +1049,9 @@ export class EnemyBase {
         let frostShot = false;
         let arcShot = false;
         let acidShot: [number, number] | undefined;
-        if (this.rangedRange > 0 && !lifeClone?.alive) {
+        // 玩家隐身（实习刺客 intern_stealth）期间整体停火：与保命分身同级的
+        // 「不可选中」——远程不出手（连射/瞄准一并暂停），结束后按原节奏恢复。
+        if (this.rangedRange > 0 && !lifeClone?.alive && !player.untargetable) {
             // 盗神·薇娅：被盗技能的远程出手空放并失措2秒；冷却就绪的普攻出手前被截取
             if (this._skillStolen && kleptoStagger(this, game)) return;
             if (this._atkCd <= 0 && player.stats?.klepto
@@ -1289,7 +1291,7 @@ export class EnemyBase {
             game.particles?.toxin?.(origin[0], origin[1]);
         }
 
-        if (this.type === 'blast_tick' && player.alive &&
+        if (this.type === 'blast_tick' && player.alive && !player.untargetable &&
             Vec.dist(this.x, this.y, player.x, player.y) <= 82 + (player.radius ?? 16)) {
             this.blastCountdown = 0.80;
             this.blastCountdownMax = 0.80;
@@ -1303,7 +1305,7 @@ export class EnemyBase {
         // 近战攻击：进入攻击范围且冷却完毕才对玩家造成伤害
         // （对齐 hexblast-py 的 entities/enemy.py _move() 近战判定；
         //  远程/纯AOE单位可将 meleeRange 设为0来禁用此逻辑）
-        if (this.meleeRange > 0 && this._atkCd <= 0 && player.alive) {
+        if (this.meleeRange > 0 && this._atkCd <= 0 && player.alive && !player.untargetable) {
             const atkDist = this.radius + (player.radius ?? 16) + this.meleeRange;
             const dist = Math.hypot(player.x - this.x, player.y - this.y);
             if (dist <= atkDist) {

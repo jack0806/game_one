@@ -13,7 +13,7 @@ import { styleLabel } from '../core/LabelUtils';
 import { mapOf, chapterInMap } from '../data/LevelIndex';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { applyArtSprite } from '../core/SpriteUtils';
-import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE } from '../core/UIStyle';
+import { applyHexButtonSkin, drawHexPanel, registerKeyboardFocus, UI_PALETTE, editBoxSupported } from '../core/UIStyle';
 import { ACHIEVEMENTS, SaveSlotSummary, SaveSystem } from '../systems/SaveSystem';
 import { CHARS } from '../data/CharacterDB';
 
@@ -349,6 +349,11 @@ export class SaveSelectUI {
         const textLabel = mkInner('TEXT_LABEL', WHITE.clone());
         const phLabel = mkInner('PLACEHOLDER_LABEL', new Color(120, 140, 160, 255));
 
+        if (!editBoxSupported()) {
+            // 原生模拟器 EditBox 段错误（见 UIStyle.editBoxSupported）：降级为只读展示
+            phLabel.string = placeholder + ' · 原生端不可输入';
+            return { string: init } as unknown as EditBox;
+        }
         const eb = n.addComponent(EditBox);
         eb.textLabel = textLabel;
         eb.placeholderLabel = phLabel;

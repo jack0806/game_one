@@ -15,7 +15,7 @@ import { getBossDefById } from '../data/BossDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { createPortraitViewport, fitPortraitFrame, loadPortraitArt } from '../core/PortraitArt';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
+import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel, editBoxSupported,
     isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus,
     registerKeyboardModalScope, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
@@ -28,6 +28,8 @@ import { LobbyUI } from './LobbyUI';
 import { defaultTutorialStorage, setTutorialEnabled, tutorialEnabled } from './TutorialState';
 
 const { ccclass } = _decorator;
+
+const WHITE = new Color(232, 244, 250, 255);
 
 export type ScreenName =
     | 'menu' | 'login' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
@@ -593,7 +595,8 @@ export class ScreenManager extends Component {
         styleLabel(hl, { outline: false });
     }
 
-    /** 登录输入框（AdminUI._mkEditBox 同款约定：锚点(0,1) + 预建内部标签）。 */
+    /** 登录输入框（AdminUI._mkEditBox 同款约定：锚点(0,1) + 预建内部标签）。
+     *  原生模拟器降级：EditBox 原生实现段错误（见 UIStyle.editBoxSupported），只画展示框。 */
     private _mkEditBox(parent: Node, x: number, y: number, w: number, h: number,
                        placeholder: string, init: string, password: boolean): EditBox {
         const n = new Node(`EB_${placeholder.slice(0, 4)}`); n.setParent(parent);
@@ -605,13 +608,20 @@ export class ScreenManager extends Component {
         g.strokeColor = new Color(90, 110, 140, 200);
         g.lineWidth = 1.2; g.roundRect(-w / 2, -h / 2, w, h, 6); g.stroke();
 
-        // 引擎约定：内部标签节点名 TEXT_LABEL / PLACEHOLDER_LABEL，锚点 (0,1)
-        // 顶左——纯代码创建默认中心锚点会让文字飘出框外（真机验证过的坑）。
+        if (!editBoxSupported()) {
+            // 原生端不可输入：占位文案直接提示替代方案，登录走「游客离线」
+            const l = this._mkLabel(n, 0, 0, w - 16, h,
+                `${placeholder} · 模拟器不支持输入，请点「游客离线」`, 12,
+                new Color(120, 140, 160, 255), HorizontalTextAlignment.CENTER);
+            l.verticalAlign = VerticalTextAlignment.CENTER;
+            return { string: init } as unknown as EditBox;
+        }
+
         const mkInner = (name: string, color: Color): Label => {
             const ln = new Node(name); ln.setParent(n);
             ln.addComponent(UITransform).setAnchorPoint(0, 1);
             const l = ln.addComponent(Label);
-            l.fontSize = 15; l.lineHeight = h;
+            l.fontSize = 14; l.lineHeight = 18;
             l.color = color;
             l.verticalAlign = VerticalTextAlignment.CENTER;
             l.horizontalAlign = HorizontalTextAlignment.LEFT;
@@ -619,29 +629,14 @@ export class ScreenManager extends Component {
             styleLabel(l);
             return l;
         };
-        const textLabel = mkInner('TEXT_LABEL', new Color(232, 244, 250, 255));
+        const textLabel = mkInner('TEXT_LABEL', WHITE.clone());
         const phLabel = mkInner('PLACEHOLDER_LABEL', new Color(120, 140, 160, 255));
-
         const eb = n.addComponent(EditBox);
         eb.textLabel = textLabel;
         eb.placeholderLabel = phLabel;
         eb.placeholder = placeholder;
         eb.string = init;
         eb.inputFlag = password ? EditBox.InputFlag.PASSWORD : EditBox.InputFlag.DEFAULT;
-        const enforceLayout = (): void => {
-            if (!n.isValid || !textLabel.isValid) return;
-            for (const ln of [textLabel.node, phLabel.node]) {
-                const ut = ln.getComponent(UITransform)!;
-                ut.setAnchorPoint(0, 1);
-                ut.setContentSize(w - 4, h);
-                ln.setPosition(-w / 2 + 2, h / 2);
-            }
-        };
-        enforceLayout();
-        if (sys.isBrowser) {
-            setTimeout(enforceLayout, 60);
-            setTimeout(enforceLayout, 600);
-        }
         return eb;
     }
 
