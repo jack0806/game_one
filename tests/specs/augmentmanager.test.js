@@ -308,7 +308,14 @@ test('第一章第一轮：firstWave 模式三张卡必定全部为功能性海�
     }
 });
 
-test('刷新降权：金色显著低于基础货架且≤20%，彩色极小概率≤2%', () => {
+test('刷新降权：金色显著低于基础货架且≤20%，彩色极小概率≤2%', t => {
+    // 固定抽样种子，避免1200张样本的自然波动偶发越过14%上界。
+    // 仅替换本测试的随机源，不修改游戏权重或放宽断言。
+    let sampleSeed = 123456789;
+    t.mock.method(Math, 'random', () => {
+        sampleSeed = (Math.imul(sampleSeed, 1664525) + 1013904223) >>> 0;
+        return sampleSeed / 0x100000000;
+    });
     const am = new AugmentManager();
     const sample = (mode) => {
         let gold = 0, prism = 0, total = 0;

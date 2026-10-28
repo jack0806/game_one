@@ -77,6 +77,7 @@ export class WaveManager {
 
     startWave(game: any): void {
         this.wave++;
+        game.achievementTracker?.startWave(this.wave, game.player, game);
         const tw = this.templateWave();
         const kind = waveKind(tw);
 

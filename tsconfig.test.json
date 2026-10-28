@@ -12,6 +12,9 @@
     "sourceMap": false
   },
   "include": [
+    "assets/scripts/data/AchievementDB.ts",
+    "assets/scripts/systems/AchievementTracker.ts",
+    "assets/scripts/systems/AchievementGameBridge.ts",
     "assets/scripts/core/ArtRemap.ts",
     "assets/scripts/core/ActorAnimation.ts",
     "assets/scripts/core/ActorCorpses.ts",
@@ -35,6 +38,7 @@
     "assets/scripts/data/EffectAnimationDB.ts",
     "assets/scripts/data/EnemySignatureDB.ts",
     "assets/scripts/data/EquipmentDB.ts",
+    "assets/scripts/data/DepotCatalog.ts",
     "assets/scripts/data/LevelIndex.ts",
     "assets/scripts/data/MetaProgressionDB.ts",
     "assets/scripts/data/WaveData.ts",

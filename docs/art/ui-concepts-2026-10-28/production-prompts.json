@@ -1,0 +1,25 @@
+{
+  "mode": "built-in image_gen",
+  "reference": "docs/art/ui-concepts-2026-10-28/armory-v1.png",
+  "background": {
+    "prompt": "Edit the attached HEXBLAST armory concept into a clean reusable GAME BACKGROUND asset. Preserve precisely its bold outlined 2D cel-shaded blue-gray industrial style, warehouse depth, LEFT AND RIGHT mechanical structural pillars and joined solid BOTTOM armored counter, their proportions, cyan inset lamps and little ochre corner hazard stripes. Wide 16:9 1920x1080. Remove ALL foreground UI content: every title, button, text, number, coin, item, item card, UI panel, badge, inventory grid, detail panel, display pedestal. No lettering or icons anywhere. Reconstruct the warehouse naturally behind the removed interface, with quiet low-detail dark navy open space across the central 88% and middle/lower 75% where real UI will be overlaid. Keep the outer metal pillars thin, under 4% screen width each; bottom machinery under 8% screen height. Keep the receding upper warehouse walls, beams and small blue windows in top 16%, modest dim interior shelving near edges. Do NOT draw a floor arena, no top-down perspective. Same camera as reference: looking into the supply depot horizontally. Avoid strong bright lights behind future text. This is the identical frame and setting, stripped of UI for implementation, no new layout, no mockup, no watermark.",
+    "output": "assets/resources/art/ui_depot_background.png"
+  },
+  "items": {
+    "prompt": "Create a production GAME ITEM SPRITE ATLAS for HEXBLAST matching attached approved armory concept. This is a separate transparent sprite sheet, not a screenshot.\nExactly NINE independently isolated objects on a perfectly REGULAR THREE COLUMNS by THREE ROWS invisible equal square cell grid, square overall image ideally 2048x2048. Each object centered precisely in its cell, fills 75% cell width/height leaving at least 10% transparent gutter on ALL sides. Full transparency background everywhere outside object; no background plates, no walls, no pedestals, no ground shadow, no text, no lines dividing cells, no badges, no inventory card borders.\nStyle must closely reproduce reference: hand-illustrated premium 2D cartoon industrial machinery with confident thick near-black contour, blue-gray steel plates, crisp 2/3-tone cel shading, deliberate small metallic highlights, inset cyan glows, subtle ochre fittings, no photoreal 3D.\nThe nine cells in exact row-major order:\nROW 1 COL 1: firepower reactor identical to large right reference item, near circular thick metal module, central bright cyan HEXAGONAL core, segmented purple outer fittings, three-quarter angle. ROW 1 COL 2: reinforced armor plate, chunky blue-gray rectangular layered armor, cyan strip at top and ochre bolts, match reference equipped armor icon. ROW 1 COL 3: targeting scope, short industrial optical cylinder with a vivid red lens facing viewer-left, blue-gray housing and yellow small mount, match reference.\nROW 2 COL 1: propulsion thruster, blue-gray stubby engine with bright cyan circular nozzle aimed viewer-left, small side cylinders, match reference. ROW 2 COL 2: gold pickup magnet, broad U-shaped golden yellow claws around compact blue-gray tech base, match reference. ROW 2 COL 3: equipment chest, squat closed blue-gray armored supply case with inset cyan hexagonal lock and cyan top lights, strong readable silhouette.\nROW 3 COL 1: starting-gold cache, open small metal chest filled with golden hex coins, chunky gold coin shapes, no numbers. ROW 3 COL 2: intelligence cartridges, three cyan holographic data tablets slightly fanned, steel housings with cyan hexagonal symbols, isolated no table. ROW 3 COL 3: shield generator, small chunky blue-gray emitter with a bright cyan translucent hex energy shield rising from it, avoid any enclosing backplate.\nAll nine objects consistent angle, outline weight, crispness and scale. Important keep cell centers exactly at x=1/6,1/2,5/6 and y=1/6,1/2,5/6 so the game can slice this evenly without cutting an object. Objects complete within cell, no overlaps. Transparency actual alpha, no checkerboard painted into background.",
+    "output": "assets/resources/art/ui_depot_items.png",
+    "columns": 3,
+    "rows": 3,
+    "tiles": [
+      "火力核心",
+      "强化装甲",
+      "瞄准镜",
+      "推进器",
+      "吸金器",
+      "装备箱",
+      "战备金库",
+      "战备情报",
+      "战备护盾"
+    ]
+  }
+}

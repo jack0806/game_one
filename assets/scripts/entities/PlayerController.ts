@@ -319,6 +319,7 @@ export class PlayerController extends Component {
         if (this.shield > 0) {
             const abs = Math.min(this.shield, amount);
             this.shield -= abs; amount -= abs;
+            game.achievementTracker?.received(0, abs, game.achievementIncoming === 'melee');
             const shieldBroken = this.shield <= 0;
             game.particles?.shieldBlock?.(this.x, this.y, shieldBroken);
             if (shieldBroken) {
@@ -347,6 +348,8 @@ export class PlayerController extends Component {
         // 海克斯12 不灭协议：受到致命伤或生命只剩 1 滴时触发——生成临时护盾、
         // 25% 吸血 10 秒，本次伤害保底剩 1 滴血（冷却 75 秒，tick 内递减）。
         if (this.stats.hasHexGuard && (this.stats._hexGuardCd ?? 0) <= 0 && this.hp - amount <= 1) {
+            game.achievementTracker?.received(Math.max(0, this.hp - Math.max(1, this.hp - amount)), 0, game.achievementIncoming === 'melee');
+            game.achievementTracker?.guardTriggered();
             this.stats._hexGuardCd = 75;
             this.grantTempShield(this.stats.maxHp * (this.stats._hexGuardShieldMult ?? 2), 5, game);
             this.applyBuff('hex_guard_lifesteal', 10, { lifestealRate: 0.25 });
@@ -358,6 +361,7 @@ export class PlayerController extends Component {
             game.audio?.playSfx?.('hex_activate', 0.9);
             return;
         }
+        game.achievementTracker?.received(Math.min(this.hp, amount), 0, game.achievementIncoming === 'melee');
         this.hp -= amount;
         // 受击钩子：深海恐惧「海之霸主」期间每受一次伤害 Boss 生成护盾（测试房）
         game.onPlayerHit?.(this, game);
@@ -399,6 +403,7 @@ export class PlayerController extends Component {
             if (!opts?.quiet) game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
             return;
         }
+        game.achievementTracker?.received(Math.min(this.hp, amount), 0, game.achievementIncoming === 'melee');
         this.hp -= amount;
         if (!opts?.quiet) {
             game.floatingText?.spawn?.(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff6655', 16, false);
@@ -451,6 +456,7 @@ export class PlayerController extends Component {
             if (this.godMode) continue;
             const dotMitigation = (this.stats?.armor ?? 0) / ((this.stats?.armor ?? 0) + 100);
             const dmg = Math.max(0.1, d.dps * dt * (1 - dotMitigation));
+            game.achievementTracker?.received(Math.min(this.hp, dmg), 0);
             this.hp -= dmg;
             const fx = d as any;
             fx._acc = (fx._acc ?? 0) + dmg;
@@ -512,6 +518,7 @@ export class PlayerController extends Component {
                 const bank = Math.round(this._bloodShieldBank);
                 this._bloodShieldBank = 0;
                 if (bank > 0 && this.alive) {
+                    if (bank >= 50) game.achievementTracker?.mark(74);
                     this.grantTempShield(bank, 10, game);
                     game.floatingText?.spawn?.(this.x, this.y - 46, `血盾 ${bank}`, '#ff7a7a', 15, true);
                 }
@@ -736,14 +743,23 @@ export class PlayerController extends Component {
         // 前摇期间目标离开范围或绕到身后时仍挥出动作，但不会隔空/背向扣血。
         const dot = (enemy.x - this.x) * Math.cos(angle) + (enemy.y - this.y) * Math.sin(angle);
         if (inRange && dot >= 0) {
-            game.particles?.impact?.(enemy.x, enemy.y, angle, 0.55, this.color);
-            const firstDmg = this.applyAttackDamage(enemy, game);
-            // 海克斯5 幻影特效（近战形态）：额外多段伤害
-            const extraHits = this.stats.meleeExtraHits || 0;
-            for (let i = 0; i < extraHits && enemy.alive; i++) this.applyAttackDamage(enemy, game);
-            // 格雷夫被动·荆棘刺鞭：普攻二段按首段当前伤害的75%追加
-            // （远程普攻在 BulletController 命中链路里结算二段）
-            this.thornSecondStage(enemy, game, firstDmg);
+            // 挥击按朝向前方120度扇区结算，同一挥击每个目标只进入一次。
+            // 无地图的headless战斗沿用可命中，实体掩体阻挡真实攻击路径。
+            const victims = [enemy, ...(game.enemies ?? []).filter((e: any) => e !== enemy)].filter((e: any) => {
+                if (!e.alive || e.dead) return false;
+                const dx = e.x - this.x, dy = e.y - this.y, distance = Math.hypot(dx, dy);
+                if (distance > totalRange + this.radius + e.radius) return false;
+                if (distance > this.radius + e.radius && (dx * Math.cos(angle) + dy * Math.sin(angle)) / Math.max(1, distance) < 0.5) return false;
+                return game.arenaLineClear?.(this.x, this.y, e.x, e.y) !== false;
+            });
+            for (const victim of victims) {
+                game.particles?.impact?.(victim.x, victim.y, angle, 0.55, this.color);
+                const firstDmg = this.applyAttackDamage(victim, game);
+                // 幻影特效的额外段与刺鞭二段均沿用本次挥击来源。
+                const extraHits = this.stats.meleeExtraHits || 0;
+                for (let i = 0; i < extraHits && victim.alive; i++) this.applyAttackDamage(victim, game);
+                this.thornSecondStage(victim, game, firstDmg);
+            }
         }
     }
 
@@ -762,6 +778,7 @@ export class PlayerController extends Component {
         }
         // 实习刺客(海克斯27)：隐身后的下一次攻击造成 200% 伤害
         if (this.stats.assassinStrike) {
+            if (game.achievementTracker?.current) game.achievementTracker.current.assassin = true;
             this.stats.assassinStrike = false;
             dmg *= 2;
             game.floatingText?.spawn(enemy.x, enemy.y - 34, '刺客突袭 ×2！', '#7dff9e', 17, true);

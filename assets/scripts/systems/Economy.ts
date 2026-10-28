@@ -137,7 +137,10 @@ export class Economy {
                     game?.onJokerDollPicked?.(d.x, d.y);
                     continue;
                 }
+                const beforeGold = this.gold;
                 this.addGold(this._capGate(d.amount));
+                game?.achievementTracker?.picked(this.gold - beforeGold);
+                game?.achievementTracker?.goldDropPicked?.(d);
                 d.collected = true;
                 game?.audio?.playSfx?.('gold');
                 game?.particles?.hit?.(d.x, d.y, '#ffd85a');

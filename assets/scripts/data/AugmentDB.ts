@@ -74,15 +74,20 @@ export type AugDef = AugmentDef;
 
 export function spawnExplosion(player: any, x: number, y: number, dmg: number, radius: number, game: any): void {
     if (!game) return;
-    game.particles.explode(x, y, '#ff6600', radius);
-    game.audio?.playSfx?.('explode');
-    game.screenShake.shake(6, 0.2);
-    for (const e of game.enemies) {
-        if (e.alive && Vec.dist(e.x, e.y, x, y) < radius
-            && game.arenaLineClear?.(x, y, e.x, e.y) !== false) {
-            e.takeDamage(dmg, player, game);
+    const explode = () => {
+        game.particles.explode(x, y, '#ff6600', radius);
+        game.audio?.playSfx?.('explode');
+        game.screenShake.shake(6, 0.2);
+        for (const e of game.enemies) {
+            if (e.alive && Vec.dist(e.x, e.y, x, y) < radius
+                && game.arenaLineClear?.(x, y, e.x, e.y) !== false) {
+                e.takeDamage(dmg, player, game);
+            }
         }
-    }
+    };
+    // 每次调用都建立独立爆点，死亡连锁不能冒充同一次爆炸。
+    if (game.achievementTracker?.active) game.achievementTracker.scope('explosion', '', explode);
+    else explode();
 }
 
 export function applyBurn(enemy: any, dps: number, duration: number): void {
@@ -129,6 +134,7 @@ export function applyElementMark(enemy: any, element: ElementType, missileDmg: n
         return;
     }
     const kinds = enemy._elemMarks.size;
+    game?.achievementTracker?.elementExplosion();
     enemy._elemMarks.clear();
     const boom = Math.round(missileDmg * Math.pow(2, kinds - 1));
     // 轻量元素爆花：粒子迸发（伤害半径不变，视觉主体控制在半径 90 内）
@@ -140,11 +146,15 @@ export function applyElementMark(enemy: any, element: ElementType, missileDmg: n
         game?.audio?.playSfx?.('explode', 0.5);
         game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, `元素爆炸 ×${kinds - 1}！`, color, 17, true);
     }
-    for (const e of (game?.enemies || []) as any[]) {
-        if (e.alive && Vec.dist(e.x, e.y, enemy.x, enemy.y) < 90) {
-            e.takeDamage(boom, player, game);
+    const deal = () => {
+        for (const e of (game?.enemies || []) as any[]) {
+            if (e.alive && Vec.dist(e.x, e.y, enemy.x, enemy.y) < 90) {
+                e.takeDamage(boom, player, game);
+            }
         }
-    }
+    };
+    if (game.achievementTracker?.active) game.achievementTracker.scope('explosion', 'element', deal);
+    else deal();
 }
 
 /** 元素暴击齐射区间（单档彩色海克斯：10-20 枚 / 单枚 15-20 伤害）。 */
@@ -171,6 +181,7 @@ export function fireElementalVolley(hex: any, p: any, game: any): void {
     const targets = ((game?.enemies || []) as any[]).filter(e =>
         e.alive && !e.dead && !e.invisible && !((e.mechSkyT ?? 0) > 0));
     if (!targets.length || !game?.bullets?.spawn) return;
+    game?.achievementTracker?.elementVolley();
     const N = Rng.int(band.count[0], band.count[1]);
 
     // —— 先锁定：无放回抽取，保证分散时目标不重复 ——

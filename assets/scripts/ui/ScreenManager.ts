@@ -284,7 +284,10 @@ export class ScreenManager extends Component {
             if (surface === this.node) {
                 for (let j = this.node.children.length - 1; j >= 0; j--) {
                     const panel = this.node.children[j];
-                    if (panel.active && this._panels.get(panel.name as ScreenName) === panel) return panel;
+                    if (panel.active && this._panels.get(panel.name as ScreenName) === panel) {
+                        // 大厅军需终端等页内浮层优先接管键盘，避免 Tab 落到背后的传送门。
+                        return this._activeKeyboardModal(panel) ?? panel;
+                    }
                 }
             } else if (['AugSelect', 'Shop', 'Stats', 'TestRoom'].indexOf(surface.name) >= 0) {
                 const modal = this._activeKeyboardModal(surface);

@@ -159,7 +159,7 @@ test('图鉴以四类单位分页，原画和详情可阅读', () => {
     assert.match(screenSource, /ui_hero_display_\$\{def\.id\}/, '选人页使用专门绘制的高清展示图');
 });
 
-test('成就墙按稀有度页签重建(2026-10-19定稿),排版游标=本地顶缘,未解锁置灰', () => {
+test('成就墙保留稀有度分类，使用三列两行分页和分级装甲边框', () => {
     // 页签 = 普通/稀有/史诗/传奇（玩家定稿：不再按 挑战/探索/收集 分类分组）
     assert.match(metaSource, /_rebuildAchievementTabs/, '页签重建');
     assert.match(metaSource, /\['普通', '稀有', '史诗', '传奇'\]/, '页签即四档稀有度');
@@ -170,19 +170,18 @@ test('成就墙按稀有度页签重建(2026-10-19定稿),排版游标=本地顶
     assert.match(metaSource, /`ui_icon_\$\{def\.artKey\}`/);
     assert.match(metaSource, /`奖励  \$\{def\.reward\}`/);
     assert.match(metaSource, /已解锁 \$\{unlocked\} \/ \$\{total\}/);
-    // 排版游标从内容节点本地顶缘(contentH/2)起步——contentH 顶缘会把整卡
-    // 顶出 Mask 视口（2026-10-19 修复"还有遮掩"）
-    assert.match(metaSource, /let y = contentH \/ 2 - 6/);
-    // 内容高度按"行数"（每行3张）估算，不再按卡片张数
-    assert.match(metaSource, /Math\.ceil\(list\.length \/ 3\)/);
-    // 未解锁整卡置灰 / 解锁彩色
+    assert.match(metaSource, /pageSize: 6/);
+    assert.match(metaSource, /i % 3/);
+    assert.match(metaSource, /Math\.floor\(i \/ 3\)/);
+    assert.match(metaSource, /ACHIEVEMENT_TYPES/);
+    assert.match(metaSource, /'未解锁', '已解锁'/);
+    assert.match(metaSource, /SaveSystem\.legacyAchievements\(\)/);
     assert.match(metaSource, /view\.reward\.color = done \? GOLD : new Color\(/, '奖励行随解锁状态变色');
-    // 滚动容器：Mask 视口 + 内容节点钳制滚动 + 滚轮/拖拽与滚动条（修复"下翻不了"）
-    assert.match(metaSource, /AchieveViewport/);
-    assert.match(metaSource, /Mask\.Type\.GRAPHICS_STENCIL/);
-    assert.match(metaSource, /MOUSE_WHEEL/);
-    assert.match(metaSource, /this\._achieveScroll = Math\.max\(0, Math\.min\(this\._achieveMaxScroll, s\)\)/);
-    assert.match(metaSource, /AchieveScrollbar/);
+    assert.match(metaSource, /_drawAchievementFrame\(view\.graphics/);
+    assert.match(metaSource, /_drawAchievementFrame\(g, w, h/);
+    assert.match(metaSource, /AchievementPager/);
+    assert.match(metaSource, /_turnAchievementPage/);
+    assert.doesNotMatch(metaSource, /AchieveScrollbar|_scrollAchievements|MOUSE_WHEEL/);
 });
 
 test('设置页接入后台管理入口,面板含密码门/参数配置/成就管理', () => {

@@ -6,6 +6,8 @@ import {
     UITransform, director, game, Label, Sprite, view, sys
 } from 'cc';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM, DT_MAX } from './Constants';
+import { AchievementTracker } from '../systems/AchievementTracker';
+import { bindAchievementGame } from '../systems/AchievementGameBridge';
 import { visibleDesignWidth, applyScreenPolicy } from './ScreenFit';
 import { Vec, Rng, clamp } from './MathUtils';
 import { worldToLocal, entityVisualPose, entityHealthBar, animationFrameTopOffset } from './EntityVisual';
@@ -394,6 +396,7 @@ export class GameManager extends Component {
             this._hitStop.update(rawDt);
             if (this._inCombat() && this._player?.alive) {
                 this._player.tickMovement(dt, this._input, this);
+                this.achievementTracker?.recordMovement(this._player);
                 separatePlayerBodies(this._player, this._enemies, (x, y, dx, dy, radius) =>
                     moveInArena(this._arena, x, y, dx, dy, radius));
                 if (this._input.justPressed('Escape')) this._pauseCombat();
@@ -836,6 +839,7 @@ export class GameManager extends Component {
     }
 
     private _startGame(char: CharDef) {
+        if (this.achievementTracker) this.achievementTracker.active = false;
         this._clearRunEntities();
         this._runId++;
         // 测试房调试开关不得泄漏进正式局（伤害/承伤/血量倍率与无CD全部复位）
@@ -886,6 +890,14 @@ export class GameManager extends Component {
         const equips = SaveSystem.equippedItems();
         for (const eq of equips) applyEquipmentToStats(eq, this._player.stats);
         if (equips.some(e => e.affix === 'hp')) this._player.hp = this._player.stats.maxHp;
+        const pendingSupply = SaveSystem.shopSupply();
+        this.achievementTracker = new AchievementTracker({
+            hero: char.id, chapter: this._chapter, difficulty: this._difficulty?.id ?? 'normal',
+            equipment: equips.map(e => ({ ...e })), stats: SaveSystem.load().achievementStats,
+            supply: !!(pendingSupply.gold || pendingSupply.draws || pendingSupply.shield),
+        });
+        this._achievementSaveAt = 0;
+        bindAchievementGame(this);
         this._setState('playing');
         // WaveManager.reset() 已把 wave 归零，这里只需注入所选全局章号（1-based）
         this._waveMgr.chapter = this._chapter;
@@ -1332,6 +1344,8 @@ export class GameManager extends Component {
      * 不跑波次调度）。单位由工具条按 id 生成，见 UNIT_CATALOG。
      */
     private _startTestRoom() {
+        if (this.achievementTracker) this.achievementTracker.active = false;
+        this.achievementTracker = undefined;
         this._clearRunEntities();
         this._runId++;
         this._pauseReturn = 'testRoom';
@@ -2626,6 +2640,8 @@ export class GameManager extends Component {
     }
 
     private _onWaveCleared() {
+        this.achievementTracker?.cleared(this._player, this);
+        this._persistAchievementProgress();
         // 波次权威在 WaveManager.wave（_wave 双份计数已删）
 
         // v4：W15 = 大 Boss 波清空（含 Boss 击杀）→ 本局通关结算。
@@ -2769,6 +2785,11 @@ export class GameManager extends Component {
     // ── update (playing only) ─────────────────────────────────
 
     private _updatePlaying(dt: number) {
+        this.achievementTracker?.advance(dt, this._player, this);
+        if (this.achievementTracker?.dirty && this.achievementTracker.time >= this._achievementSaveAt) {
+            this._achievementSaveAt = this.achievementTracker.time + 2;
+            this._persistAchievementProgress();
+        }
         const input = this._input;
         this._corpses.update(dt);
 
@@ -4863,12 +4884,13 @@ export class GameManager extends Component {
             bossKills:     this.bossKills,
             eliteKills:    this.eliteKills,
             miniBossKills: this.miniBossKills,
-            goldEarned:    this._economy.earnedThisRun,
+            goldEarned:    this.achievementTracker?.goldEarned ?? this._economy.earnedThisRun,
             maxCombo:      this.maxCombo,
             augmentCount:  this._augMgr.all().length,
+            achievementStats: this.achievementTracker?.finish(won, this._player, this),
             won,
         });
-        this._newAchievements = unlocked.map(a => `${a.icon} ${a.name}`);
+        this._newAchievements.push(...unlocked.map(a => `${a.icon} ${a.name}`));
         for (const a of unlocked) {
             this._floatText.spawn(CANVAS_W / 2, 180, `成就解锁：${a.icon} ${a.name}`, '#ffd655', 22, true);
         }
@@ -5646,6 +5668,17 @@ export class GameManager extends Component {
     get input()        { return this._input; }
     get enemies()      { return this._enemies as readonly EnemyBase[]; }
     get player()       { return this._player; }
+    /** 正式章节的事件统计；测试房不绑定。 */
+    achievementTracker?: AchievementTracker;
+    private _achievementSaveAt = 0;
+
+    private _persistAchievementProgress(): void {
+        if (!this.achievementTracker?.active || this.state === 'testRoom') return;
+        const fresh = SaveSystem.recordAchievementStats(this.achievementTracker.stats);
+        this.achievementTracker.dirty = false;
+        this._newAchievements.push(...fresh.map(a => `${a.icon} ${a.name}`));
+        for (const a of fresh) this._floatText.spawn(CANVAS_W / 2, 180, `成就解锁：${a.name}`, '#ffd655', 22, true);
+    }
     get runId()        { return this._runId; }
     get wave()         { return this._waveMgr.wave; }
     get chapter()      { return this._chapter; }

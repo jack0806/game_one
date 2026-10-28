@@ -17,11 +17,13 @@ const { MAPS } = require('../dist/data/LevelIndex');
 const { CHAPTER_ARENAS } = require('../dist/data/ChapterArenaDB');
 const { CODEX_ENTRIES } = require('../dist/data/MetaProgressionDB');
 const { ACHIEVEMENTS } = require('../dist/systems/SaveSystem');
+const { DEPOT_ART_KEYS } = require('../dist/data/DepotCatalog');
 
 const ART_DIR = path.join(__dirname, '..', '..', 'assets', 'resources', 'art');
 
 function collectAllArtKeys() {
     const keys = new Set();
+    for (const key of DEPOT_ART_KEYS) keys.add(key);
     keys.add('title_screen');
     keys.add('ui_gold_coin');
     keys.add('ui_lobby_portal_frame');

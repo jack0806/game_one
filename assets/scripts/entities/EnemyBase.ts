@@ -13,7 +13,7 @@ import { ActorAnimation, animationSocket } from '../core/ActorAnimation';
 import { actorClip, ActorAction, ActorView } from '../data/ActorAnimationDB';
 import { kleptoStagger, kleptoCaptureAttack } from '../data/CharacterDB';
 
-export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; }
+export interface DotEffect { type: string; dps: number; timeLeft: number; color: string; achievementSource?: any; }
 
 export class EnemyBase {
     /** 伤害表现身份独立于生命与节点；弹体发射时复制，不持有实体引用。 */
@@ -582,7 +582,9 @@ export class EnemyBase {
         // 大招R已改为固定30秒冷却(见PlayerController.tick)，击杀不再提供充能。
         // 变异：死亡爆炸
         if (game._mutationMods?.deathExplode || this.deathExplode) {
-            game.spawnExplosion?.(attacker, this.x, this.y, this.damage * 2, 60);
+            const explode = () => game.spawnExplosion?.(attacker, this.x, this.y, this.damage * 2, 60);
+            if (game.achievementTracker?.active) game.achievementTracker.scope('environment', 'enemy_death', explode);
+            else explode();
         }
         // 变异：复活。旧局定时器不得向新局刷怪；最终位置仍由 GameManager
         // 的显式出生安全校正保证不会直接贴到玩家身上。
@@ -825,8 +827,10 @@ export class EnemyBase {
         for (let i = this.dots.length - 1; i >= 0; i--) {
             const d = this.dots[i];
             d.timeLeft -= dt;
-            this.hp    -= d.dps * dt;
-            if (this.hp <= 0) { this._die(player, game); return; }
+            const leave = game.achievementTracker?.enter(d.achievementSource);
+            try { this.takeContinuousDamage(d.dps * dt, player, game); }
+            finally { leave?.(); }
+            if (!this.alive) return;
             if (d.timeLeft <= 0) this.dots.splice(i, 1);
         }
 

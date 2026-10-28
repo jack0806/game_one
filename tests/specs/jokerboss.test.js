@@ -297,22 +297,15 @@ test('玩偶猴拾取:不算金币,转交onJokerDollPicked回调', () => {
     assert.equal(eco.drops.length, 0, '拾取后掉落移除');
 });
 
-test('隐藏成就「这不是真的我哟」:拾取玩偶猴解锁且仅一次', () => {
-    cc.sys.localStorage._clear();
-    SaveSystem.resetCache();
-    SaveSystem.selectSlot(0);
-    const def = ACHIEVEMENTS.find(a => a.id === 'joker_doll');
-    assert.ok(def, '成就必须登记');
-    assert.equal(def.hidden, true, '隐藏成就');
-    assert.equal(def.name, '这不是真的我哟');
-    assert.equal(def.progress(SaveSystem.load()), 0, '未拾取时无进度');
-    const unlocked = SaveSystem.recordJokerDoll();
-    assert.ok(unlocked.some(a => a.id === 'joker_doll'), '首次拾取即解锁');
+test('玩偶猴不新增现役成就，旧版已解锁记录作为历史荣誉保留', () => {
+    cc.sys.localStorage._clear(); SaveSystem.resetCache(); SaveSystem.selectSlot(0);
+    assert.equal(ACHIEVEMENTS.some(a => a.id === 'joker_doll'), false);
+    assert.deepEqual(SaveSystem.recordJokerDoll(), []);
     assert.equal(SaveSystem.load().jokerDolls, 1);
-    assert.ok(SaveSystem.isUnlocked(def));
-    const again = SaveSystem.recordJokerDoll();
-    assert.ok(!again.some(a => a.id === 'joker_doll'), '成就不重复解锁');
-    assert.equal(SaveSystem.load().jokerDolls, 2, '数量仍累计');
+    SaveSystem.load().achievements.push('joker_doll'); SaveSystem.save(); SaveSystem.resetCache();
+    assert.ok(SaveSystem.legacyAchievements().some(a => a.id === 'joker_doll'));
+    assert.deepEqual(SaveSystem.recordJokerDoll(), []);
+    assert.equal(SaveSystem.load().achievements.filter(id => id === 'joker_doll').length, 1);
 });
 
 // ── 致盲暗角实现（源码门禁） ────────────────────────────────

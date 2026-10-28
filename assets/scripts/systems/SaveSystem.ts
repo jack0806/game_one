@@ -8,7 +8,9 @@
 import { sys } from 'cc';
 import { equipmentKey } from '../data/EquipmentDB';
 import { TOTAL_CHAPTERS } from '../data/LevelIndex';
-import { CHARS } from '../data/CharacterDB';
+import { ACHIEVEMENTS, AchievementDef, AchievementStats, freshAchievementStats, LEGACY_ACHIEVEMENTS } from '../data/AchievementDB';
+export { ACHIEVEMENTS } from '../data/AchievementDB';
+export type { AchievementDef } from '../data/AchievementDB';
 import { AchievementAdmin, CustomAchievementSpec } from './AchievementAdmin';
 
 /** 一局结束时的汇总数据（由 GameManager 在死亡/通关时填写）。 */
@@ -25,12 +27,15 @@ export interface RunSummary {
     goldEarned: number;    // 本局累计获得金币(含已花费)
     maxCombo: number;      // 本局最高连击
     augmentCount: number;  // 本局装备的强化数
-    won: boolean;          // 是否通关全部章节
+    achievementStats?: AchievementStats;
+    won: boolean;          // 是否通关本章
 }
 
 /** 玩家档案（localStorage 持久化的全部字段）。 */
 export interface PlayerProfile {
     version: number;
+    /** 事件统计独立版本；原 achievements ID 完整保留。 */
+    achievementStats?: AchievementStats;
     /** 档案创建时间戳(ms)；旧档无此字段时按 0 处理，首次记录时补齐。 */
     createdAt: number;
     /** 最近一次写入时间戳(ms)，存档选择页显示「最后游玩」。 */
@@ -79,26 +84,6 @@ export interface SaveSlotSummary {
     profile: PlayerProfile | null;
 }
 
-export interface AchievementDef {
-    id: string;
-    name: string;
-    desc: string;
-    icon: string;
-    /** 成就墙使用的现有 ui_icon_* 美术 key（不含 ui_icon_ 前缀）。 */
-    artKey: string;
-    /** 稀有度（类型内的等级梯度：普通→稀有→史诗→传奇）。 */
-    rarity: '普通' | '稀有' | '史诗' | '传奇';
-    /** 类型（一级分组/成就墙页签；后台成就管理可扩展自建分类）。 */
-    category: string;
-    /** 展示文案奖励（核心币类见 rewardCoins 真实发放）。 */
-    reward: string;
-    /** 解锁即发放的核心币（后台成就管理可编辑；缺省不发）。 */
-    rewardCoins?: number;
-    hidden?: boolean;
-    goal: number;
-    /** 当前进度值（达成时 >= goal）。 */
-    progress: (p: PlayerProfile) => number;
-}
 
 /**
  * 自建成就的进度来源白名单：全部是 PlayerProfile 已有统计字段，
@@ -123,105 +108,6 @@ export const ACHIEVEMENT_STAT_FIELDS: { key: string; label: string; read: (p: Pl
     { key: 'jokerDolls',        label: '玩偶猴数',     read: p => p.jokerDolls ?? 0 },
 ];
 
-/**
- * 成就墙全集 v5（42 个，见 docs/成就设计提案v5-2026-10-19.md 及 v5.1 变更）。
- * 数量金字塔（2026-10-19 玩家定稿）：普通 15 > 稀有 12 > 史诗 9 > 传奇 6。
- * 档位按现网公式实算的真实产出定档（每章小兵 428~945、精英固定槽 8/11/14、
- * 小首领恒 4~5/局、大首领仅图末章恒 1/局、金币 1600~3780/局）：
- * 普通=当天(1~3局) · 稀有=10~25局 · 史诗=50~150局 · 传奇=200~450局。
- * 奖励按档位模板真发：普通 核心币×100 · 稀有 ×250 · 史诗 ×450 · 传奇 称号+核心币×800。
- * id 一律不改（老玩家已解锁记录保留）；全部 artKey 复用现有 ui_icon_* 素材。
- */
-export const ACHIEVEMENTS: AchievementDef[] = [
-    // ── 探索（9）：战线推进 + 波次纵深 ──────────────────────────
-    { id: 'first_run',  name: '初次出击',   desc: '完成第一局战斗',        icon: '🚀', artKey: 'speed', rarity: '普通', category: '探索', reward: '核心币 × 100', rewardCoins: 100, goal: 1,
-      progress: p => p.totalRuns },
-    { id: 'wave_5',     name: '初试锋芒',   desc: '单局打到第 5 波',       icon: '🧭', artKey: 'speed', rarity: '普通', category: '探索', reward: '核心币 × 100', rewardCoins: 100, goal: 5,
-      progress: p => p.bestWave ?? 0 },
-    { id: 'map_1',      name: '废土肃清',   desc: '通关图 1 全部 5 章',    icon: '🏕️', artKey: 'fire', rarity: '普通', category: '探索', reward: '核心币 × 100', rewardCoins: 100, goal: 5,
-      progress: p => p.chaptersCleared ?? 0 },
-    { id: 'wave_12',    name: '纵深突袭',   desc: '单局打到第 12 波',      icon: '🏃', artKey: 'speed', rarity: '普通', category: '探索', reward: '核心币 × 100', rewardCoins: 100, goal: 12,
-      progress: p => p.bestWave ?? 0 },
-    { id: 'chapter_2',  name: '初入混沌',   desc: '肃清图 2 钢铁工厂',     icon: '🌿', artKey: 'summon', rarity: '稀有', category: '探索', reward: '核心币 × 250', rewardCoins: 250, goal: 10,
-      progress: p => p.chaptersCleared ?? 0 },
-    { id: 'map_3',      name: '实验室肃清', desc: '通关图 3 全部 5 章',    icon: '🧪', artKey: 'crit', rarity: '稀有', category: '探索', reward: '核心币 × 250', rewardCoins: 250, goal: 15,
-      progress: p => p.chaptersCleared ?? 0 },
-    { id: 'chapter_4',  name: '深渊行者',   desc: '肃清图 4 混沌位面',     icon: '🌌', artKey: 'chaos', rarity: '史诗', category: '探索', reward: '核心币 × 450', rewardCoins: 450, goal: 20,
-      progress: p => p.chaptersCleared ?? 0 },
-    { id: 'map_5',      name: '天罚肃清',   desc: '通关图 5 全部 5 章',    icon: '⚡', artKey: 'explosion', rarity: '史诗', category: '探索', reward: '核心币 × 450', rewardCoins: 450, goal: 25,
-      progress: p => p.chaptersCleared ?? 0 },
-    { id: 'all_maps',   name: '六图远征',   desc: '通关全部 6 张地图',     icon: '🗺️', artKey: 'chaos', rarity: '传奇', category: '探索', reward: '称号「肃清者」+ 核心币 × 800', rewardCoins: 800, goal: 30,
-      progress: p => p.chaptersCleared ?? 0 },
-    // ── 挑战（22）：击杀 / 精英 / 首领 / 单局 / 连击 / 局数 ─────
-    { id: 'kills_100',  name: '千人斩',     desc: '累计击杀 1,000 个敌人',  icon: '⚔️', artKey: 'crit', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 1000,
-      progress: p => p.totalKills },
-    { id: 'elite_10',   name: '精英初灭',   desc: '累计击杀 10 个精英',    icon: '🎯', artKey: 'shield', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 10,
-      progress: p => p.eliteKills ?? 0 },
-    { id: 'elite_100',  name: '精英猎手',   desc: '累计击杀 100 个精英',   icon: '🎯', artKey: 'shield', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 100,
-      progress: p => p.eliteKills ?? 0 },
-    { id: 'boss_1',     name: '旗开得胜',   desc: '首次击败大首领',        icon: '🗡️', artKey: 'crit', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 1,
-      progress: p => p.bossKills },
-    { id: 'mini_1',     name: '首猎',       desc: '首次击败小首领',        icon: '🦑', artKey: 'summon', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 1,
-      progress: p => p.miniBossKills ?? 0 },
-    { id: 'combo_100',  name: '连击入门',   desc: '单局连击达到 100',      icon: '💫', artKey: 'combo', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 100,
-      progress: p => p.bestCombo },
-    { id: 'runs_5',     name: '初露头角',   desc: '累计完成 5 局',         icon: '🌱', artKey: 'speed', rarity: '普通', category: '挑战', reward: '核心币 × 100', rewardCoins: 100, goal: 5,
-      progress: p => p.totalRuns },
-    { id: 'kills_1000', name: '万人斩',     desc: '累计击杀 10,000 个敌人', icon: '💀', artKey: 'explosion', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 10000,
-      progress: p => p.totalKills },
-    { id: 'combo_50',   name: '连击大师',   desc: '单局连击达到 300',      icon: '🔥', artKey: 'combo', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 300,
-      progress: p => p.bestCombo },
-    { id: 'run_150',    name: '战场收割者', desc: '单局击杀 500 个敌人',   icon: '🌟', artKey: 'fire', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 500,
-      progress: p => p.bestKillsInRun },
-    { id: 'boss_10',    name: '屠龙者',     desc: '累计击杀 10 个大首领',  icon: '👑', artKey: 'chaos', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 10,
-      progress: p => p.bossKills },
-    { id: 'mini_50',    name: '首猎者',     desc: '累计击杀 50 个小首领',  icon: '🦑', artKey: 'summon', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 50,
-      progress: p => p.miniBossKills ?? 0 },
-    { id: 'runs_25',    name: '百战不殆',   desc: '累计完成 25 局',        icon: '🎖️', artKey: 'shield', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 25,
-      progress: p => p.totalRuns },
-    { id: 'elite_2000', name: '精英克星',   desc: '累计击杀 2,000 个精英', icon: '🛡️', artKey: 'shield', rarity: '稀有', category: '挑战', reward: '核心币 × 250', rewardCoins: 250, goal: 2000,
-      progress: p => p.eliteKills ?? 0 },
-    { id: 'combo_1000', name: '连锁风暴',   desc: '单局连击达到 1,000',    icon: '🌪️', artKey: 'combo', rarity: '史诗', category: '挑战', reward: '核心币 × 450', rewardCoins: 450, goal: 1000,
-      progress: p => p.bestCombo },
-    { id: 'run_1000',   name: '战场主宰',   desc: '单局击杀 1,000 个敌人', icon: '☄️', artKey: 'explosion', rarity: '史诗', category: '挑战', reward: '核心币 × 450', rewardCoins: 450, goal: 1000,
-      progress: p => p.bestKillsInRun },
-    { id: 'kills_100000', name: '杀戮风暴', desc: '累计击杀 100,000 个敌人', icon: '⚔️', artKey: 'crit', rarity: '史诗', category: '挑战', reward: '核心币 × 450', rewardCoins: 450, goal: 100000,
-      progress: p => p.totalKills },
-    { id: 'elite_20000', name: '精英末日', desc: '累计击杀 20,000 个精英', icon: '💠', artKey: 'summon', rarity: '史诗', category: '挑战', reward: '核心币 × 450', rewardCoins: 450, goal: 20000,
-      progress: p => p.eliteKills ?? 0 },
-    { id: 'boss_100',   name: '百战屠龙', desc: '累计击杀 100 个大首领', icon: '🐉', artKey: 'chaos', rarity: '史诗', category: '挑战', reward: '核心币 × 450', rewardCoins: 450, goal: 100,
-      progress: p => p.bossKills },
-    { id: 'runs_100',   name: '老兵',       desc: '累计完成 100 局',       icon: '🎖️', artKey: 'speed', rarity: '史诗', category: '挑战', reward: '核心币 × 450', rewardCoins: 450, goal: 100,
-      progress: p => p.totalRuns },
-    { id: 'kills_300000', name: '屠戮万象', desc: '累计击杀 300,000 个敌人', icon: '💀', artKey: 'explosion', rarity: '传奇', category: '挑战', reward: '称号「清场者」+ 核心币 × 800', rewardCoins: 800, goal: 300000,
-      progress: p => p.totalKills },
-    { id: 'mini_1000',  name: '首领收割机', desc: '累计击杀 1,000 个小首领', icon: '🦑', artKey: 'summon', rarity: '传奇', category: '挑战', reward: '称号「万首之王」+ 核心币 × 800', rewardCoins: 800, goal: 1000,
-      progress: p => p.miniBossKills ?? 0 },
-    { id: 'boss_300',   name: '弑神者',     desc: '累计击杀 300 个大首领', icon: '👑', artKey: 'chaos', rarity: '传奇', category: '挑战', reward: '称号「弑神者」+ 核心币 × 800', rewardCoins: 800, goal: 300,
-      progress: p => p.bossKills },
-    // ── 收集（9）：囤积与全收集 ────────────────────────────────
-    { id: 'equip_1',    name: '首件入库',   desc: '拾取第一件装备',        icon: '🗡️', artKey: 'crit', rarity: '普通', category: '收集', reward: '核心币 × 100', rewardCoins: 100, goal: 1,
-      progress: p => p.equipments.length },
-    { id: 'gold_1000',  name: '第一桶金',   desc: '累计获得 1,000 金币',   icon: '🪙', artKey: 'gold', rarity: '普通', category: '收集', reward: '核心币 × 100', rewardCoins: 100, goal: 1000,
-      progress: p => p.totalGoldEarned },
-    { id: 'aug_3',      name: '初窥门径',   desc: '单局装备 3 个海克斯强化', icon: '🔷', artKey: 'summon', rarity: '普通', category: '收集', reward: '核心币 × 100', rewardCoins: 100, goal: 3,
-      progress: p => p.bestAugmentCount },
-    { id: 'core_1',     name: '首笔兑换',   desc: '首次获得核心币',        icon: '💎', artKey: 'gold', rarity: '普通', category: '收集', reward: '核心币 × 100', rewardCoins: 100, goal: 1,
-      progress: p => p.coreCoins ?? 0 },
-    { id: 'gold_5000',  name: '富甲一方',   desc: '累计获得 50,000 金币',  icon: '💰', artKey: 'gold', rarity: '稀有', category: '收集', reward: '核心币 × 250', rewardCoins: 250, goal: 50000,
-      progress: p => p.totalGoldEarned },
-    { id: 'aug_6',      name: '收藏家',     desc: '单局装备 12 个海克斯强化', icon: '🔷', artKey: 'summon', rarity: '稀有', category: '收集', reward: '核心币 × 250', rewardCoins: 250, goal: 12,
-      progress: p => p.bestAugmentCount },
-    { id: 'equip_10',   name: '军械商',     desc: '装备仓库满 10 件',      icon: '⚒️', artKey: 'shield', rarity: '稀有', category: '收集', reward: '核心币 × 250', rewardCoins: 250, goal: 10,
-      progress: p => p.equipments.length },
-    { id: 'gold_200000', name: '富可敌国',  desc: '累计获得 200,000 金币', icon: '💰', artKey: 'gold', rarity: '史诗', category: '收集', reward: '核心币 × 450', rewardCoins: 450, goal: 200000,
-      progress: p => p.totalGoldEarned },
-    { id: 'all_chars',  name: '全明星',     desc: `使用过全部 ${CHARS.length} 名英雄`, icon: '🏆', artKey: 'heart', rarity: '传奇', category: '收集', reward: '称号「群星」+ 核心币 × 800', rewardCoins: 800, goal: CHARS.length,
-      progress: p => p.charsPlayed.length },
-    // 隐藏成就：滑稽猴击杀后 20% 掉落玩偶猴，拾取即解锁（AchievementDef.hidden）
-    { id: 'joker_doll', name: '这不是真的我哟', desc: '获得滑稽猴掉落的玩偶猴', icon: '🐵', artKey: 'summon', rarity: '传奇', category: '收集', reward: '玩偶猴摆件', hidden: true, goal: 1,
-      progress: p => p.jokerDolls ?? 0 },
-];
 
 /**
  * 合并后台成就管理后的生效成就全集（成就墙展示与局末判定共用）：
@@ -273,7 +159,7 @@ function customToDef(c: CustomAchievementSpec): AchievementDef {
 
 function freshProfile(): PlayerProfile {
     return {
-        version: 2,
+        version: 2, achievementStats: freshAchievementStats(),
         createdAt: 0, updatedAt: 0,
         totalRuns: 0, totalWins: 0, totalKills: 0, bossKills: 0,
         eliteKills: 0, miniBossKills: 0,
@@ -292,7 +178,26 @@ function parseProfileRaw(raw: string | null): PlayerProfile | null {
     if (!raw) return null;
     try {
         const data = JSON.parse(raw);
-        if (data && typeof data === 'object') return Object.assign(freshProfile(), data);
+        if (data && typeof data === 'object') {
+            const p = Object.assign(freshProfile(), data);
+            const saved = data.achievementStats;
+            const stats = Object.assign(freshAchievementStats(), saved && typeof saved === 'object' ? saved : {});
+            stats.values = Object.assign({}, stats.values);
+            for (const key of ['equipmentKeys', 'equippedAffixes', 'hexIds', 'winsByHero', 'hardBossHeroes', 'hardBossMaps', 'buildWins']) {
+                // Creator网页构建的loose展开不支持Set；显式Array.from保留原始条目。
+                const items = Array.isArray(stats[key]) ? stats[key] : [];
+                stats[key] = Array.from(new Set(items.filter(item =>
+                    key === 'hardBossMaps' ? typeof item === 'number' && item >= 1 && item <= 6 : typeof item === 'string')));
+            }
+            for (const e of p.equipments ?? []) {
+                const key = equipmentKey(e);
+                if (stats.equipmentKeys.indexOf(key) < 0) stats.equipmentKeys.push(key);
+            }
+            p.achievementStats = stats;
+            p.achievements = Array.isArray(data.achievements)
+                ? Array.from(new Set(data.achievements.filter(id => typeof id === 'string'))) : [];
+            return p;
+        }
     } catch (_e) { /* 存档损坏按空槽处理，不中断游戏 */ }
     return null;
 }
@@ -469,6 +374,7 @@ export class SaveSystem {
     /** 局末记录一局数据，返回本次新解锁的成就列表（供浮字/弹提示）。 */
     static recordRun(run: RunSummary): AchievementDef[] {
         const p = this.load();
+        if (run.achievementStats) this.mergeAchievementStats(run.achievementStats);
         p.totalRuns++;
         if (run.won) p.totalWins++;
         p.totalKills    += run.kills;
@@ -495,14 +401,47 @@ export class SaveSystem {
     static checkAchievements(): AchievementDef[] {
         const p = this.load();
         const fresh: AchievementDef[] = [];
-        for (const a of buildMergedAchievements()) {
-            if (p.achievements.indexOf(a.id) < 0 && a.progress(p) >= a.goal) {
-                p.achievements.push(a.id);
-                if (a.rewardCoins && a.rewardCoins > 0) p.coreCoins += a.rewardCoins;
-                fresh.push(a);
+        const all = buildMergedAchievements();
+        // 元成就迭代到稳定，仍通过原始ID防止重复领奖。
+        for (let pass = 0; pass <= all.length; pass++) {
+            const before = p.achievements.length;
+            for (const a of all) {
+                if (p.achievements.indexOf(a.id) < 0 && a.progress(p) >= a.goal) {
+                    p.achievements.push(a.id);
+                    if (a.rewardCoins && a.rewardCoins > 0) p.coreCoins += a.rewardCoins;
+                    fresh.push(a);
+                }
             }
+            if (p.achievements.length === before) break;
         }
         return fresh;
+    }
+
+    static mergeAchievementStats(incoming: AchievementStats): void {
+        const p = this.load();
+        const out = p.achievementStats ?? (p.achievementStats = freshAchievementStats());
+        for (const key of Object.keys(incoming.values)) {
+            const value = incoming.values[key];
+            if (Number.isFinite(value)) out.values[key] = Math.max(out.values[key] ?? 0, value);
+        }
+        for (const key of ['equipmentKeys', 'equippedAffixes', 'hexIds', 'winsByHero', 'hardBossHeroes', 'hardBossMaps', 'buildWins']) {
+            out[key] = Array.from(new Set(out[key].concat(incoming[key])));
+        }
+    }
+
+    static recordAchievementStats(stats: AchievementStats): AchievementDef[] {
+        this.mergeAchievementStats(stats);
+        const fresh = this.checkAchievements();
+        this.save();
+        return fresh;
+    }
+
+    /** 退出现役的已解锁旧成就作为历史荣誉展示，不进入160分母或再次发奖。 */
+    static legacyAchievements(): AchievementDef[] {
+        const active = new Set(ACHIEVEMENTS.map(a => a.id));
+        const p = this.load();
+        return LEGACY_ACHIEVEMENTS.filter(a => !active.has(a.id) && p.achievements.indexOf(a.id) >= 0)
+            .map(a => ({ ...a, category: '历史荣誉', icon: '★', reward: '旧版已领取', goal: 1, progress: () => 1 }));
     }
 
     /** 生效成就全集（后台覆盖/下架/自建已合并）；成就墙页与后台管理共用。 */
@@ -602,6 +541,10 @@ export class SaveSystem {
     static addEquipment(equip: any): void {
         const p = this.load();
         p.equipments.push(equip);
+        const stats = p.achievementStats ?? (p.achievementStats = freshAchievementStats());
+        const key = equipmentKey(equip);
+        if (stats.equipmentKeys.indexOf(key) < 0) stats.equipmentKeys.push(key);
+        stats.values[91] = 1;
         const slot = p.equipLoadout.findIndex(s => s === null || s === undefined);
         if (slot >= 0) p.equipLoadout[slot] = equip.uid;
         this.save();
@@ -624,7 +567,7 @@ export class SaveSystem {
         const byUid = new Map((p.equipments ?? []).map(e => [e.uid, e]));
         const loadout = (p.equipLoadout ?? [null, null, null]);
         let picked = loadout.map(uid => (uid != null ? byUid.get(uid) : undefined)).filter(Boolean);
-        if (!picked.length) picked = (p.equipments ?? []).slice(0, 3);
+        // 显式空格保持空装，保证挑战条件与实际配装一致。
         return picked;
     }
 

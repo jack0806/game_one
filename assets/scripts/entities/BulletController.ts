@@ -94,6 +94,7 @@ function makeBullet(parent?: Node): BulletData {
 }
 
 function resetBullet(b: BulletData): void {
+    b.achievementSource = undefined;
     b.active = false; b.x = 0; b.y = 0; b.vx = 0; b.vy = 0;
     b.damage = 10; b.radius = 5; b.pierce = 0; b.pierceLeft = 0;
     b.bounce = 0; b.bounceLeft = 0; b.lifeTime = 1.5; b.life = 0;
@@ -204,7 +205,7 @@ export class BulletPool {
             // 范围伤害保留机制例外，碰墙引爆但弹体不能穿墙。
             if (game.firstArenaBulletHit?.(startX, startY, b.x, b.y, b.radius)) {
                 game.particles?.hit?.(b.x, b.y, b.color);
-                if (b.explodeOnExpire) game.spawnExplosion?.(player, b.x, b.y, b.damage, b.explodeRadius ?? 50, game);
+                if (b.explodeOnExpire) this._explodePlayerBullet(b, player, game);
                 this._release(b); continue;
             }
 
@@ -265,7 +266,7 @@ export class BulletPool {
                 if (b.x < -20 || b.x > CANVAS_W + 20 || b.y < -20 || b.y > PLAYFIELD_BOTTOM + 20 || b.life > b.lifeTime) {
                     // 终点爆炸（凯尔大招"打不着怪不白消失"）：到期/出界时对敌人造成半径范围伤害
                     if (b.explodeOnExpire) {
-                        game.spawnExplosion?.(player, clamp(b.x, 0, CANVAS_W), clamp(b.y, 0, PLAYFIELD_BOTTOM), b.damage, b.explodeRadius ?? 50, game);
+                        this._explodePlayerBullet(b, player, game, clamp(b.x, 0, CANVAS_W), clamp(b.y, 0, PLAYFIELD_BOTTOM));
                     }
                     this._release(b); continue;
                 }
@@ -283,6 +284,8 @@ export class BulletPool {
                 if (!b.isEnemyBullet && b.owner !== 'enemy'
                     && (!!e.invisible || ((e as any).mechSkyT ?? 0) > 0)) continue;
                 if (Vec.dist2(b.x, b.y, e.x, e.y) < (b.radius + e.radius) ** 2) {
+                    const leaveAchievementSource = game.achievementTracker?.enter(b.achievementSource);
+                    try {
                     b.hitEnemies.add(e);
                     let dmg = b.damage;
                     if (b.isCrit) {
@@ -294,6 +297,7 @@ export class BulletPool {
                     if ((e.isElite || e.isBoss) && player.stats.eliteBonus) dmg *= (1 + player.stats.eliteBonus);
                     // 实习刺客(海克斯27)：隐身后的下一次攻击造成 200% 伤害
                     if (player.stats?.assassinStrike) {
+                        if (b.achievementSource) b.achievementSource.assassin = true;
                         player.stats.assassinStrike = false;
                         dmg *= 2;
                         game.floatingText?.spawn(e.x, e.y - 34, '刺客突袭 ×2！', '#7dff9e', 17, true);
@@ -336,6 +340,7 @@ export class BulletPool {
                         this._release(b); released = true; break;
                     }
                     else b.pierceLeft = Math.max(0, b.pierceLeft - 1);
+                    } finally { leaveAchievementSource?.(); }
                 }
             }
             if (released) continue;
@@ -419,6 +424,7 @@ export class BulletPool {
                 Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
                 // 破盾弹：先清空玩家护盾（锯齿剑虾尖刺/无人机声波）
                 if (b.pierceShield && player.shield > 0) {
+                    game.achievementTracker?.received(0, player.shield);
                     player.shield = 0;
                     game.particles?.shieldBlock?.(player.x, player.y, true);
                     game.floatingText?.spawn?.(player.x, player.y - 42, '护盾失效', '#ff8888', 14, true);
@@ -436,6 +442,12 @@ export class BulletPool {
 
     get active(): BulletData[] { return this._active; }
 
+    private _explodePlayerBullet(b: BulletData, player: any, game: any, x = b.x, y = b.y): void {
+        const leave = game.achievementTracker?.enter(b.achievementSource);
+        try { game.spawnExplosion?.(player, x, y, b.damage, b.explodeRadius ?? 50, game); }
+        finally { leave?.(); }
+    }
+
     /** 释放所有带指定来源标记的敌弹（Boss 升空"直接消失"时带走自己的弹幕）。 */
     clearTaggedEnemyBullets(tag: string): void {
         for (let i = this._active.length - 1; i >= 0; i--) {
@@ -448,6 +460,7 @@ export class BulletPool {
         while (this._active.length) {
             const b = this._active.pop()!;
             b.active = false;
+            b.achievementSource = undefined;
             if (b.node) b.node.active = false;
             this._pool.push(b);
         }

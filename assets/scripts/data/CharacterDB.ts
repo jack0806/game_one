@@ -712,6 +712,7 @@ export const CHARACTERS: Record<string, CharDef> = {
                 ? Math.max(60, Math.round((target.maxHp || 100) * (target.isBoss ? 0.02 : 0.06)))
                 : Math.round((target.damage || 10) * (slot === 1 ? 1 : 1.2));
             p.stats._stolenSkill = {
+                target,
                 name: `${target.label || target.type || '怪物'}·${['普攻', '特技', '杀招'][slot - 1]}`,
                 kind: (['volley', 'nova', 'nuke'] as const)[slot - 1],
                 dmg: Math.max(orig, atk2),
@@ -1165,6 +1166,7 @@ export function kleptoCaptureBullet(b: any, player: any, game: any): 'pass' | 'c
 export function fireStoredAttacks(p: any, game: any): void {
     const icpt = p.stats?._intercept;
     if (!icpt) return;
+    if (icpt.stored.length >= 10) game.achievementTracker?.mark(80);
     const pool = game.bulletPool ?? game.bullets;
     const target = game.getNearestEnemy?.(p.x, p.y);
     const bonus = Math.round((p.getDamage?.(game) ?? p.stats?.damage ?? 0) * 0.75);

@@ -221,7 +221,7 @@ export class SaveSelectUI {
 
         const p = summary.profile;
         if (summary.exists && p) {
-            const achCount = p.achievements.length;
+            const achCount = ACHIEVEMENTS.filter(a => p.achievements.indexOf(a.id) >= 0).length;
             view.lines[0].string = SLOT_TITLES[view.slot];
             view.lines[1].string = `总局数 ${p.totalRuns}  ·  最远 图${mapOf(Math.max(1, p.bestChapter))}-${chapterInMap(Math.max(1, p.bestChapter))}`;
             view.lines[2].string = `成就 ${achCount}/${ACHIEVEMENTS.length}  ·  英雄 ${p.charsPlayed.length}/${CHARS.length}`;

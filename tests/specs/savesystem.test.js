@@ -198,52 +198,36 @@ test('旧单档案迁移:legacy档案在所有槽为空时迁入1号槽,且只�
     assert.equal(SaveSystem.listSlots()[0].exists, false, '已有槽位数据时旧档不再迁移');
 });
 
-test('成就全集v5共42个且id唯一(含滑稽猴隐藏成就)', () => {
-    assert.equal(ACHIEVEMENTS.length, 42);
+test('成就全集160个且id唯一，类型与稀有度符合批准配额', () => {
+    assert.equal(ACHIEVEMENTS.length, 160);
     const ids = ACHIEVEMENTS.map(a => a.id);
     assert.equal(new Set(ids).size, ids.length);
     for (const a of ACHIEVEMENTS) {
         assert.ok(a.artKey && a.reward, `${a.id} 应提供成就图片与奖励预览`);
         assert.ok(['普通', '稀有', '史诗', '传奇'].includes(a.rarity));
-        assert.ok(['挑战', '探索', '收集'].includes(a.category));
+        assert.ok(['入门', '战斗', '构筑', '英雄', '装备', '地图', '经营', '生存', '隐藏', '里程碑'].includes(a.category));
     }
     // 数量金字塔（2026-10-19 玩家定稿）：普通 > 稀有 > 史诗 > 传奇 严格递减
     const byRarity = { 普通: 0, 稀有: 0, 史诗: 0, 传奇: 0 };
     for (const a of ACHIEVEMENTS) byRarity[a.rarity]++;
-    assert.deepEqual(byRarity, { 普通: 15, 稀有: 12, 史诗: 9, 传奇: 6 });
+    assert.deepEqual(byRarity, { 普通: 64, 稀有: 48, 史诗: 32, 传奇: 16 });
     assert.ok(byRarity.普通 > byRarity.稀有, '普通应多于稀有');
     assert.ok(byRarity.稀有 > byRarity.史诗, '稀有应多于史诗');
     assert.ok(byRarity.史诗 > byRarity.传奇, '史诗应多于传奇');
 });
 
-test('v5同指标成就目标值随档位严格递增(防止高档成就反而容易达成)', () => {
+test('160项保留的同指标档位递增，退出旧档位不再进入现役分母', () => {
     const goalOf = id => ACHIEVEMENTS.find(a => a.id === id).goal;
-    // 累计击杀 4 档
-    assert.ok(goalOf('kills_100') < goalOf('kills_1000'));
-    assert.ok(goalOf('kills_1000') < goalOf('kills_100000'));
-    assert.ok(goalOf('kills_100000') < goalOf('kills_300000'));
-    // 精英 4 档
-    assert.ok(goalOf('elite_10') < goalOf('elite_100'));
-    assert.ok(goalOf('elite_100') < goalOf('elite_2000'));
-    assert.ok(goalOf('elite_2000') < goalOf('elite_20000'));
-    // 小首领 3 档 / 大首领 4 档
-    assert.ok(goalOf('mini_1') < goalOf('mini_50'));
-    assert.ok(goalOf('mini_50') < goalOf('mini_1000'));
-    assert.ok(goalOf('boss_1') < goalOf('boss_10'));
-    assert.ok(goalOf('boss_10') < goalOf('boss_100'));
-    assert.ok(goalOf('boss_100') < goalOf('boss_300'));
-    // 单局击杀 / 连击 / 局数 / 金币 / 波次 / 强化
     assert.ok(goalOf('run_150') < goalOf('run_1000'));
     assert.ok(goalOf('combo_100') < goalOf('combo_50'));
     assert.ok(goalOf('combo_50') < goalOf('combo_1000'));
-    assert.ok(goalOf('runs_5') < goalOf('runs_25'));
     assert.ok(goalOf('runs_25') < goalOf('runs_100'));
     assert.ok(goalOf('gold_1000') < goalOf('gold_5000'));
-    assert.ok(goalOf('gold_5000') < goalOf('gold_200000'));
     assert.ok(goalOf('wave_5') < goalOf('wave_12'));
     assert.ok(goalOf('aug_3') < goalOf('aug_6'));
-    // 单局击杀天花板实算≈1100（地狱）——战场主宰 1000 必须可达且不超天花板
-    assert.ok(goalOf('run_1000') <= 1100, '单局击杀档位不得高于实算天花板');
+    assert.ok(goalOf('run_1000') <= 1100);
+    assert.equal(ACHIEVEMENTS.some(a => a.id === 'joker_doll'), false);
+    assert.equal(ACHIEVEMENTS.some(a => a.id === 'elite_20000'), false);
 });
 
 test('存档码导出导入:三槽打包恢复,无效码拒改现有存档', () => {

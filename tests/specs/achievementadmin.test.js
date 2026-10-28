@@ -39,7 +39,7 @@ test('内置成就覆盖:改目标/文案/稀有度即时生效,不下架不影�
     const after = SaveSystem.allAchievements().find(a => a.id === 'kills_100');
     assert.equal(after.goal, 5000);
     assert.equal(after.name, '千人斩+');
-    assert.equal(after.category, '挑战', '未覆盖字段沿用静态定义');
+    assert.equal(after.category, '里程碑', '未覆盖字段沿用160项类型定义');
     // 不存在的 id 覆盖不产生幽灵条目
     AchievementAdmin.setOverride('ghost', { goal: 1 });
     assert.equal(SaveSystem.allAchievements().some(a => a.id === 'ghost'), false);
@@ -47,10 +47,10 @@ test('内置成就覆盖:改目标/文案/稀有度即时生效,不下架不影�
 
 test('下架:retired 从合并列表隐藏,恢复后回到列表', () => {
     fresh();
-    AchievementAdmin.setOverride('joker_doll', { retired: true });
-    assert.equal(SaveSystem.allAchievements().some(a => a.id === 'joker_doll'), false, '下架即隐藏');
-    AchievementAdmin.setOverride('joker_doll', { retired: false });
-    assert.ok(SaveSystem.allAchievements().some(a => a.id === 'joker_doll'), '恢复可见');
+    AchievementAdmin.setOverride('ach_148', { retired: true });
+    assert.equal(SaveSystem.allAchievements().some(a => a.id === 'ach_148'), false, '下架即隐藏');
+    AchievementAdmin.setOverride('ach_148', { retired: false });
+    assert.ok(SaveSystem.allAchievements().some(a => a.id === 'ach_148'), '恢复可见');
 });
 
 test('自建成就:白名单统计字段驱动进度,category自动=rarity,非法字段恒 0,可删除', () => {
