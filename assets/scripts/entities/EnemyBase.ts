@@ -559,6 +559,8 @@ export class EnemyBase {
         if (this.type === 'gold_scavenger' && this._scavengerAge <= 5) {
             game.economy?.spawnDrop(this.x, this.y, 6);
             game.floatingText?.spawn?.(this.x, this.y - 34, '截获！ +6', '#ffd75a', 17, true);
+            // 「截获行动」成就：出生5秒内截获掘金客计数（局末随 RunSummary 入档）
+            game.scavengerGrabs = (game.scavengerGrabs || 0) + 1;
         }
         game.score    = (game.score || 0) + (this.isBoss ? 500 : this.isElite ? 50 : 10);
         game.kills    = (game.kills || 0) + 1;
@@ -573,6 +575,20 @@ export class EnemyBase {
         if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
         if (this.isElite) game.eliteKills = (game.eliteKills || 0) + 1;
         if (this.isMiniBoss) game.miniBossKills = (game.miniBossKills || 0) + 1;
+        // 「逆命者」成就：大Boss倒下的瞬间玩家仍存活且生命值<10%（护盾不计入，
+        // 同归于尽不算）——本局惊险反杀计数，局末随 RunSummary 入档
+        if (this.isBoss && game.player && game.player.alive !== false
+            && game.player.hp / game.player.maxHp < 0.1) {
+            game.clutchKills = (game.clutchKills || 0) + 1;
+            game.floatingText?.spawn?.(game.player.x, game.player.y - 44, '逆命时刻！', '#ff7a45', 16, true);
+        }
+        // 「速杀艺术」成就：大Boss从登场到倒下不足阈值秒数（后台 fastBossKillSec
+        // 可调，默认20s）——bossFightT 由 GameManager 在 Boss 生成时清零、每帧累加
+        if (this.isBoss && game.bossFightT !== undefined
+            && game.bossFightT <= GameConfig.get('fastBossKillSec')) {
+            game.fastBossKills = (game.fastBossKills || 0) + 1;
+            game.floatingText?.spawn?.(this.x, this.y - 60, '速杀！', '#ffe25a', 18, true);
+        }
         if (game.comboCount > (game.maxCombo || 0)) game.maxCombo = game.comboCount;
         game.comboTimer = 3;
         game.particles?.explode(this.x, this.y, this.color, this.isBoss ? 80 : 30);

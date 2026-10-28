@@ -142,6 +142,21 @@ test('测试房间跳过波次调度,玩家阵亡3秒后重生且不写档案', 
     assert.match(gameSource, /setTimeout\(\(\) => \{[\s\S]*?if \(this\.state !== 'testRoom' \|\| this\._runId !== runId\) return;/);
 });
 
+test('测试房拾取玩偶猴不写档案:隐藏成就只能从正式局解锁', () => {
+    // 测试房可生成滑稽猴(boss_joker),击杀20%掉玩偶猴——沙盒拾取不得
+    // 触发 recordJokerDoll 写档案/解锁成就「这不是真的我哟」。
+    const idx = gameSource.indexOf('onJokerDollPicked(x: number, y: number): void');
+    assert.ok(idx >= 0, 'onJokerDollPicked 方法存在');
+    const body = gameSource.slice(idx, idx + 700);
+    const guard = body.indexOf("this.state !== 'playing'");
+    const record = body.indexOf('SaveSystem.recordJokerDoll()');
+    assert.ok(guard >= 0, 'onJokerDollPicked 必须有正式局守卫');
+    assert.ok(record >= 0, '守卫后仍要写档案（正式局路径不回归）');
+    assert.ok(guard < record, 'playing 守卫必须先于 recordJokerDoll 调用');
+    // Boss 装备掉落同原则的守卫不回归
+    assert.match(gameSource, /dropBossEquipment\(boss: EnemyBase\): void \{[\s\S]*?if \(this\.state !== 'playing'\) return;/);
+});
+
 test('深海恐惧场景系统:水柱/冰冻预告区/水分身/召唤鱿鱼/受击加盾钩子', () => {
     assert.match(gameSource, /startPillarStorm\(boss: BossController\): void/);
     assert.match(gameSource, /startTelegraphZones\(boss: BossController\): void/);

@@ -96,7 +96,7 @@ test('32������˹��icon�ֶ�ȫ�����ںϷ���ui_i
         .map(f => f.slice('ui_icon_'.length, -'.png'.length));
 
     // 2026-09-14 ������˹.docx���������� 49 ���������滻������׷��Ԫ����ϵ���Զ������ 32 ��
-    assert.equal(AUGMENT_DB.length, 32, '����˹����ӦΪ32');
+    assert.equal(AUGMENT_DB.length, 34, '����˹����ӦΪ32');
     for (const a of AUGMENT_DB) {
         assert.ok(validIcons.includes(a.icon), `����˹${a.id}��icon '${a.icon}' ���ںϷ�ͼ�꼯����`);
     }

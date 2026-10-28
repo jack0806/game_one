@@ -205,3 +205,74 @@ test('保命分身:血量<10%时召唤分身,30秒冷却内不重复,回升后�
     am.dispatchUpdate(p, 1.1, game);                // 累计超过30秒,血量仍低于10%
     assert.equal(spawns.length, 2, '冷却结束后血量仍低则再次触发');
 });
+
+// ── 荆棘甲壳 (hex33) ─────────────────────────────────────────
+
+test('荆棘甲壳:被攻击命中逐层+护甲,20层封顶,升档追溯差值,卖出保留', () => {
+    const am = new AugmentManager();
+    const game = makeMockGame();
+    const p = makePlayer();
+    am.equip({ id: 'hex33' }, p, game);
+    const armor0 = p.stats.armor || 0;
+    for (let i = 0; i < 25; i++) am.dispatchPlayerHit(p, game);
+    assert.equal((p.stats.armor || 0) - armor0, 20 * 3, 'Lv1 每层+3护甲,封顶20层');
+    // 升档 Lv1→Lv2：已有 20 层追溯差值 20×(4-3)=+20，之后每层+4
+    am.equip({ id: 'hex33', level: 2 }, p, game);
+    assert.equal((p.stats.armor || 0) - armor0, 20 * 4, '升档对已叠层数按新档位追溯');
+    am.dispatchPlayerHit(p, game);
+    assert.equal((p.stats.armor || 0) - armor0, 20 * 4, '满层后继续受击不再叠加');
+    // 卖出：护甲保留（变现链），层数清零，重购从 0 重新叠
+    am.unequip('hex33', p, game);
+    assert.equal((p.stats.armor || 0) - armor0, 20 * 4, '卖出时已获护甲保留不退');
+    am.equip({ id: 'hex33' }, p, game);
+    am.dispatchPlayerHit(p, game);
+    assert.equal((p.stats.armor || 0) - armor0, 20 * 4 + 3, '重购后从 0 层重新叠');
+});
+
+// ── 风行节奏 (hex34) ─────────────────────────────────────────
+
+function walk(p, am, game, total, step = 50) {
+    for (let moved = 0; moved < total; moved += step) {
+        p.x += step;
+        am.dispatchUpdate(p, 0.1, game);
+    }
+}
+
+test('风行节奏:移动叠双速层数,满层封顶,受击折半,卖出全额退还', () => {
+    const am = new AugmentManager();
+    const game = makeMockGame();
+    const p = makePlayer();
+    p.stats.speed = 300;
+    p.stats.attackSpeed = 1;
+    am.equip({ id: 'hex34' }, p, game);
+    const s0 = p.stats.speed, a0 = p.stats.attackSpeed;
+    walk(p, am, game, 250); // 250码 = 2层,余50码（swapFactor 为因子替换语义：按基值加算）
+    assert.ok(Math.abs(p.stats.speed - s0 * 1.04) < 1e-6, '2层移速+4%（每层+2%加算）');
+    assert.ok(Math.abs(p.stats.attackSpeed - a0 * 1.02) < 1e-9, '2层攻速+2%（每层+1%加算）');
+    walk(p, am, game, 2000); // 累计更多,封顶15层
+    assert.ok(Math.abs(p.stats.speed - s0 * 1.30) < 1e-6, '满层15层封顶(+30%)');
+    am.dispatchPlayerHit(p, game); // 15 → 7
+    assert.ok(Math.abs(p.stats.speed - s0 * 1.14) < 1e-6, '受击失去一半层数(15→7,+14%)');
+    am.unequip('hex34', p, game);
+    assert.ok(Math.abs(p.stats.speed - s0) < 1e-6, '卖出全额退还移速');
+    assert.ok(Math.abs(p.stats.attackSpeed - a0) < 1e-9, '卖出全额退还攻速');
+});
+
+test('风行节奏:单帧大位移(传送/重生)不计入路程', () => {
+    const am = new AugmentManager();
+    const game = makeMockGame();
+    const p = makePlayer();
+    p.stats.speed = 300;
+    p.stats.attackSpeed = 1;
+    am.equip({ id: 'hex34' }, p, game);
+    am.dispatchUpdate(p, 0.1, game); // 初始化位置基准
+    p.x += 500;                       // 单帧大跳
+    am.dispatchUpdate(p, 0.1, game);
+    assert.equal(p.stats.speed, 300, '传送位移不得白送层数');
+    p.x += 50;                        // 正常单帧位移继续累计
+    am.dispatchUpdate(p, 0.1, game);
+    assert.equal(p.stats.speed, 300, '50码不足一层');
+    p.x += 50;
+    am.dispatchUpdate(p, 0.1, game);
+    assert.ok(Math.abs(p.stats.speed - 300 * 1.02) < 1e-6, '累计100码获得1层');
+});

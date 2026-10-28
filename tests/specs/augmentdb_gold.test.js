@@ -7,12 +7,12 @@ const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 // 现有 ui_icon_* 资源集合（新增图标必须先落盘，artmanifest 测试会校验文件存在）
 const KNOWN_ICONS = new Set(require('node:fs').readdirSync(require('node:path').resolve(__dirname, '../../assets/resources/art')).filter(name => /^ui_icon_.+\.png$/.test(name)).map(name => name.slice(8, -4)));
 
-test('海克斯总数为32个，编号1~32且id唯一', () => {
-    assert.equal(AUGMENT_DB.length, 32);
+test('海克斯总数为34个，编号1~34且id唯一', () => {
+    assert.equal(AUGMENT_DB.length, 34);
     const ids = AUGMENT_DB.map(a => a.id);
-    assert.equal(new Set(ids).size, 32, 'id 必须唯一');
+    assert.equal(new Set(ids).size, 34, 'id 必须唯一');
     const indexes = AUGMENT_DB.map(a => a.index).sort((a, b) => a - b);
-    assert.deepEqual(indexes, Array.from({ length: 32 }, (_, i) => i + 1));
+    assert.deepEqual(indexes, Array.from({ length: 34 }, (_, i) => i + 1));
 });
 
 test('分档定价：Lv.1银15-50 / Lv.2金100-250 / Lv.3彩500-1000，单档海克斯用自身稀有度区间', () => {

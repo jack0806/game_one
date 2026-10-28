@@ -24,6 +24,18 @@ export interface RunSummary {
     eliteKills?: number;
     /** v5：本局小首领击杀（暗影猎手 + MINI_BOSSES 全族）。 */
     miniBossKills?: number;
+    /** v5.1：本局「逆命者」击杀——大Boss倒下瞬间玩家存活且HP<10%。 */
+    clutchKills?: number;
+    /** v5.1：本局「速杀艺术」击杀——大Boss登场到倒下不足阈值秒数。 */
+    fastBossKills?: number;
+    /** v5.1：本局掘金客截获数（出生5秒内击杀）。 */
+    scavengerGrabs?: number;
+    /** v5.1：「完美防线」——本局通关且全程未被实际命中（护盾抵挡亦算受伤）。 */
+    flawlessWin?: boolean;
+    /** v5.1：「一毛不拔」——本局通关且海克斯商店零金币消费（含付费刷新）。 */
+    noSpendWin?: boolean;
+    /** v5.1：本局持有海克斯实例的最高档位（Lv3 满档触发「一力破万法」）。 */
+    maxAugLevel?: number;
     goldEarned: number;    // 本局累计获得金币(含已花费)
     maxCombo: number;      // 本局最高连击
     augmentCount: number;  // 本局装备的强化数
@@ -48,6 +60,18 @@ export interface PlayerProfile {
     eliteKills: number;
     /** v5：累计小首领击杀（暗影猎手 + MINI_BOSSES 全族；旧档缺省 0）。 */
     miniBossKills: number;
+    /** v5.1：累计「逆命者」击杀——大Boss倒下瞬间玩家存活且HP<10%（旧档缺省 0）。 */
+    clutchKills?: number;
+    /** v5.1：累计「速杀艺术」击杀——大Boss登场到倒下不足阈值秒数（旧档缺省 0）。 */
+    fastBossKills?: number;
+    /** v5.1：单局最多掘金客截获数（出生5秒内击杀；旧档缺省 0）。 */
+    bestScavengerGrabs?: number;
+    /** v5.1：无伤通关局数（全程未被实际命中且通关；旧档缺省 0）。 */
+    flawlessWins?: number;
+    /** v5.1：海克斯商店零消费通关局数（旧档缺省 0）。 */
+    noSpendWins?: number;
+    /** v5.1：历史单局海克斯最高档位（旧档缺省 0）。 */
+    bestAugLevel?: number;
     bestChapter: number;       // 最远章节(1-based)
     bestWave: number;
     totalGoldEarned: number;   // 累计获得金币
@@ -106,8 +130,13 @@ export const ACHIEVEMENT_STAT_FIELDS: { key: string; label: string; read: (p: Pl
     { key: 'coreCoins',         label: '核心币余额',   read: p => p.coreCoins ?? 0 },
     { key: 'equipmentsCount',   label: '仓库装备数',   read: p => p.equipments.length },
     { key: 'jokerDolls',        label: '玩偶猴数',     read: p => p.jokerDolls ?? 0 },
+    { key: 'clutchKills',       label: '濒死反杀数',   read: p => p.clutchKills ?? 0 },
+    { key: 'fastBossKills',     label: '速杀Boss数',   read: p => p.fastBossKills ?? 0 },
+    { key: 'bestScavengerGrabs', label: '单局最多截获', read: p => p.bestScavengerGrabs ?? 0 },
+    { key: 'flawlessWins',      label: '无伤通关局数', read: p => p.flawlessWins ?? 0 },
+    { key: 'noSpendWins',       label: '零消费通关局数', read: p => p.noSpendWins ?? 0 },
+    { key: 'bestAugLevel',      label: '海克斯最高档位', read: p => p.bestAugLevel ?? 0 },
 ];
-
 
 /**
  * 合并后台成就管理后的生效成就全集（成就墙展示与局末判定共用）：
@@ -381,6 +410,12 @@ export class SaveSystem {
         p.bossKills     += run.bossKills;
         p.eliteKills    = (p.eliteKills ?? 0) + (run.eliteKills ?? 0);
         p.miniBossKills = (p.miniBossKills ?? 0) + (run.miniBossKills ?? 0);
+        p.clutchKills   = (p.clutchKills ?? 0) + (run.clutchKills ?? 0);
+        p.fastBossKills = (p.fastBossKills ?? 0) + (run.fastBossKills ?? 0);
+        if ((run.scavengerGrabs ?? 0) > (p.bestScavengerGrabs ?? 0)) p.bestScavengerGrabs = run.scavengerGrabs;
+        if (run.flawlessWin) p.flawlessWins  = (p.flawlessWins ?? 0) + 1;
+        if (run.noSpendWin)  p.noSpendWins   = (p.noSpendWins ?? 0) + 1;
+        if ((run.maxAugLevel ?? 0) > (p.bestAugLevel ?? 0)) p.bestAugLevel = run.maxAugLevel;
         p.totalGoldEarned += run.goldEarned;
         if (run.chapter > p.bestChapter) p.bestChapter = run.chapter;
         if (run.wave     > p.bestWave)   p.bestWave   = run.wave;
@@ -450,8 +485,9 @@ export class SaveSystem {
     }
 
     /**
-     * 滑稽猴彩蛋：拾取一只玩偶猴（局内即时调用，不等人局末结算——
-     * 测试房没有局末）。返回本次新解锁的成就（供浮字提示）。
+     * 滑稽猴彩蛋：拾取一只玩偶猴（正式局内即时调用，不等人局末结算）。
+     * 返回本次新解锁的成就（供浮字提示）。测试房拾取在 GameManager
+     * 层被 playing 守卫拦截，不会走到这里（沙盒不写档案）。
      */
     static recordJokerDoll(): AchievementDef[] {
         const p = this.load();

@@ -57,6 +57,12 @@ export interface AugmentDef {
     onCrit?:   (p: any, enemy: any, dmg: number, game: any) => void;
     onKill?:   (p: any, enemy: any, dmg: number, game: any) => void;
     onUpdate?: (p: any, dt: number, game?: any) => void;
+    /**
+     * 玩家被实际命中时触发（PlayerController.takeDamage/takeTrueDamage 在
+     * 无敌/无敌帧早退之后分发；护盾抵挡亦算；DoT 持续伤害不算——无法躲避
+     * 的伤害不应喂给受击流海克斯。海克斯33 荆棘甲壳 / 34 风行节奏）。
+     */
+    onPlayerHit?: (p: any, game: any) => void;
     // ── 以下为运行期实例字段（装备拷贝时生成） ──
     /** 当前档位 1~3（tier 为兼容字段）。 */
     level?: number;
@@ -616,6 +622,75 @@ export const AUGMENT_DB: AugmentDef[] = [
           if (maxHp <= 0 || p.hp / maxHp >= 0.10) return;
           this._cloneCd = 30;
           game?.spawnLifeClone?.(p);
+      } },
+
+    // ─── 受击/走位流（2026-10-28 设计，走新挂点 onPlayerHit） ──
+    // 荆棘甲壳：受击风险变现——挨打攒甲，与「破甲重铸」(hex09) 组成
+    // "受击攒甲 → 卖出保留 → 破甲重铸转攻" 的完整转化链。
+    { id: 'hex33', index: 33, rarity: 'gold', icon: 'hex33', name: '荆棘甲壳', category: '技能',
+      prices: [45, 180, 650], values: [3, 4, 5],
+      descAt: (l) => `每次被攻击命中 +1 层甲壳（每层护甲 +${[3, 4, 5][l - 1]}），上限 20 层；` +
+          '卖出时已获护甲保留不退（可重新购买再次叠层）',
+      _stacks: 0,
+      onLevel(p, _g, from, to) {
+          // 升档对已有层数追溯差值；卖出(to=0)护甲保留、层数清零（重购从 0 叠）
+          if (from > 0 && to > 0 && this._stacks > 0) {
+              p.stats.armor = (p.stats.armor || 0) + this._stacks * (this.values[to - 1] - this.values[from - 1]);
+          }
+          if (to === 0) this._stacks = 0;
+      },
+      onPlayerHit(p, game) {
+          if (this._stacks >= 20) return;
+          this._stacks++;
+          p.stats.armor = (p.stats.armor || 0) + this.values[(this.level ?? 1) - 1];
+          if (this._stacks === 20) {
+              game?.floatingText?.spawn?.(p.x, p.y - 40, '甲壳满层', '#d2a24c', 16, true);
+              game?.particles?.hexActivate?.(p.x, p.y, '#d2a24c');
+          }
+      } },
+
+    // 风行节奏：走位变现——持续移动叠层换双速，被命中即折半，
+    // 与「完美防线」成就共享同一套"不挨打"技术。
+    { id: 'hex34', index: 34, rarity: 'gold', icon: 'hex34', name: '风行节奏', category: '技能',
+      prices: [150], values: [1],
+      descAt: () => '持续移动每累计 100 码 +1 层风行（每层移速 +2%、攻速 +1%），上限 15 层；被攻击命中失去一半层数',
+      _lx: undefined as any, _ly: undefined as any, _dist: 0, _stacks: 0,
+      /** 层数 from→to 的双速乘区精确换档（swapFactor 先除旧再加新）。 */
+      _set(p: any, from: number, to: number) {
+          swapFactor(p.stats, 'speed', from * 0.02, to * 0.02);
+          swapFactor(p.stats, 'attackSpeed', from * 0.01, to * 0.01);
+      },
+      onUpdate(p, dt, game) {
+          if (this._lx === undefined) { this._lx = p.x; this._ly = p.y; return; }
+          let d = Math.hypot(p.x - this._lx, p.y - this._ly);
+          this._lx = p.x; this._ly = p.y;
+          if (d > 60) return; // 单帧正常位移 ≤60 码；传送/重生的大跳不计
+          this._dist += d;
+          while (this._dist >= 100 && this._stacks < 15) {
+              this._dist -= 100;
+              this._set(p, this._stacks, this._stacks + 1);
+              this._stacks++;
+              if (this._stacks % 5 === 0) {
+                  game?.floatingText?.spawn?.(p.x, p.y - 40, `风行 ${this._stacks}/15`, '#9fe8c8', 14, false);
+              }
+          }
+          if (this._stacks >= 15) this._dist = 0; // 满层后多余路程作废，折半后从 0 重蓄
+      },
+      onPlayerHit(p, game) {
+          if (this._stacks <= 0) return;
+          const kept = Math.floor(this._stacks / 2);
+          game?.floatingText?.spawn?.(p.x, p.y - 40, `风行 -${this._stacks - kept}`, '#ff8a8a', 14, false);
+          this._set(p, this._stacks, kept);
+          this._stacks = kept;
+          this._dist = 0;
+      },
+      onLevel(p, _g, _from, to) {
+          if (to === 0) { // 卖出：全额退还双速加成并复位计层
+              this._set(p, this._stacks, 0);
+              this._stacks = 0;
+              this._dist = 0;
+              this._lx = undefined;
+          }
       } },
 ];
 

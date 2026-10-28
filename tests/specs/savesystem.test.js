@@ -207,13 +207,43 @@ test('成就全集160个且id唯一，类型与稀有度符合批准配额', () 
         assert.ok(['普通', '稀有', '史诗', '传奇'].includes(a.rarity));
         assert.ok(['入门', '战斗', '构筑', '英雄', '装备', '地图', '经营', '生存', '隐藏', '里程碑'].includes(a.category));
     }
-    // 数量金字塔（2026-10-19 玩家定稿）：普通 > 稀有 > 史诗 > 传奇 严格递减
+    // 数量金字塔（2026-10-19 玩家定稿 + v5.1 六质变）：普通 > 稀有 > 史诗 > 传奇 严格递减
     const byRarity = { 普通: 0, 稀有: 0, 史诗: 0, 传奇: 0 };
     for (const a of ACHIEVEMENTS) byRarity[a.rarity]++;
     assert.deepEqual(byRarity, { 普通: 64, 稀有: 48, 史诗: 32, 传奇: 16 });
     assert.ok(byRarity.普通 > byRarity.稀有, '普通应多于稀有');
     assert.ok(byRarity.稀有 > byRarity.史诗, '稀有应多于史诗');
     assert.ok(byRarity.史诗 > byRarity.传奇, '史诗应多于传奇');
+});
+
+test('v5.1质变统计:recordRun累计濒死反杀/速杀/截获/无伤/零消费/海克斯满档(供后台自建成就取用)', () => {
+    freshProfile();
+    // 一局通关同时达成：濒死反杀×1、速杀×1、满档Lv3、无伤、零消费；截获2只
+    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 15, kills: 100, bossKills: 1,
+        clutchKills: 1, fastBossKills: 1, scavengerGrabs: 2, flawlessWin: true, noSpendWin: true, maxAugLevel: 3,
+        goldEarned: 500, maxCombo: 30, augmentCount: 5, won: true });
+    let p = SaveSystem.load();
+    assert.equal(p.clutchKills, 1);
+    assert.equal(p.fastBossKills, 1);
+    assert.equal(p.bestScavengerGrabs, 2);
+    assert.equal(p.flawlessWins, 1);
+    assert.equal(p.noSpendWins, 1);
+    assert.equal(p.bestAugLevel, 3);
+    // 输局：无伤/零消费不发；截获新高更新；速杀累计；档位回落不回退
+    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 3, kills: 10, bossKills: 0,
+        fastBossKills: 1, scavengerGrabs: 3, flawlessWin: false, noSpendWin: false, maxAugLevel: 1,
+        goldEarned: 0, maxCombo: 0, augmentCount: 0, won: false });
+    p = SaveSystem.load();
+    assert.equal(p.clutchKills, 1);
+    assert.equal(p.fastBossKills, 2, '速杀跨局累计');
+    assert.equal(p.bestScavengerGrabs, 3, '单局截获按历史最大记');
+    assert.equal(p.flawlessWins, 1, '输局不累计无伤通关');
+    assert.equal(p.noSpendWins, 1, '输局不累计零消费通关');
+    assert.equal(p.bestAugLevel, 3, '海克斯最高档只升不降');
+    // 旧路径缺省字段全部按零/假处理
+    SaveSystem.recordRun({ charId: 'kai', chapter: 1, wave: 5, kills: 10, bossKills: 0,
+        goldEarned: 0, maxCombo: 0, augmentCount: 0, won: false });
+    assert.equal(SaveSystem.load().fastBossKills, 2, '缺省字段按 0 累计');
 });
 
 test('160项保留的同指标档位递增，退出旧档位不再进入现役分母', () => {

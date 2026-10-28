@@ -252,6 +252,18 @@ export class GameManager extends Component {
     eliteKills  = 0;
     /** v5：本局小首领击杀（EnemyBase 死亡结算累加，局末写入存档）。 */
     miniBossKills = 0;
+    /** v5.1：本局「逆命者」击杀（EnemyBase 死亡结算累加，局末写入存档）。 */
+    clutchKills = 0;
+    /** v5.1：本局「速杀艺术」击杀（EnemyBase 死亡结算累加，局末写入存档）。 */
+    fastBossKills = 0;
+    /** v5.1：本局掘金客截获数（EnemyBase 死亡结算累加，局末写入存档）。 */
+    scavengerGrabs = 0;
+    /** v5.1：本局是否被实际命中过（PlayerController 受伤入口写入；「完美防线」）。 */
+    damagedThisRun = false;
+    /** v5.1：本局是否在海克斯商店花过金币（买入/付费刷新；「一毛不拔」）。 */
+    goldSpentThisRun = false;
+    /** v5.1：Boss 开战计时（Boss 生成清零、_updatePlaying 每帧累加；EnemyBase 速杀判定读取）。 */
+    bossFightT = 0;
     comboCount  = 0;
     comboTimer  = 0;
     /** 本局统计（EnemyBase._die 累加），局末写入玩家档案。 */
@@ -860,7 +872,9 @@ export class GameManager extends Component {
         this._iceZones   = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
-        this.eliteKills = 0; this.miniBossKills = 0;
+        this.eliteKills = 0; this.miniBossKills = 0; this.clutchKills = 0;
+        this.fastBossKills = 0; this.scavengerGrabs = 0; this.bossFightT = 0;
+        this.damagedThisRun = false; this.goldSpentThisRun = false;
         this._newAchievements = [];
         this._mutationMods = {};
         this._augRefreshCount = 0;
@@ -1363,7 +1377,9 @@ export class GameManager extends Component {
         this._telegraphZones = [];
         this.score = 0; this.kills = 0; this.comboCount = 0; this.comboTimer = 0;
         this.bossKills = 0; this.maxCombo = 0; this._runRecorded = false;
-        this.eliteKills = 0; this.miniBossKills = 0;
+        this.eliteKills = 0; this.miniBossKills = 0; this.clutchKills = 0;
+        this.fastBossKills = 0; this.scavengerGrabs = 0; this.bossFightT = 0;
+        this.damagedThisRun = false; this.goldSpentThisRun = false;
         // 清空无尽变异乘区：测试房间要求单位数值精确等于表内数值。
         // 难度乘区同理置空（不注入 _difficulty），Boss 技能也不削减。
         this._mutationMods = {};
@@ -2701,6 +2717,8 @@ export class GameManager extends Component {
                 this._augMgr.recordPurchase(card.rarity, price);
                 // 实付价由 AugmentManager.equip 累计到对应实例（升级/叠加新实例均生效），
                 // 卖出按各实例总额 75% 回收
+                // 「一毛不拔」成就：实际花出金币的买入记为本局消费（0元购/失败退款不算）
+                if (price > 0) this.goldSpentThisRun = true;
                 return true;
             },
             // 固定强化：+5% 一次性附加费（AugmentManager 按海克斯 id 去重）
@@ -2722,6 +2740,7 @@ export class GameManager extends Component {
                 if (!this._economy.spend(cost)) return null;
                 this._augRefreshCount++;
                 this._augOfferRefreshed = true;
+                this.goldSpentThisRun = true; // 「一毛不拔」：付费刷新同样算消费
                 // 刷新走降权概率：金色只概率出、彩色极小概率
                 return this._augMgr.rollOptions(3, this._waveMgr.wave, { refresh: true });
             },
@@ -2792,6 +2811,7 @@ export class GameManager extends Component {
         }
         const input = this._input;
         this._corpses.update(dt);
+        this.bossFightT += dt; // 「速杀艺术」：Boss 开战计时（生成时清零；非战斗期无意义）
 
         if (this._playerDeathPending) {
             this._player.updateVisualAnimation(dt);
@@ -4692,6 +4712,7 @@ export class GameManager extends Component {
             }
             this._boss = boss;
             enemy = boss;
+            this.bossFightT = 0; // 「速杀艺术」：Boss 开战计时从登场清零
             this._audio.playBgm('boss');
             this._audio.playSfx('boss_roar');
         } else {
@@ -4884,6 +4905,14 @@ export class GameManager extends Component {
             bossKills:     this.bossKills,
             eliteKills:    this.eliteKills,
             miniBossKills: this.miniBossKills,
+            clutchKills:   this.clutchKills,
+            fastBossKills: this.fastBossKills,
+            scavengerGrabs: this.scavengerGrabs,
+            // 「完美防线」/「一毛不拔」：只在通关局成立（输局无伤/零消费不发）
+            flawlessWin:   won && !this.damagedThisRun,
+            noSpendWin:    won && !this.goldSpentThisRun,
+            // 「一力破万法」：本局持有实例的最高档位（Lv3 满档即达成）
+            maxAugLevel:   Math.max(0, ...this._augMgr.all().map(a => a.level ?? 1)),
             goldEarned:    this.achievementTracker?.goldEarned ?? this._economy.earnedThisRun,
             maxCombo:      this.maxCombo,
             augmentCount:  this._augMgr.all().length,
@@ -5491,9 +5520,14 @@ export class GameManager extends Component {
         this._audio?.playSfx?.('skill_q', 0.6);
     }
 
-    /** 滑稽猴彩蛋：拾取玩偶猴 → 写入档案并解锁隐藏成就「这不是真的我哟」。 */
+    /**
+     * 滑稽猴彩蛋：拾取玩偶猴 → 写入档案并解锁隐藏成就「这不是真的我哟」。
+     * 沙盒原则：测试房拾取只保留彩蛋浮字（掉落本身可验收），不写档案、
+     * 不解锁成就（同 dropBossEquipment 的正式局守卫）。
+     */
     onJokerDollPicked(x: number, y: number): void {
         this._floatText.spawn(x, Math.max(70, y - 30), '玩偶猴？这不是真的我哟……', '#ffd24d', 18, true);
+        if (this.state !== 'playing') return;
         const unlocked = SaveSystem.recordJokerDoll();
         for (const a of unlocked) {
             this._floatText.spawn(CANVAS_W / 2, 180, `成就解锁：${a.icon} ${a.name}`, '#ffd655', 22, true);

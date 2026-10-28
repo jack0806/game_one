@@ -380,6 +380,13 @@ export class AugmentManager {
     dispatchSkill(player: any, game: any): void {
         for (const a of this.all()) if (a.onSkill) a.onSkill(player, game);
     }
+    /**
+     * 玩家被实际命中时分发（takeDamage/takeTrueDamage 在无敌早退后调用；
+     * 护盾抵挡亦算，DoT 不算）。受击流海克斯（荆棘甲壳/风行节奏）消费。
+     */
+    dispatchPlayerHit(player: any, game: any): void {
+        for (const a of this.all()) if (a.onPlayerHit) a.onPlayerHit(player, game);
+    }
 
     reset(): void {
         this.active = [];

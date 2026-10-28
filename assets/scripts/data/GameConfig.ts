@@ -47,6 +47,7 @@ export const CONFIG_ITEMS: ConfigItemDef[] = [
     { key: 'statScaleMult',      group: '波次与怪物', name: '怪物数值曲线系数', desc: '1.0→4.2 章节曲线输出（下局）',       def: 1, min: 0.1, max: 10,  step: 0.1 },
     { key: 'countScaleMult',     group: '波次与怪物', name: '章节数量曲线系数', desc: '1.0→2.2 章节曲线输出（下局）',       def: 1, min: 0.1, max: 10,  step: 0.1 },
     { key: 'enemyStatMult',      group: '波次与怪物', name: '怪物属性总乘区',   desc: '血/盾/伤/甲再乘区（下局生效）',      def: 1, min: 0.1, max: 10,  step: 0.1 },
+    { key: 'fastBossKillSec',    group: '波次与怪物', name: '速杀Boss判定秒数', desc: '「速杀艺术」成就：Boss登场到倒下阈值（即时）', def: 20, min: 5, max: 120, step: 5 },
     // ── D. 难度微调 ──
     { key: 'diffStatMult',       group: '难度微调', name: '难度强度乘区', desc: '四档 statMult 输出（下局生效）',  def: 1, min: 0.1, max: 5, step: 0.05 },
     { key: 'diffCountMult',      group: '难度微调', name: '难度数量乘区', desc: '四档 countMult 输出（下局生效）', def: 1, min: 0.1, max: 5, step: 0.05 },

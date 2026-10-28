@@ -19,7 +19,7 @@ function makeMockGame(overrides = {}) {
         screenShake: { shake() {} },
         hitStop: { trigger() {} },
         economy: { spawnDrop() {} },
-        augmentManager: { dispatchHit() {}, dispatchKill() {}, dispatchSkill() {} },
+        augmentManager: { dispatchHit() {}, dispatchKill() {}, dispatchSkill() {}, dispatchPlayerHit() {} },
         spawnEnemy() {},
         spawnExplosion() {},
         onWaveCleared() {},

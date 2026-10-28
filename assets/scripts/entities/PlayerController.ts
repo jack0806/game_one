@@ -304,6 +304,10 @@ export class PlayerController extends Component {
             game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
             return;
         }
+        // 「完美防线」成就：无敌帧/无敌外的任何实际命中都算受伤（护盾抵挡亦算）
+        if (game) game.damagedThisRun = true;
+        // 受击流海克斯分发（荆棘甲壳/风行节奏；DoT 路径不分发）
+        game?.augmentManager?.dispatchPlayerHit?.(this, game);
         // 测试房数值调试：全局承伤倍率（敌人弹幕/近战/AoE 统一缩放，便于压测生存）
         const testTakenMult = game?.testEnemyDmgMult ?? this._game?.testEnemyDmgMult;
         if (testTakenMult && testTakenMult !== 1) amount *= testTakenMult;
@@ -403,6 +407,8 @@ export class PlayerController extends Component {
             if (!opts?.quiet) game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
             return;
         }
+        if (game) game.damagedThisRun = true; // 「完美防线」：真实伤害同样破无伤
+        game?.augmentManager?.dispatchPlayerHit?.(this, game);
         game.achievementTracker?.received(Math.min(this.hp, amount), 0, game.achievementIncoming === 'melee');
         this.hp -= amount;
         if (!opts?.quiet) {
@@ -458,6 +464,7 @@ export class PlayerController extends Component {
             const dmg = Math.max(0.1, d.dps * dt * (1 - dotMitigation));
             game.achievementTracker?.received(Math.min(this.hp, dmg), 0);
             this.hp -= dmg;
+            if (game) game.damagedThisRun = true; // 「完美防线」：DoT 持续伤害同样破无伤
             const fx = d as any;
             fx._acc = (fx._acc ?? 0) + dmg;
             fx._fxT = (fx._fxT ?? 0) - dt;

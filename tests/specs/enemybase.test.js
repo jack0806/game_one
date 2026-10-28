@@ -427,3 +427,164 @@ test('archer被玩家贴脸时后撤而不是继续接近', () => {
     e.update(0.5, player, game);
     assert.ok(e.y > y0, '玩家贴脸时应沿远离方向后撤(y增大)');
 });
+
+// ── v5.1「逆命者」成就：Boss 死亡瞬间玩家 HP<10% 且存活才计入 ──
+
+function killBoss(playerOverrides) {
+    const game = makeMockGame({ player: makePlayer(Object.assign({ maxHp: 100 }, playerOverrides)) });
+    const boss = makeEnemy('grunt', 1, game);
+    boss.isBoss = true;
+    boss.takeDamage(1e9, game.player, game);
+    return game;
+}
+
+test('逆命者计数:Boss死亡瞬间玩家HP严格低于10%且存活才计入', () => {
+    assert.equal(killBoss({ hp: 9 }).clutchKills, 1, 'HP 9%存活反杀应计入');
+    assert.equal(killBoss({ hp: 1 }).clutchKills, 1, 'HP 1%极限反杀应计入');
+    assert.equal(killBoss({ hp: 50 }).clutchKills || 0, 0, 'HP充足时的Boss击杀不计');
+    assert.equal(killBoss({ hp: 10 }).clutchKills || 0, 0, '恰好10%不计,须严格低于');
+    assert.equal(killBoss({ hp: 0, alive: false }).clutchKills || 0, 0, '玩家已阵亡的同归于尽不算逆命');
+    // 护盾不参与判定：满盾但HP濒死仍计入（只看红条）
+    const shielded = killBoss({ hp: 5, shield: 999 });
+    assert.equal(shielded.clutchKills, 1, '护盾再厚也按HP判定');
+    // 小兵死亡永不计入
+    const game = makeMockGame({ player: makePlayer({ hp: 1, maxHp: 100 }) });
+    makeEnemy('grunt', 1, game).takeDamage(1e9, game.player, game);
+    assert.equal(game.clutchKills || 0, 0, '非Boss击杀不计');
+});
+
+test('逆命者计数生命周期:开局与测试房均复位,局末随RunSummary入档(源码门禁)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+        path.join(__dirname, '..', '..', 'assets', 'scripts', 'core', 'GameManager.ts'), 'utf8');
+    assert.match(src, /clutchKills:\s*this\.clutchKills,/, '局末 RunSummary 必须上报本局濒死反杀数');
+    const resets = src.match(/this\.eliteKills = 0; this\.miniBossKills = 0; this\.clutchKills = 0;/g) || [];
+    assert.equal(resets.length, 2, '开局(_startGame)与重进测试房(_startTestRoom)两处都必须复位');
+});
+
+// ── v5.1「速杀艺术」/「截获行动」成就挂点 ──────────────────
+
+test('速杀艺术计数:Boss登场计时不足阈值才计入', () => {
+    // 12s < 默认阈值20s（GameConfig.fastBossKillSec）
+    const fast = makeMockGame({ player: makePlayer({ maxHp: 100 }), bossFightT: 12 });
+    const b1 = makeEnemy('grunt', 1, fast);
+    b1.isBoss = true;
+    b1.takeDamage(1e9, fast.player, fast);
+    assert.equal(fast.fastBossKills, 1, '登场12秒内击杀应计入');
+
+    const slow = makeMockGame({ player: makePlayer({ maxHp: 100 }), bossFightT: 25 });
+    const b2 = makeEnemy('grunt', 1, slow);
+    b2.isBoss = true;
+    b2.takeDamage(1e9, slow.player, slow);
+    assert.equal(slow.fastBossKills || 0, 0, '超过阈值不计');
+
+    const idle = makeMockGame({ player: makePlayer({ maxHp: 100 }) });
+    const b3 = makeEnemy('grunt', 1, idle);
+    b3.isBoss = true;
+    b3.takeDamage(1e9, idle.player, idle);
+    assert.equal(idle.fastBossKills || 0, 0, '计时器缺省(未开战)不计');
+
+    const game = makeMockGame({ player: makePlayer({ maxHp: 100 }), bossFightT: 1 });
+    makeEnemy('grunt', 1, game).takeDamage(1e9, game.player, game);
+    assert.equal(game.fastBossKills || 0, 0, '非Boss击杀不计');
+});
+
+test('截获行动计数:出生5秒内击杀的掘金客才计入', () => {
+    const game = makeMockGame();
+    const s1 = makeEnemy('gold_scavenger', 1, game);
+    s1._scavengerAge = 2;
+    s1.takeDamage(1e9, makePlayer(), game);
+    assert.equal(game.scavengerGrabs, 1, '出生2秒击杀应计入截获');
+    const s2 = makeEnemy('gold_scavenger', 1, game);
+    s2._scavengerAge = 8;
+    s2.takeDamage(1e9, makePlayer(), game);
+    assert.equal(game.scavengerGrabs, 1, '超过5秒击杀不算截获(仍为1)');
+});
+
+test('质变成就计数生命周期:开局与测试房均复位,计时器与消费标记齐备(源码门禁)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+        path.join(__dirname, '..', '..', 'assets', 'scripts', 'core', 'GameManager.ts'), 'utf8');
+    // 局末 RunSummary 必须上报全部质变字段
+    assert.match(src, /fastBossKills:\s*this\.fastBossKills,/, '上报速杀数');
+    assert.match(src, /scavengerGrabs:\s*this\.scavengerGrabs,/, '上报截获数');
+    assert.match(src, /flawlessWin:\s*won && !this\.damagedThisRun,/, '无伤只在通关局成立');
+    assert.match(src, /noSpendWin:\s*won && !this\.goldSpentThisRun,/, '零消费只在通关局成立');
+    assert.match(src, /maxAugLevel:\s*Math\.max\(0, \.\.\.this\._augMgr\.all\(\)\.map\(a => a\.level \?\? 1\)\)/, '上报海克斯最高档');
+    // 两处复位（开局 + 重进测试房）
+    const resets = src.match(/this\.damagedThisRun = false; this\.goldSpentThisRun = false;/g) || [];
+    assert.equal(resets.length, 2, '开局(_startGame)与重进测试房(_startTestRoom)都必须复位质变标记');
+    // Boss 开战计时：生成清零 + 战斗帧累加（公开字段 bossFightT 供 EnemyBase 读取）
+    assert.match(src, /this\.bossFightT = 0; \/\/ 「速杀艺术」/, 'Boss生成时清零开战计时');
+    assert.match(src, /this\.bossFightT \+= dt;/, '_updatePlaying 每帧累加开战计时');
+    // 商店消费标记：买入与付费刷新两处
+    const spends = src.match(/this\.goldSpentThisRun = true/g) || [];
+    assert.equal(spends.length, 2, '海克斯商店买入与付费刷新都要记本局消费');
+});
+
+test('完美防线标记:PlayerController三条受伤路径置damagedThisRun', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const { PlayerController } = require('../dist/entities/PlayerController');
+    const mk = () => {
+        const p = new PlayerController();
+        p.stats = { maxHp: 100, armor: 0 };
+        return p;
+    };
+    // 普通命中 → 破无伤
+    let p = mk(), game = {};
+    p.takeDamage(10, game);
+    assert.equal(game.damagedThisRun, true, '普通命中破无伤');
+    // 护盾完全抵挡 → 仍算受伤
+    p = mk(), game = {};
+    p.shield = 50;
+    p.takeDamage(10, game);
+    assert.equal(game.damagedThisRun, true, '护盾抵挡亦算受伤');
+    // 受击无敌帧闪避 → 不算
+    p = mk(), game = {};
+    p._iframeTimer = 0.4;
+    p.takeDamage(10, game);
+    assert.equal(game.damagedThisRun, undefined, '无敌帧闪避不算受伤');
+    // 真实伤害（绕护甲）→ 破无伤
+    p = mk(), game = {};
+    p.takeTrueDamage(10, game);
+    assert.equal(game.damagedThisRun, true, '真实伤害破无伤');
+    // buff 无敌早退 → 不算
+    p = mk(), game = {};
+    p._invincible = 1;
+    p.takeTrueDamage(10, game);
+    assert.equal(game.damagedThisRun, undefined, '无敌buff免伤不算');
+    // 源码门禁：DoT 持续伤害路径也必须置标记（tick 无法 headless 直调，用正则覆盖）
+    const src = fs.readFileSync(
+        path.join(__dirname, '..', '..', 'assets', 'scripts', 'entities', 'PlayerController.ts'), 'utf8');
+    const marks = src.match(/game\.damagedThisRun = true/g) || [];
+    assert.equal(marks.length, 3, 'takeDamage/takeTrueDamage/DoT 三处受伤路径都要置标记');
+});
+
+test('受击流海克斯分发:实际命中才走dispatchPlayerHit(无敌早退/护盾抵挡边界)', () => {
+    const { PlayerController } = require('../dist/entities/PlayerController');
+    const mk = () => {
+        const p = new PlayerController();
+        p.stats = { maxHp: 100, armor: 0 };
+        return p;
+    };
+    let calls = 0;
+    const mkGame = () => ({ augmentManager: { dispatchPlayerHit: () => calls++ } });
+    let p = mk(), g = mkGame();
+    p.takeDamage(10, g);
+    assert.equal(calls, 1, '普通命中分发受击流');
+    p = mk(), g = mkGame(); p._iframeTimer = 0.4;
+    p.takeDamage(10, g);
+    assert.equal(calls, 1, '无敌帧早退不分发');
+    p = mk(), g = mkGame(); p.shield = 50;
+    p.takeDamage(10, g);
+    assert.equal(calls, 2, '护盾完全抵挡亦分发（荆棘甲壳照常叠层）');
+    p = mk(), g = mkGame();
+    p.takeTrueDamage(10, g);
+    assert.equal(calls, 3, '真实伤害路径分发');
+    p = mk(), g = mkGame(); p._invincible = 1;
+    p.takeTrueDamage(10, g);
+    assert.equal(calls, 3, '无敌buff早退不分发');
+});
