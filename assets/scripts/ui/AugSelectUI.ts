@@ -87,6 +87,8 @@ export class AugSelectUI extends Component {
     private _confirmId = '';
     private _confirmNode?: Node;
     private _confirmName?: Label;
+    /** 2026-10-30 新增：卖出确认弹窗里的技能详情（当前档位完整描述，卖出前可再看一眼效果）。 */
+    private _confirmDesc?: Label;
     private _confirmRefund?: Label;
     private _ctx?:     AugShopCtx;
     private _dimNode!: Node;
@@ -573,7 +575,8 @@ export class AugSelectUI extends Component {
             g.clear();
             g.fillColor = new Color(4, 8, 15, 210);
             g.fillRect(-width / 2, -360, width, 720);
-            drawHexPanel(g, -280, -150, 560, 300, new Color(200, 108, 92), 252);
+            // 2026-10-30 改动点：面板 300→340 加高，为技能详情区腾位（下方整体下移）
+            drawHexPanel(g, -280, -170, 560, 340, new Color(200, 108, 92), 252);
         };
         draw();
         attachEnableRedraw(n, draw);
@@ -592,13 +595,16 @@ export class AugSelectUI extends Component {
             styleLabel(l, { outline: size >= 22 });
             return l;
         };
-        mkLabel('Title', 102, 400, 34, 24, UI_PALETTE.text).string = '确认卖出';
-        this._confirmName = mkLabel('Name', 56, 480, 30, 21, UI_PALETTE.text);
-        this._confirmRefund = mkLabel('Refund', 14, 480, 26, 18, new Color(255, 214, 64, 255));
-        mkLabel('Warn', -32, 460, 44, 14, new Color(168, 186, 204, 230)).string =
+        mkLabel('Title', 122, 400, 34, 24, UI_PALETTE.text).string = '确认卖出';
+        this._confirmName = mkLabel('Name', 78, 480, 30, 21, UI_PALETTE.text);
+        // 2026-10-30 新增（改动点）：技能详情行——当前档位完整描述，卖出前可再确认效果
+        this._confirmDesc = mkLabel('Desc', 16, 486, 88, 14, new Color(214, 228, 240, 255));
+        this._confirmDesc.horizontalAlign = HorizontalTextAlignment.LEFT;
+        this._confirmRefund = mkLabel('Refund', -48, 480, 26, 18, new Color(255, 214, 64, 255));
+        mkLabel('Warn', -86, 460, 44, 14, new Color(168, 186, 204, 230)).string =
             '卖出后立即从技能格移除，本局内如需再用须重新购入';
         const cancel = new Node('CancelBtn'); cancel.setParent(n);
-        cancel.setPosition(new Vec3(-130, -104, 0));
+        cancel.setPosition(new Vec3(-130, -136, 0));
         cancel.addComponent(UITransform).setContentSize(200, 52);
         applyHexButtonSkin(cancel, 200, 52, new Color(70, 105, 130, 255));
         const cl = new Node('L'); cl.setParent(cancel);
@@ -609,7 +615,7 @@ export class AugSelectUI extends Component {
         styleLabel(cancelLbl);
         cancel.on(Node.EventType.TOUCH_END, () => { this.onButtonSfx?.(); this._closeConfirm(); }, this);
         const ok = new Node('ConfirmBtn'); ok.setParent(n);
-        ok.setPosition(new Vec3(130, -104, 0));
+        ok.setPosition(new Vec3(130, -136, 0));
         ok.addComponent(UITransform).setContentSize(200, 52);
         applyHexButtonSkin(ok, 200, 52, new Color(158, 60, 48, 255));
         const ol = new Node('L'); ol.setParent(ok);
@@ -635,8 +641,10 @@ export class AugSelectUI extends Component {
         if (!inst) return;
         this._confirmId = chip.id;
         const hex = RARITY_COLOR[inst.rarity] ?? '#888888';
-        this._confirmName!.string = `${inst.name}  Lv.${inst.level ?? 1}`;
+        this._confirmName!.string = `${inst.category === '功能' ? '[功] ' : ''}${inst.name}  Lv.${inst.level ?? 1}`;
         this._confirmName!.color = Color.fromHEX(new Color(), hex);
+        // 2026-10-30 改动点：确认卖出前回填当前档位技能描述（功能海克斯带 [功] 前缀）
+        this._confirmDesc!.string = inst.desc ?? '';
         this._confirmRefund!.string = `回收 ${Math.round((inst.paid ?? 0) * 0.75)} 金币（购价的 75%）`;
         // 弹窗置顶（翻页等兄弟节点之后创建的场景同样保险）
         if (this._confirmNode.parent) {

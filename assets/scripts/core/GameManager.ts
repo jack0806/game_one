@@ -41,7 +41,7 @@ import { BulletPool }        from '../entities/BulletController';
 import { AugmentManager }    from '../systems/AugmentManager';
 import { WaveManager }       from '../systems/WaveManager';
 import { Economy, ShopItem, nextAugRefreshCost, difficultyGoldMult } from '../systems/Economy';
-import { SaveSystem, PlayerProfile } from '../systems/SaveSystem';
+import { SaveSystem } from '../systems/SaveSystem';
 import { ScreenShake, HitStop, FloatingText } from '../systems/EffectSystem';
 import { InputManager }      from '../systems/InputManager';
 import { ParticleManager, spriteFxFrame } from '../systems/ParticleManager';
@@ -60,7 +60,6 @@ import { defaultTutorialStorage, markTutorialDone, shouldAutoShowTutorial,
     diffGuideSteps, charGuideSteps } from '../ui/TutorialState';
 import { TutorialHints } from '../ui/TutorialHints';
 import { GuideMask } from '../ui/GuideMask';
-import { AccountService, mergeAction } from '../systems/AccountService';
 import { advanceLocomotion, LocomotionPose } from './Locomotion';
 import {
     createDirectionalFacingState, directionalArtKey, directionalArtKeys,
@@ -91,8 +90,8 @@ const TEST_UNIT_SPAWN_SPOTS: [number, number][] = [
     [CANVAS_W / 2 - 80, 460], [CANVAS_W / 2 + 80, 460],
 ];
 
+// 2026-10-30 改动点：状态机移除 'login'——登录/存档服务器体系下线，跨设备存档交由 Steam 云
 export type GameState =
-    | 'login'
     | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'playing'
     | 'mapSelect' | 'chapterSelect' | 'augSelect' | 'shop' | 'gameover'
     | 'chapterClear' | 'paused' | 'stats'
@@ -368,25 +367,10 @@ export class GameManager extends Component {
         preloadArt(Array.from(new Set(Object.keys(EFFECT_ANIMATIONS).map(key => EFFECT_ANIMATIONS[key].sheet))));
         // 亡灵法师技能专属贴图（2026-10-10 入库）：腐雾地面雾 / 天灾冲击波 / 骸骨仆从
         preloadArt(['fx_rot_fog', 'fx_plague_wave', 'unit_skeleton']);
-        // 启动即进登录页（方案 B 存档服务器）；有留存 token 自动登录并同步档案
-        this._setState('login');
-        const savedSession = AccountService.session;
-        if (savedSession) {
-            this._screenMgr.setLoginStatus('自动登录中…');
-            void AccountService.resume(savedSession.token).then(async (res) => {
-                if (!this.isValid) return;
-                if (!res.ok) {
-                    AccountService.clearSession();
-                    this._screenMgr.setLoginStatus(res.error ?? '登录已过期，请重新登录');
-                    return;
-                }
-                this._screenMgr.setLoginStatus('同步档案中…');
-                await this._applyServerProfiles(res.slots ?? []);
-                this._setState('menu');
-            }).catch(() => {
-                if (this.isValid) this._screenMgr.setLoginStatus('无法连接存档服务器，可点「游客离线」');
-            });
-        }
+        // 2026-10-30 改动点：登录页已移除，启动直接进首页。原「进登录页 + token
+        // 自动登录（AccountService.resume）+ 服务器档案逐槽合并」整段删除——
+        // 跨设备存档交由 Steam 云同步本地 3 槽档案。
+        this._setState('menu');
         loadArtSprite('title_screen', () => {
             if (this.isValid) this._audio.preloadAll();
         });
@@ -697,18 +681,8 @@ export class GameManager extends Component {
             this._clearRunEntities();
             this._setState('menu');
         };
-        // 登录页（方案 B 存档服务器）：注册/登录/游客离线
-        this._screenMgr.onLoginAction = (mode, account, password) => {
-            void this._handleLoginAction(mode, account, password);
-        };
-        this._screenMgr.onGuestMode = () => this._setState('menu');
-        // 档案落盘后镜像同步到存档服务器（游客离线时内部自行跳过）
-        SaveSystem.onSlotSaved = (slot, profile) => {
-            if (!AccountService.session) return;
-            AccountService.uploadSlot(slot, profile as unknown as Record<string, unknown>).catch(() => {
-                console.warn('[AccountService] 存档同步失败，将在下次存档时重试');
-            });
-        };
+        // 2026-10-30 改动点：原登录页回调接线（onLoginAction/onGuestMode）与
+        // 存档落盘镜像上传（SaveSystem.onSlotSaved → AccountService.uploadSlot）已随登录体系移除。
     }
 
     // ── state machine ─────────────────────────────────────────
@@ -744,7 +718,7 @@ export class GameManager extends Component {
         // playing 中刷新，Boss 的 PHASE 提示会永久叠在章节通关标题上。
         if (s === 'chapterClear' || s === 'gameover' || s === 'menu' || s === 'charSelect'
             || s === 'saveSelect' || s === 'lobby' || s === 'difficultySelect' || s === 'mapSelect'
-            || s === 'chapterSelect' || s === 'login') {
+            || s === 'chapterSelect') {
             this._floatText?.clear();
             for (const label of this._floatLabels) label.active = false;
             for (const enemy of this._enemies) {
@@ -759,10 +733,6 @@ export class GameManager extends Component {
         switch (s) {
             case 'menu':
                 this._screenMgr.show('menu');
-                this._audio.playBgm('title');
-                break;
-            case 'login':
-                this._screenMgr.show('login');
                 this._audio.playBgm('title');
                 break;
             case 'saveSelect':
@@ -945,47 +915,9 @@ export class GameManager extends Component {
         return shouldAutoShowTutorial(defaultTutorialStorage());
     }
 
-    // ── 存档服务器（方案 B）：登录 + 逐槽合并同步 ─────────────
-
-    private async _handleLoginAction(
-        mode: 'login' | 'register', account: string, password: string,
-    ): Promise<void> {
-        if (!account.trim() || account.trim().length > 32 || password.length < 4) {
-            this._screenMgr.setLoginStatus('请输入账号（2~32 字符）与至少 4 位密码');
-            return;
-        }
-        this._screenMgr.setLoginStatus(mode === 'login' ? '登录中…' : '注册中…');
-        const res = mode === 'login'
-            ? await AccountService.login(account, password)
-            : await AccountService.register(account, password);
-        if (!this.isValid) return;
-        if (!res.ok) { this._screenMgr.setLoginStatus(res.error ?? '操作失败，请重试'); return; }
-        this._screenMgr.setLoginStatus('同步档案中…');
-        await this._applyServerProfiles(res.slots ?? []);
-        if (!this.isValid) return;
-        this._setState('menu');
-    }
-
-    /**
-     * 登录/注册成功后的**逐槽合并同步**（玩家红线：设备上原有档案不能丢）：
-     * 每个槽位本地与服务器各有一份时，按 updatedAt 谁新谁赢——
-     * 只有本地 → 上传备份；只有服务器 → 下载恢复；都没有 → 跳过。
-     */
-    private async _applyServerProfiles(slots: (Record<string, unknown> | null)[]): Promise<void> {
-        for (let slot = 0; slot < SaveSystem.SLOT_COUNT; slot++) {
-            const local = SaveSystem.exportSlot(slot);
-            const server = slots[slot] ?? null;
-            const action = mergeAction(!!local, !!server,
-                local ? Number(local.updatedAt ?? 0) : 0,
-                server ? Number((server as any).updatedAt ?? 0) : 0);
-            if (action === 'download' && server) {
-                SaveSystem.importSlot(slot, server as unknown as PlayerProfile);
-            } else if (action === 'upload' && local) {
-                try { await AccountService.uploadSlot(slot, local as unknown as Record<string, unknown>); }
-                catch { console.warn('[AccountService] 本地档案上传失败，游戏中下次存档会重试'); }
-            }
-        }
-    }
+    // 2026-10-30 改动点：存档服务器「登录 + 逐槽合并同步」整段移除
+    // （原 _handleLoginAction / _applyServerProfiles，见 docs/存档服务器提案-2026-10-20.md）——
+    // 跨设备存档改由 Steam 云同步本地存档文件承载。
 
     /** 进入作战大厅时调用：命中引导条件且未开始 → 开大厅聚光引导。 */
     private _maybeStartLobbyTutorial(): void {

@@ -240,8 +240,7 @@ export class SaveSystem {
     private static readonly KEY_BASE = 'hexblast_slot_v1_';
     private static _slot = 0;
     private static _cache: PlayerProfile | null = null;
-    /** 存档落盘后回调（存档服务器镜像同步用；GameManager 接线，null=不同步）。 */
-    static onSlotSaved: ((slot: number, profile: PlayerProfile) => void) | null = null;
+    // 2026-10-30 改动点：原 onSlotSaved 镜像同步回调（存档服务器上传用）已随登录体系移除。
 
     /** 槽位实际使用的 localStorage key。 */
     static slotKey(slot: number): string {
@@ -380,25 +379,11 @@ export class SaveSystem {
         try {
             sys.localStorage.setItem(this.slotKey(this._slot), JSON.stringify(this._cache));
         } catch (_e) { /* 隐私模式/存储满时静默失败 */ }
-        // 存档服务器镜像同步（方案 B）：GameManager 接线 AccountService，
-        // 未登录（游客离线）时回调内部自行跳过
-        if (this.onSlotSaved) {
-            try { this.onSlotSaved(this._slot, JSON.parse(JSON.stringify(this._cache))); }
-            catch (_e) { /* 回调异常不影响本地存档 */ }
-        }
+        // 2026-10-30 改动点：原「存档服务器镜像同步」（onSlotSaved → AccountService.uploadSlot）
+        // 已移除——跨设备同步交由 Steam 云存档，本地槽文件即云同步单元。
     }
 
-    /** 读取某槽本地档案原文（不走缓存；账号登录后的逐槽合并用）。 */
-    static exportSlot(slot: number): PlayerProfile | null {
-        try { return parseProfileRaw(sys.localStorage.getItem(this.slotKey(slot))); }
-        catch (_e) { return null; }
-    }
-
-    /** 服务器档案落地：覆盖该槽本地存储并失效缓存（下次 load 重读）。 */
-    static importSlot(slot: number, profile: PlayerProfile): void {
-        try { sys.localStorage.setItem(this.slotKey(slot), JSON.stringify(profile)); } catch (_e) { /* 忽略 */ }
-        if (slot === this._slot) this._cache = null;
-    }
+    // 2026-10-30 改动点：原 exportSlot / importSlot（账号登录后逐槽合并用）已随存档服务器移除。
 
     /** 局末记录一局数据，返回本次新解锁的成就列表（供浮字/弹提示）。 */
     static recordRun(run: RunSummary): AchievementDef[] {

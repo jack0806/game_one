@@ -130,8 +130,8 @@ export class SaveSelectUI {
 
         for (let i = 0; i < SaveSystem.SLOT_COUNT; i++) this._buildCard(page, i);
 
-        // 存档码导出/导入入口已移除（2026-10-20）：后续存档计划入库并绑定
-        // 登录账号（手机号/微信），跨设备由账号体系承载，无需手动迁移；
+        // 存档码导出/导入入口已移除（2026-10-20）；账号登录体系也已移除
+        // （2026-10-30，仅保留 Steam 发行）：跨设备存档由 Steam 云同步本地槽承载；
         // 数据层 SaveSystem.exportSaveCode/importSaveCode 保留备用。
 
         return page;

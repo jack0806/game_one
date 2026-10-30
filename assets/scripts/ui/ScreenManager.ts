@@ -1,5 +1,5 @@
 import {
-    _decorator, Component, EditBox, Node, Label, Graphics, Sprite,
+    _decorator, Component, Node, Label, Graphics, Sprite,
     Color, Vec3, UITransform, BlockInputEvents, HorizontalTextAlignment, VerticalTextAlignment,
     Input, input, KeyCode, EventKeyboard, game, sys,
 } from 'cc';
@@ -15,7 +15,7 @@ import { getBossDefById } from '../data/BossDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { createPortraitViewport, fitPortraitFrame, loadPortraitArt } from '../core/PortraitArt';
 import { styleLabel } from '../core/LabelUtils';
-import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel, editBoxSupported,
+import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
     isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus,
     registerKeyboardModalScope, UI_PALETTE } from '../core/UIStyle';
 import { clamp } from '../core/MathUtils';
@@ -31,8 +31,9 @@ const { ccclass } = _decorator;
 
 const WHITE = new Color(232, 244, 250, 255);
 
+// 2026-10-30 改动点：ScreenName 移除 'login'——登录页已下线（Steam 云存档替代）
 export type ScreenName =
-    | 'menu' | 'login' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
+    | 'menu' | 'saveSelect' | 'lobby' | 'difficultySelect' | 'charSelect' | 'charDetail'
     | 'playing'
     | 'gameover' | 'chapterClear' | 'pause' | 'settings' | 'exitVeil' | 'mapSelect'
     | 'chapterSelect'
@@ -147,14 +148,11 @@ export class ScreenManager extends Component {
     onAudioVolumesChanged?: (bgm: number, sfx: number) => void;
     /** 大厅「切换档案」：打开档案列表页（选定/返回都回大厅）。 */
     onSwitchSave?:         BtnCallback;
-    /** 登录页「登录/注册」：GameManager 异步处理（同步档案到本机服务器）。 */
-    onLoginAction?:        (mode: 'login' | 'register', account: string, password: string) => void;
-    /** 登录页「游客离线」：跳过登录，纯本地游玩。 */
-    onGuestMode?:          BtnCallback;
+    // 2026-10-30 改动点：原 onLoginAction（登录/注册）与 onGuestMode（游客离线）回调已随登录页移除。
     onButtonSfx?:          BtnCallback;
 
     onLoad() {
-        this._buildLoginPanel();
+        // 2026-10-30 改动点：原首行 _buildLoginPanel() 已移除（登录体系下线，启动直进首页菜单）
         this._buildMenuPanel();
         this._saveSelect = new SaveSelectUI(this.node, {
             onSlotPicked: (slot) => this.onSlotPicked?.(slot),
@@ -519,143 +517,9 @@ export class ScreenManager extends Component {
         // 图鉴/成就档案入口已迁入存档大厅（LobbyUI 情报终端），首页不再展示。
     }
 
-    // ── 登录页（存档服务器账号体系，方案 B） ──────────────────
-
-    private _loginStatus?: Label;
-    private _loginAccount?: EditBox;
-    private _loginPassword?: EditBox;
-
-    /** 登录页状态文字（登录中/同步中/错误提示），由 GameManager 异步更新。 */
-    setLoginStatus(text: string): void {
-        if (this._loginStatus) this._loginStatus.string = text;
-    }
-
-    /**
-     * 登录页：账号+密码（注册/登录共用输入）+ 游客离线。
-     * 按钮只回调 onLoginAction/onGuestMode，网络与档案合并由 GameManager 处理。
-     */
-    private _buildLoginPanel(): void {
-        const p = this._mkPanel('login', 1280, 720);
-        const bg = p.addComponent(Graphics);
-        bg.fillColor = new Color(12, 8, 22, 255);
-        bg.fillRect(-1600, -360, 3200, 720);
-
-        const tn = new Node('Title'); tn.setParent(p);
-        tn.setPosition(new Vec3(0, 220, 0));
-        tn.addComponent(UITransform).setContentSize(600, 52);
-        const tl = tn.addComponent(Label);
-        tl.string = 'HEXBLAST'; tl.fontSize = 40; tl.color = UI_PALETTE.text;
-        styleLabel(tl, { outlineWidth: 3 });
-
-        const st = new Node('SubTitle'); st.setParent(p);
-        st.setPosition(new Vec3(0, 172, 0));
-        st.addComponent(UITransform).setContentSize(600, 28);
-        const sl = st.addComponent(Label);
-        sl.string = '账号登录 · 存档随账号走（同一账号登录即恢复档案）';
-        sl.fontSize = 16; sl.color = UI_PALETTE.muted;
-        styleLabel(sl, { outline: false });
-
-        // 登录表单居中一列：标签(60) + 间距 + 输入框(380)，整行宽 460 居中
-        this._mkLabel(p, -200, 108, 60, 26, '账号', 16, UI_PALETTE.text, HorizontalTextAlignment.RIGHT);
-        this._loginAccount = this._mkEditBox(p, 40, 108, 380, 44, '手机号 / 昵称', '', false);
-        this._mkLabel(p, -200, 52, 60, 26, '密码', 16, UI_PALETTE.text, HorizontalTextAlignment.RIGHT);
-        this._loginPassword = this._mkEditBox(p, 40, 52, 380, 44, '至少 4 位', '', true);
-
-        const status = new Node('Status'); status.setParent(p);
-        status.setPosition(new Vec3(0, -4, 0));
-        status.addComponent(UITransform).setContentSize(560, 24);
-        this._loginStatus = status.addComponent(Label);
-        this._loginStatus.string = '';
-        this._loginStatus.fontSize = 14; this._loginStatus.lineHeight = 20;
-        this._loginStatus.color = new Color(255, 214, 90, 255);
-        this._loginStatus.horizontalAlign = HorizontalTextAlignment.CENTER;
-        styleLabel(this._loginStatus, { outline: false });
-
-        const doLogin = this._mkBtn(p, '登录', -140, -62, 190, 48, new Color(24, 170, 120, 255));
-        doLogin.on(Node.EventType.TOUCH_END, () => {
-            this.onLoginAction?.('login', this._loginAccount?.string ?? '', this._loginPassword?.string ?? '');
-        }, this);
-        const doRegister = this._mkBtn(p, '注册并登录', 140, -62, 190, 48, new Color(42, 158, 207, 255));
-        doRegister.on(Node.EventType.TOUCH_END, () => {
-            this.onLoginAction?.('register', this._loginAccount?.string ?? '', this._loginPassword?.string ?? '');
-        }, this);
-
-        const guest = this._mkBtn(p, '游客离线（本地游玩，不上传）', 0, -132, 360, 44, new Color(70, 92, 110, 255));
-        guest.on(Node.EventType.TOUCH_END, () => this.onGuestMode?.(), this);
-
-        // 描述性语言统一放页面底部
-        const hint = new Node('Hint'); hint.setParent(p);
-        hint.setPosition(new Vec3(0, -216, 0));
-        hint.addComponent(UITransform).setContentSize(760, 60);
-        const hl = hint.addComponent(Label);
-        hl.string = '需先启动本机存档服务器：node server/server.mjs\n（局域网设备请用同一网络访问）';
-        hl.fontSize = 13; hl.lineHeight = 20;
-        hl.color = new Color(140, 158, 174, 220);
-        hl.horizontalAlign = HorizontalTextAlignment.CENTER;
-        hl.verticalAlign = VerticalTextAlignment.CENTER;
-        hl.overflow = Label.Overflow.SHRINK;
-        hl.enableWrapText = true;
-        styleLabel(hl, { outline: false });
-    }
-
-    /** 登录输入框（AdminUI._mkEditBox 同款约定：锚点(0,1) + 预建内部标签）。
-     *  原生模拟器降级：EditBox 原生实现段错误（见 UIStyle.editBoxSupported），只画展示框。 */
-    private _mkEditBox(parent: Node, x: number, y: number, w: number, h: number,
-                       placeholder: string, init: string, password: boolean): EditBox {
-        const n = new Node(`EB_${placeholder.slice(0, 4)}`); n.setParent(parent);
-        n.setPosition(new Vec3(x, y, 0));
-        n.addComponent(UITransform).setContentSize(w, h);
-        const g = n.addComponent(Graphics);
-        g.fillColor = new Color(8, 13, 22, 245);
-        g.roundRect(-w / 2, -h / 2, w, h, 6); g.fill();
-        g.strokeColor = new Color(90, 110, 140, 200);
-        g.lineWidth = 1.2; g.roundRect(-w / 2, -h / 2, w, h, 6); g.stroke();
-
-        if (!editBoxSupported()) {
-            // 原生端不可输入：占位文案直接提示替代方案，登录走「游客离线」
-            const l = this._mkLabel(n, 0, 0, w - 16, h,
-                `${placeholder} · 模拟器不支持输入，请点「游客离线」`, 12,
-                new Color(120, 140, 160, 255), HorizontalTextAlignment.CENTER);
-            l.verticalAlign = VerticalTextAlignment.CENTER;
-            return { string: init } as unknown as EditBox;
-        }
-
-        const mkInner = (name: string, color: Color): Label => {
-            const ln = new Node(name); ln.setParent(n);
-            ln.addComponent(UITransform).setAnchorPoint(0, 1);
-            const l = ln.addComponent(Label);
-            l.fontSize = 14; l.lineHeight = 18;
-            l.color = color;
-            l.verticalAlign = VerticalTextAlignment.CENTER;
-            l.horizontalAlign = HorizontalTextAlignment.LEFT;
-            l.overflow = Label.Overflow.SHRINK;
-            styleLabel(l);
-            return l;
-        };
-        const textLabel = mkInner('TEXT_LABEL', WHITE.clone());
-        const phLabel = mkInner('PLACEHOLDER_LABEL', new Color(120, 140, 160, 255));
-        const eb = n.addComponent(EditBox);
-        eb.textLabel = textLabel;
-        eb.placeholderLabel = phLabel;
-        eb.placeholder = placeholder;
-        eb.string = init;
-        eb.inputFlag = password ? EditBox.InputFlag.PASSWORD : EditBox.InputFlag.DEFAULT;
-        return eb;
-    }
-
-    /** 行内小标签（登录页专用，中心锚点，挂载在登录面板内）。 */
-    private _mkLabel(parent: Node, x: number, y: number, w: number, h: number, text: string,
-                     size: number, color: Color, align: HorizontalTextAlignment): Label {
-        const n = new Node(`Lbl_${text}`); n.setParent(parent);
-        n.setPosition(new Vec3(x, y, 0));
-        n.addComponent(UITransform).setContentSize(w, h);
-        const l = n.addComponent(Label);
-        l.string = text; l.fontSize = size; l.color = color;
-        l.horizontalAlign = align; l.verticalAlign = VerticalTextAlignment.CENTER;
-        l.overflow = Label.Overflow.SHRINK;
-        styleLabel(l, { outline: false });
-        return l;
-    }
+    // 2026-10-30 改动点：登录页整段移除（原 _buildLoginPanel / setLoginStatus /
+    // 账号密码 EditBox / _mkEditBox / 行内小标签辅助）——账号体系下线，
+    // 跨设备存档交由 Steam 云同步本地槽（见 docs/存档服务器提案-2026-10-20.md 历史方案）。
 
     /** 返回按钮只会在两个元进度页面内触发；取当前激活页作为 transition 来源。 */
     private _currentMetaPage(): MetaPageName {

@@ -510,7 +510,10 @@ export class MetaPageUI {
         for (const view of this._achievementCards) {
             const done = profile.achievements.indexOf(view.def.id) >= 0;
             const current = Math.min(view.def.progress(profile), view.def.goal);
-            const ratio = view.def.goal > 0 ? current / view.def.goal : 0;
+            // 2026-10-30 修复（改动点）：已达成一律画满条。此前进度条按实时进度
+            // 比例绘制，后台改目标值/成就表版本重排会造成"已达成但条不满"——
+            // 解锁记录（profile.achievements）才是唯一事实。
+            const ratio = done ? 1 : view.def.goal > 0 ? current / view.def.goal : 0;
             const c = this._achievementRarityColor(view.def.rarity);
 
             // 稀有度始终可辨；解锁态另用白色标题、金色奖励和绿色进度表示。
