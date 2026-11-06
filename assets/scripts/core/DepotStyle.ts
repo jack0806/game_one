@@ -1,4 +1,4 @@
-// 军需商店与装备库共用的切角装甲、槽位与可交互控件。
+// 军需商店与仓库共用的切角装甲、槽位与可交互控件。
 import { Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite, UITransform, VerticalTextAlignment } from 'cc';
 import { applyAnimationFrame } from './SpriteUtils';
 import { styleLabel } from './LabelUtils';

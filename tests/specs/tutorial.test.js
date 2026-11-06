@@ -58,7 +58,7 @@ test('聚光引导步骤定义：大厅5步+四个出战页各1步，目标区�
     assert.match(lobby[1].title, /传送门/);
     assert.match(lobby[2].title, /图鉴/);
     assert.match(lobby[3].title, /成就/);
-    assert.match(lobby[4].title, /装备库/);
+    assert.match(lobby[4].title, /仓库/);
     assert.equal(mapGuideSteps().length, 1, '选图页 1 步');
     assert.equal(chapterGuideSteps().length, 1, '章节页 1 步');
     assert.equal(diffGuideSteps().length, 1, '难度页 1 步');

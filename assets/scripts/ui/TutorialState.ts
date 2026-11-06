@@ -117,7 +117,7 @@ export interface GuideStepDef {
     side?: 'below' | 'above' | 'left' | 'right';
 }
 
-/** 作战大厅 5 步：档案 → 传送门 → 图鉴 → 成就 → 装备库。 */
+/** 作战大厅 5 步：档案 → 传送门 → 图鉴 → 成就 → 仓库。 */
 export function lobbyGuideSteps(): GuideStepDef[] {
     return [
         {
@@ -145,7 +145,7 @@ export function lobbyGuideSteps(): GuideStepDef[] {
             side: 'right',
         },
         {
-            title: '装备库',
+            title: '仓库',
             text: '跨局永久装备：穿戴出战格强化属性，不需要的可卖出换核心币。',
             target: { x: -431, y: -222, w: 334, h: 50 },
             side: 'right',

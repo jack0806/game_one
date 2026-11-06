@@ -422,6 +422,8 @@ export class BulletPool {
             }
             if (player.alive && !player.untargetable &&
                 Vec.dist2(b.x, b.y, player.x, player.y) < (b.radius + player.radius) ** 2) {
+                // v3「澜镜棱壳」：弹幕反弹窗口——子弹直接湮灭并回敬来源方向最近敌人
+                if (game?.tryReflectBullet?.(b)) { this._release(b); continue; }
                 // 破盾弹：先清空玩家护盾（锯齿剑虾尖刺/无人机声波）
                 if (b.pierceShield && player.shield > 0) {
                     game.achievementTracker?.received(0, player.shield);

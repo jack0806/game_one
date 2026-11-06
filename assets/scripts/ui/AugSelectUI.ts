@@ -24,6 +24,10 @@ interface CardSlot {
     priceLabel:  Label;
     /** 左上角出现率徽标：本卡稀有度在本波的出现概率（随刷新/波次更新）。 */
     odds:        Label;
+    /** 固定按钮（卡片左上角小页签）：刷新时保留该卡，定价+5%（一次性）。 */
+    pinBtn:      Node;
+    pinSkin:     HexButtonSkin;
+    pinLabel:    Label;
 }
 
 interface ChipSlot {
@@ -83,6 +87,8 @@ export class AugSelectUI extends Component {
     private _refreshSkin!: HexButtonSkin;
     private _options:  AugDef[]  = [];
     private _bought:   Set<string> = new Set();
+    /** 固定中的强化 id：本页刷新不被替换，且跨波次保留（show 时从 ctx 恢复）。 */
+    private _pinned:   Set<string> = new Set();
     /** 卖出确认弹窗当前目标海克斯 id（空串=弹窗关闭）。 */
     private _confirmId = '';
     private _confirmNode?: Node;
@@ -120,6 +126,8 @@ export class AugSelectUI extends Component {
         this._options = options;
         this._ctx     = ctx;
         this._bought  = new Set();
+        // 固定状态跨波次保留：从管理器恢复"已固定"回显与刷新保留逻辑
+        this._pinned  = new Set(ctx.pinnedIds());
         this._chipPage = 0;
         this._closeConfirm();
         // 开局战备包模式：标题后缀亮出、按钮为「开始战斗」（随时结束战备期）；
@@ -290,18 +298,39 @@ export class AugSelectUI extends Component {
             },
         });
 
-        // 出现率徽标：贴在卡片左上角边框外，显示本卡稀有度在本波的出现概率
-        // （文案由 _populate 按稀有度从 ctx.odds() 回填，随刷新/波次实时变化；
-        // 2026-10-20 取代旧「固定 +5%」页签——新稀有度曲线下固定机制已移除）。
+        // 固定页签：贴在卡片左上角边框外，避免与稀有度/档位文字争位。
+        // 命中后必须阻断冒泡——否则同一触摸会先固定再触发整卡购买。
+        const pinBtn = new Node('PinBtn'); pinBtn.setParent(root);
+        pinBtn.setPosition(new Vec3(-this.CARD_W / 2 + 48, this.CARD_H / 2 + 15, 0));
+        pinBtn.addComponent(UITransform).setContentSize(92, 28);
+        const pinSkin = applyHexButtonSkin(pinBtn, 92, 28, new Color(110, 92, 40, 255));
+        const pl = new Node('L'); pl.setParent(pinBtn);
+        pl.addComponent(UITransform).setContentSize(88, 28);
+        const pinLabel = pl.addComponent(Label);
+        pinLabel.fontSize = 13;
+        pinLabel.color = new Color(240, 236, 220, 255);
+        styleLabel(pinLabel);
+        pinBtn.on(Node.EventType.TOUCH_END, (ev: any) => {
+            ev.propagationStopped = true;
+            this._togglePin(idx);
+        }, this);
+        registerKeyboardFocus(pinBtn, 92, 28, {
+            isDisabled: () => !this._options[idx] || this._bought.has(this._options[idx].id),
+        });
+
+        // 出现率徽标：贴在卡片右上角边框外（左上角让位给固定页签），
+        // 显示本卡稀有度在本波的出现概率（文案由 _populate 按稀有度从
+        // ctx.odds() 回填，随刷新/波次实时变化）。
         const oddsN = new Node('OddsTag'); oddsN.setParent(root);
-        oddsN.setPosition(new Vec3(-this.CARD_W / 2 + 56, this.CARD_H / 2 + 15, 0));
+        oddsN.setPosition(new Vec3(this.CARD_W / 2 - 56, this.CARD_H / 2 + 15, 0));
         oddsN.addComponent(UITransform).setContentSize(110, 28);
         const oddsLbl = oddsN.addComponent(Label);
         oddsLbl.fontSize = 13;
         oddsLbl.color = new Color(255, 214, 90, 255);
         styleLabel(oddsLbl);
 
-        return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel, odds: oddsLbl };
+        return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel,
+                 odds: oddsLbl, pinBtn, pinSkin, pinLabel };
     }
 
     /** 刷新 / 跳过 按钮。 */
@@ -480,8 +509,7 @@ export class AugSelectUI extends Component {
         c.priceLabel.color  = afford ? new Color(255, 210, 50, 255) : new Color(255, 96, 96, 255);
         c.iconSprite.color  = sold ? new Color(120, 120, 120, 160) : Color.WHITE;
         applyArtSprite(c.iconSprite, `ui_icon_${aug.icon}`);
-        // 左上角出现率徽标：本卡稀有度在本波的出现概率（随刷新/波次实时变化；
-        // 2026-10-20 取代旧「固定 +5%」页签——新稀有度曲线下固定机制已移除）
+        // 右上角出现率徽标：本卡稀有度在本波的出现概率（随刷新/波次实时变化）
         if (c.odds) {
             const pct = aug.rarity === 'gold' ? odds?.gold
                 : aug.rarity === 'prismatic' ? odds?.prismatic
@@ -489,6 +517,11 @@ export class AugSelectUI extends Component {
             c.odds.string = sold ? '' : `出现率 ${pct ?? 0}%`;
             c.odds.node.active = !sold;
         }
+        // 固定页签：已固定金色调；固定过的卡片售价已含一次性 +5% 附加费
+        const pinned = this._pinned.has(aug.id);
+        c.pinLabel.string = pinned ? '已固定' : '固定 +5%';
+        c.pinSkin.setAccent(pinned ? new Color(176, 138, 44, 255) : new Color(110, 92, 40, 255));
+        c.pinBtn.active = !sold;
     }
 
     private _refreshChips() {
@@ -545,9 +578,6 @@ export class AugSelectUI extends Component {
         if (this._bought.has(aug.id)) keyboardFocusTarget(this._cards[idx].root)?.setFocused(false);
     }
 
-    // 「固定 +5%」机制已随 2026-10-20 稀有度曲线改版移除（卡片改为显示
-    // 本波出现率）；数据层 AugmentManager.pinCard 保留备用。
-
     private _refresh() {
         if ((this._ctx?.gold() ?? 0) < (this._ctx?.refreshCost() ?? 5)) {
             this.onButtonSfx?.();
@@ -556,9 +586,33 @@ export class AugSelectUI extends Component {
         const next = this._ctx?.refresh();
         this.onButtonSfx?.();
         if (next) {
+            // 固定的强化不被刷新替换：保持原槽位（连同已上浮的定价）。
+            const pinnedKeep = this._options.map(a => (a && this._pinned.has(a.id)) ? a : null);
+            for (let i = 0; i < pinnedKeep.length && i < next.length; i++) {
+                if (pinnedKeep[i]) next[i] = pinnedKeep[i]!;
+            }
             this._options = next;
             this._bought = new Set();
         }
+        this._populate();
+    }
+
+    /**
+     * 固定强化：刷新与后续波次开页都保留该卡。首次固定通过 ctx.pin 收取
+     * 一次性 +5% 附加费（同一强化反复固定/后续波次再固定都不叠加）；
+     * 取消固定只解除保留，已收的附加费不退（防固定↔取消刷价）。
+     */
+    private _togglePin(idx: number) {
+        const aug = this._options[idx];
+        if (!aug || this._bought.has(aug.id)) { this.onButtonSfx?.(); return; }
+        if (this._pinned.has(aug.id)) {
+            this._pinned.delete(aug.id);
+            this._ctx?.unpin?.(aug);
+        } else {
+            this._pinned.add(aug.id);
+            this._ctx?.pin?.(aug);
+        }
+        this.onButtonSfx?.();
         this._populate();
     }
 

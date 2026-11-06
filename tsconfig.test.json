@@ -38,6 +38,7 @@
     "assets/scripts/data/EffectAnimationDB.ts",
     "assets/scripts/data/EnemySignatureDB.ts",
     "assets/scripts/data/EquipmentDB.ts",
+    "assets/scripts/data/DropDB.ts",
     "assets/scripts/data/DepotCatalog.ts",
     "assets/scripts/data/LevelIndex.ts",
     "assets/scripts/data/MetaProgressionDB.ts",

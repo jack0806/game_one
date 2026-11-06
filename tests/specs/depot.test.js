@@ -15,15 +15,17 @@ test('装备详情百分比正确换算，暴击不显示小数百分比，拾�
     assert.equal(depotEquipmentStat({ affix: 'greed', quality: 1 }), '拾取范围 +30');
 });
 
-test('仓库筛选和分页使用稳定排序，保留所有15件且不修改存档顺序', () => {
+test('仓库筛选和分页使用稳定排序，保留所有词缀×品质且不修改存档顺序', () => {
+    // v3：装备词缀池按 EQUIP_AFFIXES 推导（5 基础 + 解锁制「高频刃」）
+    const perTier = EQUIP_AFFIXES.length;
     const items = EQUIP_AFFIXES.flatMap(a => [0, 1, 2].map(q => ({ uid: `${a.id}${q}`, affix: a.id, quality: q })));
     const original = items.map(e => e.uid);
     const sorted = depotInventory(items);
-    assert.equal(sorted.length, 15);
-    assert.equal(new Set([...sorted.slice(0, 10), ...sorted.slice(10)].map(e => e.uid)).size, 15);
+    assert.equal(sorted.length, perTier * 3);
+    assert.equal(new Set([...sorted.slice(0, 10), ...sorted.slice(10)].map(e => e.uid)).size, perTier * 3);
     assert.equal(sorted[0].affix, 'dmg');
-    assert.ok(sorted.slice(0, 5).every(e => e.quality === 2));
-    assert.equal(depotInventory(items, 1).length, 5);
+    assert.ok(sorted.slice(0, perTier).every(e => e.quality === 2));
+    assert.equal(depotInventory(items, 1).length, perTier);
     assert.ok(depotInventory(items, 1).every(e => e.quality === 1));
     assert.deepEqual(items.map(e => e.uid), original);
     assert.deepEqual(depotInventory([], 2), []);

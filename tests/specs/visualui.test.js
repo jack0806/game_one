@@ -216,7 +216,9 @@ test('设置页接入后台管理入口,面板含密码门/参数配置/成就�
     const waveSource = fs.readFileSync(path.join(root, 'assets/scripts/data/WaveData.ts'), 'utf8');
     assert.match(waveSource, /GameConfig\.get\('waveCountMult'\)/);
     const gameMgr = fs.readFileSync(path.join(root, 'assets/scripts/core/GameManager.ts'), 'utf8');
-    assert.match(gameMgr, /GameConfig\.get\('coreCoinsRate'\)/);
+    // v3 两币制：局末结算走 200:1 兑换（settleGoldRate/settleMinCoin 在公式出口消费）
+    assert.match(gameMgr, /GameConfig\.get\('settleGoldRate'\)/);
+    assert.match(gameMgr, /GameConfig\.get\('settleMinCoin'\)/);
     assert.match(gameMgr, /GameConfig\.get\('freeRefreshCount'\)/);
 });
 
@@ -542,25 +544,27 @@ test('暂停与属性页清理上一帧浮字但不销毁持续战斗特效', ()
     assert.doesNotMatch(gameSource, /if \(s === 'paused' \|\| s === 'stats'\) \{[\s\S]{0,180}this\._particles\?\.clear\(\)/);
 });
 
-test('海克斯卡片改版:固定+5%机制移除,每卡显示本波出现率(数据层pin保留备用)', () => {
+test('海克斯卡片:左上角固定+5%页签恢复,右上角出现率徽标并存', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
-    // 固定机制 UI 整体移除（2026-10-20 新稀有度曲线改版）
-    assert.doesNotMatch(augSource, /'固定 \+5%'/);
-    assert.doesNotMatch(augSource, /_togglePin/);
-    assert.doesNotMatch(augSource, /pinBtn/);
-    // 每张卡左上角出现率徽标：按稀有度从 ctx.odds() 取本波概率，随刷新更新
+    // 固定页签恢复：左上角按钮 + 已固定/固定+5% 文案 + 阻断冒泡（防固定触发整卡购买）
+    assert.match(augSource, /const pinBtn = new Node\('PinBtn'\)/);
+    assert.match(augSource, /pinned \? '已固定' : '固定 \+5%'/);
+    assert.match(augSource, /ev\.propagationStopped = true;\s*this\._togglePin\(idx\)/);
+    // 每张卡右上角出现率徽标：按稀有度从 ctx.odds() 取本波概率，随刷新更新
     assert.match(augSource, /const oddsLbl = oddsN\.addComponent\(Label\)/);
     assert.match(augSource, /出现率 \$\{pct \?\? 0\}%/);
     assert.match(augSource, /_paintCard\(c, aug, gold, (?:true|false), odds\)/);
-    // 数据层 pin 契约保留（GameManager 侧备用），但 UI 不再调用
+    // GameManager 侧 pin 契约完整接线（UI 实际调用）
     assert.match(gameSource, /pin: \(card\) => this\._augMgr\.pinCard\(card\)/);
     // 波间商店开页仍走 shopOptions
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, this\._waveMgr\.templateWave\(\)/);
 });
 
-test('固定强化数据层保留但UI不调用:开页不带固定状态,unpin仍由管理器提供', () => {
+test('固定强化跨波次保留:开页回显已固定状态,刷新不替换固定卡', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
-    assert.doesNotMatch(augSource, /_pinned/);
+    // show 时从管理器恢复固定状态；刷新保留固定卡原槽位（连同已上浮定价）
+    assert.match(augSource, /this\._pinned\s*= new Set\(ctx\.pinnedIds\(\)\)/);
+    assert.match(augSource, /const pinnedKeep = this\._options\.map\(a => \(a && this\._pinned\.has\(a\.id\)\) \? a : null\)/);
     assert.match(gameSource, /unpin: \(card\) => this\._augMgr\.unpinCard\(card\.id\)/);
     assert.match(gameSource, /pinnedIds: \(\) => this\._augMgr\.pinnedCards\.map\(p => p\.id\)/);
     // 波间商店/开局战备/神秘强化开页都走 shopOptions

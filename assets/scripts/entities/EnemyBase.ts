@@ -518,6 +518,21 @@ export class EnemyBase {
         }
         game.audio?.playSfx?.('hit', this.isBoss ? 0.52 : 0.36);
 
+        // v3 掉落道具 on-hit 效果：酸蚀/剧毒附武 DoT 与强减速（攻击者是玩家时）
+        const pstats = attacker?.stats;
+        if (this.alive && pstats) {
+            if (pstats.dropAcid || pstats.dropPoison) {
+                this.dots.push({
+                    type: pstats.dropAcid ? 'acid' : 'poison',
+                    dps: Math.max(3, dmg * 0.15),
+                    timeLeft: 3,
+                    color: pstats.dropAcid ? '#8ee06a' : '#b56bff',
+                });
+            }
+            if (pstats.dropSlow) { this.slowMult = 0.8; this._slowTimer = 2; }
+            else if (pstats.dropStrongSlow) { this.slowMult = 0.4; this._slowTimer = 2.5; }
+        }
+
         if (this.hp <= 0) this._die(attacker, game);
         return dmg;
     }
@@ -554,13 +569,20 @@ export class EnemyBase {
         }
         this.hp    = 0;
         this.alive = false;
-        // 金币爆率随章节阶段递增（《海克斯.docx》：越到后面掉落越多）
-        game.economy?.spawnDrop(this.x, this.y, Math.max(1, Math.round(this.goldValue * (game.goldDropMult ?? 1))));
+        // 金币爆率随章节阶段递增（《海克斯.docx》：越到后面掉落越多）。
+        // v3「掠夺者图腾」（图1 Boss 专属被动）：小兵金币掉落 +5%。
+        let goldAmount = Math.max(1, Math.round(this.goldValue * (game.goldDropMult ?? 1)));
+        if (!this.isBoss && !this.isMiniBoss && game.gruntGoldMult && game.gruntGoldMult !== 1) {
+            goldAmount = Math.max(1, Math.round(goldAmount * game.gruntGoldMult));
+        }
+        game.economy?.spawnDrop(this.x, this.y, goldAmount);
         if (this.type === 'gold_scavenger' && this._scavengerAge <= 5) {
             game.economy?.spawnDrop(this.x, this.y, 6);
             game.floatingText?.spawn?.(this.x, this.y - 34, '截获！ +6', '#ffd75a', 17, true);
             // 「截获行动」成就：出生5秒内截获掘金客计数（局末随 RunSummary 入档）
             game.scavengerGrabs = (game.scavengerGrabs || 0) + 1;
+            // v3「金虫琥珀」：截获击杀掉收藏品（后台 amberBugChance 默认 10%）
+            if (Rng.chance(GameConfig.get('amberBugChance'))) game.economy?.spawnDrop?.(this.x, this.y, 0, 'relic:amber_bug');
         }
         game.score    = (game.score || 0) + (this.isBoss ? 500 : this.isElite ? 50 : 10);
         game.kills    = (game.kills || 0) + 1;
@@ -571,6 +593,13 @@ export class EnemyBase {
         if ((this as any).bossKind === 'joker' && Rng.chance(GameConfig.get('jokerDollChance'))) {
             game.economy?.spawnDrop?.(this.x, this.y, 0, 'joker_doll');
         }
+        // v3 掉落改版：材料 / 局内道具 / Boss 专属（判定与入档集中在 GameManager.rollDropsFor）
+        if (game?.rollDropsFor) {
+            const tier = this.isBoss ? 'boss' : this.isMiniBoss ? 'miniboss' : this.isElite ? 'elite' : 'grunt';
+            game.rollDropsFor(this, tier);
+        }
+        // v3「焚芯余烬」：击杀溅射（玩家持有 buff 时在尸体位置小范围爆炸）
+        if (game?.dropKillSplash && !this.isBoss) game.dropKillSplash(this);
         // 成就存档统计：大Boss/精英/小首领击杀数、单局最高连击（GameManager 局末读取）
         if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
         if (this.isElite) game.eliteKills = (game.eliteKills || 0) + 1;
@@ -830,7 +859,12 @@ export class EnemyBase {
                 game.particles?.explode?.(this.x, this.y, '#ff6b1f', 92);
                 game.audio?.playSfx?.('explode', 0.75);
                 if (player.alive && Vec.dist(this.x, this.y, player.x, player.y) <= 92 + (player.radius ?? 16)) {
-                    player.takeDamage(this.damage * this.buffDmgMult, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
+                    // v3「哑火引信」：本局免疫爆炸伤害（熔爆蜱自爆路径）
+                    if (player.stats?.dropBlastImmune) {
+                        game.floatingText?.spawn?.(this.x, this.y - 30, '引信哑火！', '#ffca7a', 15, true);
+                    } else {
+                        player.takeDamage(this.damage * this.buffDmgMult, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
+                    }
                 }
                 this.invulnerable = false;
                 this.hp = 0;

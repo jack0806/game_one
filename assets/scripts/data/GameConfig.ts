@@ -32,7 +32,7 @@ export const CONFIG_ITEMS: ConfigItemDef[] = [
     { key: 'coreCoinsRate',      group: '金币与经济', name: '核心币折算率',     desc: '通关结算金币折核心币（结算时）',     def: 0.2,  min: 0,    max: 1,     step: 0.01, percent: true },
     { key: 'coreCoinsCap',       group: '金币与经济', name: '核心币单局封顶',   desc: '通关结算核心币上限（结算时）',       def: 80,   min: 0,    max: 10000, step: 10 },
     { key: 'shopCostMult',       group: '金币与经济', name: '商店价格系数',     desc: '波间商店定价（下局生效）',           def: 1,    min: 0.1,  max: 10,    step: 0.1 },
-    { key: 'equipSellRate',      group: '金币与经济', name: '装备卖出回收率',   desc: '大厅装备库卖出折算（即时）',         def: 0.2,  min: 0.01, max: 1,     step: 0.01, percent: true },
+    { key: 'equipSellRate',      group: '金币与经济', name: '装备卖出回收率',   desc: '仓库装备卖出折算（即时）',           def: 0.2,  min: 0.01, max: 1,     step: 0.01, percent: true },
     { key: 'augSellRate',        group: '金币与经济', name: '海克斯卖出回收率', desc: '持有海克斯卖出折算（即时）',         def: 0.75, min: 0.01, max: 1,     step: 0.01, percent: true },
     { key: 'augRefreshBase',     group: '金币与经济', name: '刷新基础价',       desc: '海克斯商店首次刷新价（即时）',       def: 5,    min: 0,    max: 100,   step: 1 },
     { key: 'augRefreshPremium',  group: '金币与经济', name: '刷新溢价系数',     desc: '多次刷新逐次溢价（即时）',           def: 1.75, min: 1,    max: 5,     step: 0.05 },
@@ -40,6 +40,12 @@ export const CONFIG_ITEMS: ConfigItemDef[] = [
     // ── B. 掉落 ──
     { key: 'jokerDollChance',    group: '掉落', name: '玩偶猴掉率',     desc: '滑稽猴击杀掉玩偶猴概率（下局）',     def: 0.2,  min: 0,  max: 1,   step: 0.01, percent: true },
     { key: 'bossEquipChance',    group: '掉落', name: 'Boss装备掉率',   desc: '首领击杀掉装备概率（下局）',         def: 1,    min: 0,  max: 1,   step: 0.01, percent: true },
+    { key: 'bossUniqueChance',   group: '掉落', name: 'Boss专属掉率',   desc: '图末Boss专属掉落概率（下局）',       def: 0.25, min: 0,  max: 1,   step: 0.01, percent: true },
+    { key: 'bossPityMax',        group: '掉落', name: '专属软保底次数', desc: '连续N-1次未掉第N次必掉（下局）',     def: 4,    min: 2,  max: 20,  step: 1 },
+    { key: 'materialDropMult',   group: '掉落', name: '材料掉率乘区',   desc: '材料类掉落总乘区（局内即时）',       def: 1,    min: 0.1, max: 10,  step: 0.1 },
+    { key: 'amberBugChance',     group: '掉落', name: '金虫琥珀掉率',   desc: '掠金虫截获掉收藏品概率（局内即时）', def: 0.1,  min: 0,  max: 1,   step: 0.01, percent: true },
+    { key: 'settleGoldRate',     group: '掉落', name: '结算兑换比',     desc: '局末剩余金币兑核心币比率（结算时）', def: 200,  min: 1,  max: 10000, step: 10 },
+    { key: 'settleMinCoin',      group: '掉落', name: '结算保底核心币', desc: '有剩余金但不足兑换时保底（结算时）', def: 1,    min: 1,  max: 100, step: 1 },
     { key: 'goldPickupRangeMult', group: '掉落', name: '拾取范围系数',  desc: '金币拾取半径乘区（局内即时）',       def: 1,    min: 0.1, max: 10,  step: 0.1 },
     // ── C. 波次与怪物 ──
     { key: 'waveCountMult',      group: '波次与怪物', name: '波次数量系数',     desc: '每波小兵总量乘区（下局生效）',       def: 1, min: 0.1, max: 10,  step: 0.1 },

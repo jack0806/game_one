@@ -29,6 +29,9 @@ import {
     globalChapter,
 } from '../data/LevelIndex';
 import { rollEquipmentDrop, equipmentLabel, equipmentSellValue, applyEquipmentToStats } from '../data/EquipmentDB';
+import { BossUniqueDef, ConsumableDef, DropTier, MAP_MATERIAL_IDS,
+    bossUniquesOf, consumableDef, materialDef, rollBossUnique, rollConsumableFor,
+    rollMaterialFor, settleGoldToCoreCoins } from '../data/DropDB';
 import { GameConfig } from '../data/GameConfig';
 import { ArenaLayout, EMPTY_ARENA } from '../data/ChapterArenaDB';
 import { arenaLineClear, arenaSteerTarget, dashInArena, firstArenaBulletHit, isArenaFree, moveInArena,
@@ -342,6 +345,12 @@ export class GameManager extends Component {
     private _selectedMap = 1;
     /** v4：通关结算折算的核心币（20% 封顶 80，chapterClear 面板显示用）。 */
     private _coinsEarned = 0;
+    /** v3：本局剩余金币是否已按 200:1 结算入核心币（一局只结算一次）。 */
+    private _goldSettled = false;
+    /** v3「四叶虫草」：全掉落率 ×2 的剩余时长（_updatePlaying 递减）。 */
+    private _dropLuckTimer = 0;
+    /** v3「混沌棱镜」：下局商店首次开页必含 1 张彩色卡（开局消耗型充能）。 */
+    private _prismGuarantee = false;
     /** v4：本局已掉过装备的波次（镜像军队 ×2 Boss 同波只掉一件；无尽换波再掉）。 */
     private _bossEquipDropWave = -1;
 
@@ -768,7 +777,8 @@ export class GameManager extends Component {
                     goldEarned: this._economy.earnedThisRun,
                     score: this.score,
                     finalChapter: this._chapter >= TOTAL_CHAPTERS,
-                    coinsEarned: 0,
+                    // v3：阵亡结算也按 200:1 兑换剩余金币（副标题提示）
+                    coinsEarned: this._settleGoldCoins(),
                     newAchievements: this._newAchievements,
                 });
                 this._screenMgr.show('gameover');
@@ -902,6 +912,33 @@ export class GameManager extends Component {
         if (supply.gold > 0) this._economy.addGold(supply.gold);
         if (supply.shield > 0) this._player.shield += supply.shield;
         if (pack.gold > 0) this._economy.addGold(pack.gold);
+        // ── v3 掉落改版：Boss 专属被动 + 消耗型充能（开局一次性消费） ──
+        this._goldSettled = false; this._dropLuckTimer = 0; this._prismGuarantee = false;
+        if (SaveSystem.hasBossUnique('judge_core')) this._economy.addGold(50);       // 天罚核心
+        if (SaveSystem.hasBossUnique('judge_plate')) this._player.shield += 15;      // 天罚装甲板
+        // 变异图谱：金色海克斯权重 ×1.03（rarityWeights 出口乘区）
+        this._augMgr.goldWeightMult = SaveSystem.hasBossUnique('core_atlas') ? 1.03 : 1;
+        // 不屈徽记：本局首次阵亡以 30% 生命复活（onPlayerDeath 消费充能）
+        (this._player as any).reviveCharge = SaveSystem.consumeMaterial('core_revive', 1) ? 1 : 0;
+        // 无限核：下局海克斯商店 +3 次免费刷新（开强化页时并入 hex29 通道）
+        this._augMgr.freeRefreshBonus = SaveSystem.consumeMaterial('core_refresh', 1) ? 3 : 0;
+        // 混沌棱镜：商店首次开页必含 1 张彩色卡（_openAugSelect 消费标记）
+        this._prismGuarantee = SaveSystem.consumeMaterial('core_prism', 1);
+        // 暗影斗篷（5 碎片合成）：下局开局隐身 5 秒（复用实习刺客的隐身通道）
+        if (SaveSystem.consumeMaterial('core_stealth', 1)) {
+            this._player.applyBuff('intern_stealth', 5, {});
+            this._floatText.spawn(this._player.x, this._player.y - 50, '暗影斗篷·隐身 5 秒', '#b48cff', 16, true);
+        }
+        // 元素瓶（元素提纯配方）：下局开局随机元素附武 60 秒
+        if (SaveSystem.consumeMaterial('core_element', 1)) {
+            const pick = ['drop_acid', 'drop_poison', 'drop_slowhit'][Math.floor(Math.random() * 3)];
+            this._player.applyBuff(pick, 60, {});
+            const label = pick === 'drop_acid' ? '酸蚀' : pick === 'drop_poison' ? '剧毒' : '减速';
+            this._player.stats['dropAcid'] = pick === 'drop_acid';
+            this._player.stats['dropPoison'] = pick === 'drop_poison';
+            this._player.stats['dropSlow'] = pick === 'drop_slowhit';
+            this._floatText.spawn(this._player.x, this._player.y - 50, `元素瓶·${label}附武 60 秒`, '#8ee06a', 16, true);
+        }
         const packDraws = pack.draws + supply.draws;
         if (packDraws > 0) {
             this._openStarterPacks(packDraws);
@@ -2598,13 +2635,10 @@ export class GameManager extends Component {
             // 在 _recordRun 的成就判定里当次即可解锁，不会迟一局。
             SaveSystem.recordChapterCleared(this._chapter);
             this._recordRun(true);
-            // 通关结算：金币按 20% 折算核心币，封顶 80（v4 9.6 层3，防元进度通胀）。
-            // 折算率/封顶可在后台配置（coreCoinsRate / coreCoinsCap）。
-            // 解锁与核心币在进入结算面板时就写档——玩家点"领取奖励"或"返回大厅"
-            // 任意按钮都不能漏记（旧实现只在领取按钮回调里记，点返回会丢解锁）。
-            this._coinsEarned = Math.min(GameConfig.get('coreCoinsCap'),
-                Math.round(this._economy.gold * GameConfig.get('coreCoinsRate')));
-            SaveSystem.addCoreCoins(this._coinsEarned);
+            // v3 两币制结算：剩余金币按 200:1 兑换核心币（不足 1 枚按 1 枚，
+            // 兑换比/保底后台可调 settleGoldRate / settleMinCoin）。进面板即写档，
+            // 点"领取奖励"或"返回大厅"都不会漏记。
+            this._settleGoldCoins();
             this._setState('chapterClear');
             return;
         }
@@ -2615,13 +2649,24 @@ export class GameManager extends Component {
         this._audio.playSfx('levelup');
         this._augRefreshCount = 0;
         this._augOfferRefreshed = false;
-        // 再来一次·强化版(hex29)：每次遇到强化选择重置免费刷新（次数后台可调）
-        this._augMgr.freeRefreshes = this._augMgr.ownedOf('hex29') ? GameConfig.get('freeRefreshCount') : 0;
+        // 再来一次·强化版(hex29)：每次遇到强化选择重置免费刷新（次数后台可调）；
+        // v3「无限核」充能换来的 freeRefreshBonus 并入本次开页
+        this._augMgr.freeRefreshes = (this._augMgr.ownedOf('hex29') ? GameConfig.get('freeRefreshCount') : 0)
+            + (this._augMgr.freeRefreshBonus ?? 0);
         // 每章 W1 开局送三张功能性银卡（一局一章后每局的 W1 都触发；
         // 10~50 银档=开局送卡，文档 9.4 检查点）
         // shopOptions：固定强化的卡占前置槽位（跨波次保留）
         const options = this._augMgr.shopOptions(3, this._waveMgr.templateWave(),
             { firstWave: this._waveMgr.wave === 1 });
+        // v3「混沌棱镜」：商店首次开页必含 1 张彩色卡（开局消耗型充能，本局只生效一次）
+        if (this._prismGuarantee) {
+            this._prismGuarantee = false;
+            const forced = this._augMgr.rollOptions(1, this._waveMgr.templateWave(), { forceRarity: 'prismatic' });
+            if (forced[0]) {
+                options[0] = forced[0];
+                this._floatText.spawn(CANVAS_W / 2, 200, '混沌棱镜·彩色卡现身！', '#ff8ad8', 18, true);
+            }
+        }
         this._augUI.show(options, this._buildAugShopCtx(() => {
             // v4：W8 清空后开一次关中商店（顺序：三选一 → 商店 → 开下一波）
             if (this._waveMgr.templateWave() === 8) {
@@ -2744,6 +2789,7 @@ export class GameManager extends Component {
         const input = this._input;
         this._corpses.update(dt);
         this.bossFightT += dt; // 「速杀艺术」：Boss 开战计时（生成时清零；非战斗期无意义）
+        if (this._dropLuckTimer > 0) this._dropLuckTimer = Math.max(0, this._dropLuckTimer - dt); // 「四叶虫草」
 
         if (this._playerDeathPending) {
             this._player.updateVisualAnimation(dt);
@@ -3255,6 +3301,36 @@ export class GameManager extends Component {
                 g.strokeColor = new Color(74, 50, 12, 255);
                 g.lineWidth = 2;
                 g.arc(dx, cy - 2, 6, Math.PI, Math.PI * 2, false); g.stroke();   // 咧嘴笑
+                continue;
+            }
+            // v3 掉落：材料=青蓝菱形 / 道具=紫色六角 / 收藏品=金棕星形（G 直绘，不入金币池）
+            if (drop.kind && drop.kind !== 'gold') {
+                const bob = Math.sin(drop.age * 4) * 2.5;
+                const cy = dy + bob;
+                if (drop.kind.startsWith('mat:')) {
+                    g.fillColor = new Color(127, 227, 255, 235);
+                    g.moveTo(dx, cy + 9); g.lineTo(dx + 7, cy); g.lineTo(dx, cy - 9); g.lineTo(dx - 7, cy);
+                    g.close(); g.fill();
+                    g.fillColor = new Color(22, 66, 88, 235);
+                    g.circle(dx, cy, 2.4); g.fill();
+                } else if (drop.kind.startsWith('use:')) {
+                    g.fillColor = new Color(201, 166, 255, 235);
+                    for (let k = 0; k < 6; k++) {
+                        const a = Math.PI / 6 + k * Math.PI / 3;
+                        const px = dx + Math.cos(a) * 9, py = cy + Math.sin(a) * 9;
+                        if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
+                    }
+                    g.close(); g.fill();
+                    g.fillColor = new Color(58, 34, 92, 235);
+                    g.circle(dx, cy, 2.6); g.fill();
+                } else {
+                    // relic: 收藏品（金虫琥珀）——四角星
+                    g.fillColor = new Color(255, 215, 90, 240);
+                    g.moveTo(dx, cy + 10); g.lineTo(dx + 3, cy + 3); g.lineTo(dx + 10, cy);
+                    g.lineTo(dx + 3, cy - 3); g.lineTo(dx, cy - 10); g.lineTo(dx - 3, cy - 3);
+                    g.lineTo(dx - 10, cy); g.lineTo(dx - 3, cy + 3);
+                    g.close(); g.fill();
+                }
                 continue;
             }
             const coin = this._coinPool.acquire();
@@ -4788,6 +4864,21 @@ export class GameManager extends Component {
     /** Called by PlayerController when HP reaches 0. */
     onPlayerDeath() {
         if (this._playerDeathPending) return;
+        // v3「不屈徽记」：消耗复活充能——30% 生命原地复活 + 2 秒无敌
+        // （仅正式局；充能在开局时由 core_revive 材料转换而来）。
+        const p: any = this._player;
+        if (this.state === 'playing' && p?.reviveCharge > 0) {
+            p.reviveCharge = 0;
+            p.alive = true;
+            p.hp = Math.max(1, Math.round(p.maxHp * 0.3));
+            p.shield = 0; p.dots = [];
+            p.resetVisualAnimation();
+            p.applyBuff('respawn_iframe', 2, { invincible: true });
+            this._particles.hexActivate(p.x, p.y, '#ff9a56');
+            this._floatText.spawn(p.x, p.y - 60, '不屈徽记·复活！', '#ffb066', 20, true);
+            this._audio.playSfx?.('augment_pick');
+            return;
+        }
         this._player.beginDefeat();
         this._particles.explode(this._player.x, this._player.y, '#40c8ff');
         this._audio.playSfx('player_die');
@@ -4916,7 +5007,7 @@ export class GameManager extends Component {
         summon._actorLastY = summon.y;
     }
 
-    spawnTurret(player: any, dmgMult = 1, followOwner = false): void {
+    spawnTurret(player: any, dmgMult = 1, followOwner = false, lifeOverride?: number): void {
         // 被动：炮台类词条效果×1.5（对齐 CharacterDB.ts vivian 的 desc 描述）
         const turretMult = player.stats?.turretBonus || 1;
         // 炮台军团(turret_army)：持有炮台类词条(tags含'turret')时，数量×3、
@@ -4949,7 +5040,8 @@ export class GameManager extends Component {
                 dmg: player.getDamage(this) * dmgMult * turretMult,
                 owner: player, followOwner,
                 _followX: followSide * 52, _followY: 34,
-                _life: followOwner ? Number.POSITIVE_INFINITY : 12,
+                // v3 掉落道具（僚机/哨戒炮/诱饵假人）用 lifeOverride 指定存活秒数
+                _life: lifeOverride ?? (followOwner ? Number.POSITIVE_INFINITY : 12),
             };
             t.update = (dt: number, g: GameManager) => {
                 t._life -= dt; t._timer -= dt;
@@ -5560,11 +5652,13 @@ export class GameManager extends Component {
             this._audio.playSfx('augment_pick');
             return;
         }
-        const equip = rollEquipmentDrop(chapterId, owned);
+        // v3「X-剑刃模组」（图5 Boss 专属被动）：解锁第 6 词缀「高频刃」
+        const equip = rollEquipmentDrop(chapterId, owned, Math.random,
+            SaveSystem.hasBossUnique('xblade_mod'));
         if (equip) {
             SaveSystem.addEquipment(equip);
             this._floatText.spawn(CANVAS_W / 2, 240,
-                `战利品入仓：${equipmentLabel(equip)}（卖出可得 ${equipmentSellValue(equip.quality)} 金）`,
+                `战利品入仓：${equipmentLabel(equip)}（仓库出售可得核心币）`,
                 '#ffd655', 18, true);
         } else {
             SaveSystem.addCoreCoins(40);
@@ -5577,6 +5671,226 @@ export class GameManager extends Component {
     get goldDropMult(): number {
         return tunedGoldStage(this._chapter)
             * difficultyGoldMult(this._difficulty?.id);
+    }
+
+    /** v3「掠夺者图腾」（图1 Boss 专属被动）：小兵金币掉落 +5%。 */
+    get gruntGoldMult(): number {
+        return SaveSystem.hasBossUnique('unsc_totem') ? 1.05 : 1;
+    }
+
+    // ── v3 掉落改版：材料 / 局内道具 / Boss 专属 ────────────────
+
+    /**
+     * 局末结算：剩余金币按 200:1 兑换核心币（不足 1 枚按 1 枚，有剩余金即保底）。
+     * 一局只结算一次（通关/阵亡共用；_goldSettled 防重入）。
+     */
+    private _settleGoldCoins(): number {
+        if (this._goldSettled) return this._coinsEarned;
+        this._goldSettled = true;
+        this._coinsEarned = settleGoldToCoreCoins(
+            this._economy.gold, GameConfig.get('settleGoldRate'), GameConfig.get('settleMinCoin'));
+        if (this._coinsEarned > 0) SaveSystem.addCoreCoins(this._coinsEarned);
+        return this._coinsEarned;
+    }
+
+    /**
+     * 敌人死亡的 v3 掉落判定（EnemyBase._die 调用；一次击杀材料/道具各最多 1 件）。
+     * 档位：grunt / elite / miniboss / boss；Boss 档走专属掉落（25% + 软保底 + 按件去重）。
+     */
+    rollDropsFor(enemy: EnemyBase, tier: DropTier): void {
+        if (this.state !== 'playing') return; // 沙盒原则：测试房不掉 v3 物品
+        const luck = (this._dropLuckTimer > 0 ? 2 : 1) * GameConfig.get('materialDropMult');
+        const mapId = mapOf(this._chapter);
+        // ── Boss 专属（仅正式局图末 Boss；chapter 即图号） ──
+        if (tier === 'boss') {
+            const bossId = `ch${Math.min(6, Math.max(1, enemy.chapter || mapId))}`;
+            const owned = SaveSystem.bossUniqueSet();
+            const roll = rollBossUnique(bossId, owned, SaveSystem.pityOf(bossId),
+                GameConfig.get('bossUniqueChance'), Math.round(GameConfig.get('bossPityMax')), Math.random);
+            SaveSystem.setPity(bossId, roll.nextPity);
+            if (roll.def) {
+                this._grantBossUnique(roll.def, enemy);
+            } else if (roll.fallback) {
+                // 全拥有转保底包：该图图域材料 ×2 + 核心币 ×40
+                SaveSystem.addMaterial(MAP_MATERIAL_IDS[mapId - 1], 2);
+                SaveSystem.addCoreCoins(40);
+                this._floatText.spawn(CANVAS_W / 2, 210, '专属已集齐 → 保底包（材料×2 + 核心币×40）', '#ffd655', 16, true);
+            }
+            return; // Boss 不再吃通用材料/道具
+        }
+        // ── 材料 ──
+        const mat = rollMaterialFor(tier, mapId, enemy.type, {
+            eliteBonus: SaveSystem.hasBossUnique('abyss_eye') ? 0.1 : 0, // 深渊之瞳
+            luckMult: luck, rand: Math.random,
+        });
+        if (mat) {
+            const def = materialDef(mat);
+            this._economy.spawnDrop(enemy.x, enemy.y, 0, `mat:${mat}`);
+            this._floatText.spawn(enemy.x, enemy.y - 46, `掉落材料：${def?.name ?? mat}`, '#7fe3ff', 13, false);
+            return; // 材料与道具互斥：一次掉落只出一件，视觉不打架
+        }
+        // ── 局内道具（掘金客的金虫琥珀在截获分支特判，这里跳过） ──
+        if (enemy.type === 'gold_scavenger') return;
+        const use = rollConsumableFor(tier, enemy.type, this._dropLuckTimer > 0 ? 2 : 1, Math.random);
+        if (use) this._economy.spawnDrop(enemy.x, enemy.y, 0, `use:${use.id}`);
+    }
+
+    /** Boss 专属入档：永久记录 + 消耗型充能 + 中央浮字。 */
+    private _grantBossUnique(def: BossUniqueDef, enemy: EnemyBase): void {
+        SaveSystem.addBossUnique(def.id);
+        if (def.charge) SaveSystem.addMaterial(def.charge, 1);
+        this._floatText.spawn(CANVAS_W / 2, 240, `专属战利品：${def.name}（${def.desc}）`, '#ffb84d', 20, true);
+        this._particles.hexActivate(enemy.x, enemy.y, '#ffb84d');
+        this._audio.playSfx('augment_pick');
+    }
+
+    /** Economy 拾取转发：mat: 材料 / use: 道具 / relic: 收藏品。 */
+    onSpecialDropPicked(kind: string, x: number, y: number): void {
+        if (kind.startsWith('mat:')) {
+            const id = kind.slice(4);
+            SaveSystem.addMaterial(id, 1);
+            const def = materialDef(id);
+            this._floatText.spawn(x, y - 20, `入库：${def?.name ?? id}`, '#7fe3ff', 14, false);
+            return;
+        }
+        if (kind.startsWith('relic:')) {
+            const id = kind.slice(6);
+            if (id === 'amber_bug') {
+                SaveSystem.addRelic('amber_bug', 1);
+                this._economy.addGold(6);
+                this._floatText.spawn(x, y - 20, '金虫琥珀！截获金币翻倍 +6', '#ffd75a', 15, true);
+            }
+            return;
+        }
+        if (kind.startsWith('use:')) {
+            const def = consumableDef(kind.slice(4));
+            if (def) this._applyConsumable(def, x, y);
+        }
+    }
+
+    /** 局内道具效果分发（34 条；数值与 DropDB.CONSUMABLES 同源）。 */
+    private _applyConsumable(def: ConsumableDef, x: number, y: number): void {
+        const p: any = this._player;
+        const name = (c: string, big = false) =>
+            this._floatText.spawn(x, y - (big ? 52 : 34), `${def.name}·${c}`, '#c9a6ff', big ? 17 : 14, big);
+        switch (def.effect) {
+            case 'shield':  p.shield += (def.id === 'turtle_shell' ? 30 : 25); name('护盾+' + (def.id === 'turtle_shell' ? 30 : 25)); break;
+            case 'heal':    p.heal(p.stats.maxHp * (def.value ?? 0.08)); name(`回复${Math.round((def.value ?? 0.08) * 100)}%`); break;
+            case 'dmgUp':   p.applyBuff('drop_dmg', def.value ?? 60, { dmgMult: 1.15 }); name('伤害+15% 60s'); break;
+            case 'atkSpdUp':p.applyBuff('drop_as', def.value ?? 60, { atkSpd: 1.10 }); name('攻速+10% 60s'); break;
+            case 'speedUp': p.applyBuff('drop_sp', def.value ?? 60, { speed: 1.08 }); name('移速+8% 60s'); break;
+            case 'armorUp': p.applyBuff('drop_ar', 60, { armorFlat: def.id === 'stone_heart' ? 15 : 10 }); name('护甲+' + (def.id === 'stone_heart' ? 15 : 10) + ' 60s'); break;
+            case 'strongSlowHit': p.applyBuff('drop_slowhit_s', 3, {}); p.stats.dropStrongSlow = true; name('攻击强减速 3s'); break;
+            case 'slowHit': p.applyBuff('drop_slowhit', 60, {}); p.stats.dropSlow = true; name('攻击减速 60s'); break;
+            case 'acidHit': p.applyBuff('drop_acid', 60, {}); p.stats.dropAcid = true; name('酸蚀附武 60s'); break;
+            case 'poisonHit': p.applyBuff('drop_poison', 60, {}); p.stats.dropPoison = true; name('剧毒附武 60s'); break;
+            case 'killSplash': p.applyBuff('drop_splash', 60, {}); p.stats.dropKillSplash = true; name('击杀溅射 60s'); break;
+            case 'wingman': this.spawnTurret(p, 0.5, true, 20); name('僚机协战 20s'); break;
+            case 'turret':  this.spawnTurret(p, 0.4, false, 10); name('哨戒炮 10s'); break;
+            case 'decoy':   this.spawnTurret(p, 0.05, true, 5); name('诱饵假人 5s'); break;
+            case 'pull': {
+                const target = this._enemies
+                    .filter((e: any) => e.alive && (e.isElite || e.isBoss))
+                    .sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y))[0];
+                if (target) {
+                    target.x = p.x + 90; target.y = p.y;
+                    target.stunned = Math.max(target.stunned ?? 0, 0.5);
+                    this._particles.hit?.(target.x, target.y, '#ffaa66');
+                    name('锁链拉拽！', true);
+                }
+                break;
+            }
+            case 'reflect': p.applyBuff('drop_reflect', 5, {}); name('棱镜·弹幕反弹 5s', true); break;
+            case 'guaranteedCrit': p.stats.dropCritShots = (p.stats.dropCritShots ?? 0) + 3; name('必暴 ×3'); break;
+            case 'powerShot': p.stats.dropPowerShot = 2; name('下一击 ×2'); break;
+            case 'bombShot': p.stats.dropBombShot = true; name('下一击范围爆炸'); break;
+            case 'resetCd': p.resetCooldowns?.(); name('Q/E/R 冷却归零', true); break;
+            case 'skillRune': p.reduceCooldownsPercent?.(0.2); name('当前冷却 -20%'); break;
+            case 'massStun': {
+                const dur = def.id === 'ink_sac' ? 3 : 1.5;
+                for (const e of this._enemies) {
+                    if (!e.alive) continue;
+                    if (def.id === 'ink_sac' && Vec.dist(e.x, e.y, p.x, p.y) > 300) continue;
+                    if (def.id === 'knell_tongue' && e.isBoss) continue;
+                    e.stunned = Math.max(e.stunned ?? 0, dur);
+                }
+                name(def.id === 'ink_sac' ? '墨汁弥漫 3s' : '葬钟响起 1.5s', true);
+                break;
+            }
+            case 'freezeBurst': {
+                for (const e of this._enemies) {
+                    if (e.alive && Vec.dist(e.x, e.y, p.x, p.y) <= 260) e.frozen = Math.max(e.frozen ?? 0, 1);
+                }
+                this._particles.hit?.(p.x, p.y, '#a8ecff');
+                name('深寒冻结 1s');
+                break;
+            }
+            case 'chainLightning': {
+                let dmg = p.getDamage(this) * 0.5;
+                const targets = this._enemies
+                    .filter((e: any) => e.alive)
+                    .sort((a: any, b: any) => Vec.dist(a.x, a.y, p.x, p.y) - Vec.dist(b.x, b.y, p.x, p.y))
+                    .slice(0, 3);
+                for (const t of targets) {
+                    t.takeDamage(dmg, p, this);
+                    this._particles.hit?.(t.x, t.y, '#7df4ff');
+                }
+                name(`连锁闪电 ×${targets.length}`);
+                break;
+            }
+            case 'blastImmune': p.stats.dropBlastImmune = true; name('本局免疫爆炸', true); break;
+            case 'collideImmune': p.applyBuff('drop_phase', 60, {}); name('60s 内免疫一次受击'); break;
+            case 'riskAtkSpd': p.applyBuff('drop_risk', 60, { atkSpd: 1.08, takenMult: 1.05 }); name('攻速+8%·易伤+5% 60s'); break;
+            case 'dice': p.diceBuffs?.(Math.random); name('混沌骰子·命运已掷', true); break;
+            case 'luckUp': this._dropLuckTimer = 60; name('掉率翻倍 60s', true); break;
+            case 'goldBag': this._economy.addGold(def.value ?? 40); name(`+${def.value ?? 40} 金币`); break;
+            case 'cursedGold': {
+                this._economy.addGold(def.value ?? 150);
+                for (let i = 0; i < 6; i++) {
+                    const a = i * Math.PI / 3;
+                    this.spawnEnemy('grunt',
+                        clamp(p.x + Math.cos(a) * 320, 40, CANVAS_W - 40),
+                        clamp(p.y + Math.sin(a) * 320, 40, PLAYFIELD_BOTTOM - 40));
+                }
+                this._floatText.spawn(CANVAS_W / 2, 260, '诅咒金币袋：+150 金币 · 伏击来袭！', '#ff6b6b', 19, true);
+                break;
+            }
+            case 'cloakShard': {
+                SaveSystem.addRelic('cloak_shard', 1);
+                const n = SaveSystem.relicCount('cloak_shard');
+                if (n >= 5) {
+                    // 5 碎片合成充能：下局开局隐身 5 秒
+                    SaveSystem.addMaterial('core_stealth', 1);
+                    this._floatText.spawn(x, y - 40, '暗影斗篷铸成！下局开局隐身 5 秒', '#b48cff', 17, true);
+                } else {
+                    this._floatText.spawn(x, y - 34, `暗影斗篷碎片 ${n}/5`, '#b48cff', 13, false);
+                }
+                break;
+            }
+            default: break;
+        }
+    }
+
+    /** v3「澜镜棱壳」：反弹敌方子弹（BulletController 命中玩家前调用；true=已反弹）。 */
+    tryReflectBullet(b: any): boolean {
+        const p: any = this._player;
+        if (!p?.alive || !p.hasBuff?.('drop_reflect')) return false;
+        const shooter = this._enemies
+            .filter((e: any) => e.alive)
+            .sort((a: any, c: any) => Vec.dist(a.x, a.y, b.x, b.y) - Vec.dist(c.x, c.y, b.x, b.y))[0];
+        if (shooter) {
+            shooter.takeDamage(b.damage, p, this);
+            this._particles.hit?.(b.x, b.y, '#8eeaff');
+            this._floatText.spawn(b.x, b.y - 14, '反弹！', '#8eeaff', 13, true);
+        }
+        return true;
+    }
+
+    /** v3「焚芯余烬」：击杀溅射（EnemyBase._die 末尾调用，玩家持有 buff 时）。 */
+    dropKillSplash(enemy: EnemyBase): void {
+        const p: any = this._player;
+        if (!p?.hasBuff?.('drop_splash')) return;
+        spawnExplosionHelper(p, enemy.x, enemy.y, p.getDamage(this) * 0.25, 70, this);
     }
 
     // ── 测试房：海克斯授予面板支持 ─────────────────────────

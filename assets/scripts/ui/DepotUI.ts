@@ -1,4 +1,4 @@
-// 军需商店 / 装备库共用全屏终端；真实存档驱动，插画不烧录文字或状态。
+// 军需商店 / 仓库（原装备库）/ 兑换台共用全屏终端；真实存档驱动，插画不烧录文字或状态。
 import { BlockInputEvents, Color, Graphics, Label, Node, Sprite, UITransform } from 'cc';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { visibleDesignWidth, visibleDesignHeight } from '../core/ScreenFit';
@@ -13,10 +13,12 @@ import {
     depotEquipmentName, depotEquipmentStat, depotInventory,
 } from '../data/DepotCatalog';
 import { Equipment, EQUIP_QUALITY_LABEL, equipmentSellValue, rollEquipmentDrop } from '../data/EquipmentDB';
+import { MATERIALS, RECIPES, RecipeDef, recipeConsume, recipeCostMet } from '../data/DropDB';
+import { globalChapter } from '../data/LevelIndex';
 import { GameConfig } from '../data/GameConfig';
 import { SaveSystem } from '../systems/SaveSystem';
 
-type DepotPage = 'armory' | 'shop';
+type DepotPage = 'armory' | 'shop' | 'exchange';
 
 export class DepotUI {
     readonly node: Node;
@@ -84,18 +86,33 @@ export class DepotUI {
         this._body = depotNode(this._canvas, 'DepotContent', 0, 0, 1280, 720);
         const body = this._body;
         this._button(body, 'DepotBack', '‹  返回大厅', -493, 307, 172, 44, () => this.hide(), C.border, { size: 20 });
-        depotLabel(body, this._page === 'armory' ? '装备库' : '军需商店', -32, 312, 310, 55, 38);
-        this._button(body, 'DepotSwitch', this._page === 'armory' ? '军需商店' : '装备库', 138, 307, 125, 40,
-            () => this.show(this._page === 'armory' ? 'shop' : 'armory'), C.border, { size: 18 });
-        depotLabel(body, this._page === 'armory' ? '跨局装备 · 最多携带 3 件出战' : '核心币购买 · 装备入仓 · 战备下局生效',
-            0, 269, 650, 28, 18, C.cyan);
+        // v3：装备库更名「仓库」，页签在 仓库 → 军需商店 → 兑换台 之间循环
+        const pageTitles: Record<DepotPage, string> = { armory: '仓库', shop: '军需商店', exchange: '兑换台' };
+        const pageOrder: DepotPage[] = ['armory', 'shop', 'exchange'];
+        const pageNext: Record<DepotPage, string> = { armory: '军需商店', shop: '兑换台', exchange: '仓库' };
+        depotLabel(body, pageTitles[this._page], -32, 312, 310, 55, 38);
+        this._button(body, 'DepotSwitch', pageNext[this._page], 138, 307, 125, 40,
+            () => this.show(pageOrder[(pageOrder.indexOf(this._page) + 1) % 3]), C.border, { size: 18 });
+        const pageHints: Record<DepotPage, string> = {
+            armory: '跨局装备 · 最多携带 3 件出战',
+            shop: '核心币购买 · 装备入仓 · 战备下局生效',
+            exchange: '材料出售与配方兑换 · 全部使用核心币',
+        };
+        depotLabel(body, pageHints[this._page], 0, 269, 650, 28, 18, C.cyan);
         const wallet = depotPlate(body, 'CoreWallet', 472, 307, 226, 44, C.border);
         this._coin(wallet, -91, 0, 14);
         depotLabel(wallet, '核心币', -38, 0, 72, 35, 19);
         this._balance = depotLabel(wallet, (SaveSystem.coreCoins()).toLocaleString('en-US'), 60, 0, 90, 36, 23, C.gold);
         if (this._page === 'armory') this._renderArmory(body);
-        else this._renderShop(body);
+        else if (this._page === 'shop') this._renderShop(body);
+        else this._renderExchange(body);
         if (this._notice) depotLabel(body, this._notice, 0, -322, 1040, 27, 16, this._noticeColor);
+    }
+
+    /** 商品实付价：v3「军械库钥匙」（图5 Boss 专属被动）装备箱 -20%。 */
+    private _productPrice(product: DepotProduct): number {
+        return product.id === 'box' && SaveSystem.hasBossUnique('xblade_key')
+            ? Math.round(product.price * 0.8) : product.price;
     }
 
     private _coin(parent: Node, x: number, y: number, radius: number): void {
@@ -233,7 +250,9 @@ export class DepotUI {
         }
         const profile = SaveSystem.load();
         const slot = (profile.equipLoadout ?? []).indexOf(eq.uid);
-        const price = Math.max(1, Math.round(equipmentSellValue(eq.quality) * GameConfig.get('equipSellRate')));
+        // v3「装配线铭牌」（图2 Boss 专属被动）：装备卖出价 +20%
+        const sellMult = SaveSystem.hasBossUnique('forge_plate') ? 1.2 : 1;
+        const price = Math.max(1, Math.round(equipmentSellValue(eq.quality) * GameConfig.get('equipSellRate') * sellMult));
         depotBadge(detail, EQUIP_QUALITY_LABEL[eq.quality], 124, 242, 66, C.qualities[eq.quality] ?? C.border);
         this._pedestal(detail);
         depotItemArt(detail, EQUIPMENT_TILES[eq.affix] ?? 0, 0, 107, 283);
@@ -254,6 +273,18 @@ export class DepotUI {
             return;
         }
         const full = (profile.equipLoadout ?? []).filter(uid => (profile.equipments ?? []).some(e => e.uid === uid)).length >= 3;
+        // v3「熔火核心」充能：仓库内重铸当前选中装备的词缀（品质保留）
+        const reforgeLeft = SaveSystem.materialCount('core_reforge');
+        if (reforgeLeft > 0) {
+            this._button(detail, 'ReforgeAction', `熔火重铸（剩 ${reforgeLeft}）`, 0, -190, 210, 34, () => {
+                if (!SaveSystem.consumeMaterial('core_reforge', 1)) { this._render(); return; }
+                const next = SaveSystem.rerollEquipment(eq.uid);
+                this._clearAction();
+                this._notice = next ? `重铸完成：${EQUIP_QUALITY_LABEL[next.quality]}·${depotEquipmentName(next)}` : '重铸失败：装备不存在';
+                this._noticeColor = next ? C.cyan : C.danger;
+                this._render();
+            }, C.gold, { size: 15 });
+        }
         this._button(detail, 'EquipAction', slot >= 0 ? '卸下装备' : full ? '选择替换槽位' : '装备出战', -87, -232, 166, 54, () => {
             this._clearAction();
             if (slot >= 0) SaveSystem.setEquipSlot(slot, null);
@@ -301,7 +332,7 @@ export class DepotUI {
             depotBadge(card, product.id === 'box' ? '永久装备' : '下局生效', 91, 51, 100, product.id === 'box' ? C.cyan : C.gold);
             depotLabel(card, product.name, 72, 17, 193, 35, 23);
             depotLabel(card, product.id === 'box' ? '随机未拥有装备' : product.benefit.replace('海克斯三选一', ''), 72, -17, 191, 27, 15, C.muted);
-            depotLabel(card, `⬡ ${product.price} 核心币`, 72, -49, 193, 30, 20, C.gold);
+            depotLabel(card, `⬡ ${this._productPrice(product)} 核心币`, 72, -49, 193, 30, 20, C.gold);
         });
         const product = DEPOT_PRODUCTS.find(p => p.id === this._productId)!;
         const detail = this._section(body, 'ProductDetail', '商品详情', 390, -26, 374, 538);
@@ -312,12 +343,13 @@ export class DepotUI {
         depotLabel(detail, product.benefit, 0, -81, 334, 34, 21, C.cyan);
         depotLabel(detail, product.description, 0, -126, 333, 54, 17, C.muted);
         const coins = SaveSystem.coreCoins();
+        const price = this._productPrice(product);
         const available = product.id !== 'box' || depotBoxAvailable(SaveSystem.load().equipments ?? [], SaveSystem.unlockedChapterCount());
-        depotLabel(detail, !available ? '当前进度可购装备已集齐' : coins < product.price ? '核心币不足' : product.id === 'box' ? '购买后自动入仓' : '可重复购买 · 累加至战备',
-            0, -177, 330, 29, 17, !available || coins < product.price ? C.gold : C.cyan);
-        this._button(detail, 'PurchaseAction', !available ? '当前装备已集齐' : coins < product.price ? `核心币不足 · 需要 ${product.price}` : `购买  ⬡ ${product.price} 核心币`,
+        depotLabel(detail, !available ? '当前进度可购装备已集齐' : coins < price ? '核心币不足' : product.id === 'box' ? '购买后自动入仓' : '可重复购买 · 累加至战备',
+            0, -177, 330, 29, 17, !available || coins < price ? C.gold : C.cyan);
+        this._button(detail, 'PurchaseAction', !available ? '当前装备已集齐' : coins < price ? `核心币不足 · 需要 ${price}` : `购买  ⬡ ${price} 核心币`,
             0, -232, 338, 54, () => this._buyProduct(product), C.cyan,
-            { disabled: !available || coins < product.price, size: 23 });
+            { disabled: !available || coins < price, size: 23 });
     }
 
     private _buyProduct(product: DepotProduct): void {
@@ -326,16 +358,135 @@ export class DepotUI {
         let equipment: Equipment | null = null;
         if (product.id === 'box') {
             equipment = rollEquipmentDrop(SaveSystem.unlockedChapterCount(),
-                new Set((profile.equipments ?? []).map(e => `${e.affix}:${e.quality}`)), () => Rng.float(0, 1));
+                new Set((profile.equipments ?? []).map(e => `${e.affix}:${e.quality}`)), () => Rng.float(0, 1),
+                SaveSystem.hasBossUnique('xblade_mod'));
             if (!equipment) { this._render(); return; }
         }
-        if (!SaveSystem.spendCoreCoins(product.price)) { this._render(); return; }
+        if (!SaveSystem.spendCoreCoins(this._productPrice(product))) { this._render(); return; }
         if (equipment) SaveSystem.addEquipment(equipment);
         else if (product.id === 'gold') SaveSystem.addShopSupply(150, 0, 0);
         else if (product.id === 'draws') SaveSystem.addShopSupply(0, 3, 0);
         else SaveSystem.addShopSupply(0, 0, 60);
-        this._notice = equipment ? `获得 ${EQUIP_QUALITY_LABEL[equipment.quality]}·${depotEquipmentName(equipment)}，已存入装备库` : `${product.name}已购买，下局开局生效`;
+        this._notice = equipment ? `获得 ${EQUIP_QUALITY_LABEL[equipment.quality]}·${depotEquipmentName(equipment)}，已存入仓库` : `${product.name}已购买，下局开局生效`;
         this._noticeColor = C.cyan;
+        this._render();
+    }
+
+    // ── v3 兑换台：材料出售 + 配方兑换（全部核心币结算） ──────────
+
+    private _renderExchange(body: Node): void {
+        const profile = SaveSystem.load();
+        const materials = profile.materials ?? {};
+        // 左侧：材料仓库（15 种网格，点击出售 1 件；顶右一键出售）
+        const panel = this._section(body, 'MaterialPanel', '材料仓库 · 点击出售（得核心币）', -195, 95, 772, 430);
+        this._button(panel, 'SellAllMats', '一键出售全部', 300, 175, 168, 38, () => {
+            const coins = SaveSystem.sellAllMaterials();
+            this._clearAction();
+            this._notice = coins > 0 ? `材料全部售出 · 获得 ${coins} 核心币` : '没有可出售的材料';
+            this._noticeColor = coins > 0 ? C.gold : C.danger;
+            this._render();
+        }, C.gold, { size: 17 });
+        MATERIALS.forEach((mat, i) => {
+            const x = -322 + (i % 5) * 161, y = 78 - Math.floor(i / 5) * 122;
+            const count = materials[mat.id] ?? 0;
+            const tile = this._button(panel, `Mat_${mat.id}`, '', x, y, 148, 108, () => {
+                const coins = SaveSystem.sellMaterial(mat.id, 1);
+                this._clearAction();
+                this._notice = coins > 0 ? `售出 ${mat.name} ×1 · 获得 ${coins} 核心币` : `${mat.name} 库存不足`;
+                this._noticeColor = coins > 0 ? C.gold : C.danger;
+                this._render();
+            }, count > 0 ? C.cyan : C.border, { disabled: count <= 0, size: 15 });
+            depotLabel(tile, mat.name, 0, 34, 140, 26, 16, count > 0 ? C.text : C.muted);
+            depotLabel(tile, `×${count}`, 0, 2, 90, 40, 26, count > 0 ? C.cyan : C.muted, true);
+            depotLabel(tile, `售 ${mat.sell}`, 0, -36, 90, 22, 14, C.gold);
+        });
+        // 左下：消耗型充能一览（Boss 专属的"下局生效"库存）
+        const charges = [
+            ['不屈徽记·复活', 'core_revive'], ['无限核·免费刷新', 'core_refresh'],
+            ['混沌棱镜·彩卡', 'core_prism'], ['熔火核心·重铸', 'core_reforge'],
+            ['元素瓶', 'core_element'], ['暗影斗篷·隐身', 'core_stealth'],
+        ] as const;
+        const chargePanel = this._section(body, 'ChargePanel', '下局生效 · 充能', -195, -215, 772, 130);
+        charges.forEach(([label, id], i) => {
+            const x = -322 + (i % 6) * 128;
+            depotLabel(chargePanel, label, x, 20, 124, 24, 13, C.muted);
+            depotLabel(chargePanel, `×${SaveSystem.materialCount(id)}`, x, -12, 80, 34, 22,
+                SaveSystem.materialCount(id) > 0 ? C.gold : C.border, true);
+        });
+        // 右侧：兑换台配方
+        const bench = this._section(body, 'ExchangeBench', '兑换台 · 配方', 390, 55, 374, 510);
+        const recipes = RECIPES.filter(r => r.id !== 'r_sellall');
+        recipes.forEach((recipe, i) => {
+            const ok = recipeCostMet(recipe, materials) && SaveSystem.coreCoins() >= recipe.coins;
+            this._button(bench, `Recipe_${recipe.id}`, recipe.name, 0, 195 - i * 66, 340, 58, () => {
+                this._craftRecipe(recipe);
+            }, ok ? C.cyan : C.border, { disabled: !ok, size: 18 });
+        });
+        depotLabel(bench, '消耗材料 + 少量核心币手续费 · 产出即时入仓/入充能',
+            0, -222, 350, 26, 14, C.muted);
+    }
+
+    private _craftRecipe(recipe: RecipeDef): void {
+        const profile = SaveSystem.load();
+        const materials = profile.materials ?? {};
+        if (!recipeCostMet(recipe, materials)) { this._render(); return; }
+        if (recipe.coins > 0 && !SaveSystem.spendCoreCoins(recipe.coins)) {
+            this._notice = '核心币手续费不足'; this._noticeColor = C.danger; this._render(); return;
+        }
+        if (!recipeConsume(recipe, materials)) { this._render(); return; }
+        SaveSystem.save();
+        const owned = new Set((profile.equipments ?? []).map(e => `${e.affix}:${e.quality}`));
+        const allowHaste = SaveSystem.hasBossUnique('xblade_mod');
+        switch (recipe.produce.kind) {
+            case 'equipment': {
+                // 图域锻造按所耗材料的图定品质档；星陨锻造固定史诗档（优先未拥有）
+                const chapter = recipe.id === 'r_star'
+                    ? Math.max(SaveSystem.unlockedChapterCount(), globalChapter(4, 1))
+                    : SaveSystem.unlockedChapterCount();
+                const equip = rollEquipmentDrop(chapter, owned, () => Rng.float(0, 1), allowHaste);
+                if (equip) {
+                    SaveSystem.addEquipment(equip);
+                    this._notice = `锻造获得 ${EQUIP_QUALITY_LABEL[equip.quality]}·${depotEquipmentName(equip)}`;
+                } else {
+                    SaveSystem.addCoreCoins(40);
+                    this._notice = '装备图鉴已集齐 → 核心币 ×40';
+                }
+                this._noticeColor = C.cyan;
+                break;
+            }
+            case 'reforge':
+                SaveSystem.addMaterial('core_reforge', 1);
+                this._notice = '获得重铸充能 ×1（到仓库装备详情使用）';
+                this._noticeColor = C.cyan;
+                break;
+            case 'elementBottle':
+                SaveSystem.addMaterial('core_element', 1);
+                this._notice = '获得元素瓶 ×1（下局开局随机元素附武 60 秒）';
+                this._noticeColor = C.cyan;
+                break;
+            case 'box': {
+                const equip = rollEquipmentDrop(SaveSystem.unlockedChapterCount(), owned, () => Rng.float(0, 1), allowHaste);
+                if (equip) {
+                    SaveSystem.addEquipment(equip);
+                    this._notice = `整备获得 ${EQUIP_QUALITY_LABEL[equip.quality]}·${depotEquipmentName(equip)}`;
+                } else {
+                    SaveSystem.addCoreCoins(40);
+                    this._notice = '装备图鉴已集齐 → 核心币 ×40';
+                }
+                this._noticeColor = C.cyan;
+                break;
+            }
+            case 'prism':
+                SaveSystem.addMaterial('core_prism', 1);
+                this._notice = '获得混沌棱镜充能 ×1（下局商店首开必出彩卡）';
+                this._noticeColor = C.cyan;
+                break;
+            case 'coins':
+                SaveSystem.addCoreCoins(recipe.produce.coins ?? 0);
+                this._notice = `献礼完成 · 核心币 +${recipe.produce.coins ?? 0}`;
+                this._noticeColor = C.gold;
+                break;
+        }
         this._render();
     }
 }

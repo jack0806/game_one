@@ -397,6 +397,11 @@ test('铆甲兽0.55秒走廊预警后冲100px,撞墙眩晕1.2秒并失去正面�
 });
 
 test('掠金虫不攻击,受击加速0.8秒,12秒逃脱且5秒内击杀额外掉6金', () => {
+    // v3：金虫琥珀收藏品掉率置 0 保证掉落断言确定性（默认 10%）
+    const { GameConfig } = require('../dist/data/GameConfig.js');
+    const amberSaved = GameConfig.get('amberBugChance');
+    GameConfig.set('amberBugChance', 0);
+    try {
     const drops = [];
     const game = makeMockGame({ economy: { spawnDrop(_x, _y, amount) { drops.push(amount); } } });
     const e = new EnemyBase(); e.init('gold_scavenger', 1, game);
@@ -415,6 +420,7 @@ test('掠金虫不攻击,受击加速0.8秒,12秒逃脱且5秒内击杀额外掉
     escaped.update(12, player, game);
     assert.equal(escaped.alive, false, '存活12秒后应逃脱');
     assert.deepEqual(drops, [20, 6], '逃脱不得结算击杀掉落');
+    } finally { GameConfig.set('amberBugChance', amberSaved); }
 });
 
 test('烬火侍从锁定玩家脚下火圈并按2.4秒间隔施法', () => {

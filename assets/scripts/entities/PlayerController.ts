@@ -306,6 +306,15 @@ export class PlayerController extends Component {
         }
         // 「完美防线」成就：无敌帧/无敌外的任何实际命中都算受伤（护盾抵挡亦算）
         if (game) game.damagedThisRun = true;
+        // v3「相位靴垫」：60 秒窗口内免疫一次受击（触发即消耗）
+        if (this.hasBuff('drop_phase')) {
+            this._removeBuff('drop_phase');
+            game.floatingText?.spawn(this.x, this.y - 44, '相位闪避！', '#9fd8ff', 16, true);
+            game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
+            return;
+        }
+        // v3「过热阀门」等易伤 buff：受到伤害按 takenMult 放大
+        for (const b of this._buffs) if (b.mods.takenMult) amount *= b.mods.takenMult;
         // 受击流海克斯分发（荆棘甲壳/风行节奏；DoT 路径不分发）
         game?.augmentManager?.dispatchPlayerHit?.(this, game);
         // 测试房数值调试：全局承伤倍率（敌人弹幕/近战/AoE 统一缩放，便于压测生存）
@@ -333,7 +342,10 @@ export class PlayerController extends Component {
         }
         // 护甲减伤（对齐 EnemyBase.takeDamage 的 armor/(armor+100) 衰减公式；
         // armor_up 词条/角色初始 armor 之前只写入 stats.armor 从未在这里读取，是死代码）。
-        const mitigation = this.stats.armor / (this.stats.armor + 100);
+        // v3「石心/铆甲板」掉落道具：护甲加成走 buff 的 armorFlat 通道参与减伤。
+        const buffArmor = this._buffs.reduce((s, b) => s + (b.mods.armorFlat ?? 0), 0);
+        const armorTotal = this.stats.armor + buffArmor;
+        const mitigation = armorTotal / (armorTotal + 100);
         amount = Math.max(1, amount * (1 - mitigation));
         // 雷克E 血之护盾：减伤期间被减免的部分计入储备，6秒后转为等量护盾。
         // （吸血/无敌等其它减伤通道不走这里，只有显式 dmgReduction 的buff参与）
@@ -790,7 +802,16 @@ export class PlayerController extends Component {
             dmg *= 2;
             game.floatingText?.spawn(enemy.x, enemy.y - 34, '刺客突袭 ×2！', '#7dff9e', 17, true);
         }
-        const isCrit = Rng.chance(this.stats.critRate || 0);
+        // v3「聚能弹头」：下一击伤害 ×2（触发即消耗）
+        if (this.stats.dropPowerShot) {
+            dmg *= this.stats.dropPowerShot;
+            this.stats.dropPowerShot = 0;
+            game.floatingText?.spawn(enemy.x, enemy.y - 34, '聚能弹头 ×2！', '#ffb0e0', 17, true);
+        }
+        // v3「零扳机」：接下来 N 发必暴（触发一发扣一层）
+        const forcedCrit = (this.stats.dropCritShots ?? 0) > 0;
+        const isCrit = forcedCrit || Rng.chance(this.stats.critRate || 0);
+        if (forcedCrit) this.stats.dropCritShots -= 1;
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
             // 大Boss威压：受到的暴击伤害减免25%
@@ -801,6 +822,12 @@ export class PlayerController extends Component {
         if (enemy.frozen > 0 && this.stats.freezeBonus) dmg *= this.stats.freezeBonus;
         // 格雷夫被动·洞察：命中被标记怪物时消耗标记，追加20%穿甲伤害
         this.consumeInsightMark(enemy, game, dmg);
+        // v3「不稳定炸药」：下一击结算后在命中点引发范围爆炸（触发即消耗）
+        if (this.stats.dropBombShot) {
+            this.stats.dropBombShot = false;
+            game.spawnExplosion?.(this, enemy.x, enemy.y, dmg * 0.8, 90);
+            game.floatingText?.spawn(enemy.x, enemy.y - 48, '不稳定炸药·爆！', '#ff9a56', 16, true);
+        }
         const actual = enemy.takeDamage(dmg, this, game);
         const actualDamage = actual === undefined ? dmg : actual;
         this.applyAttackLifesteal(actualDamage, game);
@@ -917,8 +944,20 @@ export class PlayerController extends Component {
         if (nearest) { tx = nearest.x; ty = nearest.y; }
         const [ndx, ndy] = Vec.normalize(tx - this.x, ty - this.y);
 
-        const dmg    = this.getDamage(game);
-        const isCrit = Rng.chance(this.stats.critRate || 0);
+        const dmg    = this.getDamage(game)
+            // v3「聚能弹头」：下一击伤害 ×2（远程路径同样消耗）
+            * (() => {
+                if (this.stats.dropPowerShot) {
+                    const m = this.stats.dropPowerShot;
+                    this.stats.dropPowerShot = 0;
+                    return m;
+                }
+                return 1;
+            })();
+        // v3「零扳机」：必暴层数在远程路径同样逐发消耗
+        const forcedCrit = (this.stats.dropCritShots ?? 0) > 0;
+        if (forcedCrit) this.stats.dropCritShots -= 1;
+        const isCrit = forcedCrit || Rng.chance(this.stats.critRate || 0);
 
         const spawnBullet = (dx: number, dy: number, dmgMult = 1, opts: { homing?: boolean; forceCrit?: boolean } = {}) => {
             const [muzzleX, muzzleY] = this.getMuzzlePosition();
@@ -1108,6 +1147,36 @@ export class PlayerController extends Component {
         this._eCd = 0;
         // 大招R已是冷却制，"所有技能CD归零"应把大招也立即充满可用。
         this._rCharge = 1;
+    }
+
+    /** v3「三相符文」：当前 Q/E 冷却与大招充能按比例缩减（pct=0.2 即 -20%）。 */
+    reduceCooldownsPercent(pct: number): void {
+        this._qCd *= 1 - pct;
+        this._eCd *= 1 - pct;
+        this._rCharge = Math.min(1, this._rCharge + pct);
+    }
+
+    /** v3「混沌骰子」：50% 当前全部增益（数值×2、时长+30 秒）／50% 全部清空。 */
+    diceBuffs(rand: () => number = Math.random): boolean {
+        if (!this._buffs.length) return false;
+        if (rand() < 0.5) {
+            for (const b of this._buffs) {
+                b.duration += 30;
+                for (const k of Object.keys(b.mods)) {
+                    const v = (b.mods as any)[k];
+                    if (typeof v === 'number' && v > 1) (b.mods as any)[k] = v * 2;
+                }
+            }
+            return true; // true=翻倍
+        }
+        this._buffs = [];
+        return false;
+    }
+
+    /** v3 掉落道具：移除单个 buff（相位靴垫触发即消耗）。 */
+    private _removeBuff(id: string): void {
+        const i = this._buffs.findIndex(b => b.id === id);
+        if (i >= 0) this._buffs.splice(i, 1);
     }
 
     // ── 状态快照（用于 HUD） ─────────────────────────────

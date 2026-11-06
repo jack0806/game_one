@@ -11,7 +11,7 @@ export interface DepotProduct {
 }
 
 export const DEPOT_PRODUCTS: DepotProduct[] = [
-    { id: 'box', name: '装备箱', price: 60, tile: 5, benefit: '随机获得一件未拥有装备', description: '品质上限随通关进度提升\n永久入仓，可在装备库配装' },
+    { id: 'box', name: '装备箱', price: 60, tile: 5, benefit: '随机获得一件未拥有装备', description: '品质上限随通关进度提升\n永久入仓，可在仓库配装' },
     { id: 'gold', name: '战备金库', price: 25, tile: 6, benefit: '开局金币 +150', description: '下一局开局生效\n可重复购买，叠加生效' },
     { id: 'draws', name: '战备情报', price: 40, tile: 7, benefit: '海克斯三选一连抽 +3', description: '下一局开局生效\n可重复购买，叠加生效' },
     { id: 'shield', name: '战备护盾', price: 30, tile: 8, benefit: '开局护盾 +60', description: '下一局开局生效\n可重复购买，叠加生效' },

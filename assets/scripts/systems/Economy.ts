@@ -14,8 +14,12 @@ interface GoldDrop {
     life: number;
     age: number;
     collected: boolean;
-    /** 掉落类型：gold=金币（默认）；joker_doll=滑稽猴的玩偶猴（拾取走成就回调）。 */
-    kind?: 'gold' | 'joker_doll';
+    /**
+     * 掉落类型：gold=金币（默认）；joker_doll=玩偶猴；
+     * v3 掉落改版扩展：'mat:<材料id>'=仓库材料、'use:<道具id>'=局内道具、
+     * 'relic:<收藏id>'=收藏品——拾取统一转发 onSpecialDropPicked 回调。
+     */
+    kind?: string;
 }
 
 const DROP_FLOOR = PLAYFIELD_BOTTOM;
@@ -103,7 +107,7 @@ export class Economy {
         return true;
     }
 
-    spawnDrop(x: number, y: number, amount: number, kind: 'gold' | 'joker_doll' = 'gold'): void {
+    spawnDrop(x: number, y: number, amount: number, kind: string = 'gold'): void {
         // 二维平面：金币直接固定在敌人死亡坐标（仅做一次合法范围校正），
         // 不再生成随机速度，也不在 update 中做重力/横向漂移。
         const safe = this.dropPlacement?.(x, y) ?? { x, y };
@@ -135,6 +139,14 @@ export class Economy {
                     game?.audio?.playSfx?.('augment_pick', 0.8);
                     game?.particles?.hexActivate?.(d.x, d.y, '#ffd24d');
                     game?.onJokerDollPicked?.(d.x, d.y);
+                    continue;
+                }
+                if (d.kind && d.kind !== 'gold') {
+                    // v3 材料/道具/收藏品：不算金币，转发给 GameManager 分发
+                    d.collected = true;
+                    game?.audio?.playSfx?.('augment_pick', 0.7);
+                    game?.particles?.hit?.(d.x, d.y, '#7fe3ff');
+                    game?.onSpecialDropPicked?.(d.kind, d.x, d.y);
                     continue;
                 }
                 const beforeGold = this.gold;

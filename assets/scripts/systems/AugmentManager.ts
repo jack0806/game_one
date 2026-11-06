@@ -34,6 +34,10 @@ export class AugmentManager {
     freeRefreshes = 0;
     /** 合理避税(hex30)：刷新费用乘区（0.5 = 费用减半）。 */
     refreshCostMult = 1;
+    /** v3「无限核」充能：开局换来的额外免费刷新次数（开局消费一次即清零）。 */
+    freeRefreshBonus = 0;
+    /** v3「变异图谱」被动：金色海克斯权重乘区（1.03；未拥有为 1）。 */
+    goldWeightMult = 1;
     /** 固定强化：已收过 +5% 附加费的海克斯 id（同一强化无论固定几次只收一次）。 */
     private _pinCharged: Set<string> = new Set();
     /** 固定强化的货架卡实例：跨波次保留，下次开页占前几张，直到购买或手动取消。 */
@@ -110,7 +114,8 @@ export class AugmentManager {
      */
     rarityWeights(wave: number): Record<HexRarity, number> {
         const silver = Math.max(48, 78 - wave * 2);
-        const gold = Math.min(34, 14 + wave * 1.4) * GameConfig.get('augRarityLuck');
+        const gold = Math.min(34, 14 + wave * 1.4) * GameConfig.get('augRarityLuck')
+            * (this.goldWeightMult ?? 1);   // v3「变异图谱」：金色出现率被动 ×1.03
         const prismatic = Math.min(12, Math.max(0, wave - 3) * 0.9) * GameConfig.get('augRarityLuck');
         // 加成砍掉/加上的权重回填银色，保持三档总量近似不变（luck=1 即原值）
         return { silver: silver + (Math.min(34, 14 + wave * 1.4) - gold) + (Math.min(12, Math.max(0, wave - 3) * 0.9) - prismatic), gold, prismatic };
@@ -144,13 +149,15 @@ export class AugmentManager {
      *  · opts.refresh（付费刷新）：稀有度改走 refreshRarityWeights，
      *    金色只概率出现、彩色极小概率。
      */
-    rollOptions(n = 3, wave = 1, opts?: { firstWave?: boolean; refresh?: boolean }): AugmentDef[] {
+    rollOptions(n = 3, wave = 1, opts?: { firstWave?: boolean; refresh?: boolean; forceRarity?: HexRarity }): AugmentDef[] {
         const weights = opts?.refresh ? this.refreshRarityWeights(wave) : this.rarityWeights(wave);
         const results: AugmentDef[] = [];
         const slotsFull = this.active.length >= this.maxSlots;
 
         for (let i = 0; i < n; i++) {
-            const rarity = opts?.firstWave ? 'silver' : this._rollRarity(weights);
+            // v3「混沌棱镜」：forceRarity 只强制第一张（首开必出彩卡通道）
+            const rarity = opts?.forceRarity && i === 0 ? opts.forceRarity
+                : opts?.firstWave ? 'silver' : this._rollRarity(weights);
             if (!rarity) continue;
             const level = rarity === 'silver' ? 1 : rarity === 'gold' ? 2 : 3;
             const pool: AugmentDef[] = [];
@@ -397,6 +404,8 @@ export class AugmentManager {
         this._oneShotUsed = new Set();
         this.freeRefreshes = 0;
         this.refreshCostMult = 1;
+        this.freeRefreshBonus = 0;
+        this.goldWeightMult = 1;
         this._pinCharged = new Set();
         this.pinnedCards = [];
     }

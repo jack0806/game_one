@@ -56,7 +56,7 @@ export class LobbyUI {
     private _portalFocused = false;
     private _summaryTitle!: Label;
     private _summaryLines: Label[] = [];
-    /** 商店和装备库共用军需终端的围框、陈列与详情布局。 */
+    /** 商店和仓库共用军需终端的围框、陈列与详情布局。 */
     private _depot!: DepotUI;
 
     constructor(private readonly _root: Node, private readonly _callbacks: LobbyCallbacks) {
@@ -162,7 +162,7 @@ export class LobbyUI {
         switchBtn.on(Node.EventType.TOUCH_END, () => this._callbacks.onSwitchSave());
     }
 
-    /** 左下：商店/图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 装备库。
+    /** 左下：商店/图鉴/成就档案入口（自首页 MetaDock 迁入大厅）+ v4 仓库。
      *  商店占旧「任务树」位（顶部）：核心币购买装备箱与下一局战备补给。 */
     private _buildMetaDock(page: Node): void {
         const dock = new Node('MetaDock'); dock.setParent(page);
@@ -187,8 +187,8 @@ export class LobbyUI {
             this._callbacks.onButtonSfx();
             this._depot.show('shop');
         });
-        // v4：装备库入口（本页浮层，不走路由）；按钮位置在终端组下方
-        const armoryBtn = this._mkButton(dock, '装备库', 0, -128 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
+        // v4：仓库入口（本页浮层，不走路由）；按钮位置在终端组下方
+        const armoryBtn = this._mkButton(dock, '仓库', 0, -128 - (sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 4 : 0), 334,
             sys.hasFeature(sys.Feature.INPUT_TOUCH) ? 56 : 46, new Color(150, 108, 220, 255));
         armoryBtn.on(Node.EventType.TOUCH_END, () => {
             this._callbacks.onButtonSfx();

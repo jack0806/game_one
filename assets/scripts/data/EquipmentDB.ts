@@ -25,6 +25,9 @@ export const EQUIP_AFFIXES: EquipAffixDef[] = [
     { id: 'spd',   label: '推进器',   stat: 'speedPct',    values: [0.03, 0.06, 0.09] },
     { id: 'crit',  label: '瞄准镜',   stat: 'critRate',    values: [0.02, 0.04, 0.06], flat: true },
     { id: 'greed', label: '吸金器',   stat: 'goldPickupRange', values: [15, 30, 50], flat: true },
+    // v3 掉落改版：X-剑刃模组（图5 Boss 专属）解锁的第 6 词缀——
+    // 未解锁时 rollEquipmentDrop(allowHaste=false) 不进掉落池。
+    { id: 'haste', label: '高频刃',   stat: 'atkSpdPct',   values: [0.03, 0.05, 0.08] },
 ];
 
 export const EQUIP_QUALITY_LABEL = ['普通', '稀有', '史诗'];
@@ -55,15 +58,18 @@ export function newEquipmentUid(): string {
 /**
  * Boss 掉落掷取（防刷去重：未拥有的 affix×quality 组合优先，全部拥有后
  * 返回 null —— 调用方改掉核心币包）。品质在章节上限内随机。
+ * allowHaste=false 时「高频刃」不进池（X-剑刃模组未解锁；缺省 false——高频刃为解锁制词缀）。
  */
 export function rollEquipmentDrop(
     chapterId: number,
     ownedKeys: Set<string>,
     rand: () => number = Math.random,
+    allowHaste = false,
 ): Equipment | null {
     const cap = qualityCapForChapter(chapterId);
     const candidates: Equipment[] = [];
     for (const affix of EQUIP_AFFIXES) {
+        if (affix.id === 'haste' && !allowHaste) continue;
         for (let q = 0; q <= cap; q++) {
             const key = `${affix.id}:${q}`;
             if (ownedKeys.has(key)) continue;
@@ -108,5 +114,6 @@ export function applyEquipmentToStats(e: Equipment, stats: any): void {
         case 'spd':  stats.speed   = (stats.speed ?? 300) * (1 + v); break;
         case 'crit': stats.critRate = (stats.critRate ?? 0) + v; break;
         case 'greed': stats.goldPickupRange = (stats.goldPickupRange ?? 60) + v; break;
+        case 'haste': stats.attackSpeed = (stats.attackSpeed ?? 1) * (1 + v); break;
     }
 }

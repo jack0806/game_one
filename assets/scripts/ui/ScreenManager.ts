@@ -408,7 +408,9 @@ export class ScreenManager extends Component {
             : '行动终止';
         view.subtitle.string = won
             ? `击败章节关底 · 用时内完成 ${data.wave} 波 · 剩余金币折算核心币`
-            : `止步${pos} · 第 ${data.wave} 波`;
+            : `止步${pos} · 第 ${data.wave} 波`
+                // v3 两币制：阵亡也结算剩余金币（200:1），副标题提示兑换结果
+                + ((data.coinsEarned ?? 0) > 0 ? ` · 剩金折核心币 ×${data.coinsEarned}` : '');
         // v4：通关面板第 4 格显示核心币折算（20% 封顶 80），gameover 仍显示积分
         const values = won
             ? [data.kills, data.maxCombo, data.goldEarned, data.coinsEarned ?? 0]

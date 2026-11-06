@@ -6,7 +6,8 @@
 // 本地文件，API 一致)。提供 3 个独立存档槽：首页「进入游戏」先选槽，
 // 之后大厅/成就墙/局末统计都读写当前选中槽。
 import { sys } from 'cc';
-import { equipmentKey } from '../data/EquipmentDB';
+import { equipmentKey, EQUIP_AFFIXES } from '../data/EquipmentDB';
+import { MATERIALS } from '../data/DropDB';
 import { TOTAL_CHAPTERS } from '../data/LevelIndex';
 import { ACHIEVEMENTS, AchievementDef, AchievementStats, freshAchievementStats, LEGACY_ACHIEVEMENTS } from '../data/AchievementDB';
 export { ACHIEVEMENTS } from '../data/AchievementDB';
@@ -72,6 +73,14 @@ export interface PlayerProfile {
     noSpendWins?: number;
     /** v5.1：历史单局海克斯最高档位（旧档缺省 0）。 */
     bestAugLevel?: number;
+    /** v3：仓库材料库存（materialId → 数量；旧档缺省空）。 */
+    materials?: Record<string, number>;
+    /** v3：Boss 专属收藏记录（已拥有即该件绝版；消耗型的充能另记 materials）。 */
+    bossUniques?: string[];
+    /** v3：Boss 专属软保底计数（bossId → 连续未掉次数）。 */
+    bossPity?: Record<string, number>;
+    /** v3：收藏品计数（金虫琥珀 / 暗影斗篷碎片等）。 */
+    relics?: Record<string, number>;
     bestChapter: number;       // 最远章节(1-based)
     bestWave: number;
     totalGoldEarned: number;   // 累计获得金币
@@ -197,6 +206,7 @@ function freshProfile(): PlayerProfile {
         charsPlayed: [], achievements: [],
         coreCoins: 0, chaptersCleared: 0,
         equipments: [], equipLoadout: [null, null, null],
+        materials: {}, bossUniques: [], bossPity: {}, relics: {},
         migratedV4: true, jokerDolls: 0,
         shopStartGold: 0, shopStartDraws: 0, shopStartShield: 0,
     };
@@ -603,6 +613,110 @@ export class SaveSystem {
     /** 已拥有装备的去重键集合（掉落表"未拥有优先"用）。 */
     static ownedEquipmentKeys(): Set<string> {
         return new Set((this.load().equipments ?? []).map(e => equipmentKey(e)));
+    }
+
+    // ── v3 掉落改版：材料 / Boss 专属 / 软保底 / 收藏品 ──────────
+
+    /** 材料库存数（无此材料返回 0）。 */
+    static materialCount(id: string): number {
+        return this.load().materials?.[id] ?? 0;
+    }
+
+    /** 材料入仓（负数不会扣到 0 以下）。 */
+    static addMaterial(id: string, n = 1): void {
+        const p = this.load();
+        p.materials = p.materials ?? {};
+        p.materials[id] = Math.max(0, (p.materials[id] ?? 0) + n);
+        this.save();
+    }
+
+    /** 消耗 n 个材料（不足返回 false 且不扣）。 */
+    static consumeMaterial(id: string, n = 1): boolean {
+        const p = this.load();
+        if ((p.materials?.[id] ?? 0) < n) return false;
+        p.materials[id] -= n;
+        this.save();
+        return true;
+    }
+
+    /** 单件/批量出售材料：按 DropDB 售价折核心币，返回本次所得核心币。 */
+    static sellMaterial(id: string, n = 1): number {
+        const def = MATERIALS.find(m => m.id === id);
+        if (!def || def.sell <= 0) return 0;
+        const have = this.materialCount(id);
+        const sell = Math.min(n, have);
+        if (sell <= 0) return 0;
+        this.addMaterial(id, -sell);
+        const coins = def.sell * sell;
+        this.addCoreCoins(coins);
+        return coins;
+    }
+
+    /** 一键出售全部可售材料，返回所得核心币总数。 */
+    static sellAllMaterials(): number {
+        let total = 0;
+        for (const def of MATERIALS) {
+            if (def.sell > 0) total += this.sellMaterial(def.id, this.materialCount(def.id));
+        }
+        return total;
+    }
+
+    /** 是否已拥有某件 Boss 专属（已拥有即该件绝版）。 */
+    static hasBossUnique(id: string): boolean {
+        return (this.load().bossUniques ?? []).indexOf(id) >= 0;
+    }
+
+    /** Boss 专属入档（永久记录，消耗型的充能另行写入 materials）。 */
+    static addBossUnique(id: string): void {
+        const p = this.load();
+        p.bossUniques = p.bossUniques ?? [];
+        if (p.bossUniques.indexOf(id) < 0) p.bossUniques.push(id);
+        this.save();
+    }
+
+    /** 已拥有的 Boss 专属全集（掉落去重池用）。 */
+    static bossUniqueSet(): Set<string> {
+        return new Set(this.load().bossUniques ?? []);
+    }
+
+    /** 某 Boss 的专属软保底计数（连续未掉次数）。 */
+    static pityOf(bossId: string): number {
+        return this.load().bossPity?.[bossId] ?? 0;
+    }
+
+    /** 回写软保底计数。 */
+    static setPity(bossId: string, n: number): void {
+        const p = this.load();
+        p.bossPity = p.bossPity ?? {};
+        p.bossPity[bossId] = Math.max(0, Math.floor(n));
+        this.save();
+    }
+
+    /** 收藏品计数（金虫琥珀 / 暗影斗篷碎片等）。 */
+    static addRelic(id: string, n = 1): void {
+        const p = this.load();
+        p.relics = p.relics ?? {};
+        p.relics[id] = (p.relics[id] ?? 0) + n;
+        this.save();
+    }
+
+    static relicCount(id: string): number {
+        return this.load().relics?.[id] ?? 0;
+    }
+
+    /**
+     * 仓库重铸（熔火核心/万用重铸配方共用）：随机换成不同词缀、品质保留。
+     * 不检查充能（调用方先 consumeMaterial('core_reforge')）。
+     */
+    static rerollEquipment(uid: string): any | null {
+        const p = this.load();
+        const eq = (p.equipments ?? []).find(e => e.uid === uid);
+        if (!eq) return null;
+        const pool = EQUIP_AFFIXES.filter(a => a.id !== eq.affix);
+        const next = pool[Math.floor(Math.random() * pool.length)];
+        eq.affix = next.id;
+        this.save();
+        return eq;
     }
 
     /** 已解锁成就的进度/解锁状态视图（成就墙渲染用）。 */
