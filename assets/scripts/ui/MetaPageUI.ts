@@ -33,6 +33,7 @@ interface AchievementCardView {
     rarity: Label;
     /** 奖励行（称号/核心币文案）：未解锁置灰、解锁后金色。 */
     reward: Label;
+    rewardCoin?: Sprite;
     progress: Label;
     progressGraphics: Graphics;
     icon: Sprite;
@@ -495,11 +496,12 @@ export class MetaPageUI {
             `${def.rarity}  ·  ${def.category}  /  ${def.number ? ('000' + def.number).slice(-3) : '旧版荣誉'}`, 11, MUTED, HorizontalTextAlignment.LEFT);
         const desc = this._mkLabel(card, 0, -16, 268, 92, def.desc, 14, new Color(182, 201, 215, 255), HorizontalTextAlignment.LEFT, true);
         desc.lineHeight = 20;
-        const reward = this._mkLabel(card, -42, -76, 184, 18, `奖励  ${def.reward}`, 12, GOLD, HorizontalTextAlignment.LEFT);
+        const rewardCoin = def.rewardCoins > 0 ? this._mkArt(card, 'ui_core_coin', 21, 21, -128, -76) : undefined;
+        const reward = this._mkLabel(card, rewardCoin ? -29 : -42, -76, rewardCoin ? 158 : 184, 18, `奖励  ${def.reward}`, 12, GOLD, HorizontalTextAlignment.LEFT);
         const progress = this._mkLabel(card, 99, -76, 70, 18, '', 12, MUTED, HorizontalTextAlignment.RIGHT);
         const bar = new Node('ProgressBar'); bar.setParent(card); bar.setPosition(new Vec3(0, -92, 0));
         const pg = bar.addComponent(Graphics);
-        this._achievementCards.push({ def, graphics: g, name, desc, rarity, reward, progress, progressGraphics: pg, icon });
+        this._achievementCards.push({ def, graphics: g, name, desc, rarity, reward, rewardCoin, progress, progressGraphics: pg, icon });
         return card;
     }
 
@@ -529,6 +531,7 @@ export class MetaPageUI {
             view.name.color = done ? WHITE : new Color(Math.round(135 + c.r * 0.4), Math.round(135 + c.g * 0.4), Math.round(135 + c.b * 0.4));
             view.rarity.color = c;
             view.reward.color = done ? GOLD : new Color(133, 149, 161, 255);
+            if (view.rewardCoin) view.rewardCoin.color = done ? Color.WHITE : new Color(155, 155, 155, 160);
             view.icon.color = done ? Color.WHITE : new Color(135, 151, 163, 210);
             // 隐藏成就（滑稽猴彩蛋等）：未解锁时以"？？？"遮掩名称/描述与进度
             const secretPending = !!view.def.hidden && !done;

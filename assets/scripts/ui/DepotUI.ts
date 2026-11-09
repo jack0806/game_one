@@ -5,20 +5,21 @@ import { visibleDesignWidth, visibleDesignHeight } from '../core/ScreenFit';
 import { attachEnableRedraw, registerKeyboardModalScope } from '../core/UIStyle';
 import { Rng } from '../core/MathUtils';
 import {
-    DEPOT_COLORS as C, depotBadge, depotControl, depotItemArt, depotLabel,
+    DEPOT_COLORS as C, depotBadge, depotControl, depotItemArt, depotDropArt, depotLabel,
     depotNode, depotPlate,
 } from '../core/DepotStyle';
 import {
     DEPOT_PRODUCTS, DepotProduct, EQUIPMENT_TILES, depotBoxAvailable,
     depotEquipmentName, depotEquipmentStat, depotInventory,
 } from '../data/DepotCatalog';
-import { Equipment, EQUIP_QUALITY_LABEL, equipmentSellValue, rollEquipmentDrop } from '../data/EquipmentDB';
+import { Equipment, EQUIP_AFFIXES, EQUIP_QUALITY_LABEL, equipmentSellValue, rollEquipmentDrop } from '../data/EquipmentDB';
 import { MATERIALS, RECIPES, RecipeDef, recipeConsume, recipeCostMet } from '../data/DropDB';
 import { globalChapter } from '../data/LevelIndex';
 import { GameConfig } from '../data/GameConfig';
+import { DROP_VISUALS, DropCategory, recipeVisualId } from '../data/DropVisualDB';
 import { SaveSystem } from '../systems/SaveSystem';
 
-type DepotPage = 'armory' | 'shop' | 'exchange';
+type DepotPage = 'armory' | 'shop' | 'exchange' | 'catalog';
 
 export class DepotUI {
     readonly node: Node;
@@ -35,6 +36,9 @@ export class DepotUI {
     private _notice = '';
     private _noticeColor = C.cyan;
     private _balance!: Label;
+    private _dropCategory: DropCategory = '材料';
+    private _dropPage = 0;
+    private _dropSelected = '';
 
     constructor(parent: Node, private readonly _onSfx: () => void) {
         this.node = depotNode(parent, 'Depot', 0, 0, 1280, 720);
@@ -87,25 +91,29 @@ export class DepotUI {
         const body = this._body;
         this._button(body, 'DepotBack', '‹  返回大厅', -493, 307, 172, 44, () => this.hide(), C.border, { size: 20 });
         // v3：装备库更名「仓库」，页签在 仓库 → 军需商店 → 兑换台 之间循环
-        const pageTitles: Record<DepotPage, string> = { armory: '仓库', shop: '军需商店', exchange: '兑换台' };
-        const pageOrder: DepotPage[] = ['armory', 'shop', 'exchange'];
-        const pageNext: Record<DepotPage, string> = { armory: '军需商店', shop: '兑换台', exchange: '仓库' };
+        const pageTitles: Record<DepotPage, string> = { armory: '仓库', shop: '军需商店', exchange: '兑换台', catalog: '掉落图鉴' };
+        const pageOrder: DepotPage[] = ['armory', 'shop', 'exchange', 'catalog'];
+        const pageNext: Record<DepotPage, string> = { armory: '军需商店', shop: '兑换台', exchange: '掉落图鉴', catalog: '仓库' };
         depotLabel(body, pageTitles[this._page], -32, 312, 310, 55, 38);
         this._button(body, 'DepotSwitch', pageNext[this._page], 138, 307, 125, 40,
-            () => this.show(pageOrder[(pageOrder.indexOf(this._page) + 1) % 3]), C.border, { size: 18 });
+            () => this.show(pageOrder[(pageOrder.indexOf(this._page) + 1) % pageOrder.length]), C.border, { size: 18 });
+        if (this._page !== 'catalog' && this._page !== 'exchange') this._button(body, 'DropCatalog', '掉落图鉴', 268, 307, 116, 40,
+            () => this.show('catalog'), C.border, { size: 17 });
         const pageHints: Record<DepotPage, string> = {
             armory: '跨局装备 · 最多携带 3 件出战',
             shop: '核心币购买 · 装备入仓 · 战备下局生效',
             exchange: '材料出售与配方兑换 · 全部使用核心币',
+            catalog: '收集战利品 · 查阅用途与持有状态',
         };
         depotLabel(body, pageHints[this._page], 0, 269, 650, 28, 18, C.cyan);
         const wallet = depotPlate(body, 'CoreWallet', 472, 307, 226, 44, C.border);
         this._coin(wallet, -91, 0, 14);
         depotLabel(wallet, '核心币', -38, 0, 72, 35, 19);
-        this._balance = depotLabel(wallet, (SaveSystem.coreCoins()).toLocaleString('en-US'), 60, 0, 90, 36, 23, C.gold);
+        this._balance = depotLabel(wallet, (SaveSystem.coreCoins()).toLocaleString('en-US'), 60, 0, 90, 36, 23, new Color(210, 170, 255));
         if (this._page === 'armory') this._renderArmory(body);
         else if (this._page === 'shop') this._renderShop(body);
-        else this._renderExchange(body);
+        else if (this._page === 'exchange') this._renderExchange(body);
+        else this._renderDropCatalog(body);
         if (this._notice) depotLabel(body, this._notice, 0, -322, 1040, 27, 16, this._noticeColor);
     }
 
@@ -116,23 +124,7 @@ export class DepotUI {
     }
 
     private _coin(parent: Node, x: number, y: number, radius: number): void {
-        const node = depotNode(parent, 'CoreCoin', x, y, radius * 2, radius * 2);
-        const g = node.addComponent(Graphics);
-        const hex = (r: number) => {
-            for (let i = 0; i < 6; i++) {
-                const a = (i * 60 + 30) * Math.PI / 180;
-                if (i === 0) g.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-                else g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-            }
-            g.close();
-        };
-        const draw = () => {
-            g.clear(); g.fillColor = new Color(73, 39, 5); hex(radius + 2); g.fill();
-            g.fillColor = C.gold; hex(radius); g.fill();
-            g.fillColor = new Color(232, 151, 24); hex(radius * 0.72); g.fill();
-            g.strokeColor = new Color(255, 235, 146); g.lineWidth = 1; hex(radius * 0.72); g.stroke();
-        };
-        draw(); attachEnableRedraw(node, draw);
+        depotDropArt(parent, 'core_coin', x, y, radius * 2 + 4);
     }
 
     private _section(parent: Node, name: string, title: string, x: number, y: number, w: number, h: number): Node {
@@ -169,7 +161,7 @@ export class DepotUI {
             }
         }
 
-        const warehouse = this._section(body, 'WarehousePanel', `装备仓库  ${items.length}/15`, -195, -132, 772, 326);
+        const warehouse = this._section(body, 'WarehousePanel', `装备仓库  ${items.length}/${EQUIP_AFFIXES.length * 3}`, -195, -132, 772, 326);
         const filters = ['全部', '普通', '稀有', '史诗'];
         filters.forEach((label, index) => {
             const quality = index - 1;
@@ -332,7 +324,7 @@ export class DepotUI {
             depotBadge(card, product.id === 'box' ? '永久装备' : '下局生效', 91, 51, 100, product.id === 'box' ? C.cyan : C.gold);
             depotLabel(card, product.name, 72, 17, 193, 35, 23);
             depotLabel(card, product.id === 'box' ? '随机未拥有装备' : product.benefit.replace('海克斯三选一', ''), 72, -17, 191, 27, 15, C.muted);
-            depotLabel(card, `⬡ ${this._productPrice(product)} 核心币`, 72, -49, 193, 30, 20, C.gold);
+            depotLabel(card, `${this._productPrice(product)} 核心币`, 72, -49, 193, 30, 20, C.gold);
         });
         const product = DEPOT_PRODUCTS.find(p => p.id === this._productId)!;
         const detail = this._section(body, 'ProductDetail', '商品详情', 390, -26, 374, 538);
@@ -347,7 +339,7 @@ export class DepotUI {
         const available = product.id !== 'box' || depotBoxAvailable(SaveSystem.load().equipments ?? [], SaveSystem.unlockedChapterCount());
         depotLabel(detail, !available ? '当前进度可购装备已集齐' : coins < price ? '核心币不足' : product.id === 'box' ? '购买后自动入仓' : '可重复购买 · 累加至战备',
             0, -177, 330, 29, 17, !available || coins < price ? C.gold : C.cyan);
-        this._button(detail, 'PurchaseAction', !available ? '当前装备已集齐' : coins < price ? `核心币不足 · 需要 ${price}` : `购买  ⬡ ${price} 核心币`,
+        this._button(detail, 'PurchaseAction', !available ? '当前装备已集齐' : coins < price ? `核心币不足 · 需要 ${price}` : `购买  ${price} 核心币`,
             0, -232, 338, 54, () => this._buyProduct(product), C.cyan,
             { disabled: !available || coins < price, size: 23 });
     }
@@ -377,9 +369,9 @@ export class DepotUI {
     private _renderExchange(body: Node): void {
         const profile = SaveSystem.load();
         const materials = profile.materials ?? {};
-        // 左侧：材料仓库（15 种网格，点击出售 1 件；顶右一键出售）
-        const panel = this._section(body, 'MaterialPanel', '材料仓库 · 点击出售（得核心币）', -195, 95, 772, 430);
-        this._button(panel, 'SellAllMats', '一键出售全部', 300, 175, 168, 38, () => {
+        // 左侧：材料仓库（12 种网格，点击出售 1 件；顶右一键出售）
+        const panel = this._section(body, 'MaterialPanel', '材料仓库 · 点击出售（得核心币）', -195, 48, 772, 368);
+        this._button(panel, 'SellAllMats', '一键出售全部', 286, 158, 164, 34, () => {
             const coins = SaveSystem.sellAllMaterials();
             this._clearAction();
             this._notice = coins > 0 ? `材料全部售出 · 获得 ${coins} 核心币` : '没有可出售的材料';
@@ -387,18 +379,19 @@ export class DepotUI {
             this._render();
         }, C.gold, { size: 17 });
         MATERIALS.forEach((mat, i) => {
-            const x = -322 + (i % 5) * 161, y = 78 - Math.floor(i / 5) * 122;
+            const x = -304 + (i % 5) * 152, y = 90 - Math.floor(i / 5) * 106;
             const count = materials[mat.id] ?? 0;
-            const tile = this._button(panel, `Mat_${mat.id}`, '', x, y, 148, 108, () => {
+            const tile = this._button(panel, `Mat_${mat.id}`, '', x, y, 140, 92, () => {
                 const coins = SaveSystem.sellMaterial(mat.id, 1);
                 this._clearAction();
                 this._notice = coins > 0 ? `售出 ${mat.name} ×1 · 获得 ${coins} 核心币` : `${mat.name} 库存不足`;
                 this._noticeColor = coins > 0 ? C.gold : C.danger;
                 this._render();
             }, count > 0 ? C.cyan : C.border, { disabled: count <= 0, size: 15 });
-            depotLabel(tile, mat.name, 0, 34, 140, 26, 16, count > 0 ? C.text : C.muted);
-            depotLabel(tile, `×${count}`, 0, 2, 90, 40, 26, count > 0 ? C.cyan : C.muted, true);
-            depotLabel(tile, `售 ${mat.sell}`, 0, -36, 90, 22, 14, C.gold);
+            depotLabel(tile, mat.name, 0, 30, 132, 24, 15, count > 0 ? C.text : C.muted);
+            depotDropArt(tile, mat.id, -37, -4, 44);
+            depotLabel(tile, `×${count}`, 31, -6, 62, 30, 22, count > 0 ? C.cyan : C.muted, true);
+            depotLabel(tile, `售 ${mat.sell}`, 31, -33, 62, 20, 13, C.gold);
         });
         // 左下：消耗型充能一览（Boss 专属的"下局生效"库存）
         const charges = [
@@ -406,24 +399,73 @@ export class DepotUI {
             ['混沌棱镜·彩卡', 'core_prism'], ['熔火核心·重铸', 'core_reforge'],
             ['元素瓶', 'core_element'], ['暗影斗篷·隐身', 'core_stealth'],
         ] as const;
-        const chargePanel = this._section(body, 'ChargePanel', '下局生效 · 充能', -195, -215, 772, 130);
+        const chargePanel = this._section(body, 'ChargePanel', '功能物品 · 充能', -195, -219, 772, 130);
         charges.forEach(([label, id], i) => {
             const x = -322 + (i % 6) * 128;
             depotLabel(chargePanel, label, x, 20, 124, 24, 13, C.muted);
-            depotLabel(chargePanel, `×${SaveSystem.materialCount(id)}`, x, -12, 80, 34, 22,
+            depotDropArt(chargePanel, id, x - 26, -18, 38);
+            depotLabel(chargePanel, `×${SaveSystem.materialCount(id)}`, x + 22, -18, 52, 34, 22,
                 SaveSystem.materialCount(id) > 0 ? C.gold : C.border, true);
         });
         // 右侧：兑换台配方
-        const bench = this._section(body, 'ExchangeBench', '兑换台 · 配方', 390, 55, 374, 510);
+        const bench = this._section(body, 'ExchangeBench', '兑换台 · 配方', 390, -26, 374, 516);
         const recipes = RECIPES.filter(r => r.id !== 'r_sellall');
         recipes.forEach((recipe, i) => {
             const ok = recipeCostMet(recipe, materials) && SaveSystem.coreCoins() >= recipe.coins;
-            this._button(bench, `Recipe_${recipe.id}`, recipe.name, 0, 195 - i * 66, 340, 58, () => {
+            const button = this._button(bench, `Recipe_${recipe.id}`, '', 0, 172 - i * 61, 340, 54, () => {
                 this._craftRecipe(recipe);
             }, ok ? C.cyan : C.border, { disabled: !ok, size: 18 });
+            depotDropArt(button, recipeVisualId(recipe.id), -137, 0, 44);
+            depotLabel(button, recipe.name, 18, 10, 225, 26, 18, ok ? C.text : C.muted);
+            depotLabel(button, `手续费 ${recipe.coins} 核心币`, 18, -14, 225, 22, 13, C.muted);
         });
-        depotLabel(bench, '消耗材料 + 少量核心币手续费 · 产出即时入仓/入充能',
-            0, -222, 350, 26, 14, C.muted);
+        depotLabel(bench, '材料 + 核心币 · 产出自动入仓',
+            0, -239, 350, 24, 14, C.muted);
+    }
+
+    /** 独立陈列所有实际身份；不修改任何掉率、收藏状态或存档。 */
+    private _renderDropCatalog(body: Node): void {
+        const categories: DropCategory[] = ['材料', '战术道具', '首领专属', '装备', '收藏', '充能', '货币', '战备'];
+        categories.forEach((category, i) => this._button(body, `DropFilter_${i}`, category,
+            -501 + i * 143, 220, 134, 38, () => {
+                this._dropCategory = category; this._dropPage = 0; this._dropSelected = ''; this._render();
+            }, C.cyan, { selected: this._dropCategory === category, size: 17 }));
+        const items = DROP_VISUALS.filter(v => v.category === this._dropCategory);
+        const pages = Math.max(1, Math.ceil(items.length / 12));
+        this._dropPage = Math.max(0, Math.min(pages - 1, this._dropPage));
+        const visible = items.slice(this._dropPage * 12, this._dropPage * 12 + 12);
+        const selected = visible.find(v => v.id === this._dropSelected) ?? visible[0];
+        const grid = depotPlate(body, 'DropCatalogGrid', -195, -49, 772, 476);
+        visible.forEach((v, i) => {
+            const x = -280 + (i % 4) * 186, y = 152 - Math.floor(i / 4) * 138;
+            const card = this._button(grid, `DropEntry_${v.id}`, '', x, y, 174, 128, () => {
+                this._dropSelected = v.id; this._render();
+            }, Color.fromHEX(new Color(), v.accent), { selected: selected?.id === v.id });
+            depotDropArt(card, v.id, 0, 13, 86);
+            depotLabel(card, v.name, 0, -45, 162, 28, 17);
+        });
+        this._button(grid, 'DropPrev', '上一页', -220, -211, 126, 34, () => {
+            this._dropPage--; this._dropSelected = ''; this._render();
+        }, C.border, { disabled: this._dropPage <= 0, size: 16 });
+        depotLabel(grid, `${this._dropPage + 1} / ${pages} · ${items.length} 件`, 0, -211, 220, 30, 17, C.muted);
+        this._button(grid, 'DropNext', '下一页', 220, -211, 126, 34, () => {
+            this._dropPage++; this._dropSelected = ''; this._render();
+        }, C.border, { disabled: this._dropPage >= pages - 1, size: 16 });
+        if (!selected) return;
+        const detail = depotPlate(body, 'DropCatalogDetail', 390, -49, 374, 476);
+        depotDropArt(detail, selected.id, 0, 118, 192);
+        depotLabel(detail, selected.name, 0, -4, 342, 38, 26);
+        const p = SaveSystem.load();
+        let status: string = selected.category;
+        if (selected.category === '首领专属') status = (SaveSystem.hasBossUnique(selected.id) ? '已收藏 · ' : '未获得 · ') + '首领专属';
+        else if (selected.id === 'cloak_shard') status = `碎片 ×${p.relics?.cloak_shard ?? 0} · 5 片合成斗篷`;
+        else if (selected.category === '材料' || selected.category === '充能') status = `库存 ×${SaveSystem.materialCount(selected.id)}`;
+        else if (selected.id === 'amber_bug') status = `收藏 ×${p.relics?.amber_bug ?? 0}`;
+        else if (selected.id === 'joker_doll') status = `收藏 ×${p.jokerDolls ?? 0}`;
+        depotLabel(detail, status, 0, -48, 336, 28, 17, Color.fromHEX(new Color(), selected.accent));
+        const desc = depotLabel(detail, selected.desc, 0, -116, 318, 98, 18, C.text, true);
+        desc.enableWrapText = true; desc.lineHeight = 27;
+        depotLabel(detail, selected.category === '首领专属' ? '首领专属不可出售' : selected.category === '战术道具' ? '拾取即生效 · 不占背包格' : selected.category === '材料' ? '前往兑换台出售或合成' : '收集与使用，强化下一次行动', 0, -208, 342, 28, 14, C.muted);
     }
 
     private _craftRecipe(recipe: RecipeDef): void {

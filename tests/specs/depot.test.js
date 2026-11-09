@@ -43,7 +43,7 @@ test('商店验货按解锁品质计算，低品质集齐不阻止新解锁品�
 
 test('四类商品价格与九宫格图集各占独立单元，新资源元数据保留完整画布', () => {
     assert.deepEqual(DEPOT_PRODUCTS.map(p => [p.id, p.price]), [['box', 60], ['gold', 25], ['draws', 40], ['shield', 30]]);
-    assert.deepEqual(Object.values(EQUIPMENT_TILES).sort(), [0, 1, 2, 3, 4]);
+    assert.deepEqual(Object.values(EQUIPMENT_TILES).sort(), [0, 1, 2, 3, 4, 9]);
     assert.deepEqual(DEPOT_PRODUCTS.map(p => p.tile), [5, 6, 7, 8]);
     const art = path.resolve(__dirname, '../../assets/resources/art');
     for (const key of DEPOT_ART_KEYS) {

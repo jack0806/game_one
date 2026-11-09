@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>Hexblast 掉落原画核验</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#101d2c;color:#eaf3fa;font:16px system-ui}h1{margin:0 0 14px;font-size:26px}header{position:static;background:#101d2cf5;padding:12px 0}button,select{background:#20364c;border:1px solid #6594b1;color:#eaf3fa;padding:9px 13px;margin:0 7px 9px 0;font:inherit;border-radius:4px}button[aria-pressed=true]{border-color:#38dbdf;color:#74f0f0}#board{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}article{min-height:218px;border:1px solid #44667f;background:#14283c;border-radius:8px;padding:12px;text-align:center}article>img{display:block;width:104px;height:104px;margin:0 auto 8px}h2{font-size:18px;margin:6px 0 10px}small{color:#acc3d4}.sizes{display:flex;align-items:center;justify-content:center;gap:22px;height:45px}.sizes img{object-fit:contain}body.light article{background:#e3eaf2;color:#162437}body.light small{color:#3f5266}#field{background-size:cover;background-position:center;min-height:480px;margin:16px 0;padding:90px 130px;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;border:1px solid #5b7b94}#field img{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 3px 1px #07121dcc)}
+</style>
+<h1>Hexblast 掉落原画核验</h1>
+<header><div id="filters"></div><label>场地 <select id="chapter"><option value="1">废土街道</option><option value="2">钢铁工厂</option><option value="3">海克斯实验室</option><option value="4">混沌位面</option><option value="5">军械平台</option><option value="6">天罚核心</option></select></label><button id="light">切换浅色底</button><span id="count"></span></header>
+<div id="field" aria-label="实际战场尺寸预览"></div><main id="board"></main>
+<script>
+let items=[],category='全部';
+function render(){
+ const shown=items.filter(v=>category==='全部'||v.category===category);
+ document.querySelector('#count').textContent=`${shown.length} 件 · 下排为 24 / 36 像素`;
+ document.querySelector('#board').replaceChildren(...shown.map(v=>{
+  const card=document.createElement('article');card.dataset.id=v.id;
+  const image=document.createElement('img');image.src='/art/'+v.artKey+'.png';image.alt=v.name;
+  const name=document.createElement('h2');name.textContent=v.name;
+  const sizes=document.createElement('div');sizes.className='sizes';
+  for(const size of [24,36]){const icon=image.cloneNode();icon.width=size;icon.height=size;sizes.append(icon);}
+  const detail=document.createElement('small');detail.textContent=v.category+' · '+v.id;
+  card.append(image,name,sizes,detail);return card;
+ }));
+ document.querySelector('#field').style.backgroundImage=`url('/art/bg_chapter${document.querySelector('#chapter').value}.png')`;
+ document.querySelector('#field').replaceChildren(...shown.map(v=>{const img=document.createElement('img');img.src='/art/'+v.artKey+'.png';img.alt=v.name;img.style.width=img.style.height=v.size+'px';return img;}));
+ document.querySelectorAll('[data-category]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.category===category));
+}
+fetch('/catalog.json').then(r=>r.json()).then(data=>{items=data;for(const name of ['全部',...new Set(items.map(v=>v.category))]){const button=document.createElement('button');button.textContent=name;button.dataset.category=name;button.onclick=()=>{category=name;render();};document.querySelector('#filters').append(button);}render();});
+document.querySelector('#chapter').onchange=render;
+document.querySelector('#light').onclick=()=>document.body.classList.toggle('light');
+</script></html>

@@ -5,6 +5,7 @@ import {
 import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
+import { depotDropArt } from '../core/DepotStyle';
 import { applyArtSprite } from '../core/SpriteUtils';
 import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin,
     keyboardFocusTarget, registerKeyboardFocus, registerKeyboardModalScope,
@@ -208,6 +209,7 @@ export class AugSelectUI extends Component {
         this._goldLbl.color = new Color(255, 210, 50, 255);
         this._goldLbl.horizontalAlign = HorizontalTextAlignment.RIGHT;
         styleLabel(this._goldLbl);
+        depotDropArt(g, 'gold', -100, 0, 30);
 
         // 海克斯强度标注：三档稀有度本波出现率（与 rollOptions 权重同源）
         const oN = new Node('Odds'); oN.setParent(this.node);

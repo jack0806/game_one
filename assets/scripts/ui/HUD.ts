@@ -5,6 +5,7 @@ import {
 import { AugDef } from '../data/AugmentDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { styleLabel } from '../core/LabelUtils';
+import { depotDropArt } from '../core/DepotStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 import { attachEnableRedraw, combatOutline, drawCombatFrame, drawCombatSkill, UI_PALETTE } from '../core/UIStyle';
 
@@ -152,17 +153,9 @@ export class HUD extends Component {
         const draw = () => {
             g.clear(); g.fillColor = new Color(10, 23, 34, 210);
             g.roundRect(-2, -15, 138, 30, 7); g.fill();
-            const hex = (r: number) => {
-                g.moveTo(14, r); g.lineTo(14 + r * 0.86, r * 0.5);
-                g.lineTo(14 + r * 0.86, -r * 0.5); g.lineTo(14, -r);
-                g.lineTo(14 - r * 0.86, -r * 0.5); g.lineTo(14 - r * 0.86, r * 0.5); g.close();
-            };
-            g.fillColor = new Color(240, 162, 26, 255); hex(11); g.fill();
-            g.strokeColor = new Color(255, 235, 153, 255); g.lineWidth = 1.5; hex(11); g.stroke();
-            g.fillColor = new Color(255, 198, 50, 255); hex(7.5); g.fill();
-            g.strokeColor = new Color(255, 239, 153, 255); g.lineWidth = 1; hex(7.5); g.stroke();
         };
         draw(); attachEnableRedraw(this._goldRoot, draw);
+        depotDropArt(this._goldRoot, 'gold', 14, 0, 28);
         this._label(this._goldRoot, 'GoldTitle', 51, 0, 32, 24, 14).string = '金币';
         this._goldLabel = this._label(this._goldRoot, 'GoldLbl', 105, 0, 58, 24, 17);
         this._goldLabel.horizontalAlign = Label.HorizontalAlign.LEFT;

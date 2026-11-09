@@ -12,6 +12,7 @@ import { visibleDesignWidth, applyScreenPolicy } from './ScreenFit';
 import { Vec, Rng, clamp } from './MathUtils';
 import { worldToLocal, entityVisualPose, entityHealthBar, animationFrameTopOffset } from './EntityVisual';
 import { applyArtSprite, applyAnimationFrame, loadArtSprite, preloadArt, prioritizeStartupArt, SpriteNodePool } from './SpriteUtils';
+import { dropVisual } from '../data/DropVisualDB';
 import { ActorAnimation } from './ActorAnimation';
 import { ActorCorpses } from './ActorCorpses';
 import { ACTOR_ANIMATIONS } from '../data/ActorAnimationDB';
@@ -130,6 +131,8 @@ export class GameManager extends Component {
     private _gameGfx!:       Graphics;   // entities draw here
     private _particleGfx!:   Graphics;   // particles draw here
     private _coinPool!:      SpriteNodePool;
+    private _lootPool!:      SpriteNodePool;
+    private _lootRewards: { id: string; x: number; y: number; until: number }[] = [];
     private _turretBasePool!:   SpriteNodePool;
     private _turretBarrelPool!: SpriteNodePool;
     private _summonArtPool!:     SpriteNodePool;
@@ -480,6 +483,7 @@ export class GameManager extends Component {
         this._gameLayer.addComponent(UITransform)
             .setContentSize(CANVAS_W, CANVAS_H);
         this._coinPool = new SpriteNodePool(this._gameLayer, 80, 'GoldCoin', [30, 30]);
+        this._lootPool = new SpriteNodePool(this._gameLayer, 128, 'LootItem', [38, 38]);
         // 在所有角色/弹体之前创建，范围特效不会覆盖英雄身体。
         this._groundFxPool = new SpriteNodePool(this._gameLayer, 40, 'GroundFx', [64, 64]);
         this._turretBasePool = new SpriteNodePool(this._gameLayer, 24, 'TurretBase', [52, 52]);
@@ -735,7 +739,7 @@ export class GameManager extends Component {
             }
             this._particles?.clear();
             this._fxPool?.releaseAll(); this._contactFxPool?.releaseAll();
-            this._coinPool?.releaseAll();
+            this._coinPool?.releaseAll(); this._lootPool?.releaseAll(); this._lootRewards = [];
             this._bullets?.reset();
         }
 
@@ -2609,7 +2613,7 @@ export class GameManager extends Component {
         this._missileZones = [];
         this._bullets?.reset();
         this._fxPool?.releaseAll(); this._contactFxPool?.releaseAll();
-        this._coinPool?.releaseAll();
+        this._coinPool?.releaseAll(); this._lootPool?.releaseAll(); this._lootRewards = [];
         this._turretBasePool?.releaseAll();
         this._turretBarrelPool?.releaseAll();
         this._summonArtPool?.releaseAll();
@@ -3283,58 +3287,28 @@ export class GameManager extends Component {
         // sitting behind _gameLayer — no more opaque fillRect here, or it would hide the art.
         if (!this._inCombat()) return;
 
-        // Gold drops — 独立六边形金币Sprite + 翻面/漂浮动画；对象池避免掉落密集时GC。
+        // 金币与特殊物品分池；共用独立原画及轻微漂浮，不生成逐帧节点。
         this._coinPool.releaseAll();
+        this._lootPool.releaseAll();
+        this._lootRewards = this._lootRewards.filter(reward => reward.until > this._visualTime);
+        for (const reward of this._lootRewards) {
+            const [rx, ry] = this._toLocal(reward.x, reward.y);
+            this._drawLootArt(reward.id, rx, ry + 30, 2.4 - (reward.until - this._visualTime), reward.until - this._visualTime);
+        }
         const crowdedCoins = this._economy.drops.length > 48;
         for (const drop of this._economy.drops) {
             const [dx, dy] = this._toLocal(drop.x, drop.y);
-            // 玩偶猴（滑稽猴彩蛋掉落）：不走金币池，画一只金棕小猴玩偶
-            if (drop.kind === 'joker_doll') {
-                const cy = dy + Math.sin(drop.age * 3) * 3;
-                g.fillColor = new Color(255, 210, 77, 255);
-                g.circle(dx - 11, cy + 8, 6); g.fill();   // 左耳
-                g.circle(dx + 11, cy + 8, 6); g.fill();   // 右耳
-                g.circle(dx, cy, 13); g.fill();           // 圆脸
-                g.fillColor = new Color(74, 50, 12, 255);
-                g.circle(dx - 4.5, cy + 3, 2); g.fill();  // 左眼
-                g.circle(dx + 4.5, cy + 3, 2); g.fill();  // 右眼
-                g.strokeColor = new Color(74, 50, 12, 255);
-                g.lineWidth = 2;
-                g.arc(dx, cy - 2, 6, Math.PI, Math.PI * 2, false); g.stroke();   // 咧嘴笑
-                continue;
-            }
-            // v3 掉落：材料=青蓝菱形 / 道具=紫色六角 / 收藏品=金棕星形（G 直绘，不入金币池）
+            // 特殊掉落逐物件显示，与金币分池，密集金币不会挤掉重要物品。
             if (drop.kind && drop.kind !== 'gold') {
-                const bob = Math.sin(drop.age * 4) * 2.5;
-                const cy = dy + bob;
-                if (drop.kind.startsWith('mat:')) {
-                    g.fillColor = new Color(127, 227, 255, 235);
-                    g.moveTo(dx, cy + 9); g.lineTo(dx + 7, cy); g.lineTo(dx, cy - 9); g.lineTo(dx - 7, cy);
-                    g.close(); g.fill();
-                    g.fillColor = new Color(22, 66, 88, 235);
-                    g.circle(dx, cy, 2.4); g.fill();
-                } else if (drop.kind.startsWith('use:')) {
-                    g.fillColor = new Color(201, 166, 255, 235);
-                    for (let k = 0; k < 6; k++) {
-                        const a = Math.PI / 6 + k * Math.PI / 3;
-                        const px = dx + Math.cos(a) * 9, py = cy + Math.sin(a) * 9;
-                        if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
-                    }
-                    g.close(); g.fill();
-                    g.fillColor = new Color(58, 34, 92, 235);
-                    g.circle(dx, cy, 2.6); g.fill();
-                } else {
-                    // relic: 收藏品（金虫琥珀）——四角星
-                    g.fillColor = new Color(255, 215, 90, 240);
-                    g.moveTo(dx, cy + 10); g.lineTo(dx + 3, cy + 3); g.lineTo(dx + 10, cy);
-                    g.lineTo(dx + 3, cy - 3); g.lineTo(dx, cy - 10); g.lineTo(dx - 3, cy - 3);
-                    g.lineTo(dx - 10, cy); g.lineTo(dx - 3, cy + 3);
-                    g.close(); g.fill();
-                }
+                g.fillColor = new Color(4, 10, 20, 85);
+                g.ellipse(dx, dy - 12, (dropVisual(drop.kind)?.size ?? 36) * 0.28, 3.5); g.fill();
+                this._drawLootArt(drop.kind, dx, dy, drop.age, drop.life);
                 continue;
             }
             const coin = this._coinPool.acquire();
             if (!coin) continue;
+            g.fillColor = new Color(4, 10, 20, 72);
+            g.ellipse(dx, dy - 10, 8, 3); g.fill();
             // 后期上百枚高亮金币会盖住近战角色与敌人轮廓。高密度时缩小远处
             // 金币并降低透明度，靠近玩家进入拾取关注区后恢复全亮。
             const nearPlayer = this._player && Vec.dist(drop.x, drop.y, this._player.x, this._player.y) < 150;
@@ -3867,6 +3841,13 @@ export class GameManager extends Component {
                     this._placeEnemyArt('fx_enemy_frost', tx + Math.cos(a) * (r + 5),
                         ty + Math.sin(a) * (r + 5), 16, 16, a * 180 / Math.PI + 90, 190);
                 }
+                continue;
+            }
+
+            // 掉落诱饵使用假人本体，避免与哨戒炮及英雄飞炮混淆。
+            if (t.dropArtId) {
+                const art = dropVisual(t.dropArtId);
+                if (art) this._placeEnemyArt(art.artKey, tx, ty, 64, 64, 0, 255, '#ffffff', this._summonArtPool);
                 continue;
             }
 
@@ -5007,7 +4988,7 @@ export class GameManager extends Component {
         summon._actorLastY = summon.y;
     }
 
-    spawnTurret(player: any, dmgMult = 1, followOwner = false, lifeOverride?: number): void {
+    spawnTurret(player: any, dmgMult = 1, followOwner = false, lifeOverride?: number, dropArtId?: string): void {
         // 被动：炮台类词条效果×1.5（对齐 CharacterDB.ts vivian 的 desc 描述）
         const turretMult = player.stats?.turretBonus || 1;
         // 炮台军团(turret_army)：持有炮台类词条(tags含'turret')时，数量×3、
@@ -5036,7 +5017,7 @@ export class GameManager extends Component {
                     ? player.y + 34
                     : clamp(player.y + Math.sin(deployAngle) * deployDistance, 28, PLAYFIELD_BOTTOM - 28),
                 r: 14, alive: true, _timer: 0,
-                kind: 'turret', _aim: 0,
+                kind: 'turret', _aim: 0, dropArtId,
                 dmg: player.getDamage(this) * dmgMult * turretMult,
                 owner: player, followOwner,
                 _followX: followSide * 52, _followY: 34,
@@ -5631,6 +5612,27 @@ export class GameManager extends Component {
     /** Alias — some call sites use game.augmentManager instead of game.augManager. */
     get augmentManager()  { return this._augMgr; }
 
+    /** 固定池节点只更新位置、尺寸及缓存贴图，不在逐帧路径创建节点。 */
+    private _drawLootArt(id: string, x: number, y: number, age: number, life: number): void {
+        const visual = dropVisual(id);
+        const node = visual && this._lootPool?.acquire();
+        if (!node || !visual) return;
+        node.getComponent(UITransform)!.setContentSize(visual.size, visual.size);
+        const sprite = node.getComponent(Sprite)!;
+        applyArtSprite(sprite, visual.artKey);
+        const alpha = life < 3 ? 170 + Math.round(85 * (0.5 + Math.sin(age * 9) * 0.5)) : 255;
+        sprite.color = new Color(255, 255, 255, alpha);
+        node.setScale(new Vec3(1, 1, 1));
+        node.setPosition(Math.round(x), Math.round(y + Math.sin(age * 3.5) * 2), 0);
+    }
+
+    /** 即时入仓奖励短暂展示本体，不改变正式掉落/拾取时机。 */
+    private _showLootReward(id: string, x: number, y: number): void {
+        if (!dropVisual(id)) return;
+        this._lootRewards.push({ id, x, y, until: this._visualTime + 2.4 });
+        if (this._lootRewards.length > 8) this._lootRewards.shift();
+    }
+
     /**
      * v4 第 10 节：章节 Boss 击杀必掉 1 件装备（拾取即入仓库永久保留）。
      * 防刷去重：未拥有的 affix×品质组合优先；全拥有后改掉核心币包（40 币）。
@@ -5648,6 +5650,7 @@ export class GameManager extends Component {
         // 后台 Boss 装备掉率：未掷中改发核心币包（图鉴集齐路径不变）
         if (!Rng.chance(GameConfig.get('bossEquipChance'))) {
             SaveSystem.addCoreCoins(40);
+            this._showLootReward('core_coin', boss.x, boss.y);
             this._floatText.spawn(CANVAS_W / 2, 240, '战利品溜走了 → 核心币 ×40', '#ffd655', 18, true);
             this._audio.playSfx('augment_pick');
             return;
@@ -5657,11 +5660,13 @@ export class GameManager extends Component {
             SaveSystem.hasBossUnique('xblade_mod'));
         if (equip) {
             SaveSystem.addEquipment(equip);
+            this._showLootReward(`equip_${equip.affix}`, boss.x, boss.y);
             this._floatText.spawn(CANVAS_W / 2, 240,
                 `战利品入仓：${equipmentLabel(equip)}（仓库出售可得核心币）`,
                 '#ffd655', 18, true);
         } else {
             SaveSystem.addCoreCoins(40);
+            this._showLootReward('core_coin', boss.x, boss.y);
             this._floatText.spawn(CANVAS_W / 2, 240, '装备图鉴集齐 → 核心币 ×40', '#ffd655', 18, true);
         }
         this._audio.playSfx('augment_pick');
@@ -5714,6 +5719,8 @@ export class GameManager extends Component {
                 // 全拥有转保底包：该图图域材料 ×2 + 核心币 ×40
                 SaveSystem.addMaterial(MAP_MATERIAL_IDS[mapId - 1], 2);
                 SaveSystem.addCoreCoins(40);
+                this._showLootReward('core_coin', enemy.x, enemy.y);
+                this._showLootReward(MAP_MATERIAL_IDS[mapId - 1], enemy.x + 44, enemy.y);
                 this._floatText.spawn(CANVAS_W / 2, 210, '专属已集齐 → 保底包（材料×2 + 核心币×40）', '#ffd655', 16, true);
             }
             return; // Boss 不再吃通用材料/道具
@@ -5738,8 +5745,9 @@ export class GameManager extends Component {
     /** Boss 专属入档：永久记录 + 消耗型充能 + 中央浮字。 */
     private _grantBossUnique(def: BossUniqueDef, enemy: EnemyBase): void {
         SaveSystem.addBossUnique(def.id);
+        this._showLootReward(def.id, enemy.x + 44, enemy.y);
         if (def.charge) SaveSystem.addMaterial(def.charge, 1);
-        this._floatText.spawn(CANVAS_W / 2, 240, `专属战利品：${def.name}（${def.desc}）`, '#ffb84d', 20, true);
+        this._floatText.spawn(CANVAS_W / 2, 240, `专属入仓：${def.name}`, '#ffb84d', 20, true);
         this._particles.hexActivate(enemy.x, enemy.y, '#ffb84d');
         this._audio.playSfx('augment_pick');
     }
@@ -5787,7 +5795,7 @@ export class GameManager extends Component {
             case 'killSplash': p.applyBuff('drop_splash', 60, {}); p.stats.dropKillSplash = true; name('击杀溅射 60s'); break;
             case 'wingman': this.spawnTurret(p, 0.5, true, 20); name('僚机协战 20s'); break;
             case 'turret':  this.spawnTurret(p, 0.4, false, 10); name('哨戒炮 10s'); break;
-            case 'decoy':   this.spawnTurret(p, 0.05, true, 5); name('诱饵假人 5s'); break;
+            case 'decoy':   this.spawnTurret(p, 0.05, true, 5, 'decoy'); name('诱饵假人 5s'); break;
             case 'pull': {
                 const target = this._enemies
                     .filter((e: any) => e.alive && (e.isElite || e.isBoss))

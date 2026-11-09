@@ -1,0 +1,432 @@
+{
+  "ui_gold_coin": {
+    "name": "金币",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-04048122-cf9f-4ddf-824b-a18603d34433.png",
+    "sourceHash": "215af1695738fc10fb4b0261541d54b8dbda1f02cb2c8ba965898855030a8db9"
+  },
+  "ui_core_coin": {
+    "name": "核心币",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-c6301474-2bbb-4c4f-b266-7baee259d05a.png",
+    "sourceHash": "8f3b5973325b9b58ce109ebda7e5921057ba6db0d696fa7fdf53a405c84ebd9e"
+  },
+  "drop_mat_waste": {
+    "name": "废土残钢",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-690fd9ca-8687-4c08-97ef-b4f866c0b198.png",
+    "sourceHash": "f49e5a58f2052bae2670bfe9ec069dae86f3e78dd5f8c5f13a59f699275c2a07"
+  },
+  "drop_mat_gear": {
+    "name": "精密齿轮",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-82e87ae7-0900-4db5-9c74-bd9e7ad5461d.png",
+    "sourceHash": "394479c38e590cbe756007aa06a62205ca9b1003e9f6f99de7a49b1fc5ba9cc1"
+  },
+  "drop_mat_flesh": {
+    "name": "异变组织",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-020b4761-5a03-46fd-a936-a79c0dfa386c.png",
+    "sourceHash": "652387b5c73b043b7dd5f6a86253fe073870fb6eb4c63ada255ca1f212126d36"
+  },
+  "drop_mat_chaos": {
+    "name": "混沌尘晶",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-5e73a1a9-f93c-4784-8df1-9f192c43d068.png",
+    "sourceHash": "81a4a3ba0de2abee79b94879847805210b8b3db880519b51afa2accf0a1fe88a"
+  },
+  "drop_mat_alloy": {
+    "name": "军械合金",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-226ffe6f-e1da-47a9-a98e-d2a7541668d0.png",
+    "sourceHash": "84ccb2656773ef09eab5c3e120336a421c6038510b880a6f74d9f3c4a46eeb30"
+  },
+  "drop_mat_ember": {
+    "name": "天罚余烬",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-225f0177-28e6-45bc-84a6-58563f81f351.png",
+    "sourceHash": "bd101e8fe63b3dcecec030bb53d59acde23877dde92aece576d6e6b9c163cca1"
+  },
+  "drop_part_mech": {
+    "name": "机械零件",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-040167b6-292d-40a9-a3ef-7a756279ef49.png",
+    "sourceHash": "07ab8d69c4103e32fc413971617a0a96c09f40e97cbfd5bf2d090a6f1b389448"
+  },
+  "drop_part_bio": {
+    "name": "生物质",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-f93bfd60-5d12-4466-bd2a-5c609c20603b.png",
+    "sourceHash": "6db3fdf94f0c514c9d1dabb7f29e418b38af4d6b0fd8c255fbfa50236571cbcb"
+  },
+  "drop_part_elem": {
+    "name": "元素结晶",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-413a7f11-846e-4d7c-8a82-3f74a5ef10b9.png",
+    "sourceHash": "85a7e8412dd9292634d99f86ed49bc2934ad9b7c6d2fb6f5e96d4dd355b46239"
+  },
+  "drop_part_psyon": {
+    "name": "异能粉尘",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-c27ab418-26d1-4b31-8270-71a5e6d039a0.png",
+    "sourceHash": "08693159b6903b6122c6364e593aa92f49e15858a62733bdee7d66f706ea672f"
+  },
+  "drop_mat_star": {
+    "name": "陨星碎片",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-49d2319f-8cd8-459f-a727-facb28d75f06.png",
+    "sourceHash": "c9bc4ba638bd574117ece35834d0aeed8bcb9d4789a8db69ea06b1dda38878df"
+  },
+  "drop_elite_mark": {
+    "name": "精英徽记",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-faf6b2c7-bc0e-4372-af8f-2f2a1e47ee0c.png",
+    "sourceHash": "bf82a370774dcc6fc67f498cdb0f7b84e8a08f6b3a4b395d6df5dcdeb6b460c4"
+  },
+  "drop_ink_sac": {
+    "name": "墨汁囊",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-a2efb37c-86f8-4cb1-af61-7a6e690a38ea.png",
+    "sourceHash": "426daebff8c6bb39fe929729a30c3d12e9774e8d83eb4a79c1ba44149356ecdd"
+  },
+  "drop_turtle_shell": {
+    "name": "龟甲片",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-91b5106d-300d-4c3b-a137-8785b957f327.png",
+    "sourceHash": "a24c16cd29c1444f26540e4baff7dd92c7ad7ba1836526284d673145ee8bdff0"
+  },
+  "drop_shrimp_blade": {
+    "name": "剑虾之刃",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-2af57407-47f8-4f87-84e9-1ff572a74bb9.png",
+    "sourceHash": "4caf06bfcc6ffcd67166c30028ad608c22bb9e5735b403e3aefb0bd0be59af4e"
+  },
+  "drop_jelly_sting": {
+    "name": "麻痹毒刺",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-09a24cfa-f702-41be-af8c-314dc6fb945f.png",
+    "sourceHash": "5c65f480fa60c0f8b91e6d40993822b8d549b0aeef268c94607108c2a2cc13a0"
+  },
+  "drop_drone_chip": {
+    "name": "无人机芯片",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-3e42419b-3e09-4cb7-907c-79905c880632.png",
+    "sourceHash": "50b1cde11bcda718c11e78dcd69a66d00b051b20be852b2b14ca5d7de687af38"
+  },
+  "drop_repair_mod": {
+    "name": "修复模块",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-1abf0a53-786d-4706-8b92-ec0b9edea37e.png",
+    "sourceHash": "56b86c2084dfe3e26aea51b83f1eda78e88590d8bd5894398fa1525d9019466b"
+  },
+  "drop_hound_chain": {
+    "name": "猎犬铆链",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-fafe562c-a6c2-4244-bfb2-b3a9d0b14728.png",
+    "sourceHash": "751f8f0306cea730114e4ce395076fad0ec4a2a61e0bf2875be1d509b8d791b9"
+  },
+  "drop_prism_shell": {
+    "name": "澜镜棱壳",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-c56f1ce3-565a-46ff-be9f-098124df55d4.png",
+    "sourceHash": "715494839d7006cc3627ee2514e0ba2758f4dc109777e68724f224ea407ae36b"
+  },
+  "drop_triune_rune": {
+    "name": "三相符文",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-e95d40f7-61fd-42c1-83e2-968526aae509.png",
+    "sourceHash": "8c431f0c7d1e08bd1303e6665ddbdd9893cb3327c0c2ae62d80f3db463e767eb"
+  },
+  "drop_zero_trigger": {
+    "name": "零扳机",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-14b59873-c4c0-4bde-8c37-cc5b78828a8a.png",
+    "sourceHash": "b5031eeb1fc6ded5fef6c9c9a542775da3c779995eb555321b733bad6bdd924f"
+  },
+  "drop_knell_tongue": {
+    "name": "葬钟钟舌",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-ac33f3ec-f9d9-4753-b46a-e5a514ed1476.png",
+    "sourceHash": "a117d62f6e8cab669e2ccccbc207701f68f2fb559f344e92d60a5b743b026a61"
+  },
+  "drop_amber_bug": {
+    "name": "金虫琥珀",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-4dcd661e-92ab-4386-8882-0ddaec005821.png",
+    "sourceHash": "d0d9c923334746cfbfe84c0f7d645496367c3131a2f30a636b68c8ef1924621d"
+  },
+  "drop_dud_fuse": {
+    "name": "哑火引信",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-1bcd571c-2cb4-40ae-9204-fe48f0087109.png",
+    "sourceHash": "a8930d9767071e0f5d68001c0f551eaa92197242f083b225856b5bd0b04ddb88"
+  },
+  "drop_acid_vial": {
+    "name": "浓缩酸囊",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-456d573b-0fd2-4e96-a37b-512a76da9add.png",
+    "sourceHash": "3a3159ee976bcc16d0abad5c175685070a34419ab315468216ea73704ba6fa27"
+  },
+  "drop_ember_ash": {
+    "name": "焚芯余烬",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-0450b16e-b86a-471a-a1fd-6e1491414caf.png",
+    "sourceHash": "62685605b9415261b9fde6ac45d5b25415c2108495ac8e0bd6bddf3160367b2b"
+  },
+  "drop_frost_crystal": {
+    "name": "冻脉冰晶",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-5113f22e-cadb-49a9-ac6a-1e3b0f5f3baf.png",
+    "sourceHash": "817d0a8307b6f38d79dac654e040c5be617e216d4d0b83fc0d597af68dd8a6e5"
+  },
+  "drop_arc_cap": {
+    "name": "闪弧电容器",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-f665cc0f-ce0c-4d66-befc-ab8435beb47f.png",
+    "sourceHash": "abe33fbacf7a2aabde9f79f9d221c195c27e2eb57c647bcebed456a6d7899f89"
+  },
+  "drop_needle_mag": {
+    "name": "断针弹匣",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-980ebc5e-6152-4e57-9771-50d180d77be4.png",
+    "sourceHash": "87ef1ed7a51a457d377ab71f59abbb8dd10abb3bb4e864d3efeaaef15364fa3f"
+  },
+  "drop_stone_heart": {
+    "name": "石心",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-b717aca2-4c79-4416-b7f4-6f41f8a190ba.png",
+    "sourceHash": "1ccfd30a6d2b29455f21c59f2d7c894f8b5c0bb0567ead888b6ed226926d1eb3"
+  },
+  "drop_poison_quiver": {
+    "name": "毒箭囊",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-d014dc0e-9a8b-47c7-b670-ad3b5b2a0d22.png",
+    "sourceHash": "51703acb6a544ee0fa425bc5283efe30976ad04985140595779130b35377a4f6"
+  },
+  "drop_cloak_shard": {
+    "name": "暗影斗篷碎片",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-019b2f75-1e10-486a-8904-2e9be75bd6dc.png",
+    "sourceHash": "d7a883e77feb8d3a9301219dfb57f37aafbaa91a5bef39cf9a884dbd588ae291"
+  },
+  "drop_shield_pack": {
+    "name": "护盾发射器",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-878feae9-a165-4d5a-b273-b2592c7fc3b4.png",
+    "sourceHash": "d6eaae6208bbe6dfac0de0e9669d48fcc5c254e55c3429a9f496864cb4bbdca6"
+  },
+  "drop_unstable_bomb": {
+    "name": "不稳定炸药",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-78479813-7fb6-4b05-9706-9f356bb2e6b4.png",
+    "sourceHash": "e2307b1bca8a6ff62921ca30a5b50175956fe578fc0e6c5b5ad74a2b86985edd"
+  },
+  "drop_overload_cap": {
+    "name": "过载电容",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-071f8c60-f486-4c4b-b4b1-e97d8c7be378.png",
+    "sourceHash": "5a25177c04ec178abe5cd2c42c0c4a8e4a9cc0195a05a47721b3152cc9fcd0a8"
+  },
+  "drop_rivet_plate": {
+    "name": "铆甲板",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-a4665aad-986f-4283-8b01-28f103b34525.png",
+    "sourceHash": "921ff05a03898ac19d0439fb193b1a9a2767e5b8d7eac103d379a67f811d982a"
+  },
+  "drop_rust_necklace": {
+    "name": "锈齿项链",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-8814fa87-3d93-44fe-9112-ec6ad7344d03.png",
+    "sourceHash": "9648ee9202b9a0c515f9b009376137ea79296aa4506879f6305b8c89d81652a6"
+  },
+  "drop_ration": {
+    "name": "战地口粮",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-bce1f647-ff49-4bf4-8a63-c79e71476eb3.png",
+    "sourceHash": "360ebdedb4168108097924ea2a34dcfc253069ae66c354d8cc635e9526680d93"
+  },
+  "drop_decoy": {
+    "name": "诱饵假人",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-240a00cb-9405-45c4-b00a-1d2269bc0dc7.png",
+    "sourceHash": "bf25f73a3e9dd75c85d07fd5b7438a31778a9584c56c16e16dbcadf5a40a6697"
+  },
+  "drop_power_tip": {
+    "name": "聚能弹头",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-bc130528-333d-48b3-83f7-fad451d3d6bd.png",
+    "sourceHash": "dfb2553c97a20a1b04d16d9b45fd38fe9b9fa258dbddde8c6deb2b73e246f9c8"
+  },
+  "drop_chaos_dice": {
+    "name": "混沌骰子",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-85dc867a-06db-459c-a34b-9697a7cf56a4.png",
+    "sourceHash": "9af09322bfe9b1daea884a231944928359139abb40e9a6b8f5a0af2bdc3861af"
+  },
+  "drop_sentry_print": {
+    "name": "哨戒炮图样",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-a1ae0a64-b5ec-470c-ab25-bae4b21f6832.png",
+    "sourceHash": "c25d216f002e9d695bea1cf55d6f9c3f67fbc3cb4b7b7f757dd58c03d3e1cd4b"
+  },
+  "drop_phase_pad": {
+    "name": "相位靴垫",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-2417b3a9-3519-427b-9e51-6b6f6a1a69e8.png",
+    "sourceHash": "ea5d6356e8c6dd5e67a6a241a0557b9de661490c2b40b7f8951119f9689a8bf6"
+  },
+  "drop_overheat_valve": {
+    "name": "过热阀门",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-0ceb4c49-f53d-43cc-8180-b1be70031d44.png",
+    "sourceHash": "4191e6476b712ff69af710d9fd3f5395163132e094fcdcd7d0897a29f43eb0f1"
+  },
+  "drop_deepcold_core": {
+    "name": "深寒核心",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-f7d6b3d2-dceb-4b6a-acb5-de7de8098891.png",
+    "sourceHash": "b4903429be900f5bf6ee4d4d51c3a10da5893874997ed46952e2163dc89cce5d"
+  },
+  "drop_clover": {
+    "name": "四叶虫草",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-f24c2ee2-73d4-4303-87ab-2fca9ec0ae5d.png",
+    "sourceHash": "ab1d66c9c22a990f4ec2bd2717a6d775f1adb12c33a23b1bff6cd37cb74c5ad8"
+  },
+  "drop_gold_pouch": {
+    "name": "大额金袋",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-d80e0d10-3d41-41ea-9c36-90b9c9470409.png",
+    "sourceHash": "39d1c7c3749b4fdf5e7130523ebec45e68bc492c15bca308a681602426b6d35f"
+  },
+  "drop_cursed_pouch": {
+    "name": "诅咒金币袋",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-7f931cfa-991a-4469-bbd4-f3861d025d5c.png",
+    "sourceHash": "774cfac0aedb08b178d09d8d94c88b140744e6225bf106789e6cb332af6961d2"
+  },
+  "drop_unsc_badge": {
+    "name": "不屈徽记",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-6f71fd2f-342d-4436-b2f2-e897980eaadc.png",
+    "sourceHash": "d4ac2082bb5ef9feee8564b3324ae9ad7d40e5b69169c341ae521053a8a33c27"
+  },
+  "drop_unsc_totem": {
+    "name": "掠夺者图腾",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-66dc8314-a1aa-4251-ab27-1f9b23438cc5.png",
+    "sourceHash": "420c581b61427652e371c74fd27c25b83b24bbaf9ce84ac441f9f1a64e7fc8fe"
+  },
+  "drop_unsc_throne": {
+    "name": "腐肉王座",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-754b1c22-cba4-4ee0-b3a4-94194431977f.png",
+    "sourceHash": "233e7d9f2adea1b6fcec45b243063ababb99f922832198ff6f60c597c0d94280"
+  },
+  "drop_forge_core": {
+    "name": "熔火核心",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-bc76adae-25bf-4d08-b11e-335e229755c9.png",
+    "sourceHash": "34fd07c88a47d68f25faf75e6999670ce0ec204667278f0e8644b95a449e08f2"
+  },
+  "drop_forge_plate": {
+    "name": "装配线铭牌",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-e7cb4c0e-e11a-4762-b305-264857f68963.png",
+    "sourceHash": "f5343db556acfcfacba2a844574d610f9d9ccef505b05861c339cf1132973a97"
+  },
+  "drop_forge_throne": {
+    "name": "熔炉王座",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-eca2a2f2-3ebb-4579-8607-37a5c8ba65d5.png",
+    "sourceHash": "4fb6d058a4e25b544526f7e5c71a9f994f5fcc607ab18ca6f5c1b4845ae72841"
+  },
+  "drop_core_infinity": {
+    "name": "无限核",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-4029258a-fb50-4081-aba7-5b163c5a3bdc.png",
+    "sourceHash": "c1dc7c02ba97372d723b7cafd6a685d9e9987bb4a84fa58a617ae90bb9f73d0d"
+  },
+  "drop_core_atlas": {
+    "name": "变异图谱",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-6d04b5a6-e5a9-4c8c-b6a4-6a028c2bb2f1.png",
+    "sourceHash": "4527f519ecfab8bbbc9de65a4f4e0a284bca7bf9c59d9f09d32122a4302abff1"
+  },
+  "drop_abyss_prism": {
+    "name": "混沌棱镜",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-cee3cc3e-14f9-498c-aa3e-6ab3f19e8280.png",
+    "sourceHash": "c651d2f52a5f768857151e7e2f452d5573bd7e8290a197fe764f527ff26b0670"
+  },
+  "drop_abyss_eye": {
+    "name": "深渊之瞳",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-3ed4ce6c-a4c2-4b87-bf30-8a0272f0681a.png",
+    "sourceHash": "e55dd434fe85da5cb6e53406cdf6e737120f7fb2b004d03b217b06ec019fa2ed"
+  },
+  "drop_abyss_throne": {
+    "name": "深渊王座",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-20494ad3-cd40-4ed2-bab8-ce7e156e4deb.png",
+    "sourceHash": "e0af39b9ee3b10eb57397bc925b30446e58c1738f7159da628e175762d5ea7a5"
+  },
+  "drop_xblade_mod": {
+    "name": "X-剑刃模组",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-ff2e8c59-9a88-4367-8e93-a14e85477312.png",
+    "sourceHash": "2de29ce7e3c328feecf02e45004cdd04c89d49fa9b365aa4e3a0f739fc002906"
+  },
+  "drop_xblade_key": {
+    "name": "军械库钥匙",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-a51d0daf-ce9b-47a8-8ece-37e6faee0c70.png",
+    "sourceHash": "80dca926889efc5b70ec82c16a87ff0fb12eb4f20794ca8cc33f4b741b02132b"
+  },
+  "drop_judge_core": {
+    "name": "天罚核心",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-3b0b7a19-9cde-4bd1-bf37-474f9c9c5a96.png",
+    "sourceHash": "1ce3f1157dca9917b9a9d4414d3663b2755ceffa3a01c10831099188c01ebb7e"
+  },
+  "drop_judge_plate": {
+    "name": "天罚装甲板",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-99c340f2-1879-4db1-88c4-72fa704a987a.png",
+    "sourceHash": "dacb1f92ffd755966509998c7cbfbcb40e1a61d954a573e3c884eada49daed67"
+  },
+  "drop_judge_throne": {
+    "name": "天罚王座",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-3425b71c-d44e-4d58-bb71-7e5968efcd47.png",
+    "sourceHash": "beaa0842c2f721b9e85e6e5298820f46d26292a8738093bd81d0c9b4c6480fba"
+  },
+  "drop_joker_doll": {
+    "name": "玩偶猴",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-5578af8a-b1f8-49a6-93ce-245d200da317.png",
+    "sourceHash": "f3ae3203ae1aef9b4853b506169d0dffb76ddc05a98b35b318c3a474c9440cb6"
+  },
+  "drop_core_element": {
+    "name": "元素瓶",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-85466f09-7ddf-4349-a973-4a943f135b41.png",
+    "sourceHash": "1a288b670412cecc747e8d8566aba887d5cd4bcf464457520de27683c6a51101"
+  },
+  "drop_core_stealth": {
+    "name": "暗影斗篷",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-07c0623f-3738-42af-8119-8982e34988b4.png",
+    "sourceHash": "d78b0ae4b442194d35496549c092483d8e9ca706996d806ebd23f50fb5d0327f"
+  },
+  "drop_equip_hp": {
+    "name": "强化装甲",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-b5c8ef49-db73-4d98-be94-b06f1f29eccd.png",
+    "sourceHash": "78f6ee14181d10cb771cc2740830e93d405628704a6acaae18c886cc58dbe0c6"
+  },
+  "drop_equip_dmg": {
+    "name": "火力核心",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-8f68ac29-4dc6-4506-a37f-2f1a00076308.png",
+    "sourceHash": "46bfcc553e1e0e977340fd2b487caa181e33fe6283df621b9fdca99f5062b2f9"
+  },
+  "drop_equip_spd": {
+    "name": "推进器",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-0ff11800-d6e1-456f-9c00-1887873871bd.png",
+    "sourceHash": "b72632ac32d93c223ae2b3a327af196e6b4b5e0dd5a7a7a83fd464b1c0edf720"
+  },
+  "drop_equip_crit": {
+    "name": "瞄准镜",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-49884e6b-6e42-46ca-8637-66358010d4c5.png",
+    "sourceHash": "5286d9a025a8e5d3ed9e41fa537b45ebc629dde739fab3b6d7784ff024203101"
+  },
+  "drop_equip_greed": {
+    "name": "吸金器",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-10cebd98-ea94-44d7-a5a2-6b8aa04d0bf3.png",
+    "sourceHash": "3721492011d781344aa74adae8ddafeab5253b114e4719545ed5355dc7d1b10d"
+  },
+  "drop_equip_haste": {
+    "name": "高频刃",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-6005536e-ad60-44bc-8849-035c47ab6245.png",
+    "sourceHash": "bc73fae0e9468345e66928558b979744fcdea27a4b0717bc41bf6c2aa06d04de"
+  },
+  "drop_supply_box": {
+    "name": "装备箱",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-0231b72f-97e3-494e-a326-bcc455f0f4c8.png",
+    "sourceHash": "2851bc22d9eaf7f237291a91356149db3082343f9792743fd3fed5ef3874e424"
+  },
+  "drop_supply_gold": {
+    "name": "战备金库",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-559008a7-d2ff-4e17-b367-617bc661f21b.png",
+    "sourceHash": "97737b7d867bb8f0f3e163ba70e7066890c8b804cfb84b8a340f98d43f73cd8e"
+  },
+  "drop_supply_draws": {
+    "name": "战备情报",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-b53b49ec-b32c-4a92-a16c-84d7e573d179.png",
+    "sourceHash": "ecb10290ca7f9833ac066c5bf5c3399d439413c10f00091f320839daf6352f98"
+  },
+  "drop_supply_shield": {
+    "name": "战备护盾",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-8cb13789-561e-462b-bf5b-db24cc6e0ef1.png",
+    "sourceHash": "af0dc56873a3cd8558c56b64d0ae2a1b54ff63e0f4c0b71a445b58bdc73c5d6f"
+  },
+  "drop_shop_heal": {
+    "name": "急救包",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-6087a91c-7873-48a9-a599-451372e2afbf.png",
+    "sourceHash": "93df0e0b354051ff140d4993498a9baf2609626b59f8a7d5a031ff5d35880967"
+  },
+  "drop_shop_maxhp": {
+    "name": "生命强化",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-e4d6eca2-c0a8-4334-bda6-2241235b52d4.png",
+    "sourceHash": "1938efdbe03a473ce68dc4f3e0b1047dc47aa99954b7fdb0f78c8273e6a04f52"
+  },
+  "drop_shop_shield": {
+    "name": "护盾强化",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-2fb4f391-ee5d-4f32-802d-7d73c9692296.png",
+    "sourceHash": "43dcee930f4eddcbb1b769aa3d070012182224c3922f13d436040095114dd565"
+  },
+  "drop_shop_speed": {
+    "name": "移速芯片",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-feadf597-7842-42b3-bc9b-a45fb4fdfc32.png",
+    "sourceHash": "b6dcf22139f34959909c63cbda909a62f333d5523e29ceb71d735b492939eed9"
+  },
+  "drop_shop_damage": {
+    "name": "伤害晶核",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-957b5a75-5e82-495f-8ccf-21e1fee76e59.png",
+    "sourceHash": "eae599145ec788be637d14275d603288cf2c45c8c1e030cf789ad0ee4ac3300f"
+  },
+  "drop_shop_augment": {
+    "name": "神秘强化",
+    "source": "C:\\Users\\Lenovo\\.codex\\generated_images\\01a1af9c-efbb-7201-abdd-cae91c3b009f\\exec-a6b491e0-37d3-471c-b712-6716eb68042f.png",
+    "sourceHash": "02bf5825e5af08fa7f6ca15e0141fe88da66d87e46607e80c4a2e6093d9a4516"
+  }
+}

@@ -18,8 +18,8 @@ export const DEPOT_PRODUCTS: DepotProduct[] = [
 ];
 
 export const DEPOT_ART_KEYS = ['ui_depot_background', 'ui_depot_items'];
-export const EQUIPMENT_TILES: Record<string, number> = { dmg: 0, hp: 1, crit: 2, spd: 3, greed: 4 };
-const STAT_LABELS: Record<string, string> = { dmg: '伤害', hp: '生命', crit: '暴击率', spd: '移速', greed: '拾取范围' };
+export const EQUIPMENT_TILES: Record<string, number> = { dmg: 0, hp: 1, crit: 2, spd: 3, greed: 4, haste: 9 };
+const STAT_LABELS: Record<string, string> = { dmg: '伤害', hp: '生命', crit: '暴击率', spd: '移速', greed: '拾取范围', haste: '攻速' };
 
 export function depotEquipmentName(e: Equipment): string {
     return EQUIP_AFFIXES.find(a => a.id === e.affix)?.label ?? '未知装备';

@@ -5,6 +5,7 @@ import {
 import { Economy, ShopItem } from '../systems/Economy';
 import { RARITY_COLOR } from '../core/Constants';
 import { styleLabel } from '../core/LabelUtils';
+import { depotDropArt } from '../core/DepotStyle';
 import { applyHexButtonSkin, attachEnableRedraw, drawHexPanel, HexButtonSkin, UI_PALETTE } from '../core/UIStyle';
 import { visibleDesignWidth } from '../core/ScreenFit';
 
@@ -49,7 +50,7 @@ export class ShopUI extends Component {
         this._leaveFn     = leaveFn;
         this._currentGold = gold;
         this._populate(items);
-        this._goldLabel.string = `⬡ ${gold}`;
+        this._goldLabel.string = `金币 ${gold}`;
         this.node.active = true;
         this.fitToVisible();
         this._refreshAffordability();
@@ -57,7 +58,7 @@ export class ShopUI extends Component {
 
     refreshGold(gold: number) {
         this._currentGold = gold;
-        this._goldLabel.string = `⬡ ${gold}`;
+        this._goldLabel.string = `金币 ${gold}`;
         this._refreshAffordability();
     }
 
@@ -125,6 +126,7 @@ export class ShopUI extends Component {
         this._goldLabel.fontSize = 20;
         this._goldLabel.color = new Color(255, 210, 50, 255);
         styleLabel(this._goldLabel);
+        depotDropArt(n, 'gold', -94, 0, 30);
     }
 
     private _buildItemArea() {
@@ -182,10 +184,12 @@ export class ShopUI extends Component {
         drawRow();
         attachEnableRedraw(row, drawRow);
 
+        depotDropArt(row, `shop_${item.id}`, -242, 0, 48);
+
         // item name
         const nameN = new Node('N'); nameN.setParent(row);
-        nameN.setPosition(new Vec3(-110, 14, 0));
-        nameN.addComponent(UITransform).setContentSize(300, 22);
+        nameN.setPosition(new Vec3(-80, 14, 0));
+        nameN.addComponent(UITransform).setContentSize(260, 22);
         const nameLbl = nameN.addComponent(Label);
         nameLbl.string = item.name; nameLbl.fontSize = 17;
         nameLbl.lineHeight = 21;
@@ -196,8 +200,8 @@ export class ShopUI extends Component {
 
         // desc
         const descN = new Node('D'); descN.setParent(row);
-        descN.setPosition(new Vec3(-110, -14, 0));
-        descN.addComponent(UITransform).setContentSize(300, 26);
+        descN.setPosition(new Vec3(-80, -14, 0));
+        descN.addComponent(UITransform).setContentSize(260, 26);
         const descLbl = descN.addComponent(Label);
         descLbl.string = item.desc ?? ''; descLbl.fontSize = 16;
         descLbl.lineHeight = 20;
@@ -212,7 +216,7 @@ export class ShopUI extends Component {
         priceN.setPosition(new Vec3(130, 0, 0));
         priceN.addComponent(UITransform).setContentSize(100, 30);
         const priceLbl = priceN.addComponent(Label);
-        priceLbl.string = `⬡ ${item.cost}`; priceLbl.fontSize = 16;
+        priceLbl.string = `${item.cost} 金币`; priceLbl.fontSize = 16;
         priceLbl.color = new Color(255, 210, 50, 255);
         styleLabel(priceLbl);
 

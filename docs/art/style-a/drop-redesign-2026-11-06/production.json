@@ -1,0 +1,776 @@
+[
+  {
+    "key": "ui_gold_coin",
+    "name": "金币",
+    "uuid": "672d77e0-8af0-4b99-bdc4-bd7e279b2f50",
+    "sha256": "cab8425a2200c9bc75081ea3779aacaf05a9bcd54f8240b99b6ea8a1cd854ab5",
+    "bytes": 263081,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "ui_core_coin",
+    "name": "核心币",
+    "uuid": "6bd90223-0aff-4501-a33b-03a4a1fc429e",
+    "sha256": "c43036500fc5f3f0769c7df4d66a4699570fd4cab1b1eca5bdd0a066356f572b",
+    "bytes": 157828,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_waste",
+    "name": "废土残钢",
+    "uuid": "0b72ba34-210e-497a-aeba-a362473732b3",
+    "sha256": "7d2da5ccb4c421c67538997cd750faa3ba726d3f934783d5cfce9eff150b1427",
+    "bytes": 230511,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_gear",
+    "name": "精密齿轮",
+    "uuid": "226d179a-0e74-4f59-9a98-87b1307198cb",
+    "sha256": "7fd1aa631df94c238d519b9c2ff88b94d4777b8bcf434b935145d6129bcd5ce1",
+    "bytes": 292815,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_flesh",
+    "name": "异变组织",
+    "uuid": "a6112744-4337-4c9b-a806-733a523bef61",
+    "sha256": "26d840edfabca16bd71b1c5c4f6c604f442c77f6e7d666d74a4c51e58694ce36",
+    "bytes": 255322,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_chaos",
+    "name": "混沌尘晶",
+    "uuid": "51c3a086-9eb6-41ab-b9f2-f1444f599e84",
+    "sha256": "aaf4dc93aefe21a576350b7760370511b87c945fb50d0006682890b05660a784",
+    "bytes": 208326,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_alloy",
+    "name": "军械合金",
+    "uuid": "0c6b37ca-525b-46d5-903f-fe870ea604d2",
+    "sha256": "aeb4e4f719cdd9487a004e22283183c690ed0ede9233e8c1850df1cea01f8597",
+    "bytes": 239250,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_ember",
+    "name": "天罚余烬",
+    "uuid": "c78befcf-7528-43ce-a551-54b106ffe095",
+    "sha256": "3a67d99b5d69561d15ba3bf82bb7888aeda6eda7efad5a28d3c1ee7353a12c11",
+    "bytes": 280206,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_part_mech",
+    "name": "机械零件",
+    "uuid": "0e4c4dc6-9efe-4da8-aa77-f9be36f191f8",
+    "sha256": "69a1cb04d629325b56d9314ca200507f0040230833630c54bcbc35873386814c",
+    "bytes": 240861,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_part_bio",
+    "name": "生物质",
+    "uuid": "9a08c91b-045f-4db8-bf05-3ea4760b750b",
+    "sha256": "690bed325d5ab2ec5ff17570f9120f1b48fc0d9b687eb00ab79460c9131caa4d",
+    "bytes": 224398,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_part_elem",
+    "name": "元素结晶",
+    "uuid": "d81ce66c-9f7b-46a6-a195-28b3e30eaa12",
+    "sha256": "520e9ab272f5a22dce5f985643bb22e02e14baea02386ee56879aee2fdc64fd6",
+    "bytes": 210593,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_part_psyon",
+    "name": "异能粉尘",
+    "uuid": "621db230-b1d8-4f41-862d-8b864c98d8ba",
+    "sha256": "76f016825a2be16cff5063534fca0390ce71785876a7e6d550557262e9c6a5b4",
+    "bytes": 271317,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_mat_star",
+    "name": "陨星碎片",
+    "uuid": "6f7615bb-e07c-4e5d-b59e-ee487586c56e",
+    "sha256": "865a94283b17a5a5fd6d5512ac6566039107af169b2e0856f562438cf3ae983b",
+    "bytes": 267842,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_elite_mark",
+    "name": "精英徽记",
+    "uuid": "b8a9856e-f843-4409-9212-cb529acdc005",
+    "sha256": "6dfba9b3639d661dd584332ad60219ae6fa6a1c3f8260b2e52e4c9cea6644428",
+    "bytes": 232216,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_ink_sac",
+    "name": "墨汁囊",
+    "uuid": "a4baf971-c8e9-42ec-a10e-93547fdfee9a",
+    "sha256": "46bbe4b8249227501d112efde8c7d1ae2aeae32ac50500213bfa32c00583e677",
+    "bytes": 175914,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_turtle_shell",
+    "name": "龟甲片",
+    "uuid": "5b378ab3-36ff-4e61-b9ce-a9faa6fa7f6b",
+    "sha256": "b09ed8cbf361e5a9c1c37c5b87376e16297be39be2cefa0b09de0ac0dda0ff10",
+    "bytes": 268547,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shrimp_blade",
+    "name": "剑虾之刃",
+    "uuid": "0d724ac8-5ca6-49ca-88ff-7e1668ed8bc0",
+    "sha256": "c598a9adfd32c75384abd25b93c7017f98c6d5c196c9c7abb947ff91cf38dd04",
+    "bytes": 187532,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_jelly_sting",
+    "name": "麻痹毒刺",
+    "uuid": "6d58e8b7-2690-4470-b498-adf14dfa7dcd",
+    "sha256": "d6894edfaa716ff8345a2b75e38fbbe1417a431b08717570b5a1424cb4dd84bf",
+    "bytes": 176500,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_drone_chip",
+    "name": "无人机芯片",
+    "uuid": "f92b53b8-a154-4b33-885a-19f46bb7b62f",
+    "sha256": "f2aaf918fe2d7bd53f5dae936956cc29c49bcfe7752cd5311c4ec96b5fb6c6bb",
+    "bytes": 250339,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_repair_mod",
+    "name": "修复模块",
+    "uuid": "93bbb260-42d2-4340-919f-ba8af2eea6ca",
+    "sha256": "499fe8bb08914b1da087a68dbcc2bc48704c267d8ef6a917c5eefa993b6ef379",
+    "bytes": 234031,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_hound_chain",
+    "name": "猎犬铆链",
+    "uuid": "562150b3-b8cd-43e0-a41f-5a91a1e848aa",
+    "sha256": "043731decef4e4a9de477a68122d5bc8549bfe324a40ddb3af37db2a79035688",
+    "bytes": 187236,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_prism_shell",
+    "name": "澜镜棱壳",
+    "uuid": "98c8aae4-71e6-4722-b569-64972fbab248",
+    "sha256": "9f6f42c79399a847c4fc54e2b2f3e9b8bd83049f6e13ac849eb852502aff0b85",
+    "bytes": 242176,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_triune_rune",
+    "name": "三相符文",
+    "uuid": "8e7d0c81-ca56-4898-9a6a-28e6df9d508f",
+    "sha256": "3f9fbc298da63625d48c1eaeb9d881595fc6fa73395d5f00c9fb386e94d4d1b8",
+    "bytes": 272382,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_zero_trigger",
+    "name": "零扳机",
+    "uuid": "7cd5d85f-dabb-49f2-b792-7bec2156c907",
+    "sha256": "12ca1aeaa726bf0940324e389618f704767afcdcf6c927871199dac73f9872fa",
+    "bytes": 261721,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_knell_tongue",
+    "name": "葬钟钟舌",
+    "uuid": "ae37094d-9261-412d-b39b-f6489dd03562",
+    "sha256": "c527b9fc48b9e802062bbdd8a7b65e322c88561a9b4e86e95b13377b91db4f1c",
+    "bytes": 142197,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_amber_bug",
+    "name": "金虫琥珀",
+    "uuid": "7b197d69-a662-4db6-9b92-c6219cef4ba4",
+    "sha256": "56daf2dfd82265261e2ccddbeb90dd11a3f91928420ea5885039a36d8fe0ceb7",
+    "bytes": 302197,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_dud_fuse",
+    "name": "哑火引信",
+    "uuid": "e1e426bd-c281-479e-9b6e-a04add31af15",
+    "sha256": "7f2077d7440b3367f4c1766e3da2ee55d5e0819f4fb4d9b9e1f4d4b13f1bd370",
+    "bytes": 188078,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_acid_vial",
+    "name": "浓缩酸囊",
+    "uuid": "ef5b471f-9a2e-465b-8279-0524c86125b7",
+    "sha256": "5aba5f0919ab74755a7327ad24300ae5bd28055986bc4e54d590adff563adca7",
+    "bytes": 232119,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_ember_ash",
+    "name": "焚芯余烬",
+    "uuid": "9d08b807-8887-42d1-88fb-bc86aee47e31",
+    "sha256": "a3e82775bc3e7af0679710de6e57c6870f13f80b7b6e5118d86edc9786205593",
+    "bytes": 215920,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_frost_crystal",
+    "name": "冻脉冰晶",
+    "uuid": "f4a9b861-352d-407e-9d65-0431704e9c30",
+    "sha256": "6e30a06bf88c6ade1d372b82bb58e0869131ba31d22cde3cb61738bcf58e70e5",
+    "bytes": 235701,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_arc_cap",
+    "name": "闪弧电容器",
+    "uuid": "0f6f97e1-50f5-4dba-8db1-f97e618121d6",
+    "sha256": "6f64bca58c01d1c3e34f3d9af85cadf42ee324069b27ed343adfe0e5e74da14f",
+    "bytes": 243259,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_needle_mag",
+    "name": "断针弹匣",
+    "uuid": "ab3a80b2-f841-482a-9382-ff13e870957f",
+    "sha256": "0799107ac29551d2b2164fb4afaeefbf1904f3815f5712815db8e1eaf95daf32",
+    "bytes": 203727,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_stone_heart",
+    "name": "石心",
+    "uuid": "2f69286d-eed7-466f-bf13-161315f99f94",
+    "sha256": "16361a1350c229495064ab568130f845c2fb9a413f00f4a9224649dcdae6a3f2",
+    "bytes": 223525,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_poison_quiver",
+    "name": "毒箭囊",
+    "uuid": "8e1c9a67-1542-4778-a169-232bbe98d57c",
+    "sha256": "aed1e0aa62b1cd7714d3e67761f7d6e5b151f58bd68f0ec6422250be13fe3197",
+    "bytes": 180859,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_cloak_shard",
+    "name": "暗影斗篷碎片",
+    "uuid": "3ba615ef-16c4-421a-b8b3-84e07be43132",
+    "sha256": "54c749f4faa00cae14b87c7b421e524721fde6d7bdaf14ba4c346ae64e579436",
+    "bytes": 205444,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shield_pack",
+    "name": "护盾发射器",
+    "uuid": "00f7cc29-aeb2-4a21-98ef-42c4ae10560d",
+    "sha256": "8a131896b00f66dc0aed4484f053a04283af0d5cd6cdf6ec573f40ca6582fb36",
+    "bytes": 275812,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_unstable_bomb",
+    "name": "不稳定炸药",
+    "uuid": "264b2d5c-6eb8-4a68-a8f0-727e123ad0d4",
+    "sha256": "9f87a33037fa1722a2e132c536fc69049575b523985923855faafbb454af718a",
+    "bytes": 184572,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_overload_cap",
+    "name": "过载电容",
+    "uuid": "35522632-80f1-414e-8f3a-4a7877f3c28c",
+    "sha256": "68f3d0726e86249f188e25849d49b656ce83f9685d6b3b554ab617d8edb43ac0",
+    "bytes": 336616,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_rivet_plate",
+    "name": "铆甲板",
+    "uuid": "2cc0fca7-72c5-4739-8bf8-1ddbb28f089e",
+    "sha256": "35eecea582e1a07b8f86dffcaf26b5c5efd0763f479a58d929e96724e2cc396b",
+    "bytes": 228338,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_rust_necklace",
+    "name": "锈齿项链",
+    "uuid": "6a6b4eda-3ced-4f9a-ac79-9edd89013041",
+    "sha256": "e67d473124a13e42b429462a51500c465da1c8572b886f04302ff196216dbc0a",
+    "bytes": 224736,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_ration",
+    "name": "战地口粮",
+    "uuid": "7efa2268-1727-4f20-bccd-8066126b5d63",
+    "sha256": "a7e1a17c75aa53b946d2e724e795293c1261a0335af88e98d28dce809fb64696",
+    "bytes": 275441,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_decoy",
+    "name": "诱饵假人",
+    "uuid": "86133efb-8387-4035-8dd1-65cd88e7a04b",
+    "sha256": "20d0bb3441579a4cac1d1abfd5416152cbf2f8533d35ce3fc872717672b4fc46",
+    "bytes": 244126,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_power_tip",
+    "name": "聚能弹头",
+    "uuid": "bc43c3fd-d9bf-4a46-89f9-ed814678cc03",
+    "sha256": "f671d96dfd92b55932d95fd33f09699ffcbab10169bd7cd6ab5cf26cf281cfdc",
+    "bytes": 198769,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_chaos_dice",
+    "name": "混沌骰子",
+    "uuid": "296b9b16-8dcf-4f2e-a3d2-70cd78d32995",
+    "sha256": "bb91e587bf6b837c9101a58215026b69ab2d8d2a570f2e3f8e82cd5b314faf7a",
+    "bytes": 278905,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_sentry_print",
+    "name": "哨戒炮图样",
+    "uuid": "676d1418-9687-4814-82c5-3d234f540119",
+    "sha256": "51b87657c96ce27c19d953069e3660cee395a8a79b282f99af44b70af210ad9c",
+    "bytes": 247288,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_phase_pad",
+    "name": "相位靴垫",
+    "uuid": "9853ffbe-5215-4a87-8736-fb1f71d9f41d",
+    "sha256": "63ecf41821907d77b5ce57d35f9c468ca44eee967d50eb067fc823109d6621c6",
+    "bytes": 195334,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_overheat_valve",
+    "name": "过热阀门",
+    "uuid": "dcad8ddd-f583-481b-a857-826596debdf2",
+    "sha256": "36212cc8eca640ba5eeba3e401c23827cca558bb612716d70cd6e1b251307457",
+    "bytes": 268768,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_deepcold_core",
+    "name": "深寒核心",
+    "uuid": "014e118b-c377-4c71-9321-ceaad492bc7c",
+    "sha256": "8cc2e645c16b3331a921b9015370a5ce5fbbd4aacb02b5eb4cd1b306d1b61f89",
+    "bytes": 305281,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_clover",
+    "name": "四叶虫草",
+    "uuid": "15993db2-fea5-45db-9dbb-6eb6f03cb291",
+    "sha256": "b9bb38a67e3b0ff35f95b35ee3fbd1560bab022a901ba43fe8e3208a75e2247f",
+    "bytes": 255502,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_gold_pouch",
+    "name": "大额金袋",
+    "uuid": "0bdfb90b-b97f-4c16-9702-b187c64c85d6",
+    "sha256": "eaae21b1c2488ceff73c73396f5112990db611793e917cf33234f507dd074151",
+    "bytes": 258051,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_cursed_pouch",
+    "name": "诅咒金币袋",
+    "uuid": "e3ffd80b-faac-4521-b344-5559597f4985",
+    "sha256": "40ca1f98c4b4d23248cdc5007835b8f182ecbe6083d7b4355fce679f2257efc2",
+    "bytes": 286001,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_unsc_badge",
+    "name": "不屈徽记",
+    "uuid": "5d5744b1-0bc8-4f8d-aaf9-6ee5392e067f",
+    "sha256": "70d4d7f80e715b0f3ef0378475b5d60c14ab6d88d27f5d2bff3c90bb138a5305",
+    "bytes": 275860,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_unsc_totem",
+    "name": "掠夺者图腾",
+    "uuid": "a5485624-af76-49ea-8e10-1e573dd37145",
+    "sha256": "3b0d3b320e9e95a495d10fa0880d78c2fb9ca4dc078b4014bbb33a3992931333",
+    "bytes": 279847,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_unsc_throne",
+    "name": "腐肉王座",
+    "uuid": "de076987-fce3-4c9a-8832-5298a5ea5019",
+    "sha256": "bb3524c4c04cca09e617fcc1f5476890e72a7e9ebd6cd67d6f92e6b2c4a72632",
+    "bytes": 263495,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_forge_core",
+    "name": "熔火核心",
+    "uuid": "ab18b3b2-1826-4a66-93ea-45946d66e4d0",
+    "sha256": "401b725327f9289c2b2f24da052f0073b209dafb626787a74f6a326a8d000e9e",
+    "bytes": 323492,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_forge_plate",
+    "name": "装配线铭牌",
+    "uuid": "014f44ed-f710-4bee-85d9-7a1ae0392791",
+    "sha256": "2dd8f8ede02f57b13ad657525882639214cb2cfbf4f6c50b6d08f14ea917fde2",
+    "bytes": 230034,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_forge_throne",
+    "name": "熔炉王座",
+    "uuid": "166840ed-7992-4102-9cba-9527a4525455",
+    "sha256": "fdca51f19be06d0c89c7eca68a4d7b7af0544ff01e19b77ba60e07cf4f43be4c",
+    "bytes": 276256,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_core_infinity",
+    "name": "无限核",
+    "uuid": "30e9e230-864f-4843-b9e1-32c1a1a24bb5",
+    "sha256": "eee639fd296289d6e0bde8840bf844671fe50ba99a3e8fbee0c9abf146b43606",
+    "bytes": 324892,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_core_atlas",
+    "name": "变异图谱",
+    "uuid": "d50150d5-15b9-4dc7-ad75-9fced17dc43b",
+    "sha256": "cdba90eb24da5421fd897cda032f308b5cdfa70e9889c0a55b2fe6c70fb4e997",
+    "bytes": 294186,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_abyss_prism",
+    "name": "混沌棱镜",
+    "uuid": "a5df5d12-754d-42ff-ab66-d0ee7107027d",
+    "sha256": "92b1cddf6007c2c6ad6e180c43ae3d0d0d4d3a66a23893cbabb5d6d1f197be55",
+    "bytes": 247732,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_abyss_eye",
+    "name": "深渊之瞳",
+    "uuid": "c8a4cde4-88bc-4cd7-93e9-fb277dbadc5a",
+    "sha256": "79c5342f91a8f938b4e150975ea4cd1e0ebb94e6c7f4b2f3f6c06d550d2f682d",
+    "bytes": 254365,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_abyss_throne",
+    "name": "深渊王座",
+    "uuid": "30485d78-9023-490b-8702-17e540e83e9c",
+    "sha256": "b8d4ce645a18843634f098df1f1273ac12b9b56cea057b90e2b910efcee70e67",
+    "bytes": 242671,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_xblade_mod",
+    "name": "X-剑刃模组",
+    "uuid": "03ef74ad-2875-464f-9211-8d89c9b24bae",
+    "sha256": "d75ae516dd7efa60d9c07cd920de2be34179390c6b80fb35cc9b8e2a9a5854e2",
+    "bytes": 230700,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_xblade_key",
+    "name": "军械库钥匙",
+    "uuid": "9f2d90af-fdbf-4661-b77f-77eba1309ee3",
+    "sha256": "92bf344e4121209a4cd74513e569c309971a44e4f4cd968a4e43959222e01c4c",
+    "bytes": 184253,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_judge_core",
+    "name": "天罚核心",
+    "uuid": "ab713746-b308-4dc8-9fd6-f44156c6173b",
+    "sha256": "c28c31950d62bfa06c7a452a8bbb3110da93c004e938e3c9e5c76c0081eeed50",
+    "bytes": 282123,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_judge_plate",
+    "name": "天罚装甲板",
+    "uuid": "b442067d-ed92-49c7-aa6a-fb7686d03d1f",
+    "sha256": "430b56b772b71aac551d189092963a82a2e24a5a010e83f3b8158983e42c9956",
+    "bytes": 260138,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_judge_throne",
+    "name": "天罚王座",
+    "uuid": "9376fe45-ec70-43e9-a4ff-5ab968efe199",
+    "sha256": "2dc9faee505ea22cf7d4cd0d3b730481cea46a0fbd30a3d45f9644d3ab2501e5",
+    "bytes": 267120,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_joker_doll",
+    "name": "玩偶猴",
+    "uuid": "4f82d898-42e1-4107-b858-7be50c830244",
+    "sha256": "0522d28b042fb112817d9d8862c3d9b8f45758d054ba65f06939ceaf5bce1630",
+    "bytes": 263977,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_core_element",
+    "name": "元素瓶",
+    "uuid": "e63a47d9-cd1b-4634-8104-5e95d5ee74ec",
+    "sha256": "a88d3a72e6b10d78e72372ee60db5955301b07de04c5b6f2cc26ba4e5d073b33",
+    "bytes": 235760,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_core_stealth",
+    "name": "暗影斗篷",
+    "uuid": "96952497-4036-4107-ac46-4db13c6eb359",
+    "sha256": "afad0b54bda9f758e08282af1bd9dd74c604b31ab5067a6530c3e4b089538c95",
+    "bytes": 224794,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_equip_hp",
+    "name": "强化装甲",
+    "uuid": "1d030bde-d4b6-4b7c-81cc-874a2324b6a9",
+    "sha256": "e86a004be2e7a811df4440634c3bfe78b172e81db90f309cccfed4e1c2f0ccc3",
+    "bytes": 244507,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_equip_dmg",
+    "name": "火力核心",
+    "uuid": "561d477d-3b1f-4799-8b6f-35483b06512f",
+    "sha256": "ea6509d79e1388abaa4165a71ccb640159054786332ecbfde975ad3b8ac036aa",
+    "bytes": 319721,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_equip_spd",
+    "name": "推进器",
+    "uuid": "4fff8799-5d0f-47e0-84b9-02969bf0bf16",
+    "sha256": "786f131335655c147d2ca3dac35db0425f49f9bcce153b8692fc2f9a58fbfcfb",
+    "bytes": 244790,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_equip_crit",
+    "name": "瞄准镜",
+    "uuid": "0b9e7e4b-5648-4965-ba6e-96b92d83d73b",
+    "sha256": "4b651ef7f80215d78f6913eaea384877704b7a1d155a8ad15c8c26961fd0aa10",
+    "bytes": 237318,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_equip_greed",
+    "name": "吸金器",
+    "uuid": "8a74b218-e2ff-4204-8c78-cf9522f601ab",
+    "sha256": "4fba27562fbe9cd1c215b6264b0e5344f80e68066ec632d325573f7152edc127",
+    "bytes": 265510,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_equip_haste",
+    "name": "高频刃",
+    "uuid": "67bbb357-1cfe-4930-8360-380de4eb974f",
+    "sha256": "88ed9f9073d4a9f05b8a920a4fcd9e7401fe5cf377a85d4b8bec0571e72055f0",
+    "bytes": 153583,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_supply_box",
+    "name": "装备箱",
+    "uuid": "61b4dc8c-817d-4776-8f7e-d31c115a7583",
+    "sha256": "d28e85d073b1d5dc44ad9ca18a6fe88dad4fe877bf1bd33823ab15a54d345e25",
+    "bytes": 263917,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_supply_gold",
+    "name": "战备金库",
+    "uuid": "7cf8cd4e-d79e-457e-b82b-db428746ba2f",
+    "sha256": "e346db029e099fa6f7207861ef001f4b0a204c09fa5ab456cd0cfca7f103e8e3",
+    "bytes": 263448,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_supply_draws",
+    "name": "战备情报",
+    "uuid": "23412b06-37b3-4f70-ba04-f85ee15d34a8",
+    "sha256": "e505fb1660602e00677e2c7ffae69f3a1c82784fcaa00d78fbc8be4939629878",
+    "bytes": 267014,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_supply_shield",
+    "name": "战备护盾",
+    "uuid": "958f1bba-f6ba-456e-9369-8856aae55b47",
+    "sha256": "082db4ef56053aa838833057a3e609da46b66415bb174c19a5ba1521a2193354",
+    "bytes": 303150,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shop_heal",
+    "name": "急救包",
+    "uuid": "979924b4-6baa-4978-9c81-27a39e6ee12e",
+    "sha256": "a8e79698d77f852571eb60ff5263c806c285272baecaf392dbce1bdb2ef4091b",
+    "bytes": 314052,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shop_maxhp",
+    "name": "生命强化",
+    "uuid": "5efda9af-9ec5-47b6-8dc7-20d4582c3864",
+    "sha256": "a4fcca6b624318483ba414683d703c32e5c22150a38c733585d18fce508a49d9",
+    "bytes": 337793,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shop_shield",
+    "name": "护盾强化",
+    "uuid": "373ff100-1c3a-4129-a19d-12dfb4f42729",
+    "sha256": "a701b5e65188978e29ace138d6fd0a700a336d717c9e6e1757174c10ab7a7dda",
+    "bytes": 240934,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shop_speed",
+    "name": "移速芯片",
+    "uuid": "7dba440c-9e54-40d5-8d05-cd353a07b298",
+    "sha256": "717809dfe9cab7345e4d7d0404a1e586a802b38d138a8f2f204658ec6ddea7cb",
+    "bytes": 268677,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shop_damage",
+    "name": "伤害晶核",
+    "uuid": "28bd71fb-9b19-4684-a374-aefb0c27b159",
+    "sha256": "a69defa6b9e07b9b0d93de9fe4fd7496b55575001adaae274b090dc9bcaba04d",
+    "bytes": 191985,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "key": "drop_shop_augment",
+    "name": "神秘强化",
+    "uuid": "92254934-6c2b-4e46-8007-a294fcf79ab6",
+    "sha256": "720f08ea91410e752799bc534f80275bb98c86e085f4d60e6cb257a7dff6d074",
+    "bytes": 282719,
+    "width": 512,
+    "height": 512
+  }
+]

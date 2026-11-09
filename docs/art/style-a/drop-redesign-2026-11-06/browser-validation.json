@@ -1,0 +1,166 @@
+{
+  "selected": 86,
+  "catalogPages": [
+    {
+      "category": "材料",
+      "page": 1,
+      "count": 12
+    },
+    {
+      "category": "战术道具",
+      "page": 1,
+      "count": 12
+    },
+    {
+      "category": "战术道具",
+      "page": 2,
+      "count": 12
+    },
+    {
+      "category": "战术道具",
+      "page": 3,
+      "count": 11
+    },
+    {
+      "category": "首领专属",
+      "page": 1,
+      "count": 12
+    },
+    {
+      "category": "首领专属",
+      "page": 2,
+      "count": 4
+    },
+    {
+      "category": "装备",
+      "page": 1,
+      "count": 6
+    },
+    {
+      "category": "收藏",
+      "page": 1,
+      "count": 2
+    },
+    {
+      "category": "充能",
+      "page": 1,
+      "count": 3
+    },
+    {
+      "category": "货币",
+      "page": 1,
+      "count": 2
+    },
+    {
+      "category": "战备",
+      "page": 1,
+      "count": 10
+    }
+  ],
+  "battle": [
+    {
+      "chapter": 1,
+      "expected": 15,
+      "active": 15,
+      "drops": 15
+    },
+    {
+      "chapter": 2,
+      "expected": 15,
+      "active": 15,
+      "drops": 15
+    },
+    {
+      "chapter": 3,
+      "expected": 15,
+      "active": 15,
+      "drops": 15
+    },
+    {
+      "chapter": 4,
+      "expected": 15,
+      "active": 15,
+      "drops": 15
+    },
+    {
+      "chapter": 5,
+      "expected": 15,
+      "active": 15,
+      "drops": 15
+    },
+    {
+      "chapter": 6,
+      "expected": 11,
+      "active": 11,
+      "drops": 11
+    }
+  ],
+  "screens": [
+    "native-achievements.png",
+    "native-armory.png",
+    "native-battle-ch1.png",
+    "native-battle-ch2.png",
+    "native-battle-ch3.png",
+    "native-battle-ch4.png",
+    "native-battle-ch5.png",
+    "native-battle-ch6.png",
+    "native-boss-1.png",
+    "native-boss-2.png",
+    "native-chapterClear.png",
+    "native-charges-1.png",
+    "native-collections-1.png",
+    "native-consumables-1.png",
+    "native-consumables-2.png",
+    "native-consumables-3.png",
+    "native-currencies-1.png",
+    "native-decoy.png",
+    "native-dense-loot.png",
+    "native-equipment-1.png",
+    "native-exchange-wide.png",
+    "native-exchange.png",
+    "native-gameover.png",
+    "native-materials-1.png",
+    "native-rewards.png",
+    "native-shop.png",
+    "native-supplies-1.png",
+    "shop-supplies.png"
+  ],
+  "cleaned": {
+    "loot": 0,
+    "coins": 0
+  },
+  "profileRestored": true,
+  "verifiedAt": "2026-11-09",
+  "stress": {
+    "goldLogical": 100,
+    "goldRendered": 80,
+    "specialRendered": 12,
+    "specialExpected": 12,
+    "rewardActive": 3,
+    "rewardIds": [
+      "unsc_badge",
+      "equip_haste",
+      "core_coin"
+    ],
+    "cleaned": {
+      "loot": 0,
+      "coins": 0
+    },
+    "profileRestored": true
+  },
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "exchangeViewports": [
+    {
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "width": 1600,
+      "height": 720
+    }
+  ],
+  "runtime": "Cocos 3.8.8；当前TS源码；PNG由只读核验适配器加载，非重新导出的发布资源包"
+}

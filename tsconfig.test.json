@@ -12,6 +12,7 @@
     "sourceMap": false
   },
   "include": [
+    "assets/scripts/data/DropVisualDB.ts",
     "assets/scripts/data/AchievementDB.ts",
     "assets/scripts/systems/AchievementTracker.ts",
     "assets/scripts/systems/AchievementGameBridge.ts",

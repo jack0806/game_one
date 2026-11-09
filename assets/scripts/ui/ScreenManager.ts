@@ -15,6 +15,7 @@ import { getBossDefById } from '../data/BossDB';
 import { applyArtSprite, loadArtSprite } from '../core/SpriteUtils';
 import { createPortraitViewport, fitPortraitFrame, loadPortraitArt } from '../core/PortraitArt';
 import { styleLabel } from '../core/LabelUtils';
+import { depotDropArt } from '../core/DepotStyle';
 import { applyHexButtonSkin, applyHexCardSkin, attachEnableRedraw, drawHexPanel,
     isKeyboardModalScope, keyboardFocusTarget, registerKeyboardFocus,
     registerKeyboardModalScope, UI_PALETTE } from '../core/UIStyle';
@@ -61,6 +62,7 @@ interface RunReportView {
     subtitle: Label;
     values: Label[];
     metrics: Label[];
+    conversion: Label;
     primary: Label;
     /** v5："本局新解锁"成就行（无解锁时隐藏）。 */
     achievements: Label;
@@ -419,6 +421,7 @@ export class ScreenManager extends Component {
         view.metrics.forEach((label, i) => {
             label.string = won && i === 3 ? '核心币获得' : ['累计击败', '最高连击', '本局金币', '作战积分'][i];
         });
+        view.conversion.string = `剩余金币 → 核心币 ×${Math.max(0, Math.floor(data.coinsEarned ?? 0))}`;
         view.primary.string = won ? '领取奖励' : '重新开始';
         // v5：本局新解锁成就行（无解锁隐藏；触屏端按钮更大，行位随之上移）
         const names = data.newAchievements ?? [];
@@ -1337,6 +1340,10 @@ export class ScreenManager extends Component {
             values.push(value);
         }
 
+        const conversion = makeLabel('CurrencyConversion', 0, -104, 440, 28, '', 17, new Color(210, 170, 255));
+        depotDropArt(p, 'gold', -247, -104, 28);
+        depotDropArt(p, 'core_coin', 247, -104, 30);
+
         const primaryText = name === 'gameover' ? '重新开始' : '进入下一章';
         const touch = sys.hasFeature(sys.Feature.INPUT_TOUCH);
         const primaryBtn = this._mkBtn(p, primaryText, touch ? -160 : 0,
@@ -1363,7 +1370,7 @@ export class ScreenManager extends Component {
         achLabel.overflow = Label.Overflow.SHRINK;
         styleLabel(achLabel, { outline: false });
         achNode.active = false;
-        this._runReports.set(name, { title, subtitle, values, metrics: metricsLabels, primary, achievements: achLabel, redraw });
+        this._runReports.set(name, { title, subtitle, values, metrics: metricsLabels, conversion, primary, achievements: achLabel, redraw });
     }
 
     private _buildPausePanel() {

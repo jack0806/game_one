@@ -1,0 +1,1039 @@
+{
+  "count": 86,
+  "uniqueHashes": 86,
+  "totalBytes": 21228323,
+  "items": [
+    {
+      "key": "ui_gold_coin",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        31,
+        24,
+        480,
+        487
+      ],
+      "transparentFraction": 0.3773040771484375
+    },
+    {
+      "key": "ui_core_coin",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        94,
+        24,
+        417,
+        487
+      ],
+      "transparentFraction": 0.6726188659667969
+    },
+    {
+      "key": "drop_mat_waste",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        32,
+        487,
+        478
+      ],
+      "transparentFraction": 0.5557708740234375
+    },
+    {
+      "key": "drop_mat_gear",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        36,
+        24,
+        474,
+        487
+      ],
+      "transparentFraction": 0.42534637451171875
+    },
+    {
+      "key": "drop_mat_flesh",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        43,
+        24,
+        468,
+        487
+      ],
+      "transparentFraction": 0.5351295471191406
+    },
+    {
+      "key": "drop_mat_chaos",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        73,
+        24,
+        437,
+        487
+      ],
+      "transparentFraction": 0.5703201293945312
+    },
+    {
+      "key": "drop_mat_alloy",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        43,
+        487,
+        468
+      ],
+      "transparentFraction": 0.4908599853515625
+    },
+    {
+      "key": "drop_mat_ember",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        45,
+        24,
+        466,
+        487
+      ],
+      "transparentFraction": 0.4466552734375
+    },
+    {
+      "key": "drop_part_mech",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        48,
+        487,
+        462
+      ],
+      "transparentFraction": 0.5768585205078125
+    },
+    {
+      "key": "drop_part_bio",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        71,
+        487,
+        440
+      ],
+      "transparentFraction": 0.6029548645019531
+    },
+    {
+      "key": "drop_part_elem",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        68,
+        24,
+        443,
+        487
+      ],
+      "transparentFraction": 0.5460548400878906
+    },
+    {
+      "key": "drop_part_psyon",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        80,
+        24,
+        430,
+        487
+      ],
+      "transparentFraction": 0.5075263977050781
+    },
+    {
+      "key": "drop_mat_star",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        28,
+        24,
+        483,
+        487
+      ],
+      "transparentFraction": 0.4624977111816406
+    },
+    {
+      "key": "drop_elite_mark",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        39,
+        487,
+        471
+      ],
+      "transparentFraction": 0.5642204284667969
+    },
+    {
+      "key": "drop_ink_sac",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        105,
+        24,
+        406,
+        487
+      ],
+      "transparentFraction": 0.6548957824707031
+    },
+    {
+      "key": "drop_turtle_shell",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        44,
+        487,
+        467
+      ],
+      "transparentFraction": 0.4933929443359375
+    },
+    {
+      "key": "drop_shrimp_blade",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        24,
+        487,
+        486
+      ],
+      "transparentFraction": 0.6743011474609375
+    },
+    {
+      "key": "drop_jelly_sting",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        76,
+        24,
+        434,
+        487
+      ],
+      "transparentFraction": 0.7056121826171875
+    },
+    {
+      "key": "drop_drone_chip",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        49,
+        24,
+        461,
+        487
+      ],
+      "transparentFraction": 0.5096206665039062
+    },
+    {
+      "key": "drop_repair_mod",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        61,
+        487,
+        450
+      ],
+      "transparentFraction": 0.554443359375
+    },
+    {
+      "key": "drop_hound_chain",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        37,
+        24,
+        473,
+        487
+      ],
+      "transparentFraction": 0.7148170471191406
+    },
+    {
+      "key": "drop_prism_shell",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        25,
+        487,
+        486
+      ],
+      "transparentFraction": 0.5048637390136719
+    },
+    {
+      "key": "drop_triune_rune",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        35,
+        487,
+        476
+      ],
+      "transparentFraction": 0.4829750061035156
+    },
+    {
+      "key": "drop_zero_trigger",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        25,
+        24,
+        485,
+        487
+      ],
+      "transparentFraction": 0.5471878051757812
+    },
+    {
+      "key": "drop_knell_tongue",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        125,
+        24,
+        386,
+        487
+      ],
+      "transparentFraction": 0.7598533630371094
+    },
+    {
+      "key": "drop_amber_bug",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        24,
+        487,
+        486
+      ],
+      "transparentFraction": 0.3859214782714844
+    },
+    {
+      "key": "drop_dud_fuse",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        101,
+        24,
+        409,
+        487
+      ],
+      "transparentFraction": 0.6467056274414062
+    },
+    {
+      "key": "drop_acid_vial",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        67,
+        24,
+        444,
+        487
+      ],
+      "transparentFraction": 0.5670890808105469
+    },
+    {
+      "key": "drop_ember_ash",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        98,
+        24,
+        413,
+        487
+      ],
+      "transparentFraction": 0.654449462890625
+    },
+    {
+      "key": "drop_frost_crystal",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        43,
+        24,
+        467,
+        487
+      ],
+      "transparentFraction": 0.512481689453125
+    },
+    {
+      "key": "drop_arc_cap",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        90,
+        24,
+        420,
+        487
+      ],
+      "transparentFraction": 0.5264968872070312
+    },
+    {
+      "key": "drop_needle_mag",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        73,
+        24,
+        437,
+        487
+      ],
+      "transparentFraction": 0.6359138488769531
+    },
+    {
+      "key": "drop_stone_heart",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        47,
+        487,
+        463
+      ],
+      "transparentFraction": 0.5298385620117188
+    },
+    {
+      "key": "drop_poison_quiver",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        103,
+        24,
+        408,
+        487
+      ],
+      "transparentFraction": 0.6962127685546875
+    },
+    {
+      "key": "drop_cloak_shard",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        33,
+        24,
+        478,
+        487
+      ],
+      "transparentFraction": 0.6003990173339844
+    },
+    {
+      "key": "drop_shield_pack",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        35,
+        487,
+        475
+      ],
+      "transparentFraction": 0.48343658447265625
+    },
+    {
+      "key": "drop_unstable_bomb",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        46,
+        24,
+        465,
+        487
+      ],
+      "transparentFraction": 0.6704559326171875
+    },
+    {
+      "key": "drop_overload_cap",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        27,
+        24,
+        483,
+        487
+      ],
+      "transparentFraction": 0.3667755126953125
+    },
+    {
+      "key": "drop_rivet_plate",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        58,
+        487,
+        453
+      ],
+      "transparentFraction": 0.5448875427246094
+    },
+    {
+      "key": "drop_rust_necklace",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        35,
+        487,
+        475
+      ],
+      "transparentFraction": 0.25547027587890625
+    },
+    {
+      "key": "drop_ration",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        29,
+        487,
+        481
+      ],
+      "transparentFraction": 0.4266166687011719
+    },
+    {
+      "key": "drop_decoy",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        81,
+        24,
+        429,
+        487
+      ],
+      "transparentFraction": 0.56121826171875
+    },
+    {
+      "key": "drop_power_tip",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        32,
+        487,
+        478
+      ],
+      "transparentFraction": 0.5941009521484375
+    },
+    {
+      "key": "drop_chaos_dice",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        56,
+        24,
+        455,
+        487
+      ],
+      "transparentFraction": 0.45401763916015625
+    },
+    {
+      "key": "drop_sentry_print",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        35,
+        487,
+        475
+      ],
+      "transparentFraction": 0.5118980407714844
+    },
+    {
+      "key": "drop_phase_pad",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        67,
+        24,
+        444,
+        487
+      ],
+      "transparentFraction": 0.6243515014648438
+    },
+    {
+      "key": "drop_overheat_valve",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        30,
+        24,
+        481,
+        487
+      ],
+      "transparentFraction": 0.54217529296875
+    },
+    {
+      "key": "drop_deepcold_core",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        40,
+        24,
+        470,
+        487
+      ],
+      "transparentFraction": 0.45420074462890625
+    },
+    {
+      "key": "drop_clover",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        40,
+        24,
+        471,
+        487
+      ],
+      "transparentFraction": 0.4691619873046875
+    },
+    {
+      "key": "drop_gold_pouch",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        55,
+        24,
+        455,
+        487
+      ],
+      "transparentFraction": 0.4765472412109375
+    },
+    {
+      "key": "drop_cursed_pouch",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        55,
+        24,
+        455,
+        487
+      ],
+      "transparentFraction": 0.5002174377441406
+    },
+    {
+      "key": "drop_unsc_badge",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        78,
+        24,
+        433,
+        487
+      ],
+      "transparentFraction": 0.5818824768066406
+    },
+    {
+      "key": "drop_unsc_totem",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        54,
+        24,
+        457,
+        487
+      ],
+      "transparentFraction": 0.5423812866210938
+    },
+    {
+      "key": "drop_unsc_throne",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        81,
+        24,
+        429,
+        487
+      ],
+      "transparentFraction": 0.58514404296875
+    },
+    {
+      "key": "drop_forge_core",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        30,
+        24,
+        481,
+        487
+      ],
+      "transparentFraction": 0.4058876037597656
+    },
+    {
+      "key": "drop_forge_plate",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        96,
+        487,
+        414
+      ],
+      "transparentFraction": 0.5622634887695312
+    },
+    {
+      "key": "drop_forge_throne",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        68,
+        24,
+        443,
+        487
+      ],
+      "transparentFraction": 0.5423851013183594
+    },
+    {
+      "key": "drop_core_infinity",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        34,
+        487,
+        476
+      ],
+      "transparentFraction": 0.3793907165527344
+    },
+    {
+      "key": "drop_core_atlas",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        51,
+        487,
+        460
+      ],
+      "transparentFraction": 0.48062896728515625
+    },
+    {
+      "key": "drop_abyss_prism",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        49,
+        24,
+        462,
+        486
+      ],
+      "transparentFraction": 0.5572662353515625
+    },
+    {
+      "key": "drop_abyss_eye",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        58,
+        487,
+        452
+      ],
+      "transparentFraction": 0.5235671997070312
+    },
+    {
+      "key": "drop_abyss_throne",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        82,
+        24,
+        428,
+        487
+      ],
+      "transparentFraction": 0.5639495849609375
+    },
+    {
+      "key": "drop_xblade_mod",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        42,
+        487,
+        469
+      ],
+      "transparentFraction": 0.5652427673339844
+    },
+    {
+      "key": "drop_xblade_key",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        36,
+        24,
+        475,
+        487
+      ],
+      "transparentFraction": 0.6736373901367188
+    },
+    {
+      "key": "drop_judge_core",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        24,
+        486,
+        487
+      ],
+      "transparentFraction": 0.4692039489746094
+    },
+    {
+      "key": "drop_judge_plate",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        48,
+        487,
+        463
+      ],
+      "transparentFraction": 0.4912567138671875
+    },
+    {
+      "key": "drop_judge_throne",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        72,
+        24,
+        439,
+        487
+      ],
+      "transparentFraction": 0.5604438781738281
+    },
+    {
+      "key": "drop_joker_doll",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        57,
+        24,
+        454,
+        487
+      ],
+      "transparentFraction": 0.5141334533691406
+    },
+    {
+      "key": "drop_core_element",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        93,
+        24,
+        417,
+        487
+      ],
+      "transparentFraction": 0.5892562866210938
+    },
+    {
+      "key": "drop_core_stealth",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        56,
+        24,
+        454,
+        487
+      ],
+      "transparentFraction": 0.568572998046875
+    },
+    {
+      "key": "drop_equip_hp",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        56,
+        487,
+        455
+      ],
+      "transparentFraction": 0.5474586486816406
+    },
+    {
+      "key": "drop_equip_dmg",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        41,
+        24,
+        469,
+        487
+      ],
+      "transparentFraction": 0.3669891357421875
+    },
+    {
+      "key": "drop_equip_spd",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        43,
+        24,
+        467,
+        487
+      ],
+      "transparentFraction": 0.5448188781738281
+    },
+    {
+      "key": "drop_equip_crit",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        49,
+        487,
+        461
+      ],
+      "transparentFraction": 0.49114990234375
+    },
+    {
+      "key": "drop_equip_greed",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        48,
+        24,
+        463,
+        487
+      ],
+      "transparentFraction": 0.45108795166015625
+    },
+    {
+      "key": "drop_equip_haste",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        75,
+        487,
+        435
+      ],
+      "transparentFraction": 0.76190185546875
+    },
+    {
+      "key": "drop_supply_box",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        46,
+        487,
+        465
+      ],
+      "transparentFraction": 0.42650604248046875
+    },
+    {
+      "key": "drop_supply_gold",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        74,
+        24,
+        437,
+        487
+      ],
+      "transparentFraction": 0.5197067260742188
+    },
+    {
+      "key": "drop_supply_draws",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        46,
+        24,
+        465,
+        487
+      ],
+      "transparentFraction": 0.4336280822753906
+    },
+    {
+      "key": "drop_supply_shield",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        35,
+        24,
+        476,
+        487
+      ],
+      "transparentFraction": 0.37851715087890625
+    },
+    {
+      "key": "drop_shop_heal",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        30,
+        487,
+        480
+      ],
+      "transparentFraction": 0.3876075744628906
+    },
+    {
+      "key": "drop_shop_maxhp",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        34,
+        24,
+        477,
+        487
+      ],
+      "transparentFraction": 0.33684539794921875
+    },
+    {
+      "key": "drop_shop_shield",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        58,
+        24,
+        453,
+        487
+      ],
+      "transparentFraction": 0.4984703063964844
+    },
+    {
+      "key": "drop_shop_speed",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        24,
+        35,
+        487,
+        476
+      ],
+      "transparentFraction": 0.43618011474609375
+    },
+    {
+      "key": "drop_shop_damage",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        92,
+        24,
+        419,
+        487
+      ],
+      "transparentFraction": 0.5877685546875
+    },
+    {
+      "key": "drop_shop_augment",
+      "minAlpha": 0,
+      "maxAlpha": 255,
+      "bounds": [
+        69,
+        24,
+        442,
+        487
+      ],
+      "transparentFraction": 0.4794197082519531
+    }
+  ]
+}

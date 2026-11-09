@@ -1,0 +1,399 @@
+{
+  "workbook": "D:\\Program Files (x86)\\Tencent\\xwechat_files\\wxid_3512235111212_f740\\msg\\file\\2026-11\\掉落物清单v3.xlsx",
+  "sourceRows": 65,
+  "distinctNamedItems": 65,
+  "missing": [],
+  "rows": [
+    {
+      "sheet": 3,
+      "cell": "D5",
+      "name": "不屈徽记",
+      "artKey": "drop_unsc_badge"
+    },
+    {
+      "sheet": 3,
+      "cell": "D6",
+      "name": "掠夺者图腾",
+      "artKey": "drop_unsc_totem"
+    },
+    {
+      "sheet": 3,
+      "cell": "D7",
+      "name": "腐肉王座",
+      "artKey": "drop_unsc_throne"
+    },
+    {
+      "sheet": 3,
+      "cell": "D8",
+      "name": "熔火核心",
+      "artKey": "drop_forge_core"
+    },
+    {
+      "sheet": 3,
+      "cell": "D9",
+      "name": "装配线铭牌",
+      "artKey": "drop_forge_plate"
+    },
+    {
+      "sheet": 3,
+      "cell": "D10",
+      "name": "熔炉王座",
+      "artKey": "drop_forge_throne"
+    },
+    {
+      "sheet": 3,
+      "cell": "D11",
+      "name": "无限核",
+      "artKey": "drop_core_infinity"
+    },
+    {
+      "sheet": 3,
+      "cell": "D12",
+      "name": "变异图谱",
+      "artKey": "drop_core_atlas"
+    },
+    {
+      "sheet": 3,
+      "cell": "D13",
+      "name": "混沌棱镜",
+      "artKey": "drop_abyss_prism"
+    },
+    {
+      "sheet": 3,
+      "cell": "D14",
+      "name": "深渊之瞳",
+      "artKey": "drop_abyss_eye"
+    },
+    {
+      "sheet": 3,
+      "cell": "D15",
+      "name": "深渊王座",
+      "artKey": "drop_abyss_throne"
+    },
+    {
+      "sheet": 3,
+      "cell": "D16",
+      "name": "X-剑刃模组",
+      "artKey": "drop_xblade_mod"
+    },
+    {
+      "sheet": 3,
+      "cell": "D17",
+      "name": "军械库钥匙",
+      "artKey": "drop_xblade_key"
+    },
+    {
+      "sheet": 3,
+      "cell": "D18",
+      "name": "天罚核心",
+      "artKey": "drop_judge_core"
+    },
+    {
+      "sheet": 3,
+      "cell": "D19",
+      "name": "天罚装甲板",
+      "artKey": "drop_judge_plate"
+    },
+    {
+      "sheet": 3,
+      "cell": "D20",
+      "name": "天罚王座",
+      "artKey": "drop_judge_throne"
+    },
+    {
+      "sheet": 4,
+      "cell": "C5",
+      "name": "废土残钢",
+      "artKey": "drop_mat_waste"
+    },
+    {
+      "sheet": 4,
+      "cell": "C6",
+      "name": "精密齿轮",
+      "artKey": "drop_mat_gear"
+    },
+    {
+      "sheet": 4,
+      "cell": "C7",
+      "name": "异变组织",
+      "artKey": "drop_mat_flesh"
+    },
+    {
+      "sheet": 4,
+      "cell": "C8",
+      "name": "混沌尘晶",
+      "artKey": "drop_mat_chaos"
+    },
+    {
+      "sheet": 4,
+      "cell": "C9",
+      "name": "军械合金",
+      "artKey": "drop_mat_alloy"
+    },
+    {
+      "sheet": 4,
+      "cell": "C10",
+      "name": "天罚余烬",
+      "artKey": "drop_mat_ember"
+    },
+    {
+      "sheet": 4,
+      "cell": "C11",
+      "name": "机械零件",
+      "artKey": "drop_part_mech"
+    },
+    {
+      "sheet": 4,
+      "cell": "C12",
+      "name": "生物质",
+      "artKey": "drop_part_bio"
+    },
+    {
+      "sheet": 4,
+      "cell": "C13",
+      "name": "元素结晶",
+      "artKey": "drop_part_elem"
+    },
+    {
+      "sheet": 4,
+      "cell": "C14",
+      "name": "异能粉尘",
+      "artKey": "drop_part_psyon"
+    },
+    {
+      "sheet": 4,
+      "cell": "C15",
+      "name": "陨星碎片",
+      "artKey": "drop_mat_star"
+    },
+    {
+      "sheet": 4,
+      "cell": "C16",
+      "name": "四叶虫草",
+      "artKey": "drop_clover"
+    },
+    {
+      "sheet": 4,
+      "cell": "C17",
+      "name": "大额金袋",
+      "artKey": "drop_gold_pouch"
+    },
+    {
+      "sheet": 4,
+      "cell": "C18",
+      "name": "诅咒金币袋",
+      "artKey": "drop_cursed_pouch"
+    },
+    {
+      "sheet": 4,
+      "cell": "C19",
+      "name": "精英徽记",
+      "artKey": "drop_elite_mark"
+    },
+    {
+      "sheet": 5,
+      "cell": "C5",
+      "name": "墨汁囊",
+      "artKey": "drop_ink_sac"
+    },
+    {
+      "sheet": 5,
+      "cell": "C6",
+      "name": "龟甲片",
+      "artKey": "drop_turtle_shell"
+    },
+    {
+      "sheet": 5,
+      "cell": "C7",
+      "name": "剑虾之刃",
+      "artKey": "drop_shrimp_blade"
+    },
+    {
+      "sheet": 5,
+      "cell": "C8",
+      "name": "麻痹毒刺",
+      "artKey": "drop_jelly_sting"
+    },
+    {
+      "sheet": 5,
+      "cell": "C9",
+      "name": "无人机芯片",
+      "artKey": "drop_drone_chip"
+    },
+    {
+      "sheet": 5,
+      "cell": "C10",
+      "name": "修复模块",
+      "artKey": "drop_repair_mod"
+    },
+    {
+      "sheet": 5,
+      "cell": "C11",
+      "name": "猎犬铆链",
+      "artKey": "drop_hound_chain"
+    },
+    {
+      "sheet": 5,
+      "cell": "C12",
+      "name": "澜镜棱壳",
+      "artKey": "drop_prism_shell"
+    },
+    {
+      "sheet": 5,
+      "cell": "C13",
+      "name": "三相符文",
+      "artKey": "drop_triune_rune"
+    },
+    {
+      "sheet": 5,
+      "cell": "C14",
+      "name": "零扳机",
+      "artKey": "drop_zero_trigger"
+    },
+    {
+      "sheet": 5,
+      "cell": "C15",
+      "name": "葬钟钟舌",
+      "artKey": "drop_knell_tongue"
+    },
+    {
+      "sheet": 5,
+      "cell": "C16",
+      "name": "金虫琥珀",
+      "artKey": "drop_amber_bug"
+    },
+    {
+      "sheet": 5,
+      "cell": "C17",
+      "name": "哑火引信",
+      "artKey": "drop_dud_fuse"
+    },
+    {
+      "sheet": 5,
+      "cell": "C18",
+      "name": "浓缩酸囊",
+      "artKey": "drop_acid_vial"
+    },
+    {
+      "sheet": 5,
+      "cell": "C19",
+      "name": "焚芯余烬",
+      "artKey": "drop_ember_ash"
+    },
+    {
+      "sheet": 5,
+      "cell": "C20",
+      "name": "冻脉冰晶",
+      "artKey": "drop_frost_crystal"
+    },
+    {
+      "sheet": 5,
+      "cell": "C21",
+      "name": "闪弧电容器",
+      "artKey": "drop_arc_cap"
+    },
+    {
+      "sheet": 5,
+      "cell": "C22",
+      "name": "断针弹匣",
+      "artKey": "drop_needle_mag"
+    },
+    {
+      "sheet": 5,
+      "cell": "C23",
+      "name": "石心",
+      "artKey": "drop_stone_heart"
+    },
+    {
+      "sheet": 5,
+      "cell": "C24",
+      "name": "毒箭囊",
+      "artKey": "drop_poison_quiver"
+    },
+    {
+      "sheet": 5,
+      "cell": "C25",
+      "name": "暗影斗篷碎片",
+      "artKey": "drop_cloak_shard"
+    },
+    {
+      "sheet": 5,
+      "cell": "C26",
+      "name": "护盾发射器",
+      "artKey": "drop_shield_pack"
+    },
+    {
+      "sheet": 5,
+      "cell": "C27",
+      "name": "不稳定炸药",
+      "artKey": "drop_unstable_bomb"
+    },
+    {
+      "sheet": 5,
+      "cell": "C28",
+      "name": "过载电容",
+      "artKey": "drop_overload_cap"
+    },
+    {
+      "sheet": 5,
+      "cell": "C29",
+      "name": "铆甲板",
+      "artKey": "drop_rivet_plate"
+    },
+    {
+      "sheet": 5,
+      "cell": "C30",
+      "name": "锈齿项链",
+      "artKey": "drop_rust_necklace"
+    },
+    {
+      "sheet": 5,
+      "cell": "C31",
+      "name": "战地口粮",
+      "artKey": "drop_ration"
+    },
+    {
+      "sheet": 5,
+      "cell": "C32",
+      "name": "诱饵假人",
+      "artKey": "drop_decoy"
+    },
+    {
+      "sheet": 5,
+      "cell": "C33",
+      "name": "聚能弹头",
+      "artKey": "drop_power_tip"
+    },
+    {
+      "sheet": 5,
+      "cell": "C34",
+      "name": "混沌骰子",
+      "artKey": "drop_chaos_dice"
+    },
+    {
+      "sheet": 5,
+      "cell": "C35",
+      "name": "哨戒炮图样",
+      "artKey": "drop_sentry_print"
+    },
+    {
+      "sheet": 5,
+      "cell": "C36",
+      "name": "相位靴垫",
+      "artKey": "drop_phase_pad"
+    },
+    {
+      "sheet": 5,
+      "cell": "C37",
+      "name": "过热阀门",
+      "artKey": "drop_overheat_valve"
+    },
+    {
+      "sheet": 5,
+      "cell": "C38",
+      "name": "深寒核心",
+      "artKey": "drop_deepcold_core"
+    }
+  ],
+  "additionalArtIdentities": 21
+}

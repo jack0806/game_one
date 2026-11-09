@@ -1,6 +1,7 @@
 // 军需商店与仓库共用的切角装甲、槽位与可交互控件。
 import { Color, Graphics, HorizontalTextAlignment, Label, Node, Sprite, UITransform, VerticalTextAlignment } from 'cc';
-import { applyAnimationFrame } from './SpriteUtils';
+import { applyArtSprite } from './SpriteUtils';
+import { DEPOT_TILE_DROP_IDS, dropVisual } from '../data/DropVisualDB';
 import { styleLabel } from './LabelUtils';
 import { attachEnableRedraw, combatOutline, registerKeyboardFocus } from './UIStyle';
 
@@ -112,10 +113,16 @@ export function depotBadge(parent: Node, text: string, x: number, y: number, w: 
     depotLabel(node, text, 0, 0, w - 4, 22, 13, text === '已出战' ? new Color(5, 25, 38) : color);
 }
 
-/** 网格切片复用同一纹理；所有加载仍经 SpriteUtils → artPath。 */
+/** 旧槽位编号转向独立原画；所有加载仍经 SpriteUtils → artPath。 */
 export function depotItemArt(parent: Node, tile: number, x: number, y: number, size: number): void {
-    const node = depotNode(parent, `ItemArt_${tile}`, x, y, size, size);
+    depotDropArt(parent, DEPOT_TILE_DROP_IDS[tile], x, y, size);
+}
+
+/** 战场与仓库共用独立透明原画，不染稀有度颜色。 */
+export function depotDropArt(parent: Node, id: string, x: number, y: number, size: number): Node {
+    const visual = dropVisual(id);
+    const node = depotNode(parent, `DropArt_${id}`, x, y, size, size);
     const sprite = node.addComponent(Sprite);
-    applyAnimationFrame(sprite, { sheet: 'ui_depot_items', columns: 3, rows: 3, cellSize: 512, loop: false, frames: [] },
-        { index: tile, pivot: [0.5, 0.5], seconds: 1 });
+    if (visual) applyArtSprite(sprite, visual.artKey);
+    return node;
 }
