@@ -1,5 +1,5 @@
 import { enemyProjectileArt, enemyProjectileSize, UNIT_ATTACK_ART } from '../data/CombatArtDB';
-import { separatePlayerBodies, moveCombatBody, moveEnemyBody } from './CombatCollision';
+import { separatePlayerBodies, moveEnemyBody } from './CombatCollision';
 import { drawAttackSector, drawChargeLane, drawEnergyBeam, drawEnergyArc, localSectorBounds, sectorPath } from './CombatVfx';
 import {
     _decorator, Component, Node, Graphics, Color, Vec2, Vec3,
@@ -4703,9 +4703,13 @@ export class GameManager extends Component {
         return moveInArena(this._arena, x, y, dx, dy, radius);
     }
 
-    movePlayerBody(dx: number, dy: number) {
-        return moveCombatBody(this._player, dx, dy, this._enemies, (x, y, mx, my, radius) =>
-            moveInArena(this._arena, x, y, mx, my, radius));
+    movePlayerBody(dx: number, dy: number, dt = 0) {
+        return this._player.crowdEscape.move(this._player, dx, dy, dt, this._enemies,
+            (x, y, mx, my, radius) => moveInArena(this._arena, x, y, mx, my, radius),
+            (enemy, first) => {
+                if (!enemy.dissolveForEscape(this)) return;
+                if (first) this._player.takeCrowdCorrosion(this);
+            });
     }
 
     moveEnemyBody(enemy: EnemyBase, dx: number, dy: number) {

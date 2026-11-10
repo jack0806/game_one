@@ -2,6 +2,8 @@
 
 Cocos Creator 3.8.8 顶视角射击 roguelite（TypeScript）。单场景 `assets/scenes/Game.scene`，画布 1280x720（见 `assets/scripts/core/Constants.ts`）。所有 UI/实体节点均由代码程序化构建，不在编辑器里摆 prefab。参考实现为外部 `hexblast-py` 项目，本项目是其 TS 重制版。
 
+目标平台仅 PC，后续不再支持移动端。新交互按键盘与鼠标设计，不新增移动端适配。
+
 ## 常用命令
 
 ```bash

@@ -4,6 +4,7 @@ import type { EnemyHitContext } from '../data/CombatArtDB';
 // ============================================================
 import { _decorator, Component, Node, Sprite, UITransform, Color } from 'cc';
 import { Vec, Rng, clamp } from '../core/MathUtils';
+import { CrowdEscape, CROWD_CORROSION_DAMAGE, CROWD_ESCAPE_DURATION } from '../core/CombatCollision';
 import { CANVAS_W, CANVAS_H, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { CHARACTERS, CharDef, CharStats, SKILL_Q_CD, SKILL_E_CD, fireStoredAttacks } from '../data/CharacterDB';
 import { GameConfig } from '../data/GameConfig';
@@ -75,6 +76,7 @@ export class PlayerController extends Component {
     alive   = true;
     /** 测试房间「玩家无敌」开关：true 时跳过一切伤害结算，便于观察 Boss 技能。 */
     godMode = false;
+    readonly crowdEscape = new CrowdEscape();
     /** 持续伤害（测试房小boss毒刺/高能光束等）：吃护甲、不吃无敌帧，可叠加。 */
     dots: DotEffect[] = [];
     color   = '#00ffcc';
@@ -212,6 +214,7 @@ export class PlayerController extends Component {
         this.x      = CANVAS_W / 2;
         this.y      = CANVAS_H / 2;
         this.alive  = true;
+        this.crowdEscape.reset();
         this._buffs = [];
         this._rCharge = 0;
         this._thornPending = [];
@@ -295,11 +298,18 @@ export class PlayerController extends Component {
         this.dots.push({ type, dps, timeLeft: dur, color });
     }
 
-    takeDamage(amount: number, game: any, opts?: { ignoreIframe?: boolean; impact?: EnemyHitContext }): void {
+    /** 突围腐蚀固定扣5点，护盾优先；免伤规则沿用受击保护，不产生硬直或震屏。 */
+    takeCrowdCorrosion(game: any): void {
+        this.takeDamage(CROWD_CORROSION_DAMAGE, game, { corrosion: true, impact: { source: 'acid_sac', kind: 'acid' } });
+        this._iframeTimer = Math.max(this._iframeTimer, CROWD_ESCAPE_DURATION);
+    }
+
+    takeDamage(amount: number, game: any, opts?: { ignoreIframe?: boolean; impact?: EnemyHitContext; corrosion?: boolean }): void {
         // !alive 守卫：测试房间死亡后到重生前，场上敌人仍会持续攻击，
         // 不守卫会反复触发 onPlayerDeath 重复调度重生定时器。
         if (!this.alive) return;
         // 无敌只免伤，命中接触仍应可见；否则测试房和连续弹幕会像穿过身体。
+        if (opts?.corrosion && this._buffs.some(b => b.mods.invincible)) return;
         if (this.godMode || this._invincible > 0 || (!opts?.ignoreIframe && this._iframeTimer > 0)) {
             game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
             return;
@@ -314,12 +324,12 @@ export class PlayerController extends Component {
             return;
         }
         // v3「过热阀门」等易伤 buff：受到伤害按 takenMult 放大
-        for (const b of this._buffs) if (b.mods.takenMult) amount *= b.mods.takenMult;
+        for (const b of this._buffs) if (!opts?.corrosion && b.mods.takenMult) amount *= b.mods.takenMult;
         // 受击流海克斯分发（荆棘甲壳/风行节奏；DoT 路径不分发）
-        game?.augmentManager?.dispatchPlayerHit?.(this, game);
+        if (!opts?.corrosion) game?.augmentManager?.dispatchPlayerHit?.(this, game);
         // 测试房数值调试：全局承伤倍率（敌人弹幕/近战/AoE 统一缩放，便于压测生存）
         const testTakenMult = game?.testEnemyDmgMult ?? this._game?.testEnemyDmgMult;
-        if (testTakenMult && testTakenMult !== 1) amount *= testTakenMult;
+        if (!opts?.corrosion && testTakenMult && testTakenMult !== 1) amount *= testTakenMult;
         // 核心溢出保护
         if (this.stats._coreOverflow && !this.stats._coreUsed && this.hp / this.stats.maxHp < 0.2) {
             this.stats._coreUsed = true;
@@ -346,22 +356,22 @@ export class PlayerController extends Component {
         const buffArmor = this._buffs.reduce((s, b) => s + (b.mods.armorFlat ?? 0), 0);
         const armorTotal = this.stats.armor + buffArmor;
         const mitigation = armorTotal / (armorTotal + 100);
-        amount = Math.max(1, amount * (1 - mitigation));
+        if (!opts?.corrosion) amount = Math.max(1, amount * (1 - mitigation));
         // 方案D 生命涌泉Lv3「泉眼」：生命低于阈值时受伤降低（先于其它减伤结算）
-        if (this.stats.perkLowHpReduce && this.hp / this.stats.maxHp < GameConfig.get('perkLowHpRatio')) {
+        if (!opts?.corrosion && this.stats.perkLowHpReduce && this.hp / this.stats.maxHp < GameConfig.get('perkLowHpRatio')) {
             amount = Math.max(1, amount * (1 - this.stats.perkLowHpReduce));
         }
         // 雷克E 血之护盾：减伤期间被减免的部分计入储备，6秒后转为等量护盾。
         // （吸血/无敌等其它减伤通道不走这里，只有显式 dmgReduction 的buff参与）
         for (const b of this._buffs) {
-            if (!b.mods.dmgReduction) continue;
+            if (opts?.corrosion || !b.mods.dmgReduction) continue;
             const saved = amount * b.mods.dmgReduction;
             amount = Math.max(1, amount - saved);
             if (b.id === 'blood_shield') this._bloodShieldBank += saved;
         }
         // 易伤（滑稽猴恶作剧等）：受到的伤害×150%
         for (const b of this._buffs) {
-            if (b.mods.dmgTakenMult) amount = Math.max(1, amount * b.mods.dmgTakenMult);
+            if (!opts?.corrosion && b.mods.dmgTakenMult) amount = Math.max(1, amount * b.mods.dmgTakenMult);
         }
         // 在无敌/护盾完全吸收的早退之后触发：统一补齐近战、普通弹的真实受伤反馈。
         game.particles?.playerHit?.(this.x, this.y, opts?.impact, this);
@@ -375,7 +385,7 @@ export class PlayerController extends Component {
             this.applyBuff('hex_guard_lifesteal', 10, { lifestealRate: 0.25 });
             this.hp = Math.max(1, this.hp - amount);
             this._iframeTimer = 0.5;
-            this.playVisualAction('hit');
+            if (!opts?.corrosion) this.playVisualAction('hit');
             game.floatingText?.spawn(this.x, this.y - 56, '不灭协议！', '#8fd0ff', 22, true);
             game.particles?.hexActivate?.(this.x, this.y, '#8fd0ff');
             game.audio?.playSfx?.('hex_activate', 0.9);
@@ -384,7 +394,7 @@ export class PlayerController extends Component {
         game.achievementTracker?.received(Math.min(this.hp, amount), 0, game.achievementIncoming === 'melee');
         this.hp -= amount;
         // 受击钩子：深海恐惧「海之霸主」期间每受一次伤害 Boss 生成护盾（测试房）
-        game.onPlayerHit?.(this, game);
+        if (!opts?.corrosion) game.onPlayerHit?.(this, game);
         // 亡灵法师·灵魂收割：被怪物命中损失2层灵魂（越苟越强，挨打就掉层）
         if (this.stats?.soulHarvest && (this.stats._souls || 0) > 0) {
             this.stats._souls = Math.max(0, (this.stats._souls || 0) - 2);
@@ -392,10 +402,10 @@ export class PlayerController extends Component {
             game.floatingText?.spawn(this.x, this.y - 40, '灵魂 -2', '#a8e06e', 12, false);
         }
         this._iframeTimer = 0.5;
-        this.playVisualAction('hit');
+        if (!opts?.corrosion) this.playVisualAction('hit');
         game.audio?.playSfx?.('player_hurt');
-        game.screenShake?.shake(4, 0.14);
-        game.floatingText?.spawn(this.x, this.y - 30, `-${Math.ceil(amount)}`, '#ff4444', 16, false);
+        if (!opts?.corrosion) game.screenShake?.shake(4, 0.14);
+        game.floatingText?.spawn(this.x, this.y - 30, `-${Math.ceil(amount)}`, opts?.corrosion ? '#91cf58' : '#ff4444', 16, false);
         if (this.hp <= 0) {
             // 时间悖论(time_paradox)：每波一次撤销死亡（对齐 AugmentDB.ts 的 desc 描述）。
             // 简化为"撤销本次死亡"而非完整的状态快照回滚到波次起点——后者需要整局
@@ -441,7 +451,10 @@ export class PlayerController extends Component {
 
     // ── 每帧更新 ─────────────────────────────────────────
     tickMovement(dt: number, input: any, game?: any): void {
-        if (!this.alive || this._buffs.some(b => b.mods.noMove)) return;
+        if (!this.alive || this._buffs.some(b => b.mods.noMove || b.mods.stun) || this.getSpeed() <= 0) {
+            this.crowdEscape.reset();
+            return;
+        }
         let mx = input.moveX, my = input.moveY;
         if (mx !== 0 && my !== 0) { mx *= 0.707; my *= 0.707; }
         // 有移动输入时更新朝向（对角线已归一，这里再稳一次防御性归一）
@@ -454,7 +467,7 @@ export class PlayerController extends Component {
         if (this._buffs.some(b => b.mods.reverseMove)) { mx = -mx; my = -my; }
         const spd = this.getSpeed();
         if (game?.movePlayerBody) {
-            const next = game.movePlayerBody(mx * spd * dt, my * spd * dt);
+            const next = game.movePlayerBody(mx * spd * dt, my * spd * dt, dt);
             this.x = next.x; this.y = next.y;
         } else if (game?.moveInArena) {
             const next = game.moveInArena(this.x, this.y, mx * spd * dt, my * spd * dt, this.radius);

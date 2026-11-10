@@ -23,6 +23,8 @@ export class EnemyBase {
     isElite     = false;
     isBoss      = false;
     isMiniBoss  = false;
+    /** 紧急突围消散不进入死亡结算，也不播放普通尸体动画。 */
+    corrosionDissolved = false;
     x           = 0;
     y           = 0;
     radius      = 18;
@@ -246,7 +248,7 @@ export class EnemyBase {
         this.chapter = Math.max(1, game?._chapter ?? 1);
         const statScale = tunedStatScale(this.chapter);
         const scale  = statScale * (1 + (wave - 1) * 0.03);
-        this.alive = true; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false; this._skillStolen = false;
+        this.alive = true; this.corrosionDissolved = false; this.dots = []; this.frozen = 0; this.slowMult = 1; this._slowTimer = 0; this.tideConverge = false; this._insightMark = false; this._skillStolen = false;
         this.knockbackX = 0; this.knockbackY = 0; this.flashTimer = 0;
         this.attackWindup = 0; this.attackTargetX = 0; this.attackTargetY = 0; this.actionRecoil = 0;
         this.rangedAimWindup = 0; this.rangedAimTargetX = 0; this.rangedAimTargetY = 0;
@@ -661,6 +663,21 @@ export class EnemyBase {
         if (this.hp <= 0) this._die(attacker, game);
     }
 
+    /** 不走击杀链：无掉落、经验、连击、复苏、死亡爆炸或击杀词条。 */
+    dissolveForEscape(game: any): boolean {
+        if (!this.alive || this.isBoss || this.isMiniBoss) return false;
+        this.alive = false;
+        this.hp = 0;
+        this.corrosionDissolved = true;
+        this.dots = [];
+        this.attackWindup = 0;
+        this.blastCountdown = 0;
+        this.arcLinks = [];
+        if (this.node) this.node.active = false;
+        game.particles?.toxin?.(this.x, this.y);
+        return true;
+    }
+
     protected _die(attacker: any, game: any): void {
         // 幂等保护：同帧多段伤害（多子弹/DoT+直伤）抢杀时只结算一次掉落与击杀数
         if (!this.alive) return;
@@ -1007,6 +1024,7 @@ export class EnemyBase {
     }
 
     beginDefeat(): boolean {
+        if (this.corrosionDissolved) return false;
         const clip = actorClip(this.animationSpriteKey, this.animationView, 'defeated');
         if (!clip) return false;
         this.actorAnimation.play('defeated', clip);

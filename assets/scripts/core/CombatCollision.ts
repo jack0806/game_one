@@ -1,5 +1,7 @@
 /** 英雄与实体敌人的身体分离。伤害半径保持不变，离地首领暂不阻挡。 */
-export interface CombatBody { x: number; y: number; radius: number; alive?: boolean; dead?: boolean; isBoss?: boolean; mechSkyT?: number }
+import { DT_MAX } from './Constants';
+
+export interface CombatBody { x: number; y: number; radius: number; alive?: boolean; dead?: boolean; isBoss?: boolean; isMiniBoss?: boolean; mechSkyT?: number }
 export function contactDistance(a: CombatBody, b: CombatBody): number {
     return a.radius * (a.isBoss ? 1.15 : 1) + b.radius * (b.isBoss ? 1.15 : 1) + 3;
 }
@@ -7,6 +9,118 @@ export type BodyMove = (x: number, y: number, dx: number, dy: number, radius: nu
 
 function blocks(body: CombatBody): boolean {
     return body.alive !== false && !body.dead && (body.mechSkyT ?? 0) <= 0;
+}
+
+export const CROWD_ESCAPE_WAIT = 0.5;
+export const CROWD_ESCAPE_DURATION = 0.5;
+export const CROWD_CORROSION_DAMAGE = 5;
+
+/** 出口必须能离开身边的小口袋；短距离挪动不能算脱离包围。 */
+function hasCrowdExit(player: CombatBody, enemies: CombatBody[], move: BodyMove): boolean {
+    const reach = player.radius * 4;
+    const step = player.radius / 4;
+    const obstacles = enemies.filter(e => blocks(e) && Math.hypot(e.x - player.x, e.y - player.y)
+        <= reach + contactDistance(player, e) + step * 2);
+    const at = (x: number, y: number): CombatBody => ({ x, y, radius: player.radius });
+    // 开阔方向先快速返回；弯折的小路再由局部搜索确认，避免误伤可绕行的怪群。
+    for (let i = 0; i < 16; i++) {
+        const angle = i * Math.PI / 8;
+        const next = moveCombatBody(player, Math.cos(angle) * reach, Math.sin(angle) * reach, obstacles, move);
+        if (Math.hypot(next.x - player.x, next.y - player.y) >= reach - 0.01) return true;
+    }
+    const queue = [{ x: 0, y: 0 }], seen = new Set<string>(['0,0']);
+    for (let head = 0; head < queue.length; head++) {
+        const point = queue[head];
+        const body = at(player.x + point.x * step, player.y + point.y * step);
+        for (let ix = -1; ix <= 1; ix++) for (let iy = -1; iy <= 1; iy++) {
+            if (ix === 0 && iy === 0) continue;
+            const x = point.x + ix, y = point.y + iy, key = `${x},${y}`;
+            if (seen.has(key)) continue;
+            const next = moveCombatBody(body, ix * step, iy * step, obstacles, move);
+            if (Math.hypot(next.x - (player.x + x * step), next.y - (player.y + y * step)) > 0.01) continue;
+            seen.add(key);
+            if (Math.hypot(x * step, y * step) >= reach) return true;
+            queue.push({ x, y });
+        }
+    }
+    return false;
+}
+
+/** 只在持续移动却被敌群封住所有出路时启用；日常碰撞仍走原来的硬碰撞。 */
+export class CrowdEscape {
+    private _blockedTime = 0;
+    private _remaining = 0;
+    private _contactStarted = false;
+    private _lastPosition?: { x: number; y: number };
+
+    reset(): void {
+        this._blockedTime = 0;
+        this._remaining = 0;
+        this._contactStarted = false;
+        this._lastPosition = undefined;
+    }
+
+    move<T extends CombatBody>(player: CombatBody, dx: number, dy: number, rawDt: number,
+        enemies: T[], move: BodyMove, onContact: (enemy: T, first: boolean) => void): { x: number; y: number } {
+        const dt = Math.max(0, Math.min(DT_MAX, rawDt));
+        const length = Math.hypot(dx, dy);
+        // 技能瞬移、外力推走或松开移动键后，不沿用此前的被围计时。
+        if (this._lastPosition && Math.hypot(player.x - this._lastPosition.x,
+            player.y - this._lastPosition.y) > 2) this.reset();
+        const normal = moveCombatBody(player, dx, dy, enemies, move);
+        if (!blocks(player) || length < 0.001 || dt <= 0) {
+            this.reset();
+            return normal;
+        }
+        const nearby = enemies.filter(e => blocks(e) && Math.hypot(e.x - player.x, e.y - player.y)
+            <= contactDistance(player, e) + player.radius * 2);
+        if (this._remaining <= 0) {
+            const terrain = move(player.x, player.y, dx, dy, player.radius);
+            const terrainTravel = Math.hypot(terrain.x - player.x, terrain.y - player.y);
+            const actualTravel = Math.hypot(normal.x - player.x, normal.y - player.y);
+            // 墙壁、单只怪挡路、可侧绕的敌群都不算被围；首领不会被消散。
+            const blocked = terrainTravel >= length * 0.65 && actualTravel < length * 0.2
+                && nearby.length >= 2 && nearby.some(e => !e.isBoss && !e.isMiniBoss);
+            this._blockedTime = blocked ? this._blockedTime + dt : 0;
+            if (this._blockedTime + 1e-6 >= CROWD_ESCAPE_WAIT) {
+                this._blockedTime = 0;
+                if (!hasCrowdExit(player, enemies, move)) {
+                    this._remaining = CROWD_ESCAPE_DURATION;
+                    this._contactStarted = false;
+                }
+            }
+        }
+        let result = normal;
+        if (this._remaining > 0) {
+            // 仍被首领和地形阻挡；仅沿实际走过的路径消散小怪，不清空整圈敌人。
+            const solid = enemies.filter(e => e.isBoss || e.isMiniBoss);
+            const steps = Math.max(1, Math.ceil(length / 6));
+            let x = player.x, y = player.y;
+            for (let step = 0; step < steps; step++) {
+                const next = moveCombatBody({ x, y, radius: player.radius, alive: player.alive },
+                    dx / steps, dy / steps, solid, move);
+                const vx = next.x - x, vy = next.y - y, travel2 = vx * vx + vy * vy;
+                if (travel2 > 1e-10) for (const e of enemies) {
+                    if (!blocks(e) || e.isBoss || e.isMiniBoss) continue;
+                    const toward = (e.x - x) * vx + (e.y - y) * vy;
+                    if (toward <= 0) continue;
+                    const t = Math.min(1, toward / travel2);
+                    if (Math.hypot(x + vx * t - e.x, y + vy * t - e.y)
+                        <= contactDistance(player, e) + 0.01) {
+                        onContact(e, !this._contactStarted);
+                        this._contactStarted = true;
+                        if (player.alive === false) break;
+                    }
+                }
+                if (player.alive === false) break;
+                x = next.x; y = next.y;
+            }
+            result = { x, y };
+            this._remaining = Math.max(0, this._remaining - dt);
+        }
+        this._lastPosition = result;
+        return result;
+    }
 }
 
 /** 扫掠本次位移，在首次接触处截断向内分量；只改变移动者，不给障碍单位施加推力。 */
