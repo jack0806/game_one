@@ -76,6 +76,8 @@ export class EnemyBase {
     frozen      = 0;
     slowMult    = 1;
     _slowTimer  = 0;
+    /** 方案D「潮汐」：连续处于减速/冰冻的累计秒数。 */
+    _slowedFor  = 0;
     /** 困难模式兽潮：向屏幕中心收拢，进入中心区后自动恢复常规AI。 */
     tideConverge = false;
     stunned     = 0;
@@ -190,6 +192,42 @@ export class EnemyBase {
     bellCounterWaves = 0;
     /** 支援型无人机"首次血量≤20%召唤攻击无人机"一次性标记。 */
     _miniSummoned = false;
+    // ── 敌人技能优化方案（docs/敌人技能优化方案.md）新增字段 ──
+    /** 侧移包抄偏置(-1/0/1)：与目标中远距时按偏角两翼接近，贴近后回正（见 update 移动向量合成）。 */
+    flankBias = 0;
+    /** 腐尸尸潮狂暴层数（周围同类死亡积累：每层攻速+25%/移速+15%，上限2）。 */
+    _packFury = 0;
+    private _packKills = 0;
+    /** 护盾兵举盾姿态剩余/冷却：举盾期正面120°减伤70%、移速-30%。 */
+    _guardT = 0;
+    private _guardCd = 3;
+    /** 腐尸扑咬/精英猎杀突进/暗影猎手影袭的独立冷却（与普攻冷却分离）。 */
+    _lungeCd = 0;
+    /** 本次近战前摇是否为扑咬/突进（结算分支据此区分冲锋与普攻拍击，勿劫持普攻）。 */
+    _lungeActive = false;
+    /** 暗影猎手烟雾计时（>0 时隐身无敌）/冷却。 */
+    _smokeT = 0;
+    private _smokeCd = 0;
+    /** 影袭引导兜底计时：预警圈回调被外部清场（静止靶/换局）时，由本计时强制现身。 */
+    _shadowT = 0;
+    /** 毒射手射击计数：每第4发毒镖改为腐蚀箭雨落点毒圈。 */
+    private _shotsFired = 0;
+    /** 锯齿剑虾甲壳反射内置冷却。 */
+    private _reflectCd = 0;
+    /** 攻击无人机过载机动剩余侧闪段数与段落间隔。 */
+    private _dashSteps = 0;
+    private _dashStepT = 0;
+    /** 深海鱿鱼墨烟遁一次性标记 / 一次性单位标记（仅深海恐惧水柱召唤的鱿鱼自毁）。 */
+    _inkUsed = false;
+    _oneShot = false;
+    /** 小Boss激怒：血量首次≤50%后技能冷却×0.85（部分单位解锁额外行为，如剑虾狂潮）。 */
+    miniEnraged = false;
+    /** 冰元素寒意层数（叠满冻结/对 Boss 触发寒潮易伤 _frostMarkT）。 */
+    _frostStacks = 0;
+    /** 冰元素寒潮易伤剩余（独立字段，不吃 Boss 的 DoT 免疫清空）。 */
+    _frostMarkT = 0;
+    /** 暗元素腐蚀标记剩余（同上，Boss 也可被腐蚀）。 */
+    _shadowMarkT = 0;
 
     /** 变异：混沌节拍 — WaveManager 每5秒对随机一批敌人调用此方法施加临时增益。 */
     applyChaosBuff(mult: number, duration: number): void {
@@ -197,6 +235,9 @@ export class EnemyBase {
         this.buffDmgMult   = mult;
         this._buffTimer    = duration;
     }
+
+    /** 侧移包抄偏置分配序号：-1/0/1 循环，保证同屏近战错落成两翼且行为可复现（测试确定性）。 */
+    private static _flankSeq = 0;
 
     init(type: string, wave: number, game: any): void {
         this.type    = type;
@@ -225,6 +266,24 @@ export class EnemyBase {
         this.miniSkillAngle = 0; this.miniSkillHit = false; this.miniSkillHits = 0;
         this.miniSkillPhase = 0; this.miniPoints = [];
         this.bellAbsorbHp = 0; this.bellAbsorbed = 0; this.bellCounterWaves = 0;
+        // 敌人技能优化方案：新增机制字段复位（flankBias 按类型重新分配）
+        this._packFury = 0; this._packKills = 0;
+        this._guardT = 0; this._guardCd = 3;
+        this._lungeCd = 1.5; this._lungeActive = false; this._smokeT = 0; this._smokeCd = 0; this._shadowT = 0;
+        this._shotsFired = 0; this._reflectCd = 0;
+        this._dashSteps = 0; this._dashStepT = 0;
+        this._inkUsed = false; this._oneShot = false;
+        this.miniEnraged = false;
+        this._frostStacks = 0; this._frostMarkT = 0; this._shadowMarkT = 0;
+        // 侧移包抄：只有依赖贴身输出的近战单位参与（远程/机制怪保持直线意图，保证弹道可读）。
+        // 偏置按创建序循环分配（-1/0/1），不用随机——同屏自然错落且测试可复现。
+        if (['grunt', 'shield', 'exploder', 'golem', 'elite_grunt', 'miniboss',
+            'rust_biter', 'rivet_beast', 'blast_tick'].indexOf(type) >= 0) {
+            EnemyBase._flankSeq++;
+            this.flankBias = (EnemyBase._flankSeq % 3) - 1;
+        } else {
+            this.flankBias = 0;
+        }
         this.directionalFrames = true;
         this.actorAnimation.reset();
         this.animationView = 'front'; this.animationMirror = 1;
@@ -369,36 +428,38 @@ export class EnemyBase {
             return;
         }
         switch (type) {
+            // 2026-11-09 敌人技能优化方案：近战小怪提速（玩家移速285~340，旧值
+            // 35~75 追不上只能被白嫖风筝），远程/施法单位保持表值不动。
             case 'grunt':
                 this.color = '#ff4444'; this.glowColor = '#ff0000';
-                this.maxHp = Math.floor(80 * scale); this.speed = 65; this.damage = 8; this.radius = 18;
+                this.maxHp = Math.floor(80 * scale); this.speed = 82; this.damage = 8; this.radius = 18;
                 this.goldValue = 2; this.label = ''; this.attackWindupMax = 0.28;
                 this.visualScale = 1.22;
                 this.spriteKey = 'enemy_grunt'; this.tintColor = '#ffffff'; break;
             case 'shield':
                 this.color = '#4488ff'; this.glowColor = '#0044cc';
-                this.maxHp = Math.floor(60 * scale); this.speed = 45; this.damage = 10; this.radius = 20;
+                this.maxHp = Math.floor(60 * scale); this.speed = 56; this.damage = 10; this.radius = 20;
                 this.maxShieldHp = Math.floor(80 * scale); this.shieldHp = this.maxShieldHp; this.shieldActive = true;
                 this.goldValue = 4; this.label = '护盾兵'; this.attackWindupMax = 0.38;
                 this.visualScale = 1.18;
                 this.spriteKey = 'enemy_shield'; this.tintColor = '#ffffff'; break;
             case 'exploder':
                 this.color = '#ff8800'; this.glowColor = '#ff4400';
-                this.maxHp = Math.floor(50 * scale); this.speed = 85; this.damage = 40; this.radius = 20;
+                this.maxHp = Math.floor(50 * scale); this.speed = 96; this.damage = 40; this.radius = 20;
                 this.deathExplode = true; this.goldValue = 2; this.label = ''; this.attackWindupMax = 0.52;
                 this.visualScale = 1.20;
                 // 素材错位：enemy_exploder key 实际内容(经ArtRemap重定向)对应"爆炸怪"语义。
                 this.spriteKey = 'enemy_exploder'; this.tintColor = '#ffffff'; break;
             case 'golem':
                 this.color = '#888888'; this.glowColor = '#aaaaaa';
-                this.maxHp = Math.floor(300 * scale); this.speed = 35; this.damage = 20; this.radius = 26;
+                this.maxHp = Math.floor(300 * scale); this.speed = 44; this.damage = 20; this.radius = 26;
                 this.armor = 25; this.goldValue = 6; this.label = '石像鬼'; this.attackWindupMax = 0.56;
                 this.visualScale = 1.15;
                 this.spriteKey = 'enemy_golem'; this.tintColor = '#ffffff'; break;
             case 'elite_grunt':
                 this.isElite = true;
                 this.color = '#ff44ff'; this.glowColor = '#cc00cc';
-                this.maxHp = Math.floor(200 * scale); this.speed = 75; this.damage = 18; this.radius = 22;
+                this.maxHp = Math.floor(200 * scale); this.speed = 90; this.damage = 18; this.radius = 22;
                 this.goldValue = 12; this.label = '精英'; this.attackWindupMax = 0.30;
                 this.visualScale = 1.25;
                 this.spriteKey = 'enemy_elite'; this.tintColor = '#ffffff';
@@ -417,7 +478,7 @@ export class EnemyBase {
             case 'miniboss':
                 this.isMiniBoss = true;
                 this.color = '#aa44ff'; this.glowColor = '#6600cc';
-                this.maxHp = Math.floor(800 * scale); this.speed = 55; this.damage = 25; this.radius = 30;
+                this.maxHp = Math.floor(800 * scale); this.speed = 74; this.damage = 25; this.radius = 30;
                 this.goldValue = 35; this.label = '暗影猎手'; this.attackWindupMax = 0.46;
                 this.visualScale = 1.60;
                 this.spriteKey = 'enemy_shadow_hunter'; this.tintColor = '#ffffff';
@@ -477,21 +538,65 @@ export class EnemyBase {
             const [ax, ay] = Vec.normalize(attacker.x - this.x, attacker.y - this.y);
             if (ax * this.combatFacingX + ay * this.combatFacingY >= 0.5) rawDmg *= 0.55;
         }
+        // 护盾兵举盾姿态：正面120°承伤-70%（与铆甲兽同款点积判定），逼玩家绕背输出。
+        if (this.type === 'shield' && this._guardT > 0 && attacker) {
+            const [ax, ay] = Vec.normalize(attacker.x - this.x, attacker.y - this.y);
+            if (ax * this.combatFacingX + ay * this.combatFacingY >= 0.5) rawDmg *= 0.3;
+        }
         // 护盾先扣
         if (this.shieldActive && this.shieldHp > 0) {
             const abs = Math.min(this.shieldHp, rawDmg);
             this.shieldHp -= abs; rawDmg -= abs;
-            if (this.shieldHp <= 0) this.shieldActive = false;
+            if (this.shieldHp <= 0) {
+                this.shieldActive = false;
+                // 护盾兵能量盾被打破：短暂失去平衡（只触发一次，盾不会回复）。
+                if (this.type === 'shield') {
+                    this.stunned = Math.max(this.stunned, 1);
+                    game.floatingText?.spawn?.(this.x, this.y - 36, '破盾失衡！', '#9fc4ff', 14, true);
+                }
+            }
             game.particles?.shieldBlock(this.x, this.y, !this.shieldActive);
             if (rawDmg <= 0) return 0;
         }
         // 护甲减免（对齐 hexblast-py entities/enemy.py take_damage()：
         // 用 armor/(armor+100) 的衰减公式而非线性减法，护甲越高减伤边际递减，
         // 但任何伤害都会至少留下一部分——避免高护甲+无尽模式变异叠加后伤害被完全吃掉变成无敌。
+        let dmg = rawDmg;
+        // 方案D 水元素Lv2「潮汐」：被减速/冰冻超过阈值的敌人受到的伤害提高
+        if (attacker?.stats?.perkTideDmg && (this._slowedFor ?? 0) >= GameConfig.get('perkTideFrom')) {
+            dmg *= 1 + attacker.stats.perkTideDmg;
+        }
+        // 冰元素Lv2「霜甲」（2026-11-09 元素扩展）：冻结/寒潮目标受到的伤害提高
+        if (attacker?.stats?.perkFrostBonus && (this.frozen > 0 || this._frostMarkT > 0)) {
+            dmg *= 1 + attacker.stats.perkFrostBonus;
+        }
         const mitigation = this.armor / (this.armor + 100);
-        const dmg = Math.max(1, rawDmg * (1 - mitigation));
+        dmg = Math.max(1, dmg * (1 - mitigation));
         this.hp  -= dmg;
         if (this.type === 'gold_scavenger') this.scavengerHitBoost = 0.8;
+        // 暗元素Lv2「汲取」（2026-11-09 元素扩展）：对腐蚀目标的实付伤害按比例转为
+        // 玩家生命；每秒预算上限由暗元素卡 onUpdate 重置（stats._shadowLeechBudget）。
+        if (this._shadowMarkT > 0 && attacker?.stats?.perkShadowLeech) {
+            const budget = attacker.stats._shadowLeechBudget;
+            const gain = Math.min(budget === undefined ? 99 : Math.max(0, budget),
+                dmg * attacker.stats.perkShadowLeech);
+            if (gain > 0) {
+                attacker.stats._shadowLeechBudget = (budget === undefined ? gain : budget) - gain;
+                attacker.heal?.(gain);
+            }
+        }
+        // 锯齿剑虾甲壳反射：受击30%概率向攻击者弹出一发尖刺（0.8s内置CD，可被走位躲开）。
+        if (this.type === 'shrimp' && this.alive && this._reflectCd <= 0 && this.frozen <= 0 &&
+            this.stunned <= 0 && attacker && Rng.chance(0.3)) {
+            this._reflectCd = 0.8;
+            const ra = Math.atan2(attacker.y - this.y, attacker.x - this.x);
+            game.enemyBullets?.push({ hitSource: this.hitSource,
+                x: this.x, y: this.y, vx: Math.cos(ra) * 340, vy: Math.sin(ra) * 340,
+                damage: this.damage * 0.35, radius: 7, color: '#ffaa66',
+                life: 2.5, lifeTime: 2.5, owner: 'enemy', isEnemyBullet: true, enemyFx: 'shrimp_spike',
+            });
+            game.particles?.weaponFlash?.(this.x, this.y, Math.cos(ra), Math.sin(ra), 'charged');
+        }
         if (this.type === 'blast_tick' && this.hp <= 0 && this.blastCountdown <= 0) {
             // 击杀会提前引爆而非删掉实体；0.45秒预警完整保留，击退仍可改爆点。
             this.hp = 1; this.invulnerable = true;
@@ -600,6 +705,37 @@ export class EnemyBase {
         }
         // v3「焚芯余烬」：击杀溅射（玩家持有 buff 时在尸体位置小范围爆炸）
         if (game?.dropKillSplash && !this.isBoss) game.dropKillSplash(this);
+        // 方案D 火元素特权：Lv2「蔓延」死亡转移剩余灼烧；Lv3「燃尽」灼烧中的精英死亡点燃范围
+        const fireDot = (this.dots || []).find(d => d.type === 'hex_fire');
+        if (fireDot && game?.player) {
+            const ps = game.player.stats;
+            const spread = (alive: any) => alive !== this && alive.alive && !alive.isBoss
+                && Vec.dist(alive.x, alive.y, this.x, this.y) <= GameConfig.get('perkFireSpreadRange');
+            if (ps?.perkBurnout && this.isElite) {
+                for (const other of (game.enemies || [])) {
+                    if (!spread(other)) continue;
+                    const dots = other.dots || (other.dots = []);
+                    const ex = dots.find(d => d.type === 'hex_fire');
+                    if (ex) { ex.dps = Math.max(ex.dps, fireDot.dps); ex.timeLeft = 1.5; }
+                    else dots.push({ type: 'hex_fire', dps: fireDot.dps, timeLeft: 1.5, color: '#ff6a3d' });
+                }
+                game.particles?.ignite?.(this.x, this.y);
+            } else if (ps?.perkFireSpread) {
+                const next = (game.enemies || []).filter(spread)[0];
+                if (next) {
+                    const total = fireDot.dps * Math.max(0, fireDot.timeLeft)
+                        * GameConfig.get('perkFireSpreadRatio');
+                    const dots = next.dots || (next.dots = []);
+                    const ex = dots.find(d => d.type === 'hex_fire');
+                    if (ex) { ex.dps = Math.max(ex.dps, total / 1.5); ex.timeLeft = 1.5; }
+                    else dots.push({ type: 'hex_fire', dps: total / 1.5, timeLeft: 1.5, color: '#ff6a3d' });
+                }
+            }
+        }
+        // 方案D 点金手Lv3「黄金之手」：精英击杀额外金币
+        if (this.isElite && game?.economy?.eliteGoldBonus) {
+            game.economy.spawnDrop?.(this.x, this.y, GameConfig.get('perkEliteGold'));
+        }
         // 成就存档统计：大Boss/精英/小首领击杀数、单局最高连击（GameManager 局末读取）
         if (this.isBoss) game.bossKills = (game.bossKills || 0) + 1;
         if (this.isElite) game.eliteKills = (game.eliteKills || 0) + 1;
@@ -630,6 +766,44 @@ export class EnemyBase {
             const explode = () => game.spawnExplosion?.(attacker, this.x, this.y, this.damage * 2, 60);
             if (game.achievementTracker?.active) game.achievementTracker.scope('environment', 'enemy_death', explode);
             else explode();
+            // 爆炸怪·酸液腐爆：死亡爆炸后在原地留下酸池（与熔爆蜱的纯爆伤分工）。
+            if (this.type === 'exploder') game.spawnEnemyAcidHazard?.(this.x, this.y, this.x, this.y);
+        }
+        // 腐尸·尸潮狂暴：150px内每死3只同类，幸存者获得一层狂暴（攻速+25%/移速+15%，上限2层）。
+        if (this.type === 'grunt') {
+            for (const e of (game.enemies || []) as EnemyBase[]) {
+                if (e !== this && e.alive && e.type === 'grunt' &&
+                    Vec.dist(e.x, e.y, this.x, this.y) <= 150) {
+                    e._packKills++;
+                    if (e._packKills % 3 === 0 && e._packFury < 2) {
+                        e._packFury++;
+                        game.floatingText?.spawn?.(e.x, e.y - 30, '尸潮狂暴！', '#ff8a5c', 13, false);
+                    }
+                }
+            }
+        }
+        // 雷元素Lv3「引雷针」（2026-11-09 元素扩展）：感电目标死亡时，
+        // 雷击+感电转移给范围内最近的非Boss敌人——雷在怪群链式巡回。
+        if (attacker?.stats?.perkThunderChain) {
+            const spark = (this.dots || []).find(d => d.type === 'hex_thunder');
+            if (spark) {
+                const range = GameConfig.get('perkThunderChainRange');
+                let best: EnemyBase | undefined;
+                let bestD = Infinity;
+                for (const e of (game.enemies || []) as EnemyBase[]) {
+                    if (e === this || !e.alive || e.isBoss) continue;
+                    const d = Vec.dist(e.x, e.y, this.x, this.y);
+                    if (d <= range && d < bestD) { bestD = d; best = e; }
+                }
+                if (best) {
+                    const dots = best.dots || (best.dots = []);
+                    const ex = dots.find(d => d.type === 'hex_thunder');
+                    if (ex) { ex.dps = spark.dps; ex.timeLeft = 2; }
+                    else dots.push({ type: 'hex_thunder', dps: spark.dps, timeLeft: 2, color: '#f5e36b' });
+                    game.particles?.lightning?.(this.x, this.y, best.x, best.y, '#f5e36b');
+                    game.particles?.hit?.(best.x, best.y, '#f5e36b');
+                }
+            }
         }
         // 变异：复活。旧局定时器不得向新局刷怪；最终位置仍由 GameManager
         // 的显式出生安全校正保证不会直接贴到玩家身上。
@@ -845,6 +1019,46 @@ export class EnemyBase {
         this.flashTimer = Math.max(0, this.flashTimer - dt);
         this.actionRecoil = Math.max(0, this.actionRecoil - dt);
         if (this._atkCd > 0) this._atkCd -= dt;
+        if (this._lungeCd > 0) this._lungeCd -= dt;
+        if (this._reflectCd > 0) this._reflectCd = Math.max(0, this._reflectCd - dt);
+        // 元素扩展标记递减（冰寒潮/暗腐蚀——独立字段不吃 Boss DoT 免疫）
+        if (this._frostMarkT > 0) this._frostMarkT = Math.max(0, this._frostMarkT - dt);
+        if (this._shadowMarkT > 0) this._shadowMarkT = Math.max(0, this._shadowMarkT - dt);
+        // 护盾兵举盾姿态循环：每9秒举盾3秒（举盾期正面减伤70%见 takeDamage）。
+        if (this.type === 'shield') {
+            if (this._guardT > 0) this._guardT = Math.max(0, this._guardT - dt);
+            else if (this._guardCd > 0) this._guardCd -= dt;
+            else {
+                this._guardCd = 9; this._guardT = 3;
+                game.particles?.shieldBlock?.(this.x, this.y, false);
+                game.floatingText?.spawn?.(this.x, this.y - 32, '举盾！', '#7db2ff', 14, true);
+            }
+        }
+        // 暗影猎手低血烟雾：血量<40%时受近身威胁触发，1秒隐身无敌（15秒冷却）。
+        if (this.type === 'miniboss') {
+            if (this._smokeT > 0) {
+                this._smokeT -= dt;
+                if (this._smokeT <= 0) { this.invisible = false; this.invulnerable = false; }
+            } else {
+                if (this._smokeCd > 0) this._smokeCd -= dt;
+                if (this._smokeCd <= 0 && this.hp / this.maxHp < 0.4 && player?.alive &&
+                    Vec.dist(this.x, this.y, player.x, player.y) < 180) {
+                    this._smokeCd = 15; this._smokeT = 1;
+                    this.invisible = true; this.invulnerable = true;
+                    game.particles?.enemyBurst?.(this.x, this.y, 'metal', 26);
+                    game.floatingText?.spawn?.(this.x, this.y - 40, '烟雾！', '#b9b9b9', 15, true);
+                }
+            }
+            // 影袭引导兜底：预警圈回调依赖 GameManager 的 hazard 生存，被静止靶
+            // 模式/机制清场删除时不执行——由本计时强制现身，防止永久隐身无敌。
+            if (this._shadowT > 0) {
+                this._shadowT = Math.max(0, this._shadowT - dt);
+                if (this._shadowT <= 0) {
+                    this.invisible = false;
+                    this.invulnerable = false;
+                }
+            }
+        }
         if (this.frontGuardBroken > 0) this.frontGuardBroken = Math.max(0, this.frontGuardBroken - dt);
         if (this.scavengerHitBoost > 0) this.scavengerHitBoost = Math.max(0, this.scavengerHitBoost - dt);
         if (this.arcBoostTimer > 0) this.arcBoostTimer = Math.max(0, this.arcBoostTimer - dt);
@@ -881,12 +1095,23 @@ export class EnemyBase {
             try { this.takeContinuousDamage(d.dps * dt, player, game); }
             finally { leave?.(); }
             if (!this.alive) return;
-            if (d.timeLeft <= 0) this.dots.splice(i, 1);
+            if (d.timeLeft <= 0) {
+                // 方案D 火元素Lv3「燃尽」：灼烧到期补一笔终结伤害（DPS ×倍数）
+                if (d.type === 'hex_fire' && player?.stats?.perkBurnout) {
+                    this.takeContinuousDamage(d.dps * GameConfig.get('perkBurnoutBonus'), player, game);
+                    game.floatingText?.spawn?.(this.x, this.y - 30, '燃尽', '#ff8a5c', 13, false);
+                    if (!this.alive) return;
+                }
+                this.dots.splice(i, 1);
+            }
         }
 
         // 减速/冻结计时
         if (this.frozen > 0) { this.frozen -= dt; if (this.frozen <= 0) { this.frozen = 0; this.slowMult = 1; } }
         if (this._slowTimer > 0) { this._slowTimer -= dt; if (this._slowTimer <= 0) { this._slowTimer = 0; this.slowMult = 1; } }
+        // 方案D 水元素Lv2「潮汐」：累计处于减速/冰冻的时长（受伤易伤判定用）
+        if (this.slowMult < 1 || this.frozen > 0) this._slowedFor = (this._slowedFor ?? 0) + dt;
+        else this._slowedFor = 0;
         if (this.stunned > 0) { this.stunned -= dt; return; }
 
         // 混沌节拍临时增益倒计时
@@ -906,6 +1131,19 @@ export class EnemyBase {
         // 微型冲锋（盾龟高速碰撞等）：冲锋期间不执行其他移动/攻击
         if (this._chargeT > 0) {
             this._chargeT -= dt;
+            // 盾龟·裂地波（敌人技能优化方案）：冲锋收势瞬间向8向喷出环形地刺。
+            if (this._chargeT <= 0 && this.type === 'turtle') {
+                for (let i = 0; i < 8; i++) {
+                    const a = (i / 8) * Math.PI * 2 + Rng.float(0, 0.4);
+                    game.enemyBullets?.push({ hitSource: this.hitSource,
+                        x: this.x, y: this.y, vx: Math.cos(a) * 175, vy: Math.sin(a) * 175,
+                        damage: this.damage * 0.5, radius: 8, color: '#7dff9a',
+                        life: 4, lifeTime: 4, owner: 'enemy', isEnemyBullet: true,
+                    });
+                }
+                game.particles?.impact?.(this.x, this.y, 0, 0.8, '#7dff9a');
+                game.floatingText?.spawn?.(this.x, this.y - 44, '裂地波！', '#7dff9a', 14, true);
+            }
             const nextX = this.x + this._chargeVx * dt;
             const nextY = this.y + this._chargeVy * dt;
             const hitBoundary = nextX <= this.radius || nextX >= CANVAS_W - this.radius ||
@@ -948,6 +1186,17 @@ export class EnemyBase {
 
         // 测试房间小 Boss 专属技能
         if (this.isMiniBoss) {
+            // 统一激怒（敌人技能优化方案）：血量首次≤50% → 技能冷却×0.85；
+            // 剑虾额外进入狂潮（攻速+30%/移速+25%）。葬钟的45%反震解锁同步挂到该血线。
+            if (!this.miniEnraged && this.hp / this.maxHp <= 0.5) {
+                this.miniEnraged = true;
+                game.floatingText?.spawn?.(this.x, this.y - 56, '激怒！', this.glowColor, 17, true);
+                game.particles?.explode?.(this.x, this.y, this.glowColor, 30);
+                if (this.type === 'shrimp') {
+                    this.attackSpeed *= 1.3; this.speed *= 1.25;
+                    game.floatingText?.spawn?.(this.x, this.y - 78, '狂潮！', '#ffcc66', 15, true);
+                }
+            }
             const previousSkill = this.miniSkillState;
             this._updateMiniBoss(dt, player, game);
             if (this.miniSkillState && this.miniSkillState !== previousSkill) {
@@ -1026,6 +1275,33 @@ export class EnemyBase {
                             if (t.alive && Vec.dist(t.x, t.y, this.x, this.y) < atkDist + 30) t.alive = false;
                         }
                     }
+                } else if (this._lungeActive && (this.type === 'grunt' || this.type === 'elite_grunt')) {
+                    // 腐尸扑咬(180px)/精英猎杀突进(280px)：沿锁定方向冲锋，不追踪玩家。
+                    // 仅当本次前摇由扑咬触发（_lungeActive），普攻拍击仍走默认分支。
+                    this._lungeActive = false;
+                    const elite = this.type === 'elite_grunt';
+                    const [lx, ly] = Vec.normalize(this.attackTargetX - this.x, this.attackTargetY - this.y);
+                    this.combatFacingX = lx; this.combatFacingY = ly;
+                    const chargeSpd = elite ? 620 : 420;
+                    this._chargeVx = lx * chargeSpd; this._chargeVy = ly * chargeSpd;
+                    this._chargeT = (elite ? 280 : 180) / chargeSpd;
+                    this._chargeDmg = this.damage * this.buffDmgMult * (elite ? 1.2 : 1);
+                    this._chargePush = elite ? 40 : 20;
+                    this._chargeRecovery = elite ? 0.40 : 0.30;
+                    // 前摇表值还原（扑咬触发改写过 attackWindupMax，普攻节奏不能被连带改掉）。
+                    this.attackWindupMax = elite ? 0.30 : 0.28;
+                    game.particles?.meleeSlash?.(this.x, this.y, Math.atan2(ly, lx), this.glowColor,
+                        elite ? 64 : 46, 1.15, this.type);
+                } else if (this.type === 'golem') {
+                    // 石像鬼蓄力震地：锁定点圆形AoE(90px)，命中附带短减速；预警圈随前摇点亮。
+                    const tx = this.attackTargetX, ty = this.attackTargetY;
+                    game.particles?.explode?.(tx, ty, '#d8c9a3', 64);
+                    game.screenShake?.shake?.(5, 0.18);
+                    game.audio?.playSfx?.('hit', 0.6);
+                    if (Vec.dist(tx, ty, player.x, player.y) <= 90 + (player.radius ?? 16)) {
+                        player.takeDamage(this.damage * this.buffDmgMult, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } });
+                        player.applyBuff?.('golem_quake', 1.2, { speed: 0.7 });
+                    }
                 } else {
                     const angle = Math.atan2(player.y - this.y, player.x - this.x);
                     game.particles?.meleeSlash?.(this.x, this.y, angle, this.color, this.radius + this.meleeRange, 0.85, this.type);
@@ -1096,8 +1372,21 @@ export class EnemyBase {
         const [dx, dy] = Vec.normalize(routeTarget.x - this.x, routeTarget.y - this.y);
         this.combatFacingX = dx; this.combatFacingY = dy;
         const spd = this.speed * (this.frozen > 0 ? 0 : this.slowMult) * this.buffSpeedMult *
-            (this.arcBoostTimer > 0 ? 1.15 : 1);
+            (this.arcBoostTimer > 0 ? 1.15 : 1)
+            * (1 + 0.15 * this._packFury)                       // 尸潮狂暴移速层
+            * (this.type === 'shield' && this._guardT > 0 ? 0.7 : 1)   // 举盾推进减速
+            * (this.type === 'jelly' && this.invisible ? 1.4 : 1);     // 水母隐身期加速逼近
         let mvx = dx, mvy = dy;
+        // 侧移包抄：距目标中远距(>220px)时按 flankBias 偏转 ~28° 接近——异侧单位
+        // 自动形成两翼钳形，不再挤成一条纵队；贴近后回正保证命中手感。
+        if (this.flankBias !== 0) {
+            const tDist = Math.hypot(aiTarget.x - this.x, aiTarget.y - this.y);
+            if (tDist > 220) {
+                const rot = this.flankBias * 0.5;
+                mvx = dx * Math.cos(rot) - dy * Math.sin(rot);
+                mvy = dx * Math.sin(rot) + dy * Math.cos(rot);
+            }
+        }
         let archerShot = false;
         let needleShot = false;
         let frostShot = false;
@@ -1302,6 +1591,12 @@ export class EnemyBase {
                 damage: this.damage * this.buffDmgMult, radius: 5, color: '#baff5c',
                 life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'toxin_dart',
             });
+            // 腐蚀箭雨：每第4发毒镖改为落点毒圈（复用酸囊投手的地面危险区）。
+            this._shotsFired++;
+            if (this._shotsFired % 4 === 0) {
+                game.spawnEnemyAcidHazard?.(origin[0], origin[1], tx, ty);
+                game.floatingText?.spawn?.(this.x, this.y - 34, '腐蚀箭雨！', '#9fff5c', 13, true);
+            }
         }
 
         if (needleShot) {
@@ -1356,6 +1651,51 @@ export class EnemyBase {
             return;
         }
 
+        // 扑咬/突进/影袭（敌人技能优化方案）：中距离锁定→短前摇→冲锋/瞬移，
+        // 与普攻前摇共用 attackWindup 通道，结算分支把它转成 _chargeT 冲锋。
+        if (this._lungeCd <= 0 && this.attackWindup <= 0 && this._chargeT <= 0 &&
+            player.alive && !player.untargetable) {
+            const ld = Math.hypot(player.x - this.x, player.y - this.y);
+            const lungeKind = this.type === 'grunt' ? (ld <= 230 && ld >= 120 ? 1 : 0)
+                : this.type === 'elite_grunt' ? (ld <= 430 && ld >= 240 ? 2 : 0)
+                : this.type === 'miniboss' ? (ld <= 500 && ld >= 160 ? 3 : 0) : 0;
+            if (lungeKind > 0) {
+                // 冷却带随机抖动：避免同屏多只腐尸/精英在同一帧齐扑。
+                this._lungeCd = (lungeKind === 1 ? 4.5 : 8) * Rng.float(0.85, 1.25);
+                if (lungeKind === 3) {
+                    // 暗影猎手影袭：落点预警圈出现在玩家身后，0.55s 后现身并接爪击前摇。
+                    const mvx2 = player.lastMoveX ?? player.moveX ?? 1;
+                    const mvy2 = player.lastMoveY ?? player.moveY ?? 0;
+                    const mlen = Math.hypot(mvx2, mvy2);
+                    const [bx, by] = mlen > 0.001 ? [mvx2 / mlen, mvy2 / mlen] : [1, 0];
+                    const lx = clamp(player.x - bx * 80, this.radius, CANVAS_W - this.radius);
+                    const ly = clamp(player.y - by * 80, this.radius, PLAYFIELD_BOTTOM - this.radius);
+                    this.invisible = true; this.invulnerable = true;
+                    this._shadowT = 0.9; // 兜底：回调被外部清场时由 update 计时强制现身
+                    game.floatingText?.spawn?.(this.x, this.y - 40, '消失…', '#b48bff', 14, true);
+                    game.spawnWarnCircle?.(lx, ly, 46, 0.55, '#b48bff', () => {
+                        if (!this.alive) return;
+                        this.invisible = false; this.invulnerable = false;
+                        this._shadowT = 0;
+                        this.x = clamp(lx, this.radius, CANVAS_W - this.radius);
+                        this.y = clamp(ly, this.radius, PLAYFIELD_BOTTOM - this.radius);
+                        game.particles?.explode?.(this.x, this.y, '#b48bff', 36);
+                        game.floatingText?.spawn?.(this.x, this.y - 40, '影袭！', '#d7a5ff', 16, true);
+                        this.attackWindup = 0.36;
+                        this.attackTargetX = player.x; this.attackTargetY = player.y;
+                    });
+                } else {
+                    // 腐尸扑咬(0.30s)/精英猎杀突进(0.45s)：锁定当前位置方向。
+                    this._lungeActive = true;
+                    this.attackWindupMax = lungeKind === 1 ? 0.30 : 0.45;
+                    this.attackWindup = this.attackWindupMax + dt; // 抵消本帧统一递减
+                    this.attackTargetX = player.x; this.attackTargetY = player.y;
+                    game.particles?.enemySignature?.(this.type, 'skill1', this.x, this.y,
+                        Math.atan2(player.y - this.y, player.x - this.x));
+                }
+            }
+        }
+
         // 近战攻击：进入攻击范围且冷却完毕才对玩家造成伤害
         // （对齐 hexblast-py 的 entities/enemy.py _move() 近战判定；
         //  远程/纯AOE单位可将 meleeRange 设为0来禁用此逻辑）
@@ -1367,10 +1707,16 @@ export class EnemyBase {
                 if (player.stats?.klepto && kleptoCaptureAttack(this, player, game, 'melee')) {
                     this._atkCd = 0.5;
                 } else {
-                    this._atkCd = 1 / Math.max(0.01, this.attackSpeed);
+                    this._lungeActive = false;
+                    this._atkCd = 1 / Math.max(0.01, this.attackSpeed) / (1 + 0.25 * this._packFury);
                     this.attackWindup = this.attackWindupMax;
                     this.attackTargetX = player.x;
                     this.attackTargetY = player.y;
+                    // 石像鬼蓄力震地：落点圈预警与近战前摇同长，结算改为圆形AoE。
+                    if (this.type === 'golem') {
+                        game.spawnWarnCircle?.(this.attackTargetX, this.attackTargetY, 90,
+                            this.attackWindupMax, '#e8d9a0');
+                    }
                 }
             }
         }
@@ -1508,6 +1854,9 @@ export class EnemyBase {
         if (trap) this._miniSkillOrigin('skill2', trap[0], trap[1], game);
     }
 
+    /** 小Boss激怒后的技能冷却缩放：50%血以下按85%计（见 init 后的激怒触发）。 */
+    protected _mcd(base: number): number { return this.miniEnraged ? base * 0.85 : base; }
+
     private _updateMiniBoss(dt: number, player: any, game: any): void {
         switch (this.type) {
             case 'squid':    this._miniBossSquid(dt, player, game); break;
@@ -1529,7 +1878,7 @@ export class EnemyBase {
         this._miniCd1 -= dt; this._miniCd2 -= dt;
         if (!player.alive || this.attackWindup > 0 || this._chargeT > 0) return;
         if (this._miniCd1 <= 0 && this._miniCd2 > 1.5) {
-            this._miniCd1 = 6;
+            this._miniCd1 = this._mcd(6);
             this.attackTargetX = player.x; this.attackTargetY = player.y;
             // 本帧后续会统一递减一次dt，先补回dt，保证屏幕上实际保留完整0.70秒。
             this.attackWindupMax = 0.70; this.attackWindup = 0.70 + dt;
@@ -1537,7 +1886,7 @@ export class EnemyBase {
             this.miniSkillTimer = 0.70; this.miniSkillMax = 0.70;
             game.floatingText?.spawn?.(this.x, this.y - 46, '链钉冲猎', '#ff756d', 15, true);
         } else if (this._miniCd2 <= 0 && this._miniCd1 > 1.5) {
-            this._miniCd2 = 8;
+            this._miniCd2 = this._mcd(8);
             this._chainHoundTrapTarget = [player.x, player.y];
             const a = Math.atan2(player.y - this.y, player.x - this.x);
             const px = -Math.sin(a), py = Math.cos(a);
@@ -1604,13 +1953,13 @@ export class EnemyBase {
         }
 
         if (this._miniCd1 <= 0 && this._miniCd2 > 1.5) {
-            this._miniCd1 = 6.5;
+            this._miniCd1 = this._mcd(6.5);
             this.miniSkillState = 'prism_windup';
             this.miniSkillTimer = 0.75; this.miniSkillMax = 0.75;
             this.miniSkillAngle = Math.atan2(player.y - this.y, player.x - this.x);
             game.floatingText?.spawn?.(this.x, this.y - 48, '巡灯切线', '#a8efff', 15, true);
         } else if (this._miniCd2 <= 0 && this._miniCd1 > 1.5) {
-            this._miniCd2 = 10;
+            this._miniCd2 = this._mcd(10);
             this.miniSkillState = 'prism_shell';
             this.miniSkillTimer = 2.5; this.miniSkillMax = 2.5;
             this.maxShieldHp = 220; this.shieldHp = 220; this.shieldActive = true;
@@ -1643,16 +1992,16 @@ export class EnemyBase {
             }));
             game.spawnTriuneFireMarks?.(this.miniPoints);
             this.miniSkillState = 'triune_fire'; this.miniSkillTimer = 1.65; this.miniSkillMax = 1.65;
-            this._miniTimer = 7;
+            this._miniTimer = this._mcd(7);
             game.floatingText?.spawn?.(this.x, this.y - 50, '焚相 · 移动烙印', '#ff9a42', 15, true);
         } else if (phase === 1) {
             this.miniSkillState = 'triune_ice'; this.miniSkillTimer = 0.9; this.miniSkillMax = 0.9;
-            this._miniTimer = 9;
+            this._miniTimer = this._mcd(9);
             game.spawnTriuneIceWall?.(this.x < CANVAS_W / 2 ? 'left' : 'right');
             game.floatingText?.spawn?.(this.x, this.y - 50, '冻相 · 晶墙分流', '#8eeaff', 15, true);
         } else {
             this.miniSkillState = 'triune_arc'; this.miniSkillTimer = 1.2; this.miniSkillMax = 1.2;
-            this._miniTimer = 11;
+            this._miniTimer = this._mcd(11);
             game.spawnTriuneConductors?.(player.x, player.y);
             game.floatingText?.spawn?.(this.x, this.y - 50, '雷相 · 三角传导', '#d8f7ff', 15, true);
         }
@@ -1715,17 +2064,17 @@ export class EnemyBase {
         if (phase === 0) {
             this.miniSkillState = 'rail_windup'; this.miniSkillTimer = 0.9; this.miniSkillMax = 0.9;
             this.miniSkillAngle = Math.atan2(player.y - this.y, player.x - this.x);
-            this._miniTimer = 6;
+            this._miniTimer = this._mcd(6);
             game.floatingText?.spawn?.(this.x, this.y - 54, '零距磁轨', '#ff61c4', 15, true);
         } else if (phase === 1) {
             this.miniSkillState = 'rail_saw'; this.miniSkillTimer = 3.15; this.miniSkillMax = 3.15;
-            this._miniTimer = 8;
+            this._miniTimer = this._mcd(8);
             game.spawnRailSaws?.(this.x, this.y);
             game.floatingText?.spawn?.(this.x, this.y - 54, '回转废锯', '#ff9b32', 15, true);
         } else {
             this.miniSkillState = 'rail_drag'; this.miniSkillTimer = 2.8; this.miniSkillMax = 2.8;
             this.miniSkillPhase = 0; // 前1秒只显示箭头，之后拉拽1.8秒。
-            this._miniTimer = 12;
+            this._miniTimer = this._mcd(12);
             game.floatingText?.spawn?.(this.x, this.y - 54, '磁极拖拽', '#71bfff', 15, true);
         }
         this._miniSkillCount++;
@@ -1835,60 +2184,78 @@ export class EnemyBase {
         // 固定教学循环：丧钟 → 回声 → 钟罩 → 丧钟 → 反震。
         // 反震在45%血量前尚未解锁时回落为丧钟，仍保持其他技能次序稳定。
         const sequence = [0, 1, 2, 0, 3];
-        let phase = sequence[this._miniSkillCount % sequence.length];
-        if (phase === 3 && this.hp / this.maxHp > 0.45) phase = 0;
+            let phase = sequence[this._miniSkillCount % sequence.length];
+            if (phase === 3 && this.hp / this.maxHp > 0.5) phase = 0;
         if (phase === 0) {
             this.miniSkillState = 'bell_rings'; this.miniSkillTimer = 2.3; this.miniSkillMax = 2.3;
-            this.miniSkillPhase = 0; this.miniSkillHits = 0; this.miniSkillHit = false; this._miniTimer = 6;
+            this.miniSkillPhase = 0; this.miniSkillHits = 0; this.miniSkillHit = false; this._miniTimer = this._mcd(6);
             game.floatingText?.spawn?.(this.x, this.y - 58, '六拍丧钟', '#fff0a6', 16, true);
         } else if (phase === 1) {
             this.miniSkillState = 'bell_record'; this.miniSkillTimer = 2.5; this.miniSkillMax = 2.5;
-            this.miniPoints = [{ x: player.x, y: player.y }]; this._miniTimer = 9;
+            this.miniPoints = [{ x: player.x, y: player.y }]; this._miniTimer = this._mcd(9);
             game.floatingText?.spawn?.(this.x, this.y - 58, '迟到的回声', '#bd73ff', 16, true);
         } else if (phase === 2) {
-            this.miniSkillState = 'bell_silence'; this.miniSkillTimer = 4; this.miniSkillMax = 4; this._miniTimer = 12;
+            this.miniSkillState = 'bell_silence'; this.miniSkillTimer = 4; this.miniSkillMax = 4; this._miniTimer = this._mcd(12);
             game.floatingText?.spawn?.(this.x, this.y - 58, '静默钟罩', '#f5e6a8', 16, true);
         } else {
             this.miniSkillState = 'bell_counter'; this.miniSkillTimer = 2; this.miniSkillMax = 2;
             this.bellAbsorbHp = 300; this.bellAbsorbed = 0; this.bellCounterWaves = 0;
-            this._miniTimer = 15;
+            this._miniTimer = this._mcd(15);
             game.floatingText?.spawn?.(this.x, this.y - 58, '吞音反震：停火或破钟', '#fff0a6', 16, true);
         }
         this._miniSkillCount++;
     }
 
-    /** 深海鱿鱼（史诗）：缠绕 / 深水炸弹 / 分裂水刺；放完一轮技能（累计3个）后自毁消失。 */
+    /** 深海鱿鱼（史诗）：缠绕 / 深水炸弹 / 分裂水刺 / 墨烟遁；仅水柱召唤的一次性个体放完一轮后自毁。 */
     private _miniBossSquid(dt: number, player: any, game: any): void {
         this._miniCd1 -= dt; this._miniCd2 -= dt; this._miniTimer -= dt;
         if (!player.alive) return;
         // 技能2 深水炸弹：水弹射向主角，命中 20 伤害；反弹 1 次，第二次撞边直接爆炸
         if (this._miniCd2 <= 0) {
-            this._miniCd2 = 4;
+            this._miniCd2 = this._mcd(4);
             this._miniSkillCount++;
             this._squidBombTarget = [player.x, player.y];
         }
         // 技能3 分裂水刺：向前 3 发 10 伤害
         if (this._miniTimer <= 0) {
-            this._miniTimer = 5;
+            this._miniTimer = this._mcd(5);
             this._miniSkillCount++;
             this._squidSpikeTarget = [player.x, player.y];
         }
         // 技能1 缠绕：贴脸触发，控制主角 2 秒
         if (this._miniCd1 <= 0 &&
             Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 20) {
-            this._miniCd1 = 8;
+            this._miniCd1 = this._mcd(8);
             this._miniSkillCount++;
             this._squidGrabTarget = [player.x, player.y];
             player.applyBuff?.('squid_grab', 2, { noMove: true });
             game.particles?.enemySignature?.(this.type, 'skill3', player.x, player.y);
             game.floatingText?.spawn?.(player.x, player.y - 50, '缠绕！', '#33ccff', 18, true);
         }
-        // 放完一轮技能后自毁消失（消耗水柱召唤的一次性单位，不长期占场）
-        if (this._miniSkillCount >= 3) {
+        // 技能4 墨烟遁（敌人技能优化方案）：血量首次<50% 释放减速烟幕后向后瞬移拉开距离。
+        if (!this._inkUsed && this.hp / this.maxHp <= 0.5) {
+            this._inkUsed = true;
+            const ix = this.x, iy = this.y;
+            game.spawnWarnCircle?.(ix, iy, 120, 0.5, '#3d6bd8', () => {
+                const p = (game as any).player;
+                if (p?.alive && Vec.dist(ix, iy, p.x, p.y) <= 120 + (p.radius ?? 16)) {
+                    p.applyBuff?.('squid_ink', 2, { speed: 0.6 });
+                    game.floatingText?.spawn?.(p.x, p.y - 46, '墨烟缠身！', '#5b8cff', 15, true);
+                }
+            });
+            const [bx, by] = Vec.normalize(this.x - player.x, this.y - player.y);
+            this.x = clamp(this.x + bx * 260, this.radius, CANVAS_W - this.radius);
+            this.y = clamp(this.y + by * 260, this.radius, PLAYFIELD_BOTTOM - this.radius);
+            game.particles?.enemyBurst?.(ix, iy, 'water', 46);
+            game.floatingText?.spawn?.(this.x, this.y - 40, '墨烟遁！', '#33aaff', 15, true);
+        }
+        // 自毁只保留给深海恐惧水柱召唤的一次性个体（_oneShot 由 GameManager.abyssSummonSquid
+        // 生成时标记）；正式波次/测试房手动生成的鱿鱼按技能循环正常作战。
+        if (this._oneShot && this._miniSkillCount >= 3) {
             this._miniSkillCount = 0;
             game.particles?.enemyBurst?.(this.x, this.y, 'water', 60);
             game.floatingText?.spawn?.(this.x, this.y - 40, '技能释放完毕', '#33ccff', 14, true);
-            game.audio?.playSfx?.('explode', 0.7);
+            game.audio?.playSfx('explode', 0.7);
             this._die(player, game);
         }
     }
@@ -1912,7 +2279,7 @@ export class EnemyBase {
         }
         // 技能2 高速碰撞：加速 20% 向主角冲击，命中 10 伤害
         if (this._miniCd1 <= 0 && player.alive) {
-            this._miniCd1 = 6;
+            this._miniCd1 = this._mcd(6);
             const a = Math.atan2(player.y - this.y, player.x - this.x);
             this._chargeVx = Math.cos(a) * this.speed * 1.2;
             this._chargeVy = Math.sin(a) * this.speed * 1.2;
@@ -1930,13 +2297,13 @@ export class EnemyBase {
         if (!player.alive) return;
         // 技能2 发射尖刺：可破盾并造成 20 伤害
         if (this._miniCd1 <= 0) {
-            this._miniCd1 = 4.5;
+            this._miniCd1 = this._mcd(4.5);
             this._shrimpSpikeTarget = [player.x, player.y];
         }
         // 技能4 甩击：近身触发，30 伤害 + 主角眩晕 1.5 秒
         if (this._miniCd2 <= 0 &&
             Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 16) {
-            this._miniCd2 = 8;
+            this._miniCd2 = this._mcd(8);
             const angle = Math.atan2(player.y - this.y, player.x - this.x);
             game.particles?.meleeSlash?.(this.x, this.y, angle, this.glowColor, this.meleeRange + 10, 1.4, this.type);
             player.takeDamage(this.damage * this.buffDmgMult * 0.67, game, { impact: { source: this.hitSource, angle: Math.atan2(player.y - this.y, player.x - this.x) } }); // 30/45
@@ -1946,9 +2313,9 @@ export class EnemyBase {
         }
     }
 
-    /** 毒刺鬼水母（普通）：隐身循环 / 毒刺 DoT。 */
+    /** 毒刺鬼水母（普通）：隐身循环（隐身期移速+40%逼近）/ 毒刺 DoT / 麻痹触须。 */
     private _miniBossJelly(dt: number, player: any, game: any): void {
-        this._miniTimer -= dt; this._miniCd1 -= dt;
+        this._miniTimer -= dt; this._miniCd1 -= dt; this._miniCd2 -= dt;
         // 技能1 隐身 3 秒并免疫伤害（简化：全免——敌弹无来源过滤做不了只免远程）；
         // 隐身技能 CD 10 秒（现形 10 秒后才可再次隐身，2026-08-26 玩家调整）
         if (this._miniTimer <= 0) {
@@ -1962,30 +2329,81 @@ export class EnemyBase {
         }
         // 技能2 毒刺：命中挂 5 秒 DoT（每秒 3 伤害，可叠加）
         if (this._miniCd1 <= 0 && player.alive && !this.invisible) {
-            this._miniCd1 = 5;
+            this._miniCd1 = this._mcd(5);
             this._jellyVenomTarget = [player.x, player.y];
+        }
+        // 技能3 麻痹触须（敌人技能优化方案）：贴身缠绕 0.8 秒——隐身逼近后的兑现手段。
+        if (this._miniCd2 <= 0 && player.alive && !this.invisible &&
+            Vec.dist(this.x, this.y, player.x, player.y) < this.radius + (player.radius ?? 16) + 24) {
+            this._miniCd2 = this._mcd(9);
+            player.applyBuff?.('jelly_grab', 0.8, { noMove: true });
+            this._miniSkillOrigin('skill3', player.x, player.y, game);
+            game.floatingText?.spawn?.(player.x, player.y - 46, '麻痹触须！', '#cc88ff', 15, true);
         }
     }
 
-    /** 攻击性无人机（普通）：声波破盾 / 锁定光束 DoT。 */
+    /** 攻击性无人机（普通）：声波破盾 / 锁定光束 DoT / 过载机动（三段侧闪射击）。 */
     private _miniBossDroneA(dt: number, player: any, game: any): void {
-        this._miniCd1 -= dt; this._miniCd2 -= dt;
+        this._miniCd1 -= dt; this._miniCd2 -= dt; this._miniTimer -= dt;
         if (!player.alive) return;
+        // 技能3 过载机动（敌人技能优化方案）：距玩家较远时三段侧闪（复用击退通道做
+        // 平滑位移），每段后补一发声波弹——从站桩射手变成走位射手。
+        if (this.miniSkillState === 'drone_dash') {
+            this._dashStepT -= dt;
+            if (this._dashStepT <= 0 && this._dashSteps > 0) {
+                this._dashStepT = 0.12; this._dashSteps--;
+                const side = this._dashSteps % 2 === 0 ? 1 : -1;
+                const a = Math.atan2(this.y - player.y, this.x - player.x) + side * (105 * Math.PI / 180);
+                this.knockbackX = Math.cos(a) * 900;
+                this.knockbackY = Math.sin(a) * 900;
+                const fa = Math.atan2(player.y - this.y, player.x - this.x);
+                game.enemyBullets?.push({ hitSource: this.hitSource,
+                    x: this.x, y: this.y, vx: Math.cos(fa) * 300, vy: Math.sin(fa) * 300,
+                    damage: this.damage * 0.4, radius: 8, color: '#ff8888',
+                    life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                    pierceShield: true, enemyFx: 'sonic',
+                });
+                game.particles?.weaponFlash?.(this.x, this.y, Math.cos(fa), Math.sin(fa), 'charged');
+            }
+            if (this._dashSteps <= 0 && this._dashStepT <= 0) this.miniSkillState = '';
+            return;
+        }
+        if (this._miniTimer <= 0 && Vec.dist(this.x, this.y, player.x, player.y) > 200) {
+            this._miniTimer = this._mcd(7);
+            this.miniSkillState = 'drone_dash';
+            this._dashSteps = 3; this._dashStepT = 0;
+            game.floatingText?.spawn?.(this.x, this.y - 40, '过载机动！', '#ff8888', 14, true);
+            return;
+        }
         // 技能1 声波攻击：让主角护盾失效（破盾）+ 伤害
         if (this._miniCd1 <= 0) {
-            this._miniCd1 = 3.5;
+            this._miniCd1 = this._mcd(3.5);
             this._droneSonicTarget = [player.x, player.y];
         }
         // 技能2 高能光束：锁定弹，命中挂 3 秒 DoT（每秒 4 伤害）
         if (this._miniCd2 <= 0) {
-            this._miniCd2 = 6;
+            this._miniCd2 = this._mcd(6);
             this._droneBeamTarget = [player.x, player.y];
         }
     }
 
-    /** 支援型无人机（史诗）：治疗 / 能量盾 / 首次血量20%召唤3个攻击性无人机。 */
+    /** 支援型无人机（史诗）：治疗 / 能量盾 / EMP脉冲 / 首次血量20%召唤3个攻击性无人机。 */
     private _miniBossDroneS(dt: number, player: any, game: any): void {
-        this._miniCd1 -= dt; this._miniCd2 -= dt;
+        this._miniCd1 -= dt; this._miniCd2 -= dt; this._miniTimer -= dt;
+        // 技能4 EMP脉冲（敌人技能优化方案）：清除自身全部负面状态（反制净化流），
+        // 并沉默附近玩家 1.2 秒——支援型先保住自己才能持续奶。
+        if (this._miniTimer <= 0) {
+            this._miniTimer = this._mcd(12);
+            this.dots.length = 0; this.slowMult = 1; this._slowTimer = 0; this.frozen = 0;
+            game.particles?.hit?.(this.x, this.y, '#ffd24d');
+            this._miniSkillOrigin('skill2', player.x, player.y, game);
+            if (player.alive && Vec.dist(this.x, this.y, player.x, player.y) <= 165 + (player.radius ?? 16)) {
+                player.applyBuff?.('drone_emp', 1.2, { silence: true });
+                game.floatingText?.spawn?.(player.x, player.y - 46, 'EMP沉默！', '#ffd24d', 15, true);
+            } else {
+                game.floatingText?.spawn?.(this.x, this.y - 44, 'EMP脉冲', '#ffd24d', 14, true);
+            }
+        }
         // 技能3（2026-08-26 修复）：原为每10秒召唤5个攻击无人机，
         // 改为血量首次掉到剩余20%时一次性召唤3个攻击性无人机；
         // 召唤仍设置 _droneSupportSummonTarget 以驱动帧动画系统的 skill3 通讯动作。
@@ -2001,7 +2419,7 @@ export class EnemyBase {
         }
         // 技能1 对附近随机 5~10 个怪物治疗 40~60 血
         if (this._miniCd1 <= 0) {
-            this._miniCd1 = 6;
+            this._miniCd1 = this._mcd(6);
             const targets = this._nearbyAllies(game, 300);
             const n = Math.min(targets.length, Rng.int(5, 10));
             this._droneSupportHealTarget = n > 0 ? [targets[0].x, targets[0].y] : [player.x, player.y];
@@ -2015,7 +2433,7 @@ export class EnemyBase {
         }
         // 技能2 对附近随机 5~10 个怪物挂 150 能量盾
         if (this._miniCd2 <= 0) {
-            this._miniCd2 = 8;
+            this._miniCd2 = this._mcd(8);
             const targets = this._nearbyAllies(game, 300);
             const n = Math.min(targets.length, Rng.int(5, 10));
             this._droneSupportShieldTarget = n > 0 ? [targets[0].x, targets[0].y] : [player.x, player.y];

@@ -47,6 +47,7 @@
     "assets/scripts/data/GameConfig.ts",
     "assets/scripts/systems/AchievementAdmin.ts",
     "assets/scripts/entities/BossController.ts",
+    "assets/scripts/entities/BossChapterSkills.ts",
     "assets/scripts/entities/BulletController.ts",
     "assets/scripts/entities/EnemyBase.ts",
     "assets/scripts/entities/PlayerController.ts",

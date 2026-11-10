@@ -239,7 +239,7 @@ export class GameManager extends Component {
     private _deathZones:   { x: number; y: number; r: number; timer: number; dps: number }[] = [];
     private _iceZones:     { x: number; y: number; r: number; timer: number; duration?: number; field?: boolean }[] = [];
     /** 敌方酸囊：0.7秒抛物预告 → 3秒毒斑；与玩家技能地面区分开维护。 */
-    private _enemyHazards: { kind: 'acid' | 'ember' | 'trap' | 'priest_fire'; fromX: number; fromY: number; x: number; y: number; r: number; phase: 'telegraph' | 'pool'; timer: number; telegraphMax: number; tickCd: number }[] = [];
+    private _enemyHazards: { kind: 'acid' | 'ember' | 'trap' | 'priest_fire' | 'warn_circle' | 'warn_line'; fromX: number; fromY: number; x: number; y: number; r: number; phase: 'telegraph' | 'pool'; timer: number; telegraphMax: number; tickCd: number; angle?: number; length?: number; color?: string; onDone?: () => void }[] = [];
     /** 三相祭司晶墙、可破坏导体与磁轨屠夫回转锯都使用独立判定对象，避免只画假特效。 */
     private _priestWalls: { x: number; y: number; vx: number; vy: number; r: number; halfH: number; warn: number; distance: number; hit: boolean }[] = [];
     private _triuneNetworks: any[] = [];
@@ -1756,6 +1756,27 @@ export class GameManager extends Component {
         this._audio.playSfx('skill_e', 0.32);
     }
 
+    /**
+     * 通用圈预警（敌人技能优化方案）：delay 秒渐亮后执行 onDone 并立即消失，
+     * 不进入池化阶段；不传回调即为纯视觉预警圈（如石像鬼震地落点）。
+     */
+    spawnWarnCircle(x: number, y: number, r: number, delay: number, color = '#ff5544', onDone?: () => void): void {
+        this._enemyHazards.push({
+            kind: 'warn_circle', fromX: x, fromY: y, x, y, r,
+            phase: 'telegraph', timer: delay, telegraphMax: delay, tickCd: 0,
+            color, onDone,
+        });
+    }
+
+    /** 通用线预警：从 (x,y) 沿 angle 方向长 length 的射线，delay 秒后执行 onDone 并消失（磁轨狙击等直线弹）。 */
+    spawnWarnLine(x: number, y: number, angle: number, length: number, delay: number, color = '#ff9b46', onDone?: () => void): void {
+        this._enemyHazards.push({
+            kind: 'warn_line', fromX: x, fromY: y, x, y, r: 0,
+            phase: 'telegraph', timer: delay, telegraphMax: delay, tickCd: 0,
+            angle, length, color, onDone,
+        });
+    }
+
     /** 铆链猎犬：两枚六角捕兽夹先预告0.8秒，再封锁路线5秒。 */
     spawnHoundTraps(x1: number, y1: number, x2: number, y2: number): void {
         for (const [x, y] of [[x1, y1], [x2, y2]]) {
@@ -2272,6 +2293,14 @@ export class GameManager extends Component {
         for (let i = this._enemyHazards.length - 1; i >= 0; i--) {
             const z = this._enemyHazards[i];
             z.timer -= dt;
+            // 通用预警（warn_circle/warn_line）：到期先移除再执行回调（回调内允许再入队），不进池化阶段。
+            if (z.kind === 'warn_circle' || z.kind === 'warn_line') {
+                if (z.timer <= 0) {
+                    this._enemyHazards.splice(i, 1);
+                    z.onDone?.();
+                }
+                continue;
+            }
             if (z.phase === 'telegraph') {
                 if (z.timer > 0) continue;
                 z.phase = 'pool'; z.timer = z.kind === 'acid' ? 3 : z.kind === 'ember' ? 1.5 : z.kind === 'priest_fire' ? 0.12 : 5; z.tickCd = 0;
@@ -2437,9 +2466,11 @@ export class GameManager extends Component {
             const [x, y] = PILLAR_SPOTS[emptySpot];
             spots.push({ x, y });
         }
-        // 每道被消耗的水柱位置生成一只深海鱿鱼
+        // 每道被消耗的水柱位置生成一只深海鱿鱼（一次性单位：放完一轮技能自毁，
+        // 正式波次里的鱿鱼来自 WaveManager，不带该标记、按技能循环正常作战）
         for (const s of spots) {
-            this.spawnEnemy('squid', s.x, s.y);
+            const squid = this.spawnEnemy('squid', s.x, s.y);
+            squid._oneShot = true;
             this._particles.coldImpact(s.x, s.y);
         }
         this._floatText.spawn(boss.x, boss.y - 90, `深海鱿鱼现身 ×${spots.length}！`, '#33aaff', 20, true);
@@ -2671,6 +2702,8 @@ export class GameManager extends Component {
                 this._floatText.spawn(CANVAS_W / 2, 200, '混沌棱镜·彩色卡现身！', '#ff8ad8', 18, true);
             }
         }
+        // 方案D 特权分发：波间开页（生命涌泉Lv2 涌泉活水等）
+        this._augMgr.dispatchShopOpen?.(this._player, this);
         this._augUI.show(options, this._buildAugShopCtx(() => {
             // v4：W8 清空后开一次关中商店（顺序：三选一 → 商店 → 开下一波）
             if (this._waveMgr.templateWave() === 8) {
@@ -3413,6 +3446,40 @@ export class GameManager extends Component {
                 g.circle(zx, zy, 3 + pulse * 2); g.fill();
                 this._placeEnemyArt('fx_enemy_web', zx, zy, z.r * 2.25, z.r * 2.25,
                     this._visualTime * 9, z.phase === 'telegraph' ? 82 + progress * 68 : 205);
+                continue;
+            }
+            // 通用预警（敌人技能优化方案）：圆圈/射线随剩余时间渐亮，到期即消失。
+            if (z.kind === 'warn_circle' || z.kind === 'warn_line') {
+                const progress = Math.min(1, Math.max(0, 1 - z.timer / Math.max(0.001, z.telegraphMax)));
+                const pulse = 0.5 + 0.5 * Math.sin(this._visualTime * 9);
+                const base = Color.fromHEX(new Color(), z.color || '#ff5544');
+                if (z.kind === 'warn_circle') {
+                    g.fillColor = new Color(base.r, base.g, base.b, Math.floor(16 + progress * 36));
+                    g.circle(zx, zy, z.r); g.fill();
+                    g.strokeColor = new Color(base.r, base.g, base.b, 110 + Math.floor(progress * 145));
+                    g.lineWidth = 2 + progress * 2;
+                    g.circle(zx, zy, z.r); g.stroke();
+                    g.fillColor = new Color(base.r, base.g, base.b, 150 + Math.floor(pulse * 105));
+                    g.circle(zx, zy, 3 + progress * 4); g.fill();
+                } else {
+                    const angle = z.angle ?? 0;
+                    const len = z.length ?? 600;
+                    const [ex, ey] = this._toLocal(z.x + Math.cos(angle) * len, z.y + Math.sin(angle) * len);
+                    g.strokeColor = new Color(base.r, base.g, base.b, 110 + Math.floor(progress * 145));
+                    g.lineWidth = 5 + progress * 5;
+                    g.moveTo(zx, zy); g.lineTo(ex, ey); g.stroke();
+                    // 沿线推进的垂直刻度：剩余时间越少刻度越密，读作"即将发射"。
+                    g.lineWidth = 2;
+                    const perp = angle + Math.PI / 2;
+                    for (let s = 1; s <= 4; s++) {
+                        const t = s / 5;
+                        const cxp = zx + (ex - zx) * t;
+                        const cyp = zy + (ey - zy) * t;
+                        g.moveTo(cxp + Math.cos(perp) * 13, cyp + Math.sin(perp) * 13);
+                        g.lineTo(cxp - Math.cos(perp) * 13, cyp - Math.sin(perp) * 13);
+                    }
+                    g.stroke();
+                }
                 continue;
             }
             const acid = z.kind === 'acid';
@@ -5692,8 +5759,11 @@ export class GameManager extends Component {
     private _settleGoldCoins(): number {
         if (this._goldSettled) return this._coinsEarned;
         this._goldSettled = true;
+        // 方案D 点金手Lv3「黄金之手」：局末兑换比改善为 X:1
+        const rate = (this._player as any)?.stats?.perkSettleRate > 0
+            ? (this._player as any).stats.perkSettleRate : GameConfig.get('settleGoldRate');
         this._coinsEarned = settleGoldToCoreCoins(
-            this._economy.gold, GameConfig.get('settleGoldRate'), GameConfig.get('settleMinCoin'));
+            this._economy.gold, rate, GameConfig.get('settleMinCoin'));
         if (this._coinsEarned > 0) SaveSystem.addCoreCoins(this._coinsEarned);
         return this._coinsEarned;
     }

@@ -7,12 +7,12 @@ const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 // 现有 ui_icon_* 资源集合（新增图标必须先落盘，artmanifest 测试会校验文件存在）
 const KNOWN_ICONS = new Set(require('node:fs').readdirSync(require('node:path').resolve(__dirname, '../../assets/resources/art')).filter(name => /^ui_icon_.+\.png$/.test(name)).map(name => name.slice(8, -4)));
 
-test('海克斯总数为34个，编号1~34且id唯一', () => {
-    assert.equal(AUGMENT_DB.length, 34);
+test('海克斯总数为38个，编号1~38且id唯一（2026-11-09 元素扩展+4）', () => {
+    assert.equal(AUGMENT_DB.length, 38);
     const ids = AUGMENT_DB.map(a => a.id);
-    assert.equal(new Set(ids).size, 34, 'id 必须唯一');
+    assert.equal(new Set(ids).size, 38, 'id 必须唯一');
     const indexes = AUGMENT_DB.map(a => a.index).sort((a, b) => a - b);
-    assert.deepEqual(indexes, Array.from({ length: 34 }, (_, i) => i + 1));
+    assert.deepEqual(indexes, Array.from({ length: 38 }, (_, i) => i + 1));
 });
 
 test('分档定价：Lv.1银15-50 / Lv.2金100-250 / Lv.3彩500-1000，单档海克斯用自身稀有度区间', () => {
@@ -23,6 +23,8 @@ test('分档定价：Lv.1银15-50 / Lv.2金100-250 / Lv.3彩500-1000，单档海
         // （银 10-18 / 金 40-60 / 彩 150-220），不走文档区间
         if (a.category === '功能') continue;
         assert.ok(Array.isArray(a.prices) && a.prices.length >= 1, `${a.id} 缺少 prices`);
+        // 2026-11-09 用户调整：纯给钱卡（战争红利）免费发放，价格全 0 不走区间
+        if (a.prices.every(v => v === 0)) continue;
         if (a.prices.length === 1) {
             // 单档海克斯：进阶蓝图（彩500）/ 应急壁垒（银35）
             assert.ok(inBand(a.prices[0], a.rarity), `${a.id} 单档价 ${a.prices[0]} 超出 ${a.rarity} 区间`);
@@ -103,6 +105,8 @@ test('数值抽查：hex17 战争红利/hex16 点金手按 v4 金币预算重标
     assert.deepEqual(byIndex(4).values, [1, 2, 5]);           // 海克斯4 范围伤害个数
     // v4：战争红利原 500/1000/2000（花750回2000 净赚再造一局）压成应急取款档
     assert.deepEqual(byIndex(17).values, [80, 250, 900]);
+    // 2026-11-09 用户调整：纯给钱卡免费发放（应急取款不该先掏钱），发放数值不变
+    assert.deepEqual(byIndex(17).prices, [0, 0, 0], '战争红利应免费');
     // v4：点金手上限 ×1.5 → ×1.0（买满需剩余产出>1040 才回本）
     assert.deepEqual(byIndex(16).values, [0.25, 0.5, 1.0]);
 });

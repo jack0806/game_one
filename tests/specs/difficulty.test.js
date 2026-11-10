@@ -36,7 +36,7 @@ test('地狱难度：怪物血/攻/甲×1.5 且移速与攻速不变；金币不
     assert.equal(e.hp, 120);
     assert.equal(e.damage, 12);   // 8 × 1.5
     assert.equal(e.goldValue, 2, '金币走独立难度系数，不再吃 statMult');
-    assert.equal(e.speed, 65, '移速不吃难度乘区');
+    assert.equal(e.speed, 82, '移速不吃难度乘区（2026-11-09 敌人提速：grunt 65→82）');
     assert.equal(e.attackSpeed, 1, '攻速节奏不吃难度乘区');
 });
 
@@ -83,7 +83,7 @@ test('Boss 数值吃难度乘区且移速不变；简单难度带技能削减标
     assert.equal(plain.bossSkillCut, 0);
 });
 
-test('简单难度：章节 Boss 整场不召唤不冲锋（3 项技能仅保留弹幕主技）', () => {
+test('简单难度：章节 Boss 技能轮转仅保留第1招，普攻不受削减（敌人技能优化方案）', () => {
     const spawned = [];
     const game = makeMockGame({
         _difficulty: byId('easy'),
@@ -91,27 +91,43 @@ test('简单难度：章节 Boss 整场不召唤不冲锋（3 项技能仅保留
     });
     const boss = makeBoss(game);
     const player = makePlayer({ x: 1000, y: 1000 });
+    assert.ok(boss.bossSkillCut > 0, '简单难度开启技能削减');
+    // 通用召唤/冲锋计时对 ch1~4 已由技能库接管，简单难度同样不触发
     boss._summonTimer = 0.01;
     boss._chargeCd = 0.01;
     boss.update(0.02, player, game);
     assert.equal(spawned.length, 0, '简单难度不召唤小怪');
     assert.equal(boss.isCharging, false, '简单难度不冲锋');
     assert.equal(boss.chargeWindup, 0);
-    // 弹幕主技保留：_skillTimer 到点仍进入前摇
-    boss._skillTimer = 0.01;
-    boss.update(0.02, player, game);
-    assert.ok(boss.skillWindup > 0, '弹幕主技仍正常蓄力');
+    // 技能轮转：削减后技能池只剩第1招，多轮驱动名称恒定
+    const fired = [];
+    game.floatingText = { spawn(_x, _y, text) { fired.push(text); } };
+    for (let i = 0; i < 4; i++) {
+        boss.docSkillTimer = 0;
+        boss._updateChapterBossSkills(0.01, player, game);
+    }
+    assert.ok(fired.length >= 3, `多轮驱动应释放多次技能（实际${fired.length}）`);
+    assert.ok(new Set(fired).size === 1, `简单难度只保留第1招（出现了 ${[...new Set(fired)]}）`);
+    // 普攻弹幕照常（ch1 三发毒球）
+    game.enemyBullets.length = 0;
+    boss.docBasicTimer = 0;
+    boss.docSkillTimer = 999;
+    boss._updateChapterBossSkills(0.01, player, game);
+    assert.equal(game.enemyBullets.length, 3, '普攻不受技能削减');
 
-    // 对照：普通难度召唤正常触发
-    const spawned2 = [];
+    // 对照：普通难度技能轮转在第1、2招之间轮换（不再只有第1招）
+    const fired2 = [];
     const game2 = makeMockGame({
         _difficulty: byId('normal'),
-        spawnEnemy(type) { spawned2.push(type); },
+        floatingText: { spawn(_x, _y, text) { fired2.push(text); } },
     });
     const boss2 = makeBoss(game2);
-    boss2._summonTimer = 0.01;
-    boss2.update(0.02, player, game2);
-    assert.equal(spawned2.length, 1, '普通难度按阶段召唤 1 只 grunt');
+    assert.equal(boss2.bossSkillCut, 0, '普通难度技能完整');
+    for (let i = 0; i < 4; i++) {
+        boss2.docSkillTimer = 0;
+        boss2._updateChapterBossSkills(0.01, player, game2);
+    }
+    assert.ok(new Set(fired2).size >= 2, `普通难度 P1 应在前2招间轮换（出现了 ${[...new Set(fired2)]}）`);
 });
 
 test('简单难度：灭世机神仅保留天罚网格激光，导弹/追踪弹与最终形态关闭', () => {

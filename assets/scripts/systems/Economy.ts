@@ -83,9 +83,19 @@ export class Economy {
         return give;
     }
 
+    /** 方案D 点金手Lv2「复利」标志（hex16 onLevel 维护）。 */
+    compoundPerk = false;
+    /** 方案D 点金手Lv3「黄金之手」标志：精英击杀额外金币（EnemyBase._die 读取）。 */
+    eliteGoldBonus = false;
+
     addGold(amount: number): void  {
         // 后台全局金币产出系数：所有"获得"统一吃这一层（退款/卖出走 refund 不吃）
-        const gain = Math.round(amount * this.gainMult * GameConfig.get('goldGainMult'));
+        let mult = this.gainMult * GameConfig.get('goldGainMult');
+        // 方案D 点金手Lv2「复利」：每持有 100 金币，拾取额外 +1%（按加成前存款计，上限后台可调）
+        if (this.compoundPerk) {
+            mult += Math.min(GameConfig.get('perkCompoundMax'), Math.floor(this.gold / 100) * 0.01);
+        }
+        const gain = Math.round(amount * mult);
         if (gain <= 0) return;
         this.gold += gain;
         if (gain > 0) this.earnedThisRun += gain;
@@ -168,6 +178,7 @@ export class Economy {
 
     reset(): void {
         this.gold = 0; this.parts = 0; this.earnedThisRun = 0; this.gainMult = 1;
+        this.compoundPerk = false; this.eliteGoldBonus = false;
         this.killGoldCap = Infinity; this._killGoldEarned = 0; this._drops = [];
     }
 

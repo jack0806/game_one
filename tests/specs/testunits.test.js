@@ -472,6 +472,7 @@ test('闪弧寄生体只连接最近两名非同类友军并提供15%移速', ()
     assert.deepEqual(arc.arcLinks, [near, mid], '按距离取最近两名且排除同类');
     assert.ok(near.arcBoostTimer > 0 && mid.arcBoostTimer > 0);
     const before = near.x;
+    near.flankBias = 0; // 敌人技能优化方案：本用例聚焦弧光增益，关闭侧移包抄的行进偏角
     near.update(0.1, makePlayer({ x: 500, y: 100 }), game);
     assert.ok(Math.abs(near.x - before - near.speed * 1.15 * 0.1) < 1e-8, '连接友军移速提升15%');
 });
@@ -586,17 +587,19 @@ test('深水炸弹反弹1次后撞边爆炸,大水刺反弹2次', () => {
     assert.ok(spikes.every(b => b.enemyFx === 'water_spike'), '深海恐惧水刺应使用独立水晶轮廓');
 });
 
-test('深海鱿鱼放完一轮技能(累计3个)后自毁消失', () => {
+test('深海鱿鱼(一次性个体:深海恐惧水柱召唤)放完一轮技能(累计3个)后自毁消失', () => {
     const game = makeMockGame();
     const squid = new EnemyBase(); squid.init('squid', 1, game);
+    squid._oneShot = true; // 2026-11-09 敌人技能优化方案：自毁只保留给水柱召唤物，正式波次鱿鱼循环作战
     // 初始不触发技能：存活
     const player = makePlayer({ x: squid.x + 200, y: squid.y });
     squid._miniCd1 = 99; squid._miniCd2 = 99; squid._miniTimer = 99;
     squid.update(0.1, player, game);
     assert.equal(squid.alive, true, '技能未释放完不应消失');
 
-    // 炸弹+水刺+贴脸缠绕 一帧内全触发 → 累计3个 → 自毁
+    // 炸弹+水刺+贴脸缠绕 一帧内全触发 → 累计3个 → 自毁（一次性个体）
     const squid2 = new EnemyBase(); squid2.init('squid', 1, game);
+    squid2._oneShot = true;
     squid2._miniCd1 = 0; squid2._miniCd2 = 0; squid2._miniTimer = 0;
     const closePlayer = makePlayer({ x: squid2.x + 30, y: squid2.y });
     squid2.update(0.1, closePlayer, game);

@@ -347,6 +347,10 @@ export class PlayerController extends Component {
         const armorTotal = this.stats.armor + buffArmor;
         const mitigation = armorTotal / (armorTotal + 100);
         amount = Math.max(1, amount * (1 - mitigation));
+        // 方案D 生命涌泉Lv3「泉眼」：生命低于阈值时受伤降低（先于其它减伤结算）
+        if (this.stats.perkLowHpReduce && this.hp / this.stats.maxHp < GameConfig.get('perkLowHpRatio')) {
+            amount = Math.max(1, amount * (1 - this.stats.perkLowHpReduce));
+        }
         // 雷克E 血之护盾：减伤期间被减免的部分计入储备，6秒后转为等量护盾。
         // （吸血/无敌等其它减伤通道不走这里，只有显式 dmgReduction 的buff参与）
         for (const b of this._buffs) {
@@ -810,7 +814,10 @@ export class PlayerController extends Component {
         }
         // v3「零扳机」：接下来 N 发必暴（触发一发扣一层）
         const forcedCrit = (this.stats.dropCritShots ?? 0) > 0;
-        const isCrit = forcedCrit || Rng.chance(this.stats.critRate || 0);
+        // 方案D 特权加成：精准仪轨Lv2「弱点习惯」连击焦点 + 水元素Lv3「冰点」对减速目标
+        const perkCrit = (this.stats.perkFocusCrit ?? 0)
+            + (this.stats.perkFrostCrit && (enemy.slowMult ?? 1) < 1 ? GameConfig.get('perkFrostCrit') : 0);
+        const isCrit = forcedCrit || Rng.chance((this.stats.critRate || 0) + perkCrit);
         if (forcedCrit) this.stats.dropCritShots -= 1;
         if (isCrit) {
             dmg *= 1 + (this.stats.critDmg || 0.5);
@@ -957,7 +964,8 @@ export class PlayerController extends Component {
         // v3「零扳机」：必暴层数在远程路径同样逐发消耗
         const forcedCrit = (this.stats.dropCritShots ?? 0) > 0;
         if (forcedCrit) this.stats.dropCritShots -= 1;
-        const isCrit = forcedCrit || Rng.chance(this.stats.critRate || 0);
+        // 方案D：精准仪轨Lv2 焦点暴击加成（冰点对减速目标的转暴在子弹命中侧处理）
+        const isCrit = forcedCrit || Rng.chance((this.stats.critRate || 0) + (this.stats.perkFocusCrit ?? 0));
 
         const spawnBullet = (dx: number, dy: number, dmgMult = 1, opts: { homing?: boolean; forceCrit?: boolean } = {}) => {
             const [muzzleX, muzzleY] = this.getMuzzlePosition();
@@ -1147,6 +1155,11 @@ export class PlayerController extends Component {
         this._eCd = 0;
         // 大招R已是冷却制，"所有技能CD归零"应把大招也立即充满可用。
         this._rCharge = 1;
+    }
+
+    /** 方案D 精准仪轨Lv3「致命节奏」：暴击缩短 Q 冷却（秒）。 */
+    reduceQCd(sec: number): void {
+        this._qCd = Math.max(0, this._qCd - sec);
     }
 
     /** v3「三相符文」：当前 Q/E 冷却与大招充能按比例缩减（pct=0.2 即 -20%）。 */

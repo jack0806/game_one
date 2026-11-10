@@ -9,6 +9,7 @@ import { mapDef, mapOf } from '../data/LevelIndex';
 import { resetLocomotion } from '../core/Locomotion';
 import { resetDirectionalFacing } from '../core/DirectionalFacing';
 import { contactDistance } from '../core/CombatCollision';
+import { CHAPTER_BOSS_SKILLS, chapterBossBasicAttack, chapterBossPassives } from './BossChapterSkills';
 
 export class BossController extends EnemyBase {
     override get hitSource(): string {
@@ -100,6 +101,18 @@ export class BossController extends EnemyBase {
     private _jokerSprintCd = 5;
     private _jokerTrickCd = 3;
     private _jokerSlapCd = 4;
+    // ── ch1~ch4 章节Boss技能轮转状态（敌人技能优化方案，见 BossChapterSkills.ts）──
+    /** 阶段三终技是否已强制释放过一次。 */
+    private _chapterFinalUsed = false;
+    /** 蛮牛冲撞收势待发碎石环标记。 */
+    _rockBurstPending = false;
+    /** 被动状态：食腐计时 / 炽热装甲档位 / 终焉洪流剩余排数与间隔。 */
+    _scavCd = 12;
+    _heatTier = 0;
+    _floodLeft = 0;
+    _floodCd = 0;
+    _genePatterns?: number[];
+    _geneCursor = 0;
     /**
      * 自身机制施加的冰冻（如维斯帕毒爆取消奖励）：绕过大Boss负面免疫。
      * 与 frozen 同样定身不出手，但不会被每帧的免疫清空吞掉。
@@ -132,6 +145,12 @@ export class BossController extends EnemyBase {
         this.mechanicFrozen = 0;
         this.visualInvaderSkillT = 0; this.visualInvaderSkillIndex = 0;
         this.bossKind = undefined;   // initBossKind 会在 init 之后再写入
+        // ch1~ch4 章节Boss技能轮转状态复位（新局不沿用旧局的被动/终技标记）
+        this._chapterFinalUsed = false; this._rockBurstPending = false;
+        this._scavCd = 12; this._heatTier = 0;
+        this._floodLeft = 0; this._floodCd = 0;
+        this._genePatterns = undefined; this._geneCursor = 0;
+        this.docSkillIndex = 0; this.docSkillTimer = 2.4; this.docBasicTimer = 1.8;
         // 开场释放节奏放缓（2026-08-26 玩家反馈"开始释放太快"）：初始冷却拉长，
         // 进场约6秒才有第一发追踪弹，网格激光/导弹依次排开；循环冷却保持原值
         this._invLaserCd = 8; this._invMissileCd = 14; this._invHomingCd = 6;
@@ -292,6 +311,7 @@ export class BossController extends EnemyBase {
         else if (this._isDocBoss()) this._updateDocBossSkills(dt, player, game);
         else if (this._usesInvaderSkills()) this._updateInvaderSkills(dt, player, game);
         else if (this.bossKind === 'joker') this._updateJokerSkills(dt, player, game);
+        else if (this._isChapterBoss()) this._updateChapterBossSkills(dt, player, game);
 
         // Boss技能先给出能量环前摇，再发射弹幕，避免子弹凭空出现。
         if (this.skillWindup > 0) {
@@ -321,7 +341,23 @@ export class BossController extends EnemyBase {
             if (this.y < this.radius || this.y > PLAYFIELD_BOTTOM - this.radius) this._chargeVy *= -1;
             this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
-            if (this._chargeTime <= 0) this.isCharging = false;
+            if (this._chargeTime <= 0) {
+                this.isCharging = false;
+                // ch1 蛮牛冲撞收势（敌人技能优化方案）：8向碎石环——冲锋"撞哪哪炸"。
+                if (this._rockBurstPending) {
+                    this._rockBurstPending = false;
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2 + Rng.float(0, 0.3);
+                        game.enemyBullets?.push({ hitSource: this.hitSource,
+                            x: this.x, y: this.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200,
+                            damage: this.damage * this.buffDmgMult * 0.4, radius: 9, color: '#c9a17a',
+                            life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true, enemyFx: 'gear',
+                        });
+                    }
+                    game.particles?.enemyBurst?.(this.x, this.y, 'metal', 50);
+                    game.screenShake?.shake?.(6, 0.2);
+                }
+            }
         } else if (this.attackWindup <= 0 || (this.bossKind === 'joker' && this.jokerSprintT > 0)) {
             // 普通追逐（对齐 hexblast-py：追逐速度要乘slowMult，之前完全没接线，
             // 导致减速类词条/技能对boss完全无效）
@@ -357,8 +393,10 @@ export class BossController extends EnemyBase {
             this.y = clamp(this.y, this.radius, PLAYFIELD_BOTTOM - this.radius);
         }
 
-        // 技能计时（正式章节 Boss 除第5章外；测试房 Boss/灭世机神由各自状态机调度）
-        if (!this.bossKind && !this._usesInvaderSkills() && !this._usesMechSkills()) {
+        // 技能计时（旧版通用弹幕/召唤/冲锋只服务无专属状态机的残留路径；
+        // ch1~ch4 已迁移到 _updateChapterBossSkills，测试房专属 Boss 由各自状态机调度）
+        if (!this.bossKind && !this._usesInvaderSkills() && !this._usesMechSkills()
+            && !this._isChapterBoss()) {
             this._skillTimer  -= dt;
             this._summonTimer -= dt;
             this._chargeCd    -= dt;
@@ -419,6 +457,62 @@ export class BossController extends EnemyBase {
 
     private _isDocBoss(): boolean {
         return this.bossKind === 'vespa' || this.bossKind === 'crucible_city' || this.bossKind === 'manyfold';
+    }
+
+    /** ch1~ch4 正式章节Boss（无 bossKind）：使用 BossChapterSkills 技能轮转调度。 */
+    private _isChapterBoss(): boolean {
+        return !this.bossKind && this.chapter >= 1 && this.chapter <= 4;
+    }
+
+    /** 章节Boss技能库触发通用冲锋（ch1 蛮牛冲撞等）。 */
+    triggerChapterCharge(player: any, game: any): void {
+        if (this.isCharging || this.chargeWindup > 0) return;
+        this._startCharge(player, game);
+    }
+
+    /**
+     * ch1~ch4 章节Boss技能轮转（敌人技能优化方案）：与文档Boss同构——
+     * 普攻固定节奏（保留原 _useSkill 弹型）+ 技能池随阶段扩容
+     * （P1 前2招 → P2 全4招 → P3 先强制终技再全池轮转），
+     * 简单难度 bossSkillCut 只保留第1招。技能实现见 BossChapterSkills.ts。
+     */
+    private _updateChapterBossSkills(dt: number, player: any, game: any): void {
+        if (!player?.alive) return;
+        chapterBossPassives(this, dt, player, game);
+        // 普攻节奏：对齐旧版随阶段加速（旧通用弹幕间隔 P1 4.2s → P3 2.6s，
+        // 新轮转里技能占了大头，普攻取 2.6/2.2/1.9 防止弹幕压力翻倍）。
+        this.docBasicTimer -= dt;
+        if (this.docBasicTimer <= 0) {
+            this.docBasicTimer = [2.6, 2.2, 1.9][Math.min(3, Math.max(1, this.phase)) - 1];
+            chapterBossBasicAttack(this.chapter, this, player, game);
+            game.particles?.enemySignature?.(this.hitSource, 'attack', this.x, this.y,
+                Math.atan2(player.y - this.y, player.x - this.x));
+            this.actionRecoil = 0.22;
+        }
+        this.docSkillTimer -= dt;
+        if (this.docSkillTimer > 0) return;
+        const skills = CHAPTER_BOSS_SKILLS[this.chapter];
+        if (!skills) return;
+        let pool: number[] = this.phase === 1 ? [0, 1] : [0, 1, 2, 3];
+        if (this.bossSkillCut) pool = [0];
+        let index: number;
+        if (!this.bossSkillCut && this.phase === 3 && !this._chapterFinalUsed) {
+            index = 3;
+            this._chapterFinalUsed = true;
+        } else {
+            const cursor = Math.max(0, pool.indexOf(this.docSkillIndex));
+            index = pool[cursor >= 0 ? cursor : 0];
+        }
+        this.docSkillIndex = pool[(pool.indexOf(index) + 1) % pool.length];
+        const skill = skills[index];
+        this.docSkillName = skill.name;
+        this.visualSkillT = 0.65;
+        game.floatingText?.spawn?.(this.x, this.y - 100, skill.name, this.glowColor, 18, true);
+        game.particles?.enemySignature?.(this.hitSource, 'skill1', this.x, this.y,
+            Math.atan2(player.y - this.y, player.x - this.x));
+        skill.exec(this, player, game);
+        this.actionRecoil = 0.30;
+        this.docSkillTimer = 7.8 * (this.phase === 3 ? 0.85 : 1);
     }
 
     /**

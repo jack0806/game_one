@@ -134,7 +134,7 @@ test('元素暴击(19):先锁定后发射,数量10-20/伤害15-20区间,每枚�
             `齐射数量应在 10-20,实际 ${spawned.length}`);
         for (const b of spawned) {
             assert.ok(b.damage >= 15 && b.damage <= 20, '单枚伤害 15-20 区间');
-            assert.ok(['water', 'fire', 'earth', 'wind'].includes(b.element), '四元素随机');
+            assert.ok(['water', 'fire', 'earth', 'wind', 'thunder', 'frost', 'light', 'shadow'].includes(b.element), '八元素随机');
             assert.equal(b.homing, true, '飞弹追踪');
             assert.ok(!b.charKey, '飞弹为元素色能量梭(粒子风弹体),不挂角色弹素材');
             assert.ok(enemies.includes(b._homingTarget), '先锁定目标再发射');
@@ -316,9 +316,10 @@ test('元素暴击解锁门槛:未集齐四元素时卡池不刷出且装备被�
     am.equip({ id: 'hex20' }, p, game);
     am.equip({ id: 'hex21' }, p, game);
     am.equip({ id: 'hex22' }, p, game);
-    assert.equal(am.elementSetComplete(), false, '还差水元素');
-    am.equip({ id: 'hex23' }, p, game);
-    assert.equal(am.elementSetComplete(), true, '四元素集齐');
+    assert.equal(am.elementSetComplete(), false, '还差第四种元素');
+    // 2026-11-09 改版：任意四种元素即可激活（雷替代水也计数）
+    am.equip({ id: 'hex35' }, p, game);
+    assert.equal(am.elementSetComplete(), true, '任意四种元素集齐');
     // 卡池验证须在装备前：单档海克斯购入后不会再刷出。
     // 2026-09-21 概率调整后彩色只极小概率出现（第20波≈4%，再乘卡池1/30），
     // 采样规模放大到 3000 轮避免随机漏采

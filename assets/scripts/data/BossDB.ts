@@ -157,8 +157,10 @@ export interface TestGruntDef {
  * 旧经济摆设值）；血/伤/速/甲仍逐字对应设计文档。测试房炮灰已转正进正式波次。
  */
 export const TEST_GRUNTS: TestGruntDef[] = [
+    // 2026-11-09 敌人技能优化方案：近战/自爆单位提速（玩家移速285~340，旧值追不上），
+    // 远程与施法单位保持设计文档表值。
     {
-        id: 'rust_biter', label: '锈齿扑兵', maxHp: 75, damage: 7, speed: 82,
+        id: 'rust_biter', label: '锈齿扑兵', maxHp: 75, damage: 7, speed: 92,
         armor: 0, attackInterval: 0.95, goldValue: 2, radius: 21,
         color: '#a83d2f', glow: '#ff4935', spriteKey: 'enemy_rust_biter',
         visualScale: 1.55, attackWindupMax: 0.28,
@@ -188,7 +190,7 @@ export const TEST_GRUNTS: TestGruntDef[] = [
         visualScale: 1.58, attackWindupMax: 0.70,
     },
     {
-        id: 'rivet_beast', label: '铆甲兽', maxHp: 230, damage: 9, speed: 34,
+        id: 'rivet_beast', label: '铆甲兽', maxHp: 230, damage: 9, speed: 42,
         armor: 18, attackInterval: 1.35, goldValue: 5, radius: 29,
         color: '#46505b', glow: '#a9e5ff', spriteKey: 'enemy_rivet_beast',
         visualScale: 1.30, attackWindupMax: 0.55,
@@ -206,7 +208,7 @@ export const TEST_GRUNTS: TestGruntDef[] = [
         visualScale: 1.62, attackWindupMax: 0,
     },
     {
-        id: 'blast_tick', label: '熔爆蜱', maxHp: 44, damage: 28, speed: 92,
+        id: 'blast_tick', label: '熔爆蜱', maxHp: 44, damage: 28, speed: 102,
         armor: 0, attackInterval: 999, goldValue: 2, radius: 20,
         color: '#66311f', glow: '#ff6b1f', spriteKey: 'enemy_blast_tick',
         visualScale: 1.56, attackWindupMax: 0.80,

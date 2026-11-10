@@ -211,13 +211,18 @@ export class ShopUI extends Component {
         descLbl.color = UI_PALETTE.muted;
         styleLabel(descLbl, { outlineWidth: 1 });
 
-        // price
+        // price（战争红利等纯给钱卡免费：cost 0 显示"免费"而非 ⬡ 0）
         const priceN = new Node('P'); priceN.setParent(row);
         priceN.setPosition(new Vec3(130, 0, 0));
         priceN.addComponent(UITransform).setContentSize(100, 30);
         const priceLbl = priceN.addComponent(Label);
-        priceLbl.string = `${item.cost} 金币`; priceLbl.fontSize = 16;
-        priceLbl.color = new Color(255, 210, 50, 255);
+        if (item.cost > 0) {
+            priceLbl.string = `${item.cost} 金币`; priceLbl.fontSize = 16;
+            priceLbl.color = new Color(255, 210, 50, 255);
+        } else {
+            priceLbl.string = '免费'; priceLbl.fontSize = 15;
+            priceLbl.color = new Color(120, 235, 150, 255);
+        }
         styleLabel(priceLbl);
 
         // buy button

@@ -15,7 +15,7 @@ test('grunt初始化数值符合类型表(基础血量*成长系数)', () => {
     const e = makeEnemy('grunt', 1, game);
     assert.equal(e.maxHp, 80); // scale = 1 + (1-1)*0.08 = 1
     assert.equal(e.hp, 80);
-    assert.equal(e.speed, 65);
+    assert.equal(e.speed, 82); // 2026-11-09 敌人提速：grunt 65→82
     assert.equal(e.damage, 8);
 });
 
@@ -158,7 +158,7 @@ test('变异:armor/speedMult/hpMult/goldMult 在init时正确叠加到敌人属�
     const game = makeMockGame({ _mutationMods: { armor: 100, speedMult: 1.5, hpMult: 3, goldMult: 5 } });
     const e = makeEnemy('grunt', 1, game);
     assert.equal(e.armor, 100); // 0 + 100
-    assert.equal(e.speed, Math.floor(65 * 1.5) === 97.5 ? e.speed : 65 * 1.5); // 65*1.5=97.5
+    assert.equal(e.speed, 82 * 1.5); // grunt 提速后 82×1.5=123
     assert.equal(e.maxHp, 240); // 80*3
     assert.equal(e.goldValue, 10); // 2*5（v4：grunt 金币表值 2）
 });
@@ -167,7 +167,7 @@ test('变异:timeCrack 使攻速+50%/移速+30%', () => {
     const game = makeMockGame({ _mutationMods: { timeCrack: true } });
     const e = makeEnemy('grunt', 1, game);
     assert.ok(Math.abs(e.attackSpeed - 1.5) < 1e-9);
-    assert.ok(Math.abs(e.speed - 65 * 1.3) < 1e-9);
+    assert.ok(Math.abs(e.speed - 82 * 1.3) < 1e-9);
 });
 
 test('混沌节拍buff:applyChaosBuff在持续时间内提升移速/伤害倍率,到期后自动回落到1', () => {

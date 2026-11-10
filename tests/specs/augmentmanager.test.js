@@ -114,6 +114,8 @@ test('一次性海克斯（17 立得金币）立即生效不占格子，且每�
     game.economy = { gold: 0, addGold(v) { this.gold += v; } };
     const p = makeStatsPlayer();
 
+    // 2026-11-09 用户调整：给钱卡免费——任意档位实付价 0（同稀有度溢价乘 0 仍为 0）
+    assert.equal(am.priceOf(AUGMENT_DB.find(a => a.id === 'hex17'), 3), 0, '战争红利任意档免费');
     const ok = am.equip({ id: 'hex17', level: 2 }, p, game);
     assert.equal(ok, true);
     assert.equal(am.active.length, 0, '一次性海克斯不入列');
@@ -227,7 +229,7 @@ test('rollOptions：三张卡带档位与价格，卡面稀有度=档位稀有�
         const opts = am.rollOptions(3, 1);
         assert.equal(opts.length, 3);
         for (const card of opts) {
-            assert.ok(card._price > 0, '卡片必须带价格');
+            assert.ok(card._price >= 0, '卡片必须带价格（给钱卡免费为 0）');
             assert.ok(card.desc && card.desc.length > 0, '卡片必须带档位文案');
             // 等级即稀有度：多档海克斯卡面颜色随档位走
             if (byId(card.id).prices.length > 1) {

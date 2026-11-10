@@ -8,6 +8,7 @@ import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { applyArtSprite, applyAnimationFrame } from '../core/SpriteUtils';
 import { EFFECT_ANIMATIONS } from '../data/EffectAnimationDB';
 import { applyElementMark } from '../data/AugmentDB';
+import { GameConfig } from '../data/GameConfig';
 import { kleptoCaptureBullet } from '../data/CharacterDB';
 
 export interface BulletData {
@@ -46,6 +47,12 @@ export interface BulletData {
     slow?:        { mult: number; dur: number };
     /** 敌弹撞边爆炸：bounceLeft 耗尽后再次撞到屏幕边缘直接爆炸（深水炸弹）。 */
     bounceExplode?: boolean;
+    /** 奇点弹（ch4 终焉之门·敌人技能优化方案）：吸引半径内玩家、吸收玩家子弹，寿命耗尽按吸收数射回追踪弹。 */
+    attract?: { radius: number; pullSpeed: number; absorbRadius?: number };
+    /** 奇点已吸收的玩家子弹数（决定爆发射回数量）。 */
+    _absorbed?: number;
+    /** 奇点爆发时每发追踪弹的伤害。 */
+    burstDmg?: number;
     /** 敌弹终点爆炸：寿命耗尽/出界时在最后位置爆炸（海之霸主水刺/灭世机神追踪导弹脱靶），命中玩家时也炸。 */
     explodeOnExpire?: boolean;
     /** 终点爆炸半径（缺省 90）与爆炸颜色（缺省水蓝），供不同弹种定制。 */
@@ -61,7 +68,7 @@ export interface BulletData {
      *  保证"一个目标一枚子弹"，不会多弹汇聚到同一个新目标身上。 */
     keepLock?: boolean;
     /** 元素飞弹（海克斯19 元素暴击）：命中时给目标打对应元素印记，集齐引爆。 */
-    element?: 'water' | 'fire' | 'earth' | 'wind';
+    element?: 'water' | 'fire' | 'earth' | 'wind' | 'thunder' | 'frost' | 'light' | 'shadow';
     trailCd?:     number;
     /** 每个池槽持有独立弹体 Sprite，友敌都不会因共享特效池耗尽而消失。 */
     node?:        Node;
@@ -103,6 +110,7 @@ function resetBullet(b: BulletData): void {
     b.novaMode = false; b.infinite = false; b.isEnemyBullet = false; b.homing = false;
     b.enemyFx = undefined; b.hitSource = undefined; b.trailCd = 0;
     b.pierceShield = false; b.dot = undefined; b.slow = undefined; b.bounceExplode = false; b.explodeOnExpire = false;
+    b.attract = undefined; b._absorbed = 0; b.burstDmg = undefined;
     b.explodeRadius = undefined; b.explodeColor = undefined;
     b.speedUpAfter = undefined; b.speedUpMult = undefined; b._spedUp = false;
     b._homingTarget = undefined; b.element = undefined; b.keepLock = false;
@@ -272,6 +280,13 @@ export class BulletPool {
                 }
             }
 
+            // 方案D 延展力场Lv3「贯穿力场」：飞行进度达阈值后一次性获得 +1 穿透
+            if (player.stats.perkRangePierce && !b._perkPierce && b.lifeTime > 0
+                && (1 - b.life / b.lifeTime) >= GameConfig.get('perkRangePierceFrom')) {
+                b._perkPierce = true;
+                b.pierceLeft = (b.pierceLeft ?? 0) + 1;
+            }
+
             // 碰撞检测 vs 敌人
             let released = false;
             const collisionTargets = game.getEnemyMechanismTargets
@@ -288,6 +303,25 @@ export class BulletPool {
                     try {
                     b.hitEnemies.add(e);
                     let dmg = b.damage;
+                    // 方案D 延展力场Lv2「力场透镜」：子弹飞行最远段命中伤害加成
+                    const perkFrac = b.lifeTime > 0 ? Math.max(0, Math.min(1, 1 - b.life / b.lifeTime)) : 0;
+                    if (player.stats.perkFarShot && perkFrac >= GameConfig.get('perkFarShotFrom')) {
+                        dmg *= 1 + player.stats.perkFarShot;
+                    }
+                    // 方案D 土元素Lv2「厚重」：每已穿透一个目标，伤害递增
+                    if (player.stats.perkPierceBonus) {
+                        if (b._pierce0 === undefined) b._pierce0 = b.pierceLeft ?? 0;
+                        const pierceUsed = Math.max(0, b._pierce0 - (b.pierceLeft ?? 0));
+                        if (pierceUsed > 0) dmg *= 1 + pierceUsed * player.stats.perkPierceBonus;
+                    }
+                    // 方案D 水元素Lv3「冰点」：对减速目标的未暴子弹按加成概率转暴
+                    if (!b.isCrit && player.stats.perkFrostCrit && (e.slowMult ?? 1) < 1
+                        && Rng.chance(GameConfig.get('perkFrostCrit'))) {
+                        dmg *= (1 + (player.stats.critDmg || 0.5));
+                        if (e.isBoss) dmg *= 0.75;
+                        b.isCrit = true;
+                        game.floatingText?.spawn(e.x, e.y - 20, '冰点·暴击！', '#a8ecff', 14, true);
+                    }
                     if (b.isCrit) {
                         dmg *= (1 + (player.stats.critDmg || 0.5));
                         // 大Boss威压：受到的暴击伤害减免25%
@@ -305,6 +339,13 @@ export class BulletPool {
                     // 被动：冻结要害×freezeBonus（对齐 CharacterDB.ts liana 的 desc 描述）
                     if (e.frozen > 0 && player.stats.freezeBonus) dmg *= player.stats.freezeBonus;
                     const actualDamage = e.takeDamage(dmg, player, game);
+                    // 方案D 风元素Lv2「风压」：命中概率推开小兵（Boss/精英/小首领免疫）
+                    if (player.stats.perkWindPush && e.alive && !e.isBoss && !e.isElite && !e.isMiniBoss
+                        && Rng.chance(GameConfig.get('perkWindPushChance'))) {
+                        const [wdx, wdy] = Vec.normalize(b.vx, b.vy);
+                        e.x = clamp(e.x + wdx * GameConfig.get('perkWindPushDist'), e.radius, CANVAS_W - e.radius);
+                        e.y = clamp(e.y + wdy * GameConfig.get('perkWindPushDist'), e.radius, PLAYFIELD_BOTTOM - e.radius);
+                    }
                     player.applyAttackLifesteal?.(actualDamage === undefined ? dmg : actualDamage, game);
                     // 元素飞弹（海克斯19）：命中即打元素印记，集齐 2 种不同元素引爆
                     if (b.element) applyElementMark(e, b.element, b.damage, player, game);
@@ -368,6 +409,34 @@ export class BulletPool {
             }
             const startX = b.x, startY = b.y;
             b.x += b.vx * dt; b.y += b.vy * dt; b.life += dt;
+            // 奇点弹：吸引半径内玩家向弹心位移（越近拉力越强），并吸收范围内玩家子弹。
+            // 拉动止步于碰撞圈外——否则玩家被拉进弹心直接命中释放，奇点永远等不到坍缩。
+            if (b.attract) {
+                if (player.alive && !player.untargetable) {
+                    const adx = b.x - player.x, ady = b.y - player.y;
+                    const ad = Math.hypot(adx, ady);
+                    const stopAt = b.radius + (player.radius ?? 16) + 10;
+                    if (ad > stopAt && ad <= b.attract.radius) {
+                        const pull = b.attract.pullSpeed * dt * (1 - (ad / b.attract.radius) * 0.4);
+                        const r = player.radius ?? 16;
+                        const next = game.moveInArena?.(player.x, player.y, adx / ad * pull, ady / ad * pull, r)
+                            ?? { x: clamp(player.x + adx / ad * pull, r, CANVAS_W - r),
+                                 y: clamp(player.y + ady / ad * pull, r, PLAYFIELD_BOTTOM - r) };
+                        player.x = next.x; player.y = next.y;
+                    }
+                }
+                const absorbR = b.attract.absorbRadius ?? 60;
+                const drained: BulletData[] = [];
+                for (const pb of this._active) {
+                    if (pb === b || pb.isEnemyBullet || pb.owner === 'enemy') continue;
+                    if (Vec.dist2(pb.x, pb.y, b.x, b.y) < absorbR * absorbR) drained.push(pb);
+                }
+                for (const pb of drained) {
+                    b._absorbed = (b._absorbed ?? 0) + 1;
+                    game.particles?.hit?.(pb.x, pb.y, b.color);
+                    this._release(pb);
+                }
+            }
             if (game.firstArenaBulletHit?.(startX, startY, b.x, b.y, b.radius)) {
                 if (b.enemyFx === 'water_spike' || b.enemyFx === 'water_bomb') game.particles?.enemyBurst?.(b.x, b.y, 'water', 24);
                 else game.particles?.explode?.(b.x, b.y, b.explodeColor ?? b.color, 24);
@@ -416,6 +485,22 @@ export class BulletPool {
                 if (player.alive && Vec.dist(ex, ey, player.x, player.y) < (b.explodeRadius ?? 90)) {
                     player.takeDamage(b.damage, game, { ignoreIframe: game?.state === 'testRoom', impact: { source: b.hitSource, kind: b.enemyFx, angle: Math.atan2(b.vy, b.vx) } });
                 }
+                this._release(b); continue;
+            } else if (b.attract &&
+                (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30)) {
+                // 奇点坍缩：按吸收的玩家子弹数射回追踪弹（基础2发，每吸收1发+1，上限10）。
+                const n = Math.min(10, 2 + (b._absorbed ?? 0));
+                for (let k = 0; k < n; k++) {
+                    const fa = (k / Math.max(1, n)) * Math.PI * 2 + Rng.float(0, 0.5);
+                    game.enemyBullets?.push({ hitSource: b.hitSource,
+                        x: b.x, y: b.y, vx: Math.cos(fa) * 240, vy: Math.sin(fa) * 240,
+                        damage: b.burstDmg ?? b.damage, radius: 9, color: b.color,
+                        life: 3, lifeTime: 3, owner: 'enemy', isEnemyBullet: true,
+                        homing: true, enemyFx: 'homing',
+                    });
+                }
+                game.particles?.explode?.(b.x, b.y, b.color, 70);
+                game.audio?.playSfx?.('explode', 0.6);
                 this._release(b); continue;
             } else if (b.life > b.lifeTime || b.x < -30 || b.x > CANVAS_W + 30 || b.y < -30 || b.y > PLAYFIELD_BOTTOM + 30) {
                 this._release(b); continue;

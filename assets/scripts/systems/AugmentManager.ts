@@ -74,11 +74,12 @@ export class AugmentManager {
     }
 
     /**
-     * 元素暴击（hex19）解锁条件：集齐 风/火/土/水 四种元素海克斯
-     * （hex20~23，任意档位、技能格或功能格均可）后才可购买/装备。
+     * 元素暴击（hex19）解锁条件（2026-11-09 改版）：持有任意 4 种元素海克斯
+     * （风/火/土/水/雷/冰/光/暗 八选四，任意档位、技能格或功能格均可），
+     * 不再要求特定四张全齐。
      */
     elementSetComplete(): boolean {
-        return ELEMENT_HEX_IDS.every(id => !!this.ownedOf(id));
+        return ELEMENT_HEX_IDS.filter(id => !!this.ownedOf(id)).length >= 4;
     }
 
     // ── 定价 ──────────────────────────────────────────────
@@ -153,6 +154,9 @@ export class AugmentManager {
         const weights = opts?.refresh ? this.refreshRarityWeights(wave) : this.rarityWeights(wave);
         const results: AugmentDef[] = [];
         const slotsFull = this.active.length >= this.maxSlots;
+        // 2026-11-09 元素倾向：持有 ≥2 张元素卡时，元素卡出现率提升
+        //（GameConfig perkElementLuck，默认 ×3）——引导凑齐四种激活元素暴击。
+        const elemLuck = this._heldElementCount() >= 2 ? GameConfig.get('perkElementLuck') : 1;
 
         for (let i = 0; i < n; i++) {
             // v3「混沌棱镜」：forceRarity 只强制第一张（首开必出彩卡通道）
@@ -177,21 +181,28 @@ export class AugmentManager {
                 if (opts?.firstWave && a.category !== '功能') continue;
                 // 元素暴击：未集齐四种元素海克斯时不进卡池（购买条件未解锁）
                 if (a.id === 'hex19' && !this.elementSetComplete()) continue;
+                const elemBoost = elemLuck > 1 && ELEMENT_HEX_IDS.indexOf(a.id) >= 0 ? elemLuck : 1;
                 const owned = this.ownedOf(a.id);
                 if (owned && !a.oneShot) {
                     if (a.category === '功能') {
-                        // 功能性无限叠加，持续可刷且权重提升
+                        // 功能性无限叠加（银档可重复购）；金档及以上只作"升级通道"——
+                        // 已拥有同档及以上实例后不再刷出（特权只由最高档实例提供，
+                        // 重复购高价档 = 纯叠数值，正是要封掉的膨胀口）
+                        const highest = this.functional
+                            .filter(f => f.id === a.id)
+                            .reduce((m, f) => Math.max(m, f.level ?? 1), 0);
+                        if (level >= 2 && highest >= level) continue;
                         pool.push(a); poolWeights.push(3);
                         continue;
                     }
                     if ((owned.level ?? 1) >= level) continue;   // 只刷更高档升级卡
-                    pool.push(a); poolWeights.push(1);
+                    pool.push(a); poolWeights.push(1 * elemBoost);
                     continue;
                 }
                 let w = 1;
                 if (a.category === '功能') w = 3;                   // 功能化强化出现率提升
                 else if (slotsFull && a.category === '技能') w = 0.3;   // 满格后新技能卡降频
-                pool.push(a); poolWeights.push(w);
+                pool.push(a); poolWeights.push(w * elemBoost);
             }
             if (!pool.length) continue;
             const def = pool[Rng.weighted(poolWeights)];
@@ -203,7 +214,20 @@ export class AugmentManager {
                 : true);
             results.push(this._makeCard(def, level, isUpgrade));
         }
+        // 2026-11-09 元素闭环：集齐任意四种元素且尚未持有/未固定元素暴击时，
+        // 本次刷新必出一张 hex19（替换第一张）——辛苦凑齐四元素的下一刷必有兑现入口。
+        if (this.elementSetComplete() && !this.ownedOf('hex19') &&
+            !this._oneShotUsed.has('hex19') && !this.pinnedCards.some(p => p.id === 'hex19') &&
+            !results.find(r => r.id === 'hex19') && results.length > 0) {
+            const def = AUGMENT_DB.find(a => a.id === 'hex19');
+            if (def) results[0] = this._makeCard(def, 1, false);
+        }
         return results;
+    }
+
+    /** 当前持有的元素海克斯张数（元素倾向/元素闭环用）。 */
+    private _heldElementCount(): number {
+        return ELEMENT_HEX_IDS.filter(id => !!this.ownedOf(id)).length;
     }
 
     /**
@@ -371,6 +395,10 @@ export class AugmentManager {
     }
     dispatchKill(player: any, enemy: any, dmg: number, game: any): void {
         for (const a of this.all()) if (a.onKill) a.onKill(player, enemy, dmg, game);
+    }
+    /** 波间强化选择页打开时分发（方案 D 特权：生命涌泉 Lv2 涌泉活水）。 */
+    dispatchShopOpen(player: any, game: any): void {
+        for (const a of this.all()) if (a.onShopOpen) a.onShopOpen(player, game);
     }
     /**
      * 每帧分发 onUpdate。加速(海克斯31)的 cdReduction 在此统一缩放：

@@ -75,8 +75,8 @@ test('boss冲锋先锁定目标并蓄力,不会立即移动', () => {
     const game = makeMockGame();
     const boss = makeBoss(game);
     const player = makePlayer({ x: 500, y: 0 });
-    boss._chargeCd = 0;
-    boss.update(0.016, player, game);
+    // 敌人技能优化方案：ch1~4 通用冲锋计时已并入技能库，由蛮牛冲撞等触发
+    boss.triggerChapterCharge(player, game);
     assert.ok(boss.chargeWindup > 0, '冲锋应先进入可见蓄力');
     assert.equal(boss.isCharging, false);
     assert.equal(boss.chargeTargetX, player.x);
@@ -88,28 +88,32 @@ test('boss冲锋先锁定目标并蓄力,不会立即移动', () => {
     assert.equal(boss.actorAnimation.currentFrame.event, 'cast', '冲锋启动必须直达突进峰值');
 });
 
-test('废土领主毒球、召唤和阶段变化分别播放独立身体动作', () => {
+test('废土领主普攻、技能大招和阶段变化分别播放独立身体动作(敌人技能优化方案轮转)', () => {
     const game = makeMockGame();
     const player = makePlayer({ x: 600, y: 200 });
 
+    // 普攻（原3发毒球保留为基础轮）：后坐帧驱动 attack 动作
     const poison = makeBoss(game);
-    poison._skillTimer = 0; poison._summonTimer = 999; poison._chargeCd = 999;
-    poison.update(0.01, player, game);
+    poison.docBasicTimer = 0; poison.docSkillTimer = 999;
+    poison._updateChapterBossSkills(0.01, player, game);
+    assert.equal(game.enemyBullets.length, 3, 'ch1 普攻保留三发毒球');
     poison.updateVisualAnimation(0.01, player);
-    assert.equal(poison.actorAnimation.action, 'skill');
-    poison.update(poison.skillWindupMax, player, game);
-    poison.updateVisualAnimation(0.01, player);
-    assert.equal(poison.actorAnimation.currentFrame.event, 'cast', '毒球生成时必须显示毒爪喷口峰值');
+    assert.equal(poison.actorAnimation.action, 'attack', '普攻开火以后坐动作表现');
+    assert.ok(!!poison.actorAnimation.currentFrame.event, '普攻开火必须落到事件帧');
 
-    const summon = makeBoss(game);
-    summon._skillTimer = 999; summon._summonTimer = 0; summon._chargeCd = 999;
-    summon.update(0.01, player, game);
-    summon.updateVisualAnimation(0.01, player);
-    assert.equal(summon.actorAnimation.action, 'skill3');
-    assert.equal(summon.actorAnimation.currentFrame.event, 'cast');
+    // 技能大招（腐肉孵化/酸雨等轮转）：visualSkillT 驱动 skill 动作 + cast 峰值
+    const skill = makeBoss(game);
+    skill.docBasicTimer = 999; skill.docSkillTimer = 0;
+    skill._updateChapterBossSkills(0.01, player, game);
+    assert.ok(skill.visualSkillT > 0, '大招应点亮施法视觉时钟');
+    assert.equal(skill.docSkillName, '腐肉孵化', 'P1 首招为腐肉孵化');
+    skill.updateVisualAnimation(0.01, player);
+    assert.equal(skill.actorAnimation.action, 'skill');
+    assert.equal(skill.actorAnimation.currentFrame.event, 'cast', '大招释放必须直达施法峰值帧');
 
+    // 阶段切换：visualPhaseT 驱动 skill4（原链路保留）
     const phase = makeBoss(game);
-    phase._skillTimer = 999; phase._summonTimer = 999; phase._chargeCd = 999;
+    phase.docBasicTimer = 999; phase.docSkillTimer = 999;
     phase.hp = phase.maxHp * 0.5;
     phase.update(0.01, player, game);
     phase.updateVisualAnimation(0.01, player);
@@ -117,52 +121,75 @@ test('废土领主毒球、召唤和阶段变化分别播放独立身体动作',
     assert.equal(phase.actorAnimation.currentFrame.event, 'cast');
 });
 
-test('钢铁之王齿轮齐射使用第二章专属身体动作', () => {
+test('钢铁之王齿轮齐射与技能大招使用第二章专属身体动作', () => {
     const game = makeMockGame();
     const boss = new BossController();
     boss.initBoss(10, game);   // 全局 10 = 图2章5 → 钢铁之王
     boss.x = 0; boss.y = 0;
-    boss._skillTimer = 0; boss._summonTimer = 999; boss._chargeCd = 999;
     const player = makePlayer({ x: 600, y: 200 });
-    boss.update(0.01, player, game);
+    boss.docBasicTimer = 0; boss.docSkillTimer = 999;
+    boss._updateChapterBossSkills(0.01, player, game);
     boss.updateVisualAnimation(0.01, player);
     assert.equal(boss.spriteKey, 'enemy_boss_ch2');
-    assert.equal(boss.actorAnimation.action, 'skill');
-    boss.update(boss.skillWindupMax, player, game);
-    boss.updateVisualAnimation(0.01, player);
-    assert.equal(boss.actorAnimation.currentFrame.event, 'cast', '齿轮发射时必须显示熔炉张臂峰值');
+    assert.equal(game.enemyBullets.length, 8, 'ch2 普攻保留8向齿轮');
+    assert.equal(boss.actorAnimation.action, 'attack', '齿轮齐射以后坐动作表现');
+    const boss2 = new BossController();
+    boss2.initBoss(10, game);
+    boss2.x = 0; boss2.y = 0;
+    boss2.docBasicTimer = 999; boss2.docSkillTimer = 0;
+    boss2._updateChapterBossSkills(0.01, player, game);
+    boss2.updateVisualAnimation(0.01, player);
+    assert.equal(boss2.actorAnimation.action, 'skill');
+    assert.equal(boss2.actorAnimation.currentFrame.event, 'cast', '大招释放必须显示熔炉张臂峰值');
 });
 
-test('海克斯异变体追踪核使用第三章专属身体动作', () => {
+test('海克斯异变体追踪核普攻与技能大招使用第三章专属身体动作', () => {
     const game = makeMockGame();
     const boss = new BossController();
     boss.initBoss(15, game);   // 全局 15 = 图3章5 → 海克斯异变体
     boss.x = 0; boss.y = 0;
-    boss._skillTimer = 0; boss._summonTimer = 999; boss._chargeCd = 999;
     const player = makePlayer({ x: 600, y: 200 });
-    boss.update(0.01, player, game);
+    boss.docBasicTimer = 0; boss.docSkillTimer = 999;
+    boss._updateChapterBossSkills(0.01, player, game);
     boss.updateVisualAnimation(0.01, player);
     assert.equal(boss.spriteKey, 'enemy_boss_ch3');
-    assert.equal(boss.actorAnimation.action, 'skill');
-    boss.update(boss.skillWindupMax, player, game);
-    boss.updateVisualAnimation(0.01, player);
-    assert.equal(boss.actorAnimation.currentFrame.event, 'cast', '追踪核发射时必须显示手部晶核峰值');
+    assert.equal(game.enemyBullets.length, 1, 'ch3 普攻P1为单发追踪核（被动进化起点）');
+    assert.ok(game.enemyBullets[0].homing === true, '追踪核应带追踪');
+    assert.equal(boss.actorAnimation.action, 'attack', '追踪核发射以后坐动作表现');
+    const boss2 = new BossController();
+    boss2.initBoss(15, game);
+    boss2.x = 0; boss2.y = 0;
+    boss2.docBasicTimer = 999; boss2.docSkillTimer = 0;
+    boss2._updateChapterBossSkills(0.01, player, game);
+    boss2.updateVisualAnimation(0.01, player);
+    assert.equal(boss2.actorAnimation.action, 'skill');
+    assert.equal(boss2.actorAnimation.currentFrame.event, 'cast', '大招释放必须显示手部晶核峰值');
 });
 
-test('终焉之门混沌弹幕使用第四章专属身体动作', () => {
+test('终焉之门混沌弹幕与奇点大招使用第四章专属身体动作', () => {
     const game = makeMockGame();
     const boss = new BossController();
     boss.initBoss(20, game);   // 全局 20 = 图4章5 → 终焉之门
     boss.x = 0; boss.y = 0;
-    boss._skillTimer = 0; boss._summonTimer = 999; boss._chargeCd = 999;
     const player = makePlayer({ x: 600, y: 200 });
-    boss.update(0.01, player, game);
+    boss.docBasicTimer = 0; boss.docSkillTimer = 999;
+    boss._updateChapterBossSkills(0.01, player, game);
     boss.updateVisualAnimation(0.01, player);
     assert.equal(boss.spriteKey, 'enemy_boss_ch4');
-    assert.equal(boss.actorAnimation.action, 'skill');
-    boss.update(boss.skillWindupMax, player, game);
-    boss.updateVisualAnimation(0.01, player);
-    assert.equal(boss.actorAnimation.currentFrame.event, 'cast', '混沌弹幕发射时必须显示门环过载峰值');
+    assert.equal(game.enemyBullets.length, 12, 'ch4 普攻保留12发混沌弹');
+    assert.equal(boss.actorAnimation.action, 'attack', '混沌弹幕以后坐动作表现');
+    // 大招首招为奇点：验证吸引弹体字段完整
+    const boss2 = new BossController();
+    boss2.initBoss(20, game);
+    boss2.x = 0; boss2.y = 0;
+    boss2.docBasicTimer = 999; boss2.docSkillTimer = 0;
+    boss2._updateChapterBossSkills(0.01, player, game);
+    boss2.updateVisualAnimation(0.01, player);
+    assert.equal(boss2.actorAnimation.action, 'skill');
+    assert.equal(boss2.actorAnimation.currentFrame.event, 'cast', '大招释放必须显示门环过载峰值');
+    assert.equal(game.enemyBullets.filter(b => b.attract).length, 1, '奇点弹应带 attract 字段');
+    const singularity = game.enemyBullets.find(b => b.attract);
+    assert.ok(singularity.attract.radius === 180 && singularity.burstDmg > 0, '奇点参数完整');
 });
 
 test('机械高达横劈、刀刃风暴、光剑强化与空降落地使用对应身体动作', () => {

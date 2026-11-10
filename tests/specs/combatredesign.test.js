@@ -162,9 +162,9 @@ const { CHARS } = require('../dist/data/CharacterDB');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 const fs = require('node:fs'), path = require('node:path');
 
-test('24个技能及32个海克斯各有独立RGBA图标与稳定导入元数据', () => {
+test('24个技能及38个海克斯各有独立RGBA图标与稳定导入元数据（2026-11-09 元素扩展+4）', () => {
     const keys = CHARS.flatMap(c => Object.values(c.skillIcons)).concat(AUGMENT_DB.map(a => a.icon));
-    assert.equal(keys.length, 58); assert.equal(new Set(keys).size, 58);
+    assert.equal(keys.length, 62); assert.equal(new Set(keys).size, 62);
     const hashes = new Set();
     for (const key of keys) {
         const file = path.resolve(__dirname, '../../assets/resources/art/ui_icon_' + key + '.png');
@@ -175,7 +175,7 @@ test('24个技能及32个海克斯各有独立RGBA图标与稳定导入元数据
         assert.ok(Object.values(meta.subMetas).some(s => s.importer === 'sprite-frame'), key);
         hashes.add(require('node:crypto').createHash('sha256').update(bytes).digest('hex'));
     }
-    assert.equal(hashes.size, 58, '禁止以同一张图替代不同技能设计');
+    assert.equal(hashes.size, 62, '禁止以同一张图替代不同技能设计');
 });
 
 test('持续中毒在脚边显示小毒泡，密集命中不会堆积为遮挡角色的大云团', () => {

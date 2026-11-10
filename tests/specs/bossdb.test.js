@@ -158,7 +158,7 @@ test('TEST_GRUNTS首批锈齿扑兵严格使用设计文档数值与独立贴图
     assert.ok(rust, '首批应包含锈齿扑兵');
     assert.deepEqual(
         [rust.maxHp, rust.damage, rust.speed, rust.armor, rust.attackInterval, rust.goldValue],
-        [75, 7, 82, 0, 0.95, 2],
+        [75, 7, 92, 0, 0.95, 2], // 2026-11-09 敌人提速：82→92
     );
     assert.equal(rust.spriteKey, 'enemy_rust_biter', '不得复用石狮子/旧grunt占位图');
 });
@@ -188,7 +188,7 @@ test('铆甲兽与掠金虫严格使用设计文档数值和独立贴图', () =>
     const gold = TEST_GRUNTS.find(m => m.id === 'gold_scavenger');
     assert.deepEqual(
         [rivet.maxHp, rivet.damage, rivet.speed, rivet.armor, rivet.attackInterval, rivet.goldValue],
-        [230, 9, 34, 18, 1.35, 5],
+        [230, 9, 42, 18, 1.35, 5], // 2026-11-09 敌人提速：34→42
     );
     assert.equal(rivet.spriteKey, 'enemy_rivet_beast');
     assert.equal(rivet.visualScale, 1.30, '铆甲兽贴图应收进护盾与正面装甲提示范围');
@@ -204,7 +204,7 @@ test('余下四种炮灰严格使用设计文档数值与独立贴图', () => {
         ember_acolyte: [68, 5, 50, 2, 2.4, 3, 'enemy_ember_acolyte'],
         frost_acolyte: [74, 5, 48, 2, 2.6, 3, 'enemy_frost_acolyte'],
         arc_leech: [82, 5, 68, 4, 2.0, 3, 'enemy_arc_leech'],
-        blast_tick: [44, 28, 92, 0, 999, 2, 'enemy_blast_tick'],
+        blast_tick: [44, 28, 102, 0, 999, 2, 'enemy_blast_tick'], // 2026-11-09 敌人提速：92→102
     };
     for (const [id, row] of Object.entries(expected)) {
         const unit = TEST_GRUNTS.find(m => m.id === id);

@@ -266,6 +266,8 @@ test('Boss冲锋与撞墙反弹时身体沿真实速度方向转向', () => {
     boss.initBoss(5, game);   // 全局 5 = 图1章5
     boss.x = 300; boss.y = 300;
     boss._skillTimer = 999; boss._summonTimer = 999; boss._chargeCd = 0;
+    // 敌人技能优化方案：ch1~4 冲锋由技能库入口触发（通用计时已并入轮转）
+    boss.triggerChapterCharge(player, game);
     boss.update(1 / 60, player, game);
     assert.ok(boss.chargeWindup > 0);
     assert.ok(boss.getVisualFacing(player)[0] > 0.99, '蓄力应朝锁定路线');

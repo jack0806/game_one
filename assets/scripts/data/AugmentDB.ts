@@ -12,7 +12,8 @@
 // 2026-09-21 玩家调整：功能性海克斯数值改为小步叠加档
 // （攻速/攻击/暴击 1%/2%/5%，血量 1%/5%/10%，射程 +10/15/30 码），
 // 定价随之下调（银 10-18 / 金 40-60 / 彩 150-220），不再受文档区间约束。
-import { Rng, Vec } from '../core/MathUtils';
+import { Rng, Vec, clamp } from '../core/MathUtils';
+import { CANVAS_W, PLAYFIELD_BOTTOM } from '../core/Constants';
 import { GameConfig } from './GameConfig';
 
 export type HexRarity = 'silver' | 'gold' | 'prismatic';
@@ -57,6 +58,11 @@ export interface AugmentDef {
     onCrit?:   (p: any, enemy: any, dmg: number, game: any) => void;
     onKill?:   (p: any, enemy: any, dmg: number, game: any) => void;
     onUpdate?: (p: any, dt: number, game?: any) => void;
+    /**
+     * 波间强化选择页打开时触发（方案 D 特权：生命涌泉 Lv2「涌泉活水」；
+     * GameManager._openAugSelect → AugmentManager.dispatchShopOpen）。
+     */
+    onShopOpen?: (p: any, game: any) => void;
     /**
      * 玩家被实际命中时触发（PlayerController.takeDamage/takeTrueDamage 在
      * 无敌/无敌帧早退之后分发；护盾抵挡亦算；DoT 持续伤害不算——无法躲避
@@ -106,17 +112,27 @@ export function applyPoison(enemy: any, dps: number, duration: number): void {
     enemy.dots.push({ type: 'poison', dps, timeLeft: duration, color: '#44ff00' });
 }
 
-// ── 元素暴击（海克斯19）四元素体系 ────────────────────────
+// ── 元素暴击（海克斯19）八元素体系（2026-11-09 扩展：雷/冰/光/暗加入） ────
 
-/** 水/火/土/风四元素定义（名字与配色供飞弹/爆炸表现用）。 */
+/** 八元素定义（名字与配色供飞弹/爆炸/粒子表现用——每种元素粒子颜色不同）。 */
 export const ELEMENT_TYPES = {
-    water: { name: '水', color: '#4db8ff' },
-    fire:  { name: '火', color: '#ff6a3d' },
-    earth: { name: '土', color: '#d2a24c' },
-    wind:  { name: '风', color: '#9fe8c8' },
+    water:  { name: '水', color: '#4db8ff' },
+    fire:   { name: '火', color: '#ff6a3d' },
+    earth:  { name: '土', color: '#d2a24c' },
+    wind:   { name: '风', color: '#9fe8c8' },
+    thunder:{ name: '雷', color: '#f5e36b' },
+    frost:  { name: '冰', color: '#a8ecff' },
+    light:  { name: '光', color: '#fff3b0' },
+    shadow: { name: '暗', color: '#9c7bff' },
 };
 export type ElementType = keyof typeof ELEMENT_TYPES;
-const ELEMENT_KEYS: ElementType[] = ['water', 'fire', 'earth', 'wind'];
+const ELEMENT_KEYS: ElementType[] = ['water', 'fire', 'earth', 'wind', 'thunder', 'frost', 'light', 'shadow'];
+
+/** 元素海克斯 id → 元素类型（元素暴击飞弹池按玩家持有的元素卡取元素）。 */
+export const ELEMENT_OF_HEX: Record<string, ElementType> = {
+    hex20: 'wind', hex21: 'fire', hex22: 'earth', hex23: 'water',
+    hex35: 'thunder', hex36: 'frost', hex37: 'light', hex38: 'shadow',
+};
 
 /**
  * 元素飞弹命中：给目标打元素印记；目标集齐 ≥2 种不同元素时立即产生元素爆炸，
@@ -132,6 +148,7 @@ const ELEMENT_KEYS: ElementType[] = ['water', 'fire', 'earth', 'wind'];
 export function applyElementMark(enemy: any, element: ElementType, missileDmg: number, player: any, game: any): void {
     if (!enemy || !enemy.alive) return;
     const color = ELEMENT_TYPES[element].color;
+    applyElementSideEffect(enemy, element, missileDmg, player, game);
     if (!enemy._elemMarks) enemy._elemMarks = new Set<string>();
     enemy._elemMarks.add(element);
     if (enemy._elemMarks.size < 2) {
@@ -163,13 +180,62 @@ export function applyElementMark(enemy: any, element: ElementType, missileDmg: n
     else deal();
 }
 
+/**
+ * 元素飞弹的差异化附带效果（2026-11-09 元素暴击改版：不同元素命中效果不同）。
+ * 全部以单枚飞弹伤害 missileDmg 为基数做轻量即时结算，不喧宾夺主：
+ *  水=减速20% / 火=小灼烧 / 土=60码溅射 / 风=击退小兵 /
+ *  雷=追加直伤 / 冰=强减速 / 光=无视护甲真伤 / 暗=吸血。
+ */
+function applyElementSideEffect(enemy: any, element: ElementType, missileDmg: number, player: any, game: any): void {
+    switch (element) {
+        case 'water':
+            enemy.slowMult = Math.min(enemy.slowMult ?? 1, 0.8);
+            enemy._slowTimer = Math.max(enemy._slowTimer ?? 0, 1.5);
+            break;
+        case 'fire': {
+            const dots = enemy.dots || (enemy.dots = []);
+            const burn = dots.find(d => d.type === 'elem_burn');
+            if (burn) { burn.dps = missileDmg * 0.4; burn.timeLeft = 1.5; }
+            else dots.push({ type: 'elem_burn', dps: missileDmg * 0.4, timeLeft: 1.5, color: '#ff6a3d' });
+            break;
+        }
+        case 'earth':
+            for (const e of (game?.enemies || []) as any[]) {
+                if (e.alive && e !== enemy && Vec.dist(e.x, e.y, enemy.x, enemy.y) < 60) {
+                    e.takeDamage(missileDmg * 0.3, player, game);
+                }
+            }
+            break;
+        case 'wind':
+            if (!enemy.isBoss && !enemy.isElite && !enemy.isMiniBoss) {
+                const [kx, ky] = Vec.normalize(enemy.x - player.x, enemy.y - player.y);
+                enemy.x = clamp(enemy.x + kx * 24, enemy.radius, CANVAS_W - enemy.radius);
+                enemy.y = clamp(enemy.y + ky * 24, enemy.radius, PLAYFIELD_BOTTOM - enemy.radius);
+            }
+            break;
+        case 'thunder':
+            enemy.takeDamage(missileDmg * 0.3, player, game);
+            break;
+        case 'frost':
+            enemy.slowMult = Math.min(enemy.slowMult ?? 1, 0.65);
+            enemy._slowTimer = Math.max(enemy._slowTimer ?? 0, 2);
+            break;
+        case 'light':
+            enemy.takeTrueDamage?.(missileDmg * 0.25, player, game);
+            break;
+        case 'shadow':
+            player.heal?.(missileDmg * 0.3);
+            break;
+    }
+}
+
 /** 元素暴击齐射区间（单档彩色海克斯：10-20 枚 / 单枚 15-20 伤害）。 */
 const ELEMENT_VOLLEY: { count: [number, number]; dmg: [number, number] } = {
     count: [10, 20], dmg: [15, 20],
 };
 
-/** 四元素海克斯 id（集齐后才解锁元素暴击的购买条件）。 */
-export const ELEMENT_HEX_IDS = ['hex20', 'hex21', 'hex22', 'hex23'];
+/** 八张元素海克斯 id（2026-11-09 改版：集齐任意 4 种即激活元素暴击，见 AugmentManager）。 */
+export const ELEMENT_HEX_IDS = ['hex20', 'hex21', 'hex22', 'hex23', 'hex35', 'hex36', 'hex37', 'hex38'];
 
 /**
  * 元素暴击齐射：先锁定目标、再发射。
@@ -210,12 +276,20 @@ export function fireElementalVolley(hex: any, p: any, game: any): void {
 
     // —— 再发射：飞弹不带角色弹素材（charKey 留空），渲染走"元素色能量梭"
     // 兜底路径（带拖尾/辉光的粒子风弹体），比逐弹挂 Sprite 更省 ——
+    // 元素池 = 玩家持有的元素卡（2026-11-09 改版：不同元素飞弹效果/配色不同，
+    // 持有哪些元素就齐射哪些元素；无持有信息时兜底全八种）。
+    const heldElements = ELEMENT_HEX_IDS
+        .filter(id => (game as any)?.augmentManager?.ownedOf?.(id))
+        .map(id => ELEMENT_OF_HEX[id]);
+    const elementPool = heldElements.length ? heldElements : ELEMENT_KEYS;
     for (const target of locks) {
-        const element = ELEMENT_KEYS[Rng.int(0, ELEMENT_KEYS.length - 1)];
+        const element = elementPool[Rng.int(0, elementPool.length - 1)];
         const a = Rng.float(0, Math.PI * 2);
+        // 方案D 风元素Lv3「风驰」：元素飞弹同样吃弹速加成
+        const volleySpd = 400 * (1 + ((p.stats as any)?.perkSkillBulletSpeed ? (p.stats?.bulletSpeedMult || 0) : 0));
         game.bullets.spawn({
             x: p.x, y: p.y,
-            vx: Math.cos(a) * 400, vy: Math.sin(a) * 400,
+            vx: Math.cos(a) * volleySpd, vy: Math.sin(a) * volleySpd,
             damage: Rng.int(band.dmg[0], band.dmg[1]),
             radius: 7, color: ELEMENT_TYPES[element].color,
             owner: 'player',
@@ -248,31 +322,107 @@ export const AUGMENT_DB: AugmentDef[] = [
     // 攻速/攻击/暴击 1%/2%/5%，血量 1%/5%/10%，射程 +10/15/30 码。
     { id: 'hex01', index: 1, rarity: 'silver', icon: 'hex01', name: '加速齿轮', category: '功能',
       prices: [10, 40, 150], values: [0.01, 0.02, 0.05],
-      descAt: (l) => `攻速 +${[1, 2, 5][l - 1]}%`,
-      onLevel(p, _g, from, to) { swapFactor(p.stats, 'attackSpeed', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
+      descAt: (l) => `攻速 +${[1, 2, 5][l - 1]}%`
+          + (l >= 2 ? `｜特权·热机：每波前 ${GameConfig.get('perkWarmupSec')} 秒攻速再 +${Math.round(GameConfig.get('perkWarmupAtk') * 100)}%` : '')
+          + (l >= 3 ? `｜特权·极限转速：击杀进入 ${GameConfig.get('perkFrenzySec')} 秒狂热（攻速再 +${Math.round(GameConfig.get('perkFrenzyAtk') * 100)}%），连杀可常驻` : ''),
+      onLevel(p, _g, from, to) { swapFactor(p.stats, 'attackSpeed', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); },
+      // Lv2 热机：波次切换时刷新计时窗（onUpdate 逐帧续短 buff，与 getAtkSpd 的 buff 读取实时联动）
+      _pwWave: -1, _pwT: 0,
+      onUpdate(p, dt, game) {
+          if ((this.level ?? 1) < 2) return;
+          const wave = (game as any)?._waveMgr?.wave ?? 0;
+          if (wave !== this._pwWave) { this._pwWave = wave; this._pwT = GameConfig.get('perkWarmupSec'); }
+          if (this._pwT <= 0) return;
+          this._pwT -= dt;
+          p.applyBuff?.('perk_warmup', 0.3, { atkSpd: 1 + GameConfig.get('perkWarmupAtk') });
+      },
+      // Lv3 极限转速：击杀刷新狂热
+      onKill(p, _e, _d, _g) {
+          if ((this.level ?? 1) < 3) return;
+          p.applyBuff?.('perk_frenzy', GameConfig.get('perkFrenzySec'), { atkSpd: 1 + GameConfig.get('perkFrenzyAtk') });
+      } },
 
     { id: 'hex02', index: 2, rarity: 'silver', icon: 'hex02', name: '力量核心', category: '功能',
       prices: [12, 45, 160], values: [0.01, 0.02, 0.05],
-      descAt: (l) => `攻击 +${[1, 2, 5][l - 1]}%`,
-      onLevel(p, _g, from, to) { swapFactor(p.stats, 'damage', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
+      descAt: (l) => `攻击 +${[1, 2, 5][l - 1]}%`
+          + (l >= 2 ? `｜特权·过载电容：暴击附加 ${Math.round(GameConfig.get('perkCritCapDamage') * 100)}% 攻击力的额外伤害` : '')
+          + (l >= 3 ? '｜特权·核心共鸣：攻击时额外打出一道攻击' : ''),
+      onLevel(p, _g, from, to) {
+          swapFactor(p.stats, 'damage', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+          // Lv3 核心共鸣（用户定稿）：攻击时额外打出一道攻击——按职业走
+          // 幻影特效同款管线（远程 extraBullets / 近战 meleeExtraHits），档位进出精确换档
+          const had = from >= 3, has = to >= 3;
+          if (had !== has) {
+              const key = p._charDef?.attackType === 'melee' ? 'meleeExtraHits' : 'extraBullets';
+              swapFlat(p.stats, key, had ? 1 : 0, has ? 1 : 0);
+          }
+      },
+      // Lv2 过载电容：暴击附加一段固伤（不参与暴击再乘区，防递归）
+      onCrit(p, enemy, _dmg, game) {
+          if ((this.level ?? 1) < 2 || !enemy?.alive) return;
+          const base = p.getDamage?.(game);
+          if (!base) return;
+          const extra = base * GameConfig.get('perkCritCapDamage');
+          if (extra <= 0) return;
+          enemy.takeDamage(extra, p, game);
+          game?.floatingText?.spawn?.(enemy.x, enemy.y - 44, '过载电容', '#ffb0e0', 13, false);
+      } },
 
     { id: 'hex03', index: 3, rarity: 'silver', icon: 'hex03', name: '生命涌泉', category: '功能',
       prices: [15, 50, 180], values: [0.01, 0.05, 0.10],
-      descAt: (l) => `血量 +${[1, 5, 10][l - 1]}%`,
+      descAt: (l) => `血量 +${[1, 5, 10][l - 1]}%`
+          + (l >= 2 ? `｜特权·涌泉活水：波间自动回复 ${Math.round(GameConfig.get('perkHealRatio') * 100)}% 已损失生命` : '')
+          + (l >= 3 ? `｜特权·泉眼：生命低于 ${Math.round(GameConfig.get('perkLowHpRatio') * 100)}% 时受伤 -${Math.round(GameConfig.get('perkLowHpReduce') * 100)}%` : ''),
       onLevel(p, _g, from, to) {
           swapFactor(p.stats, 'maxHp', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
           p.hp = Math.min(p.hp, p.stats.maxHp);
+          // Lv3 泉眼：低血线减伤标志（PlayerController.takeDamage 读取）
+          p.stats.perkLowHpReduce = to >= 3 ? GameConfig.get('perkLowHpReduce') : 0;
+      },
+      // Lv2 涌泉活水：波间开页回复（dispatchShopOpen 分发）
+      onShopOpen(p, _g) {
+          if ((this.level ?? 1) < 2) return;
+          const lost = p.stats.maxHp - p.hp;
+          if (lost <= 0) return;
+          const heal = Math.min(lost, lost * GameConfig.get('perkHealRatio'));
+          p.heal?.(heal);
       } },
 
     { id: 'hex07', index: 7, rarity: 'silver', icon: 'hex07', name: '精准仪轨', category: '功能',
       prices: [15, 55, 200], values: [0.01, 0.02, 0.05],
-      descAt: (l) => `暴击几率 +${[1, 2, 5][l - 1]}%`,
-      onLevel(p, _g, from, to) { swapFlat(p.stats, 'critRate', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
+      descAt: (l) => `暴击几率 +${[1, 2, 5][l - 1]}%`
+          + (l >= 2 ? `｜特权·弱点习惯：连续攻击同一目标每次命中暴击 +${(GameConfig.get('perkFocusCritStep') * 100).toFixed(0)}%（上限 +${(GameConfig.get('perkFocusCritMax') * 100).toFixed(0)}%，换目标清零）` : '')
+          + (l >= 3 ? `｜特权·致命节奏：暴击缩短 Q 冷却 ${GameConfig.get('perkCritQcd')} 秒` : ''),
+      onLevel(p, _g, from, to) {
+          swapFlat(p.stats, 'critRate', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+          if (to === 0) p.stats.perkFocusCrit = 0;
+      },
+      // Lv2 弱点习惯：连续攻击同一目标逐跳叠暴击（作用于下一次暴击判定；对象引用判同一目标）
+      _pfTarget: null as any, _pfStacks: 0,
+      onHit(p, enemy, _dmg, _g) {
+          if ((this.level ?? 1) < 2 || !enemy) return;
+          if (this._pfTarget !== enemy) { this._pfTarget = enemy; this._pfStacks = 0; }
+          const max = Math.floor(GameConfig.get('perkFocusCritMax') / GameConfig.get('perkFocusCritStep'));
+          this._pfStacks = Math.min(max, this._pfStacks + 1);
+          p.stats.perkFocusCrit = this._pfStacks * GameConfig.get('perkFocusCritStep');
+      },
+      // Lv3 致命节奏：暴击喂 Q 冷却
+      onCrit(p, _e, _d, _g) {
+          if ((this.level ?? 1) < 3) return;
+          p.reduceQCd?.(GameConfig.get('perkCritQcd'));
+      } },
 
     { id: 'hex11', index: 11, rarity: 'silver', icon: 'hex11', name: '延展力场', category: '功能',
       prices: [18, 60, 220], values: [10, 15, 30],
-      descAt: (l) => `攻击距离 +${[10, 15, 30][l - 1]} 码`,
-      onLevel(p, _g, from, to) { swapFlat(p.stats, 'rangeBonus', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0); } },
+      descAt: (l) => `攻击距离 +${[10, 15, 30][l - 1]} 码`
+          + (l >= 2 ? `｜特权·力场透镜：子弹飞行最远段（${Math.round(GameConfig.get('perkFarShotFrom') * 100)}% 后）命中伤害 +${Math.round(GameConfig.get('perkFarShotBonus') * 100)}%` : '')
+          + (l >= 3 ? `｜特权·贯穿力场：子弹飞行 ${Math.round(GameConfig.get('perkRangePierceFrom') * 100)}% 射程后获得 +1 穿透` : ''),
+      onLevel(p, _g, from, to) {
+          swapFlat(p.stats, 'rangeBonus', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+          // 特权标志（BulletController 读取；卖出即清）
+          p.stats.perkFarShot = to >= 2 ? GameConfig.get('perkFarShotBonus') : 0;
+          p.stats.perkRangePierce = to >= 3;
+      } },
 
     // ─── 技能海克斯（金） ─────────────────────────────────
     { id: 'hex04', index: 4, rarity: 'gold', icon: 'hex04', name: '裂变脉冲', category: '技能',
@@ -354,11 +504,13 @@ export const AUGMENT_DB: AugmentDef[] = [
           const lvl = this.level ?? 1;
           const n = this.values[lvl - 1];
           const dmg = [10, 20, 50][lvl - 1];
+          // 方案D 风元素Lv3「风驰」：技能弹幕同样吃弹速加成
+          const missileSpd = 300 * (1 + ((p.stats as any)?.perkSkillBulletSpeed ? (p.stats.bulletSpeedMult || 0) : 0));
           for (let i = 0; i < n; i++) {
               const a = Rng.float(0, Math.PI * 2);
               game?.bullets?.spawn?.({
                   x: p.x, y: p.y,
-                  vx: Math.cos(a) * 300, vy: Math.sin(a) * 300,
+                  vx: Math.cos(a) * missileSpd, vy: Math.sin(a) * missileSpd,
                   damage: dmg, radius: 6, color: '#ffd34d', owner: 'player',
                   charKey: p.charId ?? '', lifeTime: 4, homing: true,
               });
@@ -409,18 +561,26 @@ export const AUGMENT_DB: AugmentDef[] = [
 
     { id: 'hex16', index: 16, rarity: 'silver', icon: 'hex16', name: '点金手', category: '一次性',
       prices: [40, 200, 800], values: [0.25, 0.5, 1.0],
-      descAt: (l) => `获得的金币增加 ${[0.25, 0.5, 1.0][l - 1] * 100}%`,
-      onLevel(_p, game, from, to) {
+      descAt: (l) => `获得的金币增加 ${[0.25, 0.5, 1.0][l - 1] * 100}%`
+          + (l >= 2 ? `｜特权·复利：每持有 100 金币拾取再 +1%（上限 +${Math.round(GameConfig.get('perkCompoundMax') * 100)}%）` : '')
+          + (l >= 3 ? `｜特权·黄金之手：精英击杀 +${GameConfig.get('perkEliteGold')} 金；局末兑换比改善为 ${GameConfig.get('perkSettleRate')}:1` : ''),
+      onLevel(p, game, from, to) {
           const eco = game?.economy;
           if (!eco) return;
           swapFactor(eco, 'gainMult', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
+          // Lv2 复利 / Lv3 黄金之手：标志位（Economy.addGold 与 EnemyBase 精英击杀 / 结算比读取）
+          eco.compoundPerk = to >= 2;
+          eco.eliteGoldBonus = to >= 3;
+          p.stats.perkSettleRate = to >= 3 ? GameConfig.get('perkSettleRate') : 0;
       } },
 
     { id: 'hex17', index: 17, rarity: 'silver', icon: 'hex17', name: '战争红利', category: '一次性',
       // v4 9.6 重标定：原 500/1000/2000（花 750 回 2000 净赚再造一局，最大
-      // 印钞单点）→ 80/250/900，变"应急取款"，净赚 45~150。
-      prices: [35, 180, 750], values: [80, 250, 900], oneShot: true,
-      descAt: (l) => `立刻获得 ${[80, 250, 900][l - 1]} 金币`,
+      // 印钞单点）→ 80/250/900，变"应急取款"。
+      // 2026-11-09 用户调整：纯给钱卡免费发放（prices 全 0）——应急取款不该
+      // 还要玩家先掏钱；发放数值维持 80/250/900 不变（占用一次性限购）。
+      prices: [0, 0, 0], values: [80, 250, 900], oneShot: true,
+      descAt: (l) => `免费：立刻获得 ${[80, 250, 900][l - 1]} 金币`,
       onLevel(_p, game, _from, to) { game?.economy?.addGold(this.values[to - 1]); } },
 
     { id: 'hex18', index: 18, rarity: 'silver', icon: 'hex18', name: '应急壁垒', category: '一次性',
@@ -449,8 +609,9 @@ export const AUGMENT_DB: AugmentDef[] = [
     { id: 'hex19', index: 19, rarity: 'prismatic', icon: 'hex19', name: '元素暴击', category: '技能',
       prices: [900], values: [1],
       descAt: () => `攻击暴击时发射 ${ELEMENT_VOLLEY.count[0]}-${ELEMENT_VOLLEY.count[1]} 枚元素飞弹` +
-          `（水/火/土/风随机，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射，内置 0.5 秒冷却）；` +
-          `同一目标集齐 2 种元素即产生元素爆炸，每多一种元素伤害翻倍。需先集齐四种元素海克斯`,
+          `（元素种类取自你持有的元素卡，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射，内置 0.5 秒冷却）；` +
+          `不同元素附带不同效果（水减速/火灼烧/土溅射/风击退/雷直伤/冰强减速/光真伤/暗吸血），` +
+          `同一目标集齐 2 种元素即产生元素爆炸，每多一种元素伤害翻倍。需先持有任意四种元素海克斯`,
       // 齐射内置冷却：高攻速/多段技能（如 30 发炮弹的大招）逐发暴击时，
       // 不至于一帧内叠出几十轮齐射把弹池和粒子打爆
       _volleyCd: 0,
@@ -464,18 +625,28 @@ export const AUGMENT_DB: AugmentDef[] = [
     // ─── 四元素海克斯（集齐解锁元素暴击） ──────────────────
     { id: 'hex20', index: 20, rarity: 'silver', icon: 'hex20', name: '风元素', category: '技能',
       prices: [50, 230, 880], values: [0.10, 0.15, 0.20],
-      descAt: (l) => `远程：子弹飞行速度 +${[10, 15, 20][l - 1]}%；近战：攻击伤害 +${[5, 8, 10][l - 1]}%`,
+      descAt: (l) => `远程：子弹飞行速度 +${[10, 15, 20][l - 1]}%；近战：攻击伤害 +${[5, 8, 10][l - 1]}%`
+          + (l >= 2 ? `｜特权·风压：命中 ${Math.round(GameConfig.get('perkWindPushChance') * 100)}% 概率推开小兵` : '')
+          + (l >= 3 ? '｜特权·风驰：弹速加成同时作用于技能弹幕（制导蜂群/元素飞弹）' : ''),
       onLevel(p, _g, from, to) {
           if (p._charDef?.attackType === 'melee') {
               swapFactor(p.stats, 'damage', from ? this.values[from - 1] * 0.5 : 0, to ? this.values[to - 1] * 0.5 : 0);
           } else {
               swapFlat(p.stats, 'bulletSpeedMult', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
           }
+          p.stats.perkWindPush = to >= 2;          // Lv2 风压（BulletController 命中读取）
+          p.stats.perkSkillBulletSpeed = to >= 3;  // Lv3 风驰（hex10 导弹 / 元素齐射读取）
       } },
 
     { id: 'hex21', index: 21, rarity: 'silver', icon: 'hex21', name: '火元素', category: '技能',
       prices: [50, 230, 880], values: [0.05, 0.06, 0.07],
-      descAt: (l) => `攻击附加灼烧：每秒造成怪物当前生命值 ${[5, 6, 7][l - 1]}% 的伤害（持续 1.5 秒，命中刷新）`,
+      descAt: (l) => `攻击附加灼烧：每秒造成怪物当前生命值 ${[5, 6, 7][l - 1]}% 的伤害（持续 1.5 秒，命中刷新）`
+          + (l >= 2 ? `｜特权·蔓延：灼烧目标死亡时把 ${Math.round(GameConfig.get('perkFireSpreadRatio') * 100)}% 剩余灼烧转移给 ${GameConfig.get('perkFireSpreadRange')} 码内另一敌人` : '')
+          + (l >= 3 ? `｜特权·燃尽：灼烧到期终结一跳（DPS ×${GameConfig.get('perkBurnoutBonus')}）；灼烧中的精英死亡点燃 ${GameConfig.get('perkBurnoutRange')} 码范围` : ''),
+      onLevel(p, _g, _from, to) {
+          p.stats.perkFireSpread = to >= 2;  // Lv2 蔓延（EnemyBase._die 读取）
+          p.stats.perkBurnout = to >= 3;     // Lv3 燃尽（EnemyBase DoT 循环读取）
+      },
       onHit(_p, enemy, _dmg, _game) {
           if (!enemy?.alive) return;
           const pct = this.values[(this.level ?? 1) - 1];
@@ -489,7 +660,9 @@ export const AUGMENT_DB: AugmentDef[] = [
 
     { id: 'hex22', index: 22, rarity: 'silver', icon: 'hex22', name: '土元素', category: '技能',
       prices: [50, 230, 880], values: [1, 2, 3],
-      descAt: (l) => `远程：攻击可以穿刺（+${[1, 2, 3][l - 1]} 个目标）；近战：攻击范围 +${[20, 25, 30][l - 1]}%`,
+      descAt: (l) => `远程：攻击可以穿刺（+${[1, 2, 3][l - 1]} 个目标）；近战：攻击范围 +${[20, 25, 30][l - 1]}%`
+          + (l >= 2 ? `｜特权·厚重：子弹每穿透一个目标伤害 +${Math.round(GameConfig.get('perkPierceBonus') * 100)}%` : '')
+          + (l >= 3 ? `｜特权·地震：近战一次命中 ≥3 敌时震地（${Math.round(GameConfig.get('perkQuakeRatio') * 100)}% 攻击力范围伤害，CD ${GameConfig.get('perkQuakeCd')} 秒）` : ''),
       onLevel(p, _g, from, to) {
           if (p._charDef?.attackType === 'melee') {
               const meleeRange = p._charDef.attackRange ?? 90;
@@ -499,11 +672,31 @@ export const AUGMENT_DB: AugmentDef[] = [
           } else {
               swapFlat(p.stats, 'pierce', from ? this.values[from - 1] : 0, to ? this.values[to - 1] : 0);
           }
+          p.stats.perkPierceBonus = to >= 2 ? GameConfig.get('perkPierceBonus') : 0; // Lv2 厚重
+      },
+      // Lv3 地震：近战贴身 ≥3 敌时震地（内置冷却）
+      _qkCd: 0,
+      onUpdate(p, dt) { this._qkCd = Math.max(0, this._qkCd - dt); },
+      onHit(p, enemy, _dmg, game) {
+          if ((this.level ?? 1) < 3 || this._qkCd > 0 || !game?.enemies) return;
+          if (p._charDef?.attackType !== 'melee') return;
+          const crowd = game.enemies.filter((e: any) =>
+              e.alive && !e.isBoss && Vec.dist(e.x, e.y, p.x, p.y) <= 130).length;
+          if (crowd < 3) return;
+          this._qkCd = GameConfig.get('perkQuakeCd');
+          spawnExplosion(p, p.x, p.y, p.getDamage?.(game) * GameConfig.get('perkQuakeRatio'), 110, game);
+          game.floatingText?.spawn?.(p.x, p.y - 46, '地震！', '#c9a06a', 16, true);
       } },
 
     { id: 'hex23', index: 23, rarity: 'silver', icon: 'hex23', name: '水元素', category: '技能',
       prices: [50, 230, 880], values: [0.20, 0.25, 0.30],
-      descAt: (l) => `攻击附加减速：命中使敌人移速 -${[20, 25, 30][l - 1]}%，持续 2 秒（重复命中刷新）`,
+      descAt: (l) => `攻击附加减速：命中使敌人移速 -${[20, 25, 30][l - 1]}%，持续 2 秒（重复命中刷新）`
+          + (l >= 2 ? `｜特权·潮汐：被减速超过 ${GameConfig.get('perkTideFrom')} 秒的敌人受伤 +${Math.round(GameConfig.get('perkTideBonus') * 100)}%` : '')
+          + (l >= 3 ? `｜特权·冰点：对减速目标暴击率 +${Math.round(GameConfig.get('perkFrostCrit') * 100)}%` : ''),
+      onLevel(p, _g, _from, to) {
+          p.stats.perkTideDmg = to >= 2 ? GameConfig.get('perkTideBonus') : 0;  // Lv2 潮汐（EnemyBase.takeDamage）
+          p.stats.perkFrostCrit = to >= 3;                                       // Lv3 冰点（暴击判定）
+      },
       onHit(_p, enemy, _dmg, _game) {
           if (!enemy?.alive) return;
           const pct = this.values[(this.level ?? 1) - 1];
@@ -690,6 +883,138 @@ export const AUGMENT_DB: AugmentDef[] = [
               this._stacks = 0;
               this._dist = 0;
               this._lx = undefined;
+          }
+      } },
+
+    // ─── 元素体系扩展（2026-11-09 用户设计稿）：雷/冰/光/暗四元素海克斯 ───
+    // 与风火土水同构（银卡三档 + Lv2/Lv3 特权）；集齐任意四种元素激活元素暴击。
+    // 感电走 DoT 通道、灼烧同例——大Boss负面免疫对两者同样生效（与火元素一致）；
+    // 寒潮/腐蚀用独立计时字段（_frostMarkT/_shadowMarkT）绕开 Boss 的 DoT 清空。
+    // icon 为程序生成的元素色占位图（ui_icon_hex35~38），专属图标产出后覆盖同名文件替换。
+    { id: 'hex35', index: 35, rarity: 'silver', icon: 'hex35', name: '雷元素', category: '技能',
+      prices: [50, 230, 880], values: [0.08, 0.10, 0.12],
+      descAt: (l) => `攻击命中挂「感电」2 秒：每秒造成攻击力 ${[8, 10, 12][l - 1]}% 的雷伤（重复命中刷新；Boss 免疫持续伤害）`
+          + (l >= 2 ? `｜特权·静电积累：感电目标被再次命中 ${Math.round(GameConfig.get('perkThunderArc') * 100)}% 概率落雷（${GameConfig.get('perkThunderArcRange')} 码，${Math.round(GameConfig.get('perkThunderArcDmg') * 100)}% 攻击力）` : '')
+          + (l >= 3 ? `｜特权·引雷针：感电目标死亡时雷击转移给 ${GameConfig.get('perkThunderChainRange')} 码内最近敌人并重挂感电` : ''),
+      _arcCd: 0,
+      onLevel(p, _g, _from, to) {
+          p.stats.perkThunderChain = to >= 3;  // Lv3 引雷针（EnemyBase._die 读取）
+      },
+      onUpdate(_p, dt) { if (this._arcCd > 0) this._arcCd = Math.max(0, this._arcCd - dt); },
+      onHit(p, enemy, _dmg, game) {
+          if (!enemy?.alive) return;
+          const pct = this.values[(this.level ?? 1) - 1];
+          const dps = (p.stats?.damage ?? 20) * pct;
+          const dots = enemy.dots || (enemy.dots = []);
+          const ex = dots.find(d => d.type === 'hex_thunder');
+          if (ex) { ex.dps = dps; ex.timeLeft = 2; }
+          else dots.push({ type: 'hex_thunder', dps, timeLeft: 2, color: '#f5e36b' });
+          // Lv2 静电积累：0.5s 内置冷却防高频攻击连爆
+          if ((this.level ?? 1) >= 2 && this._arcCd <= 0 && Rng.chance(GameConfig.get('perkThunderArc'))) {
+              this._arcCd = 0.5;
+              spawnExplosion(p, enemy.x, enemy.y,
+                  (p.stats?.damage ?? 20) * GameConfig.get('perkThunderArcDmg'),
+                  GameConfig.get('perkThunderArcRange'), game);
+              game?.floatingText?.spawn?.(enemy.x, enemy.y - 36, '静电落雷！', '#f5e36b', 14, true);
+          }
+      } },
+
+    { id: 'hex36', index: 36, rarity: 'silver', icon: 'hex36', name: '冰元素', category: '技能',
+      prices: [50, 230, 880], values: [6, 5, 4],
+      descAt: (l) => `攻击命中叠 1 层「寒意」，同一目标叠满 ${[6, 5, 4][l - 1]} 层冻结 1.2 秒（冻结后层数清空；Boss 免疫冻结，叠满改为 ${GameConfig.get('perkFrostBossSec')} 秒「寒潮」易伤）`
+          + (l >= 2 ? `｜特权·霜甲：冻结/寒潮目标受到的伤害 +${Math.round(GameConfig.get('perkFrostBonus') * 100)}%` : '')
+          + (l >= 3 ? `｜特权·碎冰：对冻结目标暴击立即碎冰（${Math.round(GameConfig.get('perkShatterDmg') * 100)}% 攻击力伤害）并提前解冻` : ''),
+      onLevel(p, _g, _from, to) {
+          p.stats.perkFrostBonus = to >= 2 ? GameConfig.get('perkFrostBonus') : 0;  // Lv2 霜甲（EnemyBase.takeDamage）
+          p.stats.perkShatter = to >= 3;                                           // Lv3 碎冰（onCrit）
+      },
+      onHit(_p, enemy, _dmg, game) {
+          if (!enemy?.alive) return;
+          const need = this.values[(this.level ?? 1) - 1];
+          enemy._frostStacks = (enemy._frostStacks ?? 0) + 1;
+          if (enemy._frostStacks < need) return;
+          enemy._frostStacks = 0;
+          if (enemy.isBoss) {
+              enemy._frostMarkT = GameConfig.get('perkFrostBossSec'); // 独立字段，不吃 Boss DoT 清空
+              game?.floatingText?.spawn?.(enemy.x, enemy.y - 46, '寒潮涌动！', '#a8ecff', 15, true);
+          } else {
+              enemy.frozen = Math.max(enemy.frozen, 1.2);
+              game?.particles?.coldImpact?.(enemy.x, enemy.y);
+          }
+      },
+      onCrit(p, enemy, _dmg, game) {
+          if ((this.level ?? 1) < 3 || !enemy?.alive || (enemy.frozen ?? 0) <= 0) return;
+          enemy.frozen = 0;
+          spawnExplosion(p, enemy.x, enemy.y,
+              (p.stats?.damage ?? 20) * GameConfig.get('perkShatterDmg'), 70, game);
+          game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, '碎冰！', '#a8ecff', 16, true);
+      } },
+
+    { id: 'hex37', index: 37, rarity: 'silver', icon: 'hex37', name: '光元素', category: '技能',
+      prices: [50, 230, 880], values: [0.04, 0.06, 0.08],
+      descAt: (l) => `攻击命中附加 ${[4, 6, 8][l - 1]}% 攻击力的真实伤害（无视护盾/护甲/减伤）`
+          + (l >= 2 ? `｜特权·曝光：命中隐身单位立即破隐并追加 ${Math.round(GameConfig.get('perkLightExpose') * 100)}% 攻击力真伤` : '')
+          + (l >= 3 ? `｜特权·聚焦：连续命中同一目标每跳光伤 +${(GameConfig.get('perkLightFocusStep') * 100).toFixed(0)}%（上限 +${Math.round(GameConfig.get('perkLightFocusMax') * 100)}%，换目标清零）` : ''),
+      _focusId: undefined as any, _focusStacks: 0,
+      onLevel(_p, _g, _from, to) { if (to === 0) { this._focusId = undefined; this._focusStacks = 0; } },
+      onHit(p, enemy, _dmg, game) {
+          if (!enemy?.alive) return;
+          const atk = p.stats?.damage ?? 20;
+          const base = atk * this.values[(this.level ?? 1) - 1];
+          // Lv3 聚焦：连续命中同一目标递增（换目标清零）
+          let bonus = 1;
+          if ((this.level ?? 1) >= 3) {
+              if (this._focusId !== enemy) { this._focusId = enemy; this._focusStacks = 0; }
+              const maxS = Math.floor(GameConfig.get('perkLightFocusMax') / GameConfig.get('perkLightFocusStep'));
+              if (this._focusStacks < maxS) this._focusStacks++;
+              bonus = 1 + this._focusStacks * GameConfig.get('perkLightFocusStep');
+          }
+          // Lv2 曝光：隐身单位破隐（水母/影袭中的暗影猎手克星）+ 追加真伤
+          let expose = 0;
+          if ((this.level ?? 1) >= 2 && enemy.invisible) {
+              enemy.invisible = false; enemy.invulnerable = false;
+              expose = atk * GameConfig.get('perkLightExpose');
+              game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, '曝光！', '#fff3b0', 15, true);
+          }
+          enemy.takeTrueDamage?.(base * bonus + expose, p, game);
+      } },
+
+    { id: 'hex38', index: 38, rarity: 'silver', icon: 'hex38', name: '暗元素', category: '技能',
+      prices: [50, 230, 880], values: [2, 3, 4],
+      descAt: (l) => `攻击命中挂「腐蚀」2 秒：腐蚀单位死亡时回复 ${[2, 3, 4][l - 1]} 点生命（Boss 也可被腐蚀）`
+          + (l >= 2 ? `｜特权·汲取：对腐蚀目标造成伤害的 ${Math.round(GameConfig.get('perkShadowLeech') * 100)}% 转为生命（每秒上限 ${GameConfig.get('perkShadowLeechCap')}）` : '')
+          + (l >= 3 ? `｜特权·暗蚀领域：每击杀 ${GameConfig.get('perkShadowKillReq')} 个腐蚀单位获得 ${GameConfig.get('perkShadowPowerSec')} 秒「暗影之力」（伤害 +${Math.round(GameConfig.get('perkShadowPower') * 100)}%）` : ''),
+      _killCount: 0, _leechT: 0,
+      onLevel(p, _g, _from, to) {
+          p.stats.perkShadowHeal = to >= 1 ? this.values[to - 1] : 0;                 // Lv1 击杀回血（onKill）
+          p.stats.perkShadowLeech = to >= 2 ? GameConfig.get('perkShadowLeech') : 0;  // Lv2 汲取（takeDamage）
+          p.stats.perkShadowKillReq = to >= 3 ? GameConfig.get('perkShadowKillReq') : 0; // Lv3 领域计数
+          if (to >= 2) p.stats._shadowLeechBudget = GameConfig.get('perkShadowLeechCap'); // 装备即有预算，不等首帧 onUpdate
+      },
+      onUpdate(p, dt) {
+          // 汲取预算：每秒重置（对 Boss/小怪统一的每秒回血上限）
+          this._leechT -= dt;
+          if (this._leechT <= 0) {
+              this._leechT = 1;
+              p.stats._shadowLeechBudget = GameConfig.get('perkShadowLeechCap');
+          }
+      },
+      onHit(_p, enemy, _dmg, _game) {
+          if (!enemy?.alive) return;
+          enemy._shadowMarkT = 2; // 独立字段：Boss 的 DoT 免疫不清腐蚀标记
+      },
+      onKill(p, enemy, _dmg, game) {
+          if ((enemy?._shadowMarkT ?? 0) <= 0) return;
+          if (p.stats?.perkShadowHeal) p.heal?.(p.stats.perkShadowHeal);
+          if ((this.level ?? 1) < 3 || !p.stats?.perkShadowKillReq) return;
+          this._killCount++;
+          game?.floatingText?.spawn?.(p.x, p.y - 40,
+              `暗蚀 ${this._killCount}/${GameConfig.get('perkShadowKillReq')}`, '#9c7bff', 13, false);
+          if (this._killCount >= GameConfig.get('perkShadowKillReq')) {
+              this._killCount = 0;
+              p.applyBuff?.('shadow_power', GameConfig.get('perkShadowPowerSec'),
+                  { dmgMult: 1 + GameConfig.get('perkShadowPower') });
+              game?.floatingText?.spawn?.(p.x, p.y - 52, '暗影之力！', '#9c7bff', 16, true);
           }
       } },
 ];
