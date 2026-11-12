@@ -4,9 +4,12 @@
 import { DT_MAX } from './Constants';
 import { ActorAction, ActorClip, AnimationFrame } from '../data/ActorAnimationDB';
 
+// 2026-11-09 玩家反馈"技能释放卡顿"修复：技能系优先级 4→6，高于受击(5)——
+// 受击动画不再锁住/打断施法队列（贴脸怪连续命中时施法曾被阻塞到 hit 播完
+// 才起手，延迟可达1秒+）；施法期间受击只走白闪/浮字反馈，不再抢占身体动画。
 const PRIORITY: Record<ActorAction, number> = {
     idle: 0, walk: 0, run: 0, jump: 2, attack: 3, attackMelee: 3,
-    skill: 4, skill2: 4, skill3: 4, skill4: 4, skill5: 4, hit: 5, defeated: 10,
+    skill: 6, skill2: 6, skill3: 6, skill4: 6, skill5: 6, hit: 5, defeated: 10,
 };
 
 export interface ActorFrameEvent {

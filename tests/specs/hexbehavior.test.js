@@ -106,8 +106,8 @@ test('点金手乘区作用于 Economy.addGold', () => {
     assert.equal(eco.earnedThisRun, 250);
 });
 
-// ── 海克斯19 元素暴击：四元素飞弹齐射 + 元素爆炸 ──────────
-const { AUGMENT_DB, applyElementMark, fireElementalVolley } = require('../dist/data/AugmentDB');
+// ── 海克斯19 元素暴击（2026-11-12 改版：元素卡命中打印记 + 元素爆炸） ──
+const { AUGMENT_DB, applyElementMark } = require('../dist/data/AugmentDB');
 const fs = require('node:fs');
 const path = require('node:path');
 const rootDir = path.resolve(__dirname, '..', '..');
@@ -120,60 +120,45 @@ function makeElemEnemies(n) {
     }));
 }
 
-test('元素暴击(19):先锁定后发射,数量10-20/伤害15-20区间,每枚锁定场上目标', () => {
-    const hex = { id: 'hex19', level: 1 };
-    const spawned = [];
+test('元素暴击改版(19):持有后元素卡命中打印记,目标集齐2种不同印记即引爆(当次伤害×2)', () => {
+    const am = new AugmentManager();
     const game = makeMockGame();
-    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
-    const enemies = makeElemEnemies(5);
-    game.enemies = enemies;
-    for (let i = 0; i < 60; i++) {
-        spawned.length = 0;
-        fireElementalVolley(hex, { x: 0, y: 0, charId: 'kai' }, game);
-        assert.ok(spawned.length >= 10 && spawned.length <= 20,
-            `齐射数量应在 10-20,实际 ${spawned.length}`);
-        for (const b of spawned) {
-            assert.ok(b.damage >= 15 && b.damage <= 20, '单枚伤害 15-20 区间');
-            assert.ok(['water', 'fire', 'earth', 'wind', 'thunder', 'frost', 'light', 'shadow'].includes(b.element), '八元素随机');
-            assert.equal(b.homing, true, '飞弹追踪');
-            assert.ok(!b.charKey, '飞弹为元素色能量梭(粒子风弹体),不挂角色弹素材');
-            assert.ok(enemies.includes(b._homingTarget), '先锁定目标再发射');
-        }
-    }
+    game.augmentManager = am;
+    const p = makePlayer();
+    // force 绕过"集齐四元素才解锁"门槛：本用例只验证印记→爆炸接线
+    am.equip({ id: 'hex19' }, p, game, { force: true });
+    assert.equal(p.stats.elemMarks, true, '持有元素暴击后开启元素卡印记通道');
+    am.equip({ id: 'hex21' }, p, game);   // 火
+    am.equip({ id: 'hex23' }, p, game);   // 水
+    const e = makeElemEnemies(1)[0];
+    game.enemies = [e];
+
+    // 同一次命中：火卡打印记(1种不引爆) → 水卡补第二种印记 → 元素爆炸 = 100×2
+    am.dispatchHit(p, e, 100, game);
+    assert.deepEqual(e.taken, [200], '两种不同元素印记以当次命中伤害×2 引爆');
+
+    // 爆炸后 0.5 秒节流窗口：继续命中只累积印记不引爆
+    am.dispatchHit(p, e, 100, game);
+    assert.deepEqual(e.taken, [200], '节流窗口内不重复引爆');
+
+    // 窗口结束（hex19 onUpdate 递减）后下一次命中再度引爆
+    am.dispatchUpdate(p, 0.6, game);
+    am.dispatchHit(p, e, 100, game);
+    assert.deepEqual(e.taken, [200, 200], '窗口结束后再次命中重新引爆');
 });
 
-test('锁定规则:飞弹多于目标时鸽笼分配(20枚19目标必有目标被2枚锁定)', () => {
-    const spawned = [];
+test('元素暴击改版:未持有时元素卡命中不打印记,行为不变', () => {
+    const am = new AugmentManager();
     const game = makeMockGame();
-    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
-    game.enemies = makeElemEnemies(19);
-    const orig = Math.random;
-    Math.random = () => 0.999;   // Rng.int(10,20)=20 发满
-    try {
-        fireElementalVolley({ level: 1 }, { x: 0, y: 0, charId: 'kai' }, game);
-    } finally { Math.random = orig; }
-    assert.equal(spawned.length, 20, '满额 20 枚');
-    const counts = new Map();
-    for (const b of spawned) counts.set(b._homingTarget, (counts.get(b._homingTarget) || 0) + 1);
-    assert.equal(counts.size, 19, '19 个目标全部被锁定');
-    assert.ok([...counts.values()].some(c => c >= 2), '必有目标被多枚飞弹锁定');
-});
-
-test('锁定规则:飞弹少于目标时按概率集火(多枚锁定同一目标,其余分散)', () => {
-    const spawned = [];
-    const game = makeMockGame();
-    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
-    game.enemies = makeElemEnemies(30);   // >20 目标 → 集火概率 15%
-    const orig = Math.random;
-    Math.random = () => 0.01;    // chance(0.15) 命中集火;N=10;k=2 枚集中
-    try {
-        fireElementalVolley({ level: 1 }, { x: 0, y: 0, charId: 'kai' }, game);
-    } finally { Math.random = orig; }
-    assert.equal(spawned.length, 10);
-    const counts = new Map();
-    for (const b of spawned) counts.set(b._homingTarget, (counts.get(b._homingTarget) || 0) + 1);
-    assert.ok([...counts.values()].includes(2), '集火目标被 2 枚锁定');
-    assert.equal(counts.size, 9, '2 枚集火 + 8 枚分散 = 9 个不同目标');
+    game.augmentManager = am;
+    const p = makePlayer();
+    am.equip({ id: 'hex21' }, p, game);
+    am.equip({ id: 'hex23' }, p, game);
+    const e = makeElemEnemies(1)[0];
+    game.enemies = [e];
+    am.dispatchHit(p, e, 100, game);
+    assert.ok(!e._elemMarks, '未持有元素暴击时不打印记');
+    assert.equal(e.taken.length, 0, '不引发元素爆炸');
 });
 
 test('元素印记:集齐2种元素引爆,每多一种伤害翻倍(×2/×4/×8),爆炸半径90', () => {
@@ -200,19 +185,19 @@ test('元素印记:集齐2种元素引爆,每多一种伤害翻倍(×2/×4/×8),
     assert.deepEqual(near.taken, [40, 80, 160], '四种元素 ×8');
 });
 
-test('暴击分发:dispatchCrit 触发元素暴击齐射', () => {
+test('改版后元素暴击不再接暴击分发:dispatchCrit 不打印记不齐射', () => {
     const am = new AugmentManager();
     const game = makeMockGame();
-    const spawned = [];
-    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
-    game.enemies = makeElemEnemies(6);
     game.augmentManager = am;
     const p = makePlayer();
-    // force 绕过"集齐四元素才解锁"门槛：本用例只验证暴击分发接线
+    // force 绕过"集齐四元素才解锁"门槛：本用例只验证暴击分发不再接线
     am.equip({ id: 'hex19' }, p, game, { force: true });
-    am.dispatchCrit(p, game.enemies[0], 10, game);
-    assert.ok(spawned.length >= 10, '暴击触发元素齐射');
-    assert.ok(AUGMENT_DB.find(a => a.id === 'hex19').onCrit, '数据库带 onCrit 钩子');
+    am.equip({ id: 'hex21' }, p, game);
+    const e = makeElemEnemies(1)[0];
+    game.enemies = [e];
+    am.dispatchCrit(p, e, 10, game);
+    assert.ok(!e._elemMarks, '暴击不再触发元素飞弹/打印记（改版为命中打印记）');
+    assert.ok(!AUGMENT_DB.find(a => a.id === 'hex19').onCrit, '数据库不再带 onCrit 钩子');
 });
 
 test('暴击接入点:近战与子弹暴击结算后分发 dispatchCrit,元素飞弹命中打印记', () => {
@@ -331,51 +316,25 @@ test('元素暴击解锁门槛:未集齐四元素时卡池不刷出且装备被�
     assert.equal(am.equip({ id: 'hex19' }, p, game), true, '解锁后可装备');
 });
 
-test('元素齐射不锁定隐身/飞空的隐藏单位;场上全是隐藏单位时不发射', () => {
-    const spawned = [];
-    const game = makeMockGame();
-    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
-    const visible = makeElemEnemies(5);
-    const hidden = [
-        { x: 100, y: 100, alive: true, dead: false, invisible: true },
-        { x: 200, y: 100, alive: true, dead: false, mechSkyT: 2 },
-    ];
-    game.enemies = [...visible, ...hidden];
-    for (let i = 0; i < 20; i++) {
-        spawned.length = 0;
-        fireElementalVolley({}, { x: 0, y: 0 }, game);
-        assert.ok(spawned.length > 0);
-        for (const b of spawned) {
-            assert.ok(visible.includes(b._homingTarget), '飞弹不得锁定隐身/飞空单位');
-        }
-    }
-    // 只剩隐藏单位：无有效目标，不浪费齐射
-    game.enemies = hidden;
-    spawned.length = 0;
-    fireElementalVolley({}, { x: 0, y: 0 }, game);
-    assert.equal(spawned.length, 0, '全是隐藏单位时不发射');
-});
-
-test('元素暴击内置0.5秒冷却:连发暴击只触发一轮齐射,冷却结束后恢复', () => {
+test('元素爆炸0.5秒节流:窗口内连续命中只爆一次,窗口过后恢复', () => {
     const am = new AugmentManager();
     const game = makeMockGame();
-    const spawned = [];
-    game.bullets = { spawn: (cfg) => spawned.push(cfg) };
     game.enemies = makeElemEnemies(6);
     game.augmentManager = am;
     const p = makePlayer();
     p._charDef = { attackType: 'ranged', attackRange: 420 };
+    // 集齐四张元素卡后 hex19 自然解锁（不经 force）
     for (const id of ['hex20', 'hex21', 'hex22', 'hex23', 'hex19']) am.equip({ id }, p, game);
+    const e = game.enemies[0];
 
-    am.dispatchCrit(p, game.enemies[0], 10, game);
-    const first = spawned.length;
-    assert.ok(first >= 10, '首轮齐射');
-    for (let i = 0; i < 5; i++) am.dispatchCrit(p, game.enemies[0], 10, game);
-    assert.equal(spawned.length, first, '冷却期内连发暴击不再触发');
+    am.dispatchHit(p, e, 10, game);
+    assert.equal(e.taken.length, 1, '首轮命中即集齐印记引爆');
+    for (let i = 0; i < 5; i++) am.dispatchHit(p, e, 10, game);
+    assert.equal(e.taken.length, 1, '节流窗口内连续命中不再引爆');
 
-    am.dispatchUpdate(p, 0.6, game);   // 冷却走完
-    am.dispatchCrit(p, game.enemies[0], 10, game);
-    assert.ok(spawned.length > first, '冷却结束后恢复触发');
+    am.dispatchUpdate(p, 0.6, game);   // 节流走完
+    am.dispatchHit(p, e, 10, game);
+    assert.equal(e.taken.length, 2, '窗口结束后恢复引爆（累积印记种数越多倍率越高）');
 });
 
 test('技能子弹参与暴击:凯尔Q/大招与利亚娜Q按暴击率掷骰(联动元素暴击)', () => {

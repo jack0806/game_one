@@ -28,6 +28,9 @@ export interface HudData {
     testRoom?: boolean;
     augments: AugDef[];
     skills: { name: string; desc: string; icon: string; cd: number; maxCd: number }[];
+    /** 底部叠层信息（2026-11-12）：可叠层强化（荆棘甲壳/风行节奏等）与
+     *  部分英雄技能层数（盗神赃印/亡灵法师灵魂）的当前/上限。 */
+    stacks?: { name: string; cur: number; max: number }[];
     initialPassive?: { name: string; desc: string };
     bossHp?: number;
     bossMaxHp?: number;
@@ -57,6 +60,8 @@ export class HUD extends Component {
     private _skillRings: { g: Graphics; icon: Sprite; cd: Label }[] = [];
     private _skillRingNodes: Node[] = [];
     private _moveHintRoot!: Node;
+    private _stackRoot!: Node;
+    private _stackChips: { node: Node; label: Label; key: string }[] = [];
     private _testRoomMode = false;
     private readonly BAR_W = 220;
     private readonly BAR_H = 18;
@@ -68,7 +73,8 @@ export class HUD extends Component {
 
     onLoad() {
         this._buildHpBar(); this._buildGoldDisplay(); this._buildWaveDisplay();
-        this._buildBossBar(); this._buildSkillRings(); this._buildMoveHint(); this.fitToVisible();
+        this._buildBossBar(); this._buildSkillRings(); this._buildMoveHint(); this._buildStackRow();
+        this.fitToVisible();
     }
 
     onDestroy() { this._portraitFrame?.destroy(); }
@@ -220,6 +226,8 @@ export class HUD extends Component {
         for (let i = 0; i < this._skillRingNodes.length; i++) {
             this._skillRingNodes[i].setPosition(new Vec3(right - 240 + i * 90, this._testRoomMode ? -155 : -276, 0));
         }
+        // 叠层信息行：屏幕底部居中，横排居中不受屏宽影响；测试房为工具条上移
+        this._stackRoot?.setPosition(new Vec3(0, this._testRoomMode ? -206 : -306, 0));
     }
 
     /** A 图左下 WASD 只是键位提示，不替换现有键盘输入。触控端仍用摇杆。 */
@@ -240,6 +248,42 @@ export class HUD extends Component {
         }
     }
 
+    /** 底部叠层信息行：可叠层强化/英雄技能层数的当前值横排（芯片按需增删）。 */
+    private _buildStackRow(): void {
+        this._stackRoot = this._mkNode('StackRow', 0, -306);
+    }
+
+    private _refreshStacks(list: HudData['stacks']): void {
+        const want = (list ?? []).slice(0, 6);
+        const W = 112, H = 24, GAP = 8;
+        while (this._stackChips.length > want.length) this._stackChips.pop()!.node.destroy();
+        const total = want.length * W + Math.max(0, want.length - 1) * GAP;
+        want.forEach((s, i) => {
+            let chip = this._stackChips[i];
+            if (!chip) {
+                const n = this._mkChild(this._stackRoot, `Chip${i}`, 0, 0);
+                n.addComponent(UITransform).setContentSize(W, H);
+                const g = n.addComponent(Graphics);
+                const draw = () => {
+                    g.clear();
+                    g.fillColor = new Color(10, 23, 34, 200);
+                    g.roundRect(-W / 2, -H / 2, W, H, 6); g.fill();
+                    g.strokeColor = new Color(79, 123, 146, 255); g.lineWidth = 1;
+                    g.roundRect(-W / 2, -H / 2, W, H, 6); g.stroke();
+                };
+                draw(); attachEnableRedraw(n, draw);
+                const label = this._label(n, 'Txt', 0, 0, W - 8, 18, 12);
+                label.horizontalAlign = Label.HorizontalAlign.CENTER;
+                chip = { node: n, label, key: '' };
+                this._stackChips[i] = chip;
+            }
+            chip.node.setPosition(new Vec3(-total / 2 + W / 2 + i * (W + GAP), 0, 0));
+            chip.key = s.name;
+            chip.label.string = `${s.name} ${s.cur}/${s.max}`;
+        });
+        this._stackRoot.active = want.length > 0;
+    }
+
     refresh(d: HudData) {
         this._refreshPortrait(d.heroId);
         this._heroLabel.string = (d.heroName || d.initialPassive?.name || '').split('·').pop()!;
@@ -247,7 +291,7 @@ export class HUD extends Component {
         this._goldLabel.string = Math.floor(d.gold).toLocaleString();
         this._waveLabel.string = d.testRoom ? '战斗测试房' : `${d.chapterLabel ?? `图${d.chapter}`} · 第${d.wave}波`;
         this._difficultyLabel.string = d.testRoom ? '' : `${d.wave}/15${d.difficultyName ? ' · ' + d.difficultyName : ''}`;
-        this._refreshBoss(d); this._refreshSkills(d.skills);
+        this._refreshBoss(d); this._refreshSkills(d.skills); this._refreshStacks(d.stacks);
     }
 
     private _refreshPortrait(id?: string): void {
@@ -270,7 +314,10 @@ export class HUD extends Component {
 
     private _refreshHp(d: HudData) {
         const hR = Math.max(0, Math.min(1, d.hp / Math.max(1, d.maxHp)));
-        const sR = d.maxShield > 0 ? Math.max(0, Math.min(1, d.shield / d.maxShield)) : 0;
+        // 2026-11-12 修正：maxShield 只增不减（addShield 抬高后不回落），"当前/上限"
+        // 会把早已消耗的护盾上限一直显示在脸上——护盾数字只显示当前值；
+        // 槽满度同样只按当前护盾画（无有效上限时视为满槽）
+        const sR = d.shield > 0 ? (d.maxShield > 0 ? Math.min(1, d.shield / Math.max(1, d.maxShield)) : 1) : 0;
         const fg = this._hpBarFg; fg.clear();
         if (hR > 0) {
             fg.fillColor = hR > 0.4 ? new Color(24, 226, 190, 255)
@@ -285,7 +332,8 @@ export class HUD extends Component {
             this._vitalOutline(sf, 0, 0, this.SHIELD_W * sR, this.SHIELD_H); sf.fill();
         }
         this._hpLabel.string = `${Math.max(0, Math.ceil(d.hp))} / ${Math.round(d.maxHp)}`;
-        this._shieldLabel.string = d.maxShield > 0 ? `${Math.max(0, Math.ceil(d.shield))}/${Math.round(d.maxShield)}` : '—';
+        const shieldNow = Math.max(0, Math.ceil(d.shield));
+        this._shieldLabel.string = shieldNow > 0 ? `${shieldNow}` : '—';
     }
 
     private _refreshBoss(d: HudData) {

@@ -91,3 +91,46 @@ test('死亡意志的45%吸血通过buff叠加进吸血结算', () => {
     p.applyAttackLifesteal(100, { floatingText: { spawn() {} } });
     assert.ok(p.hp >= 145, '100实际伤害×45%应回45血(加上被动0则为45)');
 });
+
+// ── 冰霜狙击手·利亚娜（2026-11-12：Q 朝鼠标释放 + 被动穿甲弹） ──
+
+test('冰霜狙击手Q朝鼠标位置释放:弹道指向鼠标而非角色朝向', () => {
+    const liana = CHARACTERS.liana;
+    const game = makeMockGame();
+    const pool = [];
+    game.bulletPool = { spawn: (cfg) => { const o = { ...cfg }; pool.push(o); return o; } };
+    game.input = { mouse: { x: 400, y: 300 } };
+    // 玩家面朝右、鼠标在右上：Q 应朝鼠标方向（0.8, 0.6）发射
+    const p = makePlayer({ charId: 'liana', stats: { ...liana.stats } });
+    p.facingX = 1; p.facingY = 0;
+    liana.qSkill(p, game);
+    assert.equal(pool[0].vx, 720, 'vx 应为 900×0.8（朝鼠标右上）');
+    assert.equal(pool[0].vy, 540, 'vy 应为 900×0.6（朝鼠标右上）');
+    assert.equal(pool[0].pierceLeft, 999, 'Q 冰弹保持无限穿透');
+
+    // 鼠标压在玩家身上（零向量）时回退沿角色朝向发射
+    pool.length = 0;
+    game.input.mouse = { x: p.x, y: p.y };
+    liana.qSkill(p, game);
+    assert.equal(pool[0].vx, 900, '鼠标在玩家位置时回退沿朝向（右）发射');
+    assert.equal(pool[0].vy, 0);
+    // 无鼠标信息（game.input 缺失）时同样回退朝向
+    pool.length = 0;
+    delete game.input;
+    liana.qSkill(p, game);
+    assert.equal(pool[0].vx, 900, '无鼠标信息时回退沿朝向发射');
+});
+
+test('冰霜狙击手被动·穿甲弹:置位无限穿透+逐次75%衰减(普攻发射接线)', () => {
+    const liana = CHARACTERS.liana;
+    assert.match(liana.desc, /穿甲弹/, '角色描述应注明穿甲弹被动');
+    const p = makePlayer({ charId: 'liana', stats: { ...liana.stats } });
+    liana.passive(p, makeMockGame());
+    assert.equal(p.stats.apRounds, true, '被动置位穿甲弹标记');
+    assert.equal(p.stats.freezeBonus, 2.5, '冻结要害被动保留');
+    // PlayerController 普攻发射读该标记（源断言，行为衰减见 bulletcontroller 测试）
+    const fs = require('node:fs');
+    const src = fs.readFileSync(require('node:path').join(__dirname, '../../assets/scripts/entities/PlayerController.ts'), 'utf8');
+    assert.match(src, /pierceLeft: this\.stats\.apRounds \? 999 : \(this\.stats\.pierce \|\| 0\)/);
+    assert.match(src, /pierceDecay: this\.stats\.apRounds \? 0\.75 : undefined/);
+});

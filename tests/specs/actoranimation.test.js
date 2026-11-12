@@ -44,7 +44,7 @@ test('行走循环衔接，受击可打断攻击，倒下只播放一次并停�
     assert.equal(animation.play('idle', clip('idle')), true);
 });
 
-test('多技能动作同级切换且受击仍可打断', () => {
+test('多技能动作同级切换；2026-11-09 修复后受击不再打断技能(施法霸体)', () => {
     const animation = new ActorAnimation();
     const skill = actorClip('enemy_squid', 'front', 'skill');
     const skill2 = actorClip('enemy_squid', 'front', 'skill2');
@@ -53,7 +53,10 @@ test('多技能动作同级切换且受击仍可打断', () => {
     assert.equal(animation.play('skill2', skill2), true);
     assert.equal(animation.play('skill3', skill3), true);
     assert.equal(animation.action, 'skill3');
-    assert.equal(animation.play('hit', actorClip('enemy_squid', 'front', 'hit')), true);
+    // 旧断言"受击仍可打断"是卡顿来源之一(受击动画锁住施法队列),已随
+    // skill优先级 4→6 一并反转:受击只能打断 attack 及以下,不再打断施法。
+    assert.equal(animation.play('hit', actorClip('enemy_squid', 'front', 'hit')), false, '受击不应打断技能动作');
+    assert.equal(animation.action, 'skill3', '技能动作应保持');
 });
 
 test('逐帧枪口跟随精灵枢轴，朝左镜像只改变x分量', () => {
@@ -343,4 +346,23 @@ test('受击中断会在恢复后重播施放而不重复扣CD，死亡则取消
     p.takeDamage(100000, game);
     for (let i = 0; i < 30; i++) p.tick(0.05, noKeys, game);
     assert.equal(casts, 1, '死亡后队列不得继续释放');
+});
+
+// ── 2026-11-09 技能卡顿修复:skill优先级高于hit(施法打断受击/不受受击打断) ──
+
+test('技能动画可打断受击锁定,受击不再打断施法(玩家反馈"技能释放卡顿"修复)', () => {
+    const { ACTOR_ANIMATIONS } = require('../dist/data/ActorAnimationDB.js');
+    const set = ACTOR_ANIMATIONS['char_token_kai'];
+    const hitClip = set.front.hit;
+    const skillClip = set.front.skill;
+    assert.ok(hitClip && skillClip, '测试角色需有 hit/skill 动作稿');
+    const a = new ActorAnimation();
+    // 受击动画播放中（locked）:技能可立即打断——连续受击不再阻塞施法起手
+    assert.equal(a.play('hit', hitClip, true), true);
+    assert.equal(a.locked, true, '受击动画应处于锁定');
+    assert.equal(a.play('skill', skillClip, true), true, '技能动画应能打断受击锁定');
+    assert.equal(a.action, 'skill');
+    // 反向:施法动画播放中,受击不再抢占身体动画（白闪/浮字仍由渲染层反馈）
+    assert.equal(a.play('hit', hitClip, true), false, '受击动画不应打断施法');
+    assert.equal(a.action, 'skill', '施法动作应保持');
 });

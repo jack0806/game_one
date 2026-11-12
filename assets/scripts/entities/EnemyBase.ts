@@ -2435,29 +2435,35 @@ export class EnemyBase {
             game.particles?.enemySignature?.(this.type, 'skill3', this.x, this.y);
             game.floatingText?.spawn?.(this.x, this.y - 46, '紧急呼叫无人机支援！', '#ff8888', 16, true);
         }
-        // 技能1 对附近随机 5~10 个怪物治疗 40~60 血
+        // 技能1 治疗支援（2026-11-09 卡顿反馈排查重标定）：只救 300 码内血量比例
+        // 最低的 3 只（25~35 血）。旧值 5~10 只×40~60 每6秒≈每秒60+有效治疗，
+        // 低输出角色（莫提斯等）的伤害被完全抵消，表现为"怪打空血又奶回、死不掉"；
+        // 治疗是支援行为，不吃激怒CD加速（固定7秒）。
         if (this._miniCd1 <= 0) {
-            this._miniCd1 = this._mcd(6);
-            const targets = this._nearbyAllies(game, 300);
-            const n = Math.min(targets.length, Rng.int(5, 10));
+            this._miniCd1 = 7;
+            const targets = this._nearbyAllies(game, 300)
+                .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)
+                .slice(0, 3);
+            const n = targets.length;
             this._droneSupportHealTarget = n > 0 ? [targets[0].x, targets[0].y] : [player.x, player.y];
-            for (let i = 0; i < n; i++) {
-                const t = targets[i];
-                t.hp = Math.min(t.maxHp, t.hp + Rng.int(40, 60));
+            for (const t of targets) {
+                t.hp = Math.min(t.maxHp, t.hp + Rng.int(25, 35));
                 game.particles?.heal?.(t.x, t.y);
             }
             game.audio?.playSfx?.('heal');
             game.floatingText?.spawn?.(this.x, this.y - 46, '治疗支援', '#55ff88', 14, true);
         }
-        // 技能2 对附近随机 5~10 个怪物挂 150 能量盾
+        // 技能2 能量盾（同日重标定）：只给血量比例最低的 3 只挂 90 盾，
+        // 固定 9 秒不吃激怒加速——盾量不再是"第二管血"。
         if (this._miniCd2 <= 0) {
-            this._miniCd2 = this._mcd(8);
-            const targets = this._nearbyAllies(game, 300);
-            const n = Math.min(targets.length, Rng.int(5, 10));
+            this._miniCd2 = 9;
+            const targets = this._nearbyAllies(game, 300)
+                .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)
+                .slice(0, 3);
+            const n = targets.length;
             this._droneSupportShieldTarget = n > 0 ? [targets[0].x, targets[0].y] : [player.x, player.y];
-            for (let i = 0; i < n; i++) {
-                const t = targets[i];
-                t.maxShieldHp = 150; t.shieldHp = 150; t.shieldActive = true;
+            for (const t of targets) {
+                t.maxShieldHp = 90; t.shieldHp = 90; t.shieldActive = true;
                 game.particles?.shieldBlock?.(t.x, t.y, false);
             }
             game.floatingText?.spawn?.(this.x, this.y - 46, '能量盾部署', '#66ccff', 14, true);

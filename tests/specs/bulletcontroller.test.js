@@ -444,3 +444,19 @@ test('大Boss受到的暴击伤害减免25%(弹体命中链路)', () => {
     pool.update(0.016, [boss], player, game);
     assert.ok(Math.abs(boss.lastDmg - 22.5) < 1e-9, '大Boss暴击弹: 20×1.5×0.75=22.5');
 });
+
+test('穿甲弹(pierceDecay):穿透目标后弹体伤害×0.75,后续目标按衰减值结算', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const player = makePlayer();
+    const hits = [];
+    const mkEnemy = () => ({ x: 10, y: 0, radius: 10, alive: true, takeDamage(d) { hits.push(d); } });
+    const enemies = [mkEnemy(), mkEnemy(), mkEnemy()];
+    // 与冰霜狙击手被动一致：无限穿透 + 每穿透一个目标伤害×0.75
+    const b = pool.spawn({ x: 10, y: 0, vx: 0, vy: 0, damage: 100, radius: 5,
+        pierceLeft: 999, pierceDecay: 0.75, isCrit: false, hitEnemies: new Set() });
+    pool.update(0.016, enemies, player, game);
+    assert.deepEqual(hits, [100, 75, 56.25], '第一目标吃满伤害，之后每次穿透衰减为当前伤害的75%');
+    assert.equal(pool.active.length, 1, '无限穿透弹命中后继续飞行');
+    assert.ok(Math.abs(b.damage - 100 * 0.75 * 0.75 * 0.75) < 1e-9, '穿透三个目标后弹体伤害衰减为42.1875');
+});

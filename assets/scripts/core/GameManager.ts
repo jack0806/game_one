@@ -536,7 +536,7 @@ export class GameManager extends Component {
         this._economy.dropPlacement = (x, y) => safeArenaPoint(this._arena, x, y, 14);
         // _gameLayer already exists here — _initLayers() runs before _initSystems() in onLoad() —
         // so pooled bullets can get their permanent Sprite nodes parented immediately.
-        this._bullets   = new BulletPool(256, this._gameLayer);
+        this._bullets   = new BulletPool(512, this._gameLayer); // 2026-11-09 卡顿排查：256在弹幕高峰(凯尔R30发+普攻流+Boss弹幕)会耗尽，池外 new Node 同帧新建数十节点导致掉帧
         this._augMgr    = new AugmentManager();
         this._waveMgr   = new WaveManager();
 
@@ -4650,11 +4650,33 @@ export class GameManager extends Component {
             difficultyName: this._difficulty?.name,
             augments: this._augMgr.all(),
             skills: p.getSkillStates(),
+            stacks: this._collectStacks(),
             initialPassive: this._char ? { name: this._char.name, desc: this._char.desc } : undefined,
             bossHp:    this._boss?.hp,
             bossMaxHp: this._boss?.maxHp,
             bossName:  this._boss?.name,
         }
+    }
+
+    /** 底部叠层信息（HUD StackRow）：可叠层强化（_stacks/stackMax 约定）+
+     *  部分英雄技能层数（盗神赃印至多5 / 亡灵法师灵魂至多60）。 */
+    private _collectStacks(): HudData['stacks'] {
+        const out: { name: string; cur: number; max: number }[] = [];
+        for (const a of this._augMgr.all()) {
+            if (typeof (a as any)._stacks === 'number' && (a as any).stackMax > 0) {
+                out.push({ name: a.name, cur: (a as any)._stacks, max: (a as any).stackMax });
+            }
+        }
+        const p: any = this._player;
+        if (p?.stats?.klepto) {
+            const loot = (Array.isArray(p._buffs) ? p._buffs : []).find((b: any) => b.id === 'loot_mark');
+            const n = (loot?.mods?._stacks ?? 0) as number;
+            if (n > 0) out.push({ name: '赃印', cur: n, max: 5 });
+        }
+        if (p?.stats?.soulHarvest) {
+            out.push({ name: '灵魂', cur: Math.min(60, p.stats._souls || 0), max: 60 });
+        }
+        return out;
     }
 
     /** M键：暂停战斗并弹出角色属性/词条详情面板。 */
@@ -5059,7 +5081,7 @@ export class GameManager extends Component {
         summon._actorLastY = summon.y;
     }
 
-    spawnTurret(player: any, dmgMult = 1, followOwner = false, lifeOverride?: number, dropArtId?: string): void {
+    spawnTurret(player: any, dmgMult = 1, followOwner = false, lifeOverride?: number, dropArtId?: string, deployDist = 68): void {
         // 被动：炮台类词条效果×1.5（对齐 CharacterDB.ts vivian 的 desc 描述）
         const turretMult = player.stats?.turretBonus || 1;
         // 炮台军团(turret_army)：持有炮台类词条(tags含'turret')时，数量×3、
@@ -5079,7 +5101,7 @@ export class GameManager extends Component {
             // 轻微错开角度；炮台军团一次生成3座时天然展开为左/中/右阵列。
             const fanIndex = n - (spawnCount - 1) / 2;
             const deployAngle = deployAim + fanIndex * 0.62 + existingDeployed * 0.18;
-            const deployDistance = 68;
+            const deployDistance = deployDist;
             const t: any = {
                 x: followOwner
                     ? player.x + followSide * 52
@@ -5465,25 +5487,40 @@ export class GameManager extends Component {
     }
 
     /**
-     * 保命分身(海克斯32)：血量低于10%时在离主角最远的场地角落生成分身，
-     * 存续期间小怪 AI 改追分身（见 EnemyBase 的仇恨牵引），为主角解围。
-     * 持续 6 秒；同一时间最多一个。冷却（30秒）由词条 onUpdate 维护。
+     * 保命分身(海克斯32)：血量低于10%时向鼠标方向丢出一个嘲讽假人分身。
+     * 假人沿鼠标方向飞行约 0.35 秒后落定（2026-11-12 修正：旧版直接生成在
+     * 离玩家最远的场地角落，常落在画面焦点之外），落定瞬间发出嘲讽（浮字+
+     * 粒子）；存续期间小怪 AI 改追假人（见 EnemyBase 的仇恨牵引），为主角
+     * 解围。持续 6 秒；同一时间最多一个。冷却（30秒）由词条 onUpdate 维护。
      */
     spawnLifeClone(player: any): void {
         if (this._lifeClone?.alive) return;
-        const corners: [number, number][] = [
-            [40, 40], [CANVAS_W - 40, 40],
-            [40, PLAYFIELD_BOTTOM - 40], [CANVAS_W - 40, PLAYFIELD_BOTTOM - 40],
-        ];
-        let best = corners[0], bd = -1;
-        for (const c of corners) {
-            const d = Vec.dist(c[0], c[1], player.x, player.y);
-            if (d > bd) { bd = d; best = c; }
-        }
+        // 丢出方向 = 玩家→鼠标；无鼠标信息/鼠标压在身上时朝上方丢
+        const m = this._input?.mouse;
+        let [dx, dy] = m ? Vec.normalize(m.x - player.x, m.y - player.y) : [0, 0];
+        if (dx === 0 && dy === 0) [dx, dy] = [0, -1];
+        const sx = player.x, sy = player.y;
+        const tx = clamp(sx + dx * 320, 30, CANVAS_W - 30);
+        const ty = clamp(sy + dy * 320, 30, PLAYFIELD_BOTTOM - 30);
         const clone: any = {
-            x: best[0], y: best[1], r: 18, alive: true, kind: 'lifeClone', _t: 6, owner: player,
+            x: sx, y: sy, r: 18, alive: true, kind: 'lifeClone',
+            _t: 6, _fly: 0.35, _sx: sx, _sy: sy, _tx: tx, _ty: ty, _taunted: false,
+            owner: player,
         };
         clone.update = (dt: number, g: GameManager) => {
+            if (clone._fly > 0) {
+                // 飞行段：起点→落点插值；落定瞬间发出嘲讽
+                clone._fly -= dt;
+                const t = 1 - Math.max(0, clone._fly) / 0.35;
+                clone.x = clone._sx + (clone._tx - clone._sx) * t;
+                clone.y = clone._sy + (clone._ty - clone._sy) * t;
+                if (clone._fly <= 0 && !clone._taunted) {
+                    clone._taunted = true;
+                    g._floatText.spawn(clone.x, clone.y - 46, '嘲讽！', '#b18cff', 16, true);
+                    g._particles.emit?.({ x: clone.x, y: clone.y, count: 10, color: '#b18cff',
+                        speedMin: 60, speedMax: 200, lifeMin: 0.2, lifeMax: 0.4, glow: true });
+                }
+            }
             clone._t -= dt;
             if (clone._t <= 0 || !player.alive) {
                 clone.alive = false;
@@ -5492,8 +5529,8 @@ export class GameManager extends Component {
         };
         this._lifeClone = clone;
         this._turrets.push(clone);
-        this._floatText.spawn(clone.x, clone.y - 46, '保命分身！', '#b18cff', 16, true);
-        this._particles.hexActivate?.(clone.x, clone.y, '#b18cff');
+        this._floatText.spawn(player.x, player.y - 46, '保命分身！', '#b18cff', 16, true);
+        this._particles.hexActivate?.(player.x, player.y, '#b18cff');
     }
 
     despawnLifeClone(): void {
@@ -5869,7 +5906,7 @@ export class GameManager extends Component {
             case 'killSplash': p.applyBuff('drop_splash', 60, {}); p.stats.dropKillSplash = true; name('击杀溅射 60s'); break;
             case 'wingman': this.spawnTurret(p, 0.5, true, 20); name('僚机协战 20s'); break;
             case 'turret':  this.spawnTurret(p, 0.4, false, 10); name('哨戒炮 10s'); break;
-            case 'decoy':   this.spawnTurret(p, 0.05, true, 5, 'decoy'); name('诱饵假人 5s'); break;
+            case 'decoy':   this.spawnTurret(p, 0.05, false, 5, 'decoy', 200); name('诱饵假人 5s'); break; // 2026-11-09 用户调整：离玩家稍远处生成（鼠标方向200码），不再贴身跟随
             case 'pull': {
                 const target = this._enemies
                     .filter((e: any) => e.alive && (e.isElite || e.isBoss))

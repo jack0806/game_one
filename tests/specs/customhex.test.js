@@ -276,3 +276,18 @@ test('风行节奏:单帧大位移(传送/重生)不计入路程', () => {
     am.dispatchUpdate(p, 0.1, game);
     assert.ok(Math.abs(p.stats.speed - 300 * 1.02) < 1e-6, '累计100码获得1层');
 });
+
+test('保命分身改版(2026-11-12):向鼠标方向丢出飞行落定的嘲讽假人(源断言)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const src = fs.readFileSync(path.join(__dirname, '../../assets/scripts/core/GameManager.ts'), 'utf8');
+    const fn = src.slice(src.indexOf('spawnLifeClone(player'), src.indexOf('despawnLifeClone'));
+    // 丢出方向 = 玩家→鼠标；落点沿该方向约320码并钳制在场内
+    assert.match(fn, /this\._input\?\.mouse/);
+    assert.match(fn, /Vec\.normalize\(m\.x - player\.x, m\.y - player\.y\)/);
+    assert.match(fn, /clamp\(sx \+ dx \* 320, 30, CANVAS_W - 30\)/);
+    // 飞行段插值 + 落定瞬间发出嘲讽
+    assert.match(fn, /_fly: 0\.35/);
+    assert.match(fn, /'嘲讽！'/);
+    assert.ok(!fn.includes('corners'), '不再生成在离玩家最远的场地角落');
+});

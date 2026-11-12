@@ -285,7 +285,9 @@ test('战斗角色关闭auto-trim，避免裁剪框被强塞为正方形后横�
 });
 
 test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
-    assert.match(hudSource, /Math\.min\(1, d\.shield \/ d\.maxShield\)/);
+    // 2026-11-12 护盾显示修正：只显示当前护盾值（maxShield 只增不减，旧"当前/上限"误导）
+    assert.match(hudSource, /Math\.min\(1, d\.shield \/ Math\.max\(1, d\.maxShield\)\)/);
+    assert.match(hudSource, /shieldNow > 0 \? `\$\{shieldNow\}` : '—'/);
     assert.match(hudSource, /'HpFg', 95, 25/);
     assert.match(hudSource, /'ShieldFg', 114, 7/);
     assert.match(hudSource, /'HpLbl', 201, 34, 208, 22, 16/);
@@ -297,6 +299,18 @@ test('玩家生命、护盾与Boss条使用独立区域并钳制宽度', () => {
     assert.match(hudSource, /this\._portraitId !== id/);
     assert.match(hudSource, /Mask\.Type\.GRAPHICS_STENCIL/);
     assert.match(hudSource, /this\._moveHintRoot\.active = v/);
+});
+
+test('屏幕下方叠层信息行：HUD 渲染 stacks 芯片，GameManager 收集强化/英雄技能层数', () => {
+    // HUD：底部居中 StackRow + 每帧 _refreshStacks
+    assert.match(hudSource, /'StackRow', 0, -306/);
+    assert.match(hudSource, /this\._refreshStacks\(d\.stacks\)/);
+    assert.match(hudSource, /chip\.label\.string = `\$\{s\.name\} \$\{s\.cur\}\/\$\{s\.max\}`/);
+    // GameManager：_stacks/stackMax 约定的强化 + 赃印/灵魂两类英雄技能层数
+    assert.match(gameSource, /stacks: this\._collectStacks\(\)/);
+    assert.match(gameSource, /typeof \(a as any\)\._stacks === 'number' && \(a as any\)\.stackMax > 0/);
+    assert.match(gameSource, /b\.id === 'loot_mark'/);
+    assert.match(gameSource, /name: '灵魂', cur: Math\.min\(60, p\.stats\._souls \|\| 0\), max: 60/);
 });
 
 test('商店使用不透明独立面板，神秘强化作为二级模态弹窗', () => {
@@ -315,7 +329,9 @@ test('炮台使用固定俯视底座与独立旋转炮筒并保留接触阴影',
     assert.doesNotMatch(gameSource, /base\.setRotationFromEuler/);
     assert.doesNotMatch(gameSource, /Math\.sin\(this\._visualTime \* 4 \+ t\.x\)/);
     assert.match(gameSource, /const deployAim = Math\.atan2\(this\._input\.mouse\.y - player\.y/);
-    assert.match(gameSource, /const deployDistance = 68/);
+    // 2026-11-09：部署距离参数化（默认68，诱饵假人传200离玩家稍远生成）
+    assert.match(gameSource, /deployDist = 68/);
+    assert.match(gameSource, /const deployDistance = deployDist/);
     assert.match(gameSource, /fanIndex \* 0\.62/);
     assert.doesNotMatch(gameSource, /followOwner \? followSide \* 52 : \(Math\.random\(\) - 0\.5\) \* 100/);
     assert.match(gameSource, /g\.ellipse\(tx, ty - r \* 0\.72, r \* 1\.15, r \* 0\.34\)/);

@@ -303,3 +303,39 @@ test('小Boss激怒后冷却真实缩短:盾龟冲锋CD按85%重置', () => {
     assert.equal(fresh.miniEnraged, false, '满血不激怒');
     assert.ok(Math.abs(fresh._miniCd1 - 6) < 1e-9, `基准CD应为6s（实际${fresh._miniCd1}）`);
 });
+
+// ── 2026-11-09 "亡灵法师怪打不死"修复：支援无人机奶量重标定 ──
+
+test('支援无人机:治疗/护盾只救最残血3只,数值降档,且不吃激怒CD加速', () => {
+    const game = makeMockGame();
+    const drone = makeEnemy('drone_s', game);
+    drone.x = 400; drone.y = 300;
+    const player = makePlayer({ x: 900, y: 500 });
+    // 5 只残血程度不同的怪 + 1 只满血怪（不配吃奶）
+    const allies = [];
+    for (let i = 0; i < 5; i++) {
+        const a = makeEnemy('grunt', game);
+        a.x = 400 + i * 20; a.y = 300;
+        a.hp = a.maxHp * (0.1 + i * 0.15);   // 10%~70% 血
+        allies.push(a);
+    }
+    const full = makeEnemy('grunt', game);
+    full.x = 420; full.y = 300; full.hp = full.maxHp;
+    game.enemies = [...allies, full, drone];
+    drone._miniCd1 = 0; drone._miniCd2 = 99;
+    drone.miniEnraged = true;              // 激怒态：验证支援不吃加速
+    const healed = allies.filter(a => a.hp > a.maxHp * (0.1 + allies.indexOf(a) * 0.15) + 0.01);
+    drone.update(0.016, player, game);
+    assert.equal(drone._miniCd1, 7, '治疗CD固定7秒，激怒不应加速支援技能');
+    const gotHealed = allies.filter(a => a.hp > a.maxHp * (0.1 + allies.indexOf(a) * 0.15) + 0.01);
+    assert.equal(gotHealed.length, 3, `只应治疗3只最残血（实际${gotHealed.length}）`);
+    assert.equal(full.hp, full.maxHp, '满血怪不应被治疗');
+    assert.ok(gotHealed.every(a => a.hp - a.maxHp * (0.1 + allies.indexOf(a) * 0.15) <= 35), '单次治疗量 ≤35');
+    // 护盾：3 只 90 盾，CD 固定 9 秒
+    drone._miniCd2 = 0;
+    drone.update(0.016, player, game);
+    assert.equal(drone._miniCd2, 9, '护盾CD固定9秒，激怒不应加速');
+    const shielded = [...allies, full].filter(a => a.shieldActive);
+    assert.equal(shielded.length, 3, '只应给3只挂盾');
+    assert.ok(shielded.every(a => a.maxShieldHp === 90), '盾量应为90');
+});

@@ -6,6 +6,8 @@
 // 三档数值直接对应 Lv.1/2/3（"同步不同数值生成不同等级的强化"）。
 // 2026-09-19 追加元素体系：hex19 元素暴击（单档彩，集齐四元素解锁）+
 // hex20~23 风/火/土/水四元素海克斯（暴击触发元素飞弹齐射 + 元素爆炸）。
+// 2026-11-12 元素暴击改版：暴击齐射移除，元素海克斯命中直接打印记，
+// 目标身上带有 2 种不同元素印记即引发元素爆炸（见 applyElementMark）。
 // 稀有度与定价按文档：银 15-50 / 金 100-250 / 彩 500-1000，
 // 购买后同稀有度溢价 10%（彩 100%），卖出回收购买价 75%（见
 // AugmentManager / AugSelectUI / GameManager 的商店接线）。
@@ -135,20 +137,29 @@ export const ELEMENT_OF_HEX: Record<string, ElementType> = {
 };
 
 /**
- * 元素飞弹命中：给目标打元素印记；目标集齐 ≥2 种不同元素时立即产生元素爆炸，
- * 爆炸伤害 = 单枚飞弹伤害 × 2^(元素种数-1)（两种×2 / 三种×4 / 四种×8），
+ * 元素飞弹/元素海克斯命中：给目标打元素印记；目标集齐 ≥2 种不同元素时立即产生
+ * 元素爆炸（2026-11-12 改版：印记不再只来自暴击齐射飞弹，元素海克斯的命中
+ * 效果同样打印记——持有 hex19 元素暴击时，目标身上带有不同元素伤害即引爆）。
+ * 爆炸伤害 = 触发命中的伤害 × 2^(元素种数-1)（种数封顶 4，至多×8），
  * 对半径 90 码内全部敌人生效，爆炸后印记清空、可重新累积。
  *
- * 表现层为卡顿做的收敛（10-20 枚齐射落地会连续引爆）：
+ * sideEffect=false 供元素海克斯自身调用：元素附带效果（减速/灼烧等）由
+ * 各卡 onHit 自己结算，这里只打印记，避免效果重复。
+ *
+ * 表现层为卡顿做的收敛（高频命中连续引爆）：
  *  · 印记反馈用 3 粒微型火花，不再逐次弹"水/火/土/风"浮字（一轮齐射就是
  *    10-20 条 Label，浮字池和渲染都吃不消）；
  *  · 爆炸用轻量 emit 粒子（无 fx 贴图、无冲击波环对象），并按 0.12 秒窗口
- *    节流震屏/音效/浮字——连爆时只有首次出全套反馈，伤害照常全额结算。
+ *    节流震屏/音效/浮字——连爆时只有首次出全套反馈，伤害照常全额结算；
+ *  · 爆炸本体 0.5 秒节流（写入 player.stats._elemBlastCd，hex19 onUpdate
+ *    递减）：高攻速下元素海克斯每次命中都打印记，不逐击引爆；节流窗口内
+ *    印记继续累积，窗口过后下一枚印记按累积种数引爆。
  */
-export function applyElementMark(enemy: any, element: ElementType, missileDmg: number, player: any, game: any): void {
+export function applyElementMark(enemy: any, element: ElementType, missileDmg: number, player: any, game: any,
+        sideEffect = true): void {
     if (!enemy || !enemy.alive) return;
     const color = ELEMENT_TYPES[element].color;
-    applyElementSideEffect(enemy, element, missileDmg, player, game);
+    if (sideEffect) applyElementSideEffect(enemy, element, missileDmg, player, game);
     if (!enemy._elemMarks) enemy._elemMarks = new Set<string>();
     enemy._elemMarks.add(element);
     if (enemy._elemMarks.size < 2) {
@@ -156,8 +167,12 @@ export function applyElementMark(enemy: any, element: ElementType, missileDmg: n
             speedMin: 40, speedMax: 140, lifeMin: 0.15, lifeMax: 0.3, glow: true });
         return;
     }
-    const kinds = enemy._elemMarks.size;
+    const pst = player?.stats;
+    if ((pst?._elemBlastCd ?? 0) > 0) return;
+    if (pst) pst._elemBlastCd = 0.5;
+    const kinds = Math.min(enemy._elemMarks.size, 4);
     game?.achievementTracker?.elementExplosion();
+    game?.achievementTracker?.elementVolley();
     enemy._elemMarks.clear();
     const boom = Math.round(missileDmg * Math.pow(2, kinds - 1));
     // 轻量元素爆花：粒子迸发（伤害半径不变，视觉主体控制在半径 90 内）
@@ -229,79 +244,20 @@ function applyElementSideEffect(enemy: any, element: ElementType, missileDmg: nu
     }
 }
 
-/** 元素暴击齐射区间（单档彩色海克斯：10-20 枚 / 单枚 15-20 伤害）。 */
-const ELEMENT_VOLLEY: { count: [number, number]; dmg: [number, number] } = {
-    count: [10, 20], dmg: [15, 20],
-};
+/** 元素暴击齐射已随 2026-11-12 改版移除：印记改由元素海克斯命中直接附加。 */
 
 /** 八张元素海克斯 id（2026-11-09 改版：集齐任意 4 种即激活元素暴击，见 AugmentManager）。 */
 export const ELEMENT_HEX_IDS = ['hex20', 'hex21', 'hex22', 'hex23', 'hex35', 'hex36', 'hex37', 'hex38'];
 
 /**
- * 元素暴击齐射：先锁定目标、再发射。
- * 锁定规则（用户设计）：
- *  · 飞弹数 ≥ 目标数：鸽笼分配——每个目标必被锁定一枚（20 枚 19 目标时必
- *    有目标吃 2 枚），剩余飞弹随机散锁；
- *  · 飞弹数 < 目标数：整轮以 p 概率"多枚飞弹锁定同一目标"（随机 2~N 枚
- *    集中给一个随机目标，其余分散到不同目标）；p = 目标>20 ? 15% : 20%。
- * 每枚飞弹随机携带 水/火/土/风 之一，单枚伤害区间随机。
+ * 元素暴击(hex19)持有者的元素海克斯命中时调用：为目标附加本卡对应的元素
+ * 印记（sideEffect=false——减速/灼烧等附带效果由各卡 onHit 自身结算）。
+ * 未持有 hex19（p.stats.elemMarks 未置位）时不打印记，行为不变。
  */
-export function fireElementalVolley(hex: any, p: any, game: any): void {
-    void hex;
-    const band = ELEMENT_VOLLEY;
-    // 隐身/飞空的隐藏单位无敌，不参与锁定（避免整轮飞弹浪费在免疫目标上）
-    const targets = ((game?.enemies || []) as any[]).filter(e =>
-        e.alive && !e.dead && !e.invisible && !((e.mechSkyT ?? 0) > 0));
-    if (!targets.length || !game?.bullets?.spawn) return;
-    game?.achievementTracker?.elementVolley();
-    const N = Rng.int(band.count[0], band.count[1]);
-
-    // —— 先锁定：无放回抽取，保证分散时目标不重复 ——
-    const pickFrom = (pool: any[]) => pool.splice(Rng.int(0, pool.length - 1), 1)[0];
-    const locks: any[] = [];
-    if (N >= targets.length) {
-        const pool = [...targets];
-        for (let i = 0; i < Math.min(N, targets.length); i++) locks.push(pickFrom(pool));
-        while (locks.length < N) locks.push(Rng.pick(targets));
-    } else if (Rng.chance(targets.length > 20 ? 0.15 : 0.20)) {
-        const focus = Rng.pick(targets);
-        const k = Rng.int(2, N);
-        for (let i = 0; i < k; i++) locks.push(focus);
-        const rest = targets.filter(t => t !== focus);
-        while (locks.length < N && rest.length) locks.push(pickFrom(rest));
-    } else {
-        const pool = [...targets];
-        while (locks.length < N) locks.push(pickFrom(pool));
+function tryElementMark(hex: AugmentDef, p: any, enemy: any, dmg: number, game: any): void {
+    if (enemy?.alive && p?.stats?.elemMarks) {
+        applyElementMark(enemy, ELEMENT_OF_HEX[hex.id], dmg, p, game, false);
     }
-
-    // —— 再发射：飞弹不带角色弹素材（charKey 留空），渲染走"元素色能量梭"
-    // 兜底路径（带拖尾/辉光的粒子风弹体），比逐弹挂 Sprite 更省 ——
-    // 元素池 = 玩家持有的元素卡（2026-11-09 改版：不同元素飞弹效果/配色不同，
-    // 持有哪些元素就齐射哪些元素；无持有信息时兜底全八种）。
-    const heldElements = ELEMENT_HEX_IDS
-        .filter(id => (game as any)?.augmentManager?.ownedOf?.(id))
-        .map(id => ELEMENT_OF_HEX[id]);
-    const elementPool = heldElements.length ? heldElements : ELEMENT_KEYS;
-    for (const target of locks) {
-        const element = elementPool[Rng.int(0, elementPool.length - 1)];
-        const a = Rng.float(0, Math.PI * 2);
-        // 方案D 风元素Lv3「风驰」：元素飞弹同样吃弹速加成
-        const volleySpd = 400 * (1 + ((p.stats as any)?.perkSkillBulletSpeed ? (p.stats?.bulletSpeedMult || 0) : 0));
-        game.bullets.spawn({
-            x: p.x, y: p.y,
-            vx: Math.cos(a) * volleySpd, vy: Math.sin(a) * volleySpd,
-            damage: Rng.int(band.dmg[0], band.dmg[1]),
-            radius: 7, color: ELEMENT_TYPES[element].color,
-            owner: 'player',
-            lifeTime: 2.5, homing: true,
-            _homingTarget: target, element,
-        });
-    }
-    // 齐射起手粒子迸发（轻量 emit，不用重型 hexActivate）
-    game.particles?.emit?.({ x: p.x, y: p.y, count: 10, color: '#9fe8c8',
-        speedMin: 120, speedMax: 320, lifeMin: 0.2, lifeMax: 0.4, glow: true });
-    game.audio?.playSfx?.('skill_q', 0.5);
-    game.floatingText?.spawn?.(p.x, p.y - 46, `元素暴击 ×${N}`, '#9fe8c8', 14, true);
 }
 
 /** 乘区换档辅助：把 stats[key] 从 (1+旧档) 精确换到 (1+新档)。 */
@@ -603,24 +559,24 @@ export const AUGMENT_DB: AugmentDef[] = [
           }
       } },
 
-    // ─── 元素暴击 + 四元素海克斯（2026-09-19 用户设计稿） ───
-    // 元素暴击为单档彩色海克斯：只有集齐 风/火/土/水 四种元素海克斯后
-    // 才会解锁购买条件（AugmentManager.rollOptions / equip 校验）。
+    // ─── 元素暴击 + 八元素海克斯 ──────────────────────────
+    // 元素暴击为单档彩色海克斯：只有集齐任意四种元素海克斯后才会解锁购买
+    // 条件（AugmentManager.rollOptions / equip 校验）。
+    // 2026-11-12 改版：不再暴击发射元素飞弹齐射——改为持有后，元素海克斯
+    // 的每次命中都为目标附加对应元素印记；目标身上带有 2 种不同元素印记时
+    // 引发元素爆炸（当次命中伤害为基数，每多一种元素翻倍，至多×8，0.5 秒
+    // 内置冷却）。印记接线见各元素卡 onHit 的 tryElementMark。
     { id: 'hex19', index: 19, rarity: 'prismatic', icon: 'hex19', name: '元素暴击', category: '技能',
       prices: [900], values: [1],
-      descAt: () => `攻击暴击时发射 ${ELEMENT_VOLLEY.count[0]}-${ELEMENT_VOLLEY.count[1]} 枚元素飞弹` +
-          `（元素种类取自你持有的元素卡，单枚 ${ELEMENT_VOLLEY.dmg[0]}-${ELEMENT_VOLLEY.dmg[1]} 伤害，先锁定目标再发射，内置 0.5 秒冷却）；` +
-          `不同元素附带不同效果（水减速/火灼烧/土溅射/风击退/雷直伤/冰强减速/光真伤/暗吸血），` +
-          `同一目标集齐 2 种元素即产生元素爆炸，每多一种元素伤害翻倍。需先持有任意四种元素海克斯`,
-      // 齐射内置冷却：高攻速/多段技能（如 30 发炮弹的大招）逐发暴击时，
-      // 不至于一帧内叠出几十轮齐射把弹池和粒子打爆
-      _volleyCd: 0,
-      onCrit(p, _enemy, _dmg, game) {
-          if (this._volleyCd > 0) return;
-          this._volleyCd = 0.5;
-          fireElementalVolley(this, p, game);
-      },
-      onUpdate(_p, dt) { if (this._volleyCd > 0) this._volleyCd = Math.max(0, this._volleyCd - dt); } },
+      descAt: () => '持有后你的元素海克斯命中时附加对应元素印记；当目标身上带有 2 种不同元素印记时引发元素爆炸' +
+          '（以当次命中伤害为基数，每多一种元素伤害翻倍，至多×8，半径 90 码，0.5 秒内置冷却）。需先持有任意四种元素海克斯',
+      onLevel(p, _g, _from, to) { p.stats.elemMarks = !!to; },
+      onUpdate(p, dt) {
+          // 元素爆炸 0.5 秒节流窗口（applyElementMark 写入，这里递减）
+          if (p?.stats && p.stats._elemBlastCd > 0) {
+              p.stats._elemBlastCd = Math.max(0, p.stats._elemBlastCd - dt);
+          }
+      } },
 
     // ─── 四元素海克斯（集齐解锁元素暴击） ──────────────────
     { id: 'hex20', index: 20, rarity: 'silver', icon: 'hex20', name: '风元素', category: '技能',
@@ -636,7 +592,9 @@ export const AUGMENT_DB: AugmentDef[] = [
           }
           p.stats.perkWindPush = to >= 2;          // Lv2 风压（BulletController 命中读取）
           p.stats.perkSkillBulletSpeed = to >= 3;  // Lv3 风驰（hex10 导弹 / 元素齐射读取）
-      } },
+      },
+      // 本体无命中效果；持有元素暴击(hex19)时命中附加风印记
+      onHit(p, enemy, dmg, game) { tryElementMark(this, p, enemy, dmg, game); } },
 
     { id: 'hex21', index: 21, rarity: 'silver', icon: 'hex21', name: '火元素', category: '技能',
       prices: [50, 230, 880], values: [0.05, 0.06, 0.07],
@@ -649,6 +607,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       },
       onHit(_p, enemy, _dmg, _game) {
           if (!enemy?.alive) return;
+          tryElementMark(this, _p, enemy, _dmg, _game);
           const pct = this.values[(this.level ?? 1) - 1];
           const dps = enemy.hp * pct;
           const dots = enemy.dots || (enemy.dots = []);
@@ -678,6 +637,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       _qkCd: 0,
       onUpdate(p, dt) { this._qkCd = Math.max(0, this._qkCd - dt); },
       onHit(p, enemy, _dmg, game) {
+          tryElementMark(this, p, enemy, _dmg, game);
           if ((this.level ?? 1) < 3 || this._qkCd > 0 || !game?.enemies) return;
           if (p._charDef?.attackType !== 'melee') return;
           const crowd = game.enemies.filter((e: any) =>
@@ -699,6 +659,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       },
       onHit(_p, enemy, _dmg, _game) {
           if (!enemy?.alive) return;
+          tryElementMark(this, _p, enemy, _dmg, _game);
           const pct = this.values[(this.level ?? 1) - 1];
           // 与冰冻/其他减速共存：只在没有更强减速时覆盖，_slowTimer 到期自动恢复
           enemy.slowMult = Math.min(enemy.slowMult ?? 1, 1 - pct);
@@ -805,7 +766,7 @@ export const AUGMENT_DB: AugmentDef[] = [
 
     { id: 'hex32', index: 32, rarity: 'gold', icon: 'hex32', name: '保命分身', category: '技能',
       prices: [140], values: [1],
-      descAt: () => '血量低于 10% 时，在离玩家最远处生成分身吸引怪物仇恨（持续 6 秒，内置 30 秒冷却）',
+      descAt: () => '血量低于 10% 时，向鼠标方向丢出一个嘲讽假人分身吸引怪物仇恨（落定后持续 6 秒，内置 30 秒冷却）',
       _cloneCd: 0,
       onLevel(_p, game, _from, to) { this._cloneCd = 0; if (!to) game?.despawnLifeClone?.(); },
       onUpdate(p, dt, game) {
@@ -825,6 +786,8 @@ export const AUGMENT_DB: AugmentDef[] = [
       descAt: (l) => `每次被攻击命中 +1 层甲壳（每层护甲 +${[3, 4, 5][l - 1]}），上限 20 层；` +
           '卖出时已获护甲保留不退（可重新购买再次叠层）',
       _stacks: 0,
+      /** HUD 底部叠层行展示用：层数上限。 */
+      stackMax: 20,
       onLevel(p, _g, from, to) {
           // 升档对已有层数追溯差值；卖出(to=0)护甲保留、层数清零（重购从 0 叠）
           if (from > 0 && to > 0 && this._stacks > 0) {
@@ -848,6 +811,8 @@ export const AUGMENT_DB: AugmentDef[] = [
       prices: [150], values: [1],
       descAt: () => '持续移动每累计 100 码 +1 层风行（每层移速 +2%、攻速 +1%），上限 15 层；被攻击命中失去一半层数',
       _lx: undefined as any, _ly: undefined as any, _dist: 0, _stacks: 0,
+      /** HUD 底部叠层行展示用：层数上限。 */
+      stackMax: 15,
       /** 层数 from→to 的双速乘区精确换档（swapFactor 先除旧再加新）。 */
       _set(p: any, from: number, to: number) {
           swapFactor(p.stats, 'speed', from * 0.02, to * 0.02);
@@ -903,6 +868,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       onUpdate(_p, dt) { if (this._arcCd > 0) this._arcCd = Math.max(0, this._arcCd - dt); },
       onHit(p, enemy, _dmg, game) {
           if (!enemy?.alive) return;
+          tryElementMark(this, p, enemy, _dmg, game);
           const pct = this.values[(this.level ?? 1) - 1];
           const dps = (p.stats?.damage ?? 20) * pct;
           const dots = enemy.dots || (enemy.dots = []);
@@ -930,6 +896,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       },
       onHit(_p, enemy, _dmg, game) {
           if (!enemy?.alive) return;
+          tryElementMark(this, _p, enemy, _dmg, game);
           const need = this.values[(this.level ?? 1) - 1];
           enemy._frostStacks = (enemy._frostStacks ?? 0) + 1;
           if (enemy._frostStacks < need) return;
@@ -959,6 +926,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       onLevel(_p, _g, _from, to) { if (to === 0) { this._focusId = undefined; this._focusStacks = 0; } },
       onHit(p, enemy, _dmg, game) {
           if (!enemy?.alive) return;
+          tryElementMark(this, p, enemy, _dmg, game);
           const atk = p.stats?.damage ?? 20;
           const base = atk * this.values[(this.level ?? 1) - 1];
           // Lv3 聚焦：连续命中同一目标递增（换目标清零）
@@ -1001,6 +969,7 @@ export const AUGMENT_DB: AugmentDef[] = [
       },
       onHit(_p, enemy, _dmg, _game) {
           if (!enemy?.alive) return;
+          tryElementMark(this, _p, enemy, _dmg, _game);
           enemy._shadowMarkT = 2; // 独立字段：Boss 的 DoT 免疫不清腐蚀标记
       },
       onKill(p, enemy, _dmg, game) {

@@ -69,6 +69,8 @@ export interface BulletData {
     keepLock?: boolean;
     /** 元素飞弹（海克斯19 元素暴击）：命中时给目标打对应元素印记，集齐引爆。 */
     element?: 'water' | 'fire' | 'earth' | 'wind' | 'thunder' | 'frost' | 'light' | 'shadow';
+    /** 穿透衰减（冰霜狙击手被动·穿甲弹）：每穿透一个目标 b.damage 乘该系数。 */
+    pierceDecay?: number;
     trailCd?:     number;
     /** 每个池槽持有独立弹体 Sprite，友敌都不会因共享特效池耗尽而消失。 */
     node?:        Node;
@@ -113,7 +115,7 @@ function resetBullet(b: BulletData): void {
     b.attract = undefined; b._absorbed = 0; b.burstDmg = undefined;
     b.explodeRadius = undefined; b.explodeColor = undefined;
     b.speedUpAfter = undefined; b.speedUpMult = undefined; b._spedUp = false;
-    b._homingTarget = undefined; b.element = undefined; b.keepLock = false;
+    b._homingTarget = undefined; b.element = undefined; b.keepLock = false; b.pierceDecay = undefined;
     // node/sprite are left untouched here — they're permanent per-slot resources,
     // toggled active/inactive in spawn()/_release(), not reallocated.
     if (b.node) b.node.active = false;
@@ -380,7 +382,11 @@ export class BulletPool {
                         }
                         this._release(b); released = true; break;
                     }
-                    else b.pierceLeft = Math.max(0, b.pierceLeft - 1);
+                    else {
+                        b.pierceLeft = Math.max(0, b.pierceLeft - 1);
+                        // 穿甲弹：穿透目标后弹体当前伤害衰减，后续命中按衰减值结算
+                        if (b.pierceDecay) b.damage *= b.pierceDecay;
+                    }
                     } finally { leaveAchievementSource?.(); }
                 }
             }

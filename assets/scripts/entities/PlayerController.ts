@@ -989,7 +989,9 @@ export class PlayerController extends Component {
                 damage: dmg * dmgMult, radius: this._charDef.attackType === 'melee' ? 20 : 5,
                 color: this.color, owner: 'player', isCrit: isCrit || !!opts.forceCrit,
                 homing: !!opts.homing,
-                pierceLeft: this.stats.pierce || 0,
+                // 冰霜狙击手被动·穿甲弹：普攻无限穿透，穿透后伤害逐个×0.75
+                pierceLeft: this.stats.apRounds ? 999 : (this.stats.pierce || 0),
+                pierceDecay: this.stats.apRounds ? 0.75 : undefined,
                 bounceLeft: this.stats.bulletBounce || 0,
                 charKey: this.charId,
                 // 海克斯11 延展力场：远程弹寿命随射程加成延长（550px/秒）

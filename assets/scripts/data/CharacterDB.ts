@@ -448,8 +448,9 @@ export const CHARACTERS: Record<string, CharDef> = {
     },
     graf: {
         id: 'graf',
-        name: '混沌傀儡·格雷夫', icon: '🌀', color: '#cc44ff', unlocked: false,
-        unlockHint: '无尽模式撑过第50波',
+        name: '混沌傀儡·格雷夫', icon: '🌀', color: '#cc44ff',
+        // 2026-11-09 用户调整：全英雄解锁（原条件"无尽模式撑过第50波"——无尽模式已移除，永远无法自然解锁）
+        unlocked: true,
         // 持鞭近战：攻击距离=鞭长170（狂战士斧70 / 延展力场词条可继续加宽）
         attackType: 'melee', attackRange: 170, ultCd: 15,
         desc: '近战鞭击：普攻二段(75%伤害)在0.5秒后落下；洞察：每2.5秒标记周围500码怪物，命中消耗标记追加20%穿甲伤害',
@@ -578,17 +579,25 @@ export const CHARACTERS: Record<string, CharDef> = {
     },
     liana: {
         id: 'liana',
-        name: '冰霜狙击手·利亚娜', icon: '🔵', color: '#00ccff', unlocked: false,
-        unlockHint: '通关噩梦难度',
+        name: '冰霜狙击手·利亚娜', icon: '🔵', color: '#00ccff',
+        // 2026-11-09 用户调整：全英雄解锁（原条件"通关噩梦难度"）
+        unlocked: true,
         attackType: 'ranged', attackRange: 550, ultCd: 20,
-        desc: '低攻速超高单发，冻结要害×2.5伤害',
-        skills: { q: '冰晶穿刺 — 发射无限穿透冰弹并冻结命中目标', e: '冰场领域 — 在鼠标位置创造减速冰冻区域', r: '绝对零度 — 冻结全场5秒并对所有敌人造成×3伤害' },
+        desc: '低攻速超高单发，冻结要害×2.5伤害；被动·穿甲弹：子弹无限穿透，每穿透一个目标后续伤害×75%',
+        skills: { q: '冰晶穿刺 — 朝鼠标方向发射无限穿透冰弹并冻结命中目标', e: '冰场领域 — 在鼠标位置创造减速冰冻区域', r: '绝对零度 — 冻结全场5秒并对所有敌人造成×3伤害' },
         skillIcons: { q: 'skill_liana_q', e: 'skill_liana_e', r: 'skill_liana_r' },
         stats: { maxHp: 80, speed: 285, damage: 120, attackSpeed: 0.5, armor: 5, critRate: 0.15, critDmg: 1.0, pierce: 0 },
-        passive(p: any) { p.stats.freezeBonus = 2.5; },
+        passive(p: any) {
+            p.stats.freezeBonus = 2.5;
+            // 2026-11-12 被动·穿甲弹：普攻子弹无限穿透，每穿透一个目标伤害×0.75
+            p.stats.apRounds = true;
+        },
         qSkill(p: any, game: any) {
-            // 方向性技能沿角色朝向释放（不再追鼠标）
-            const [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
+            // 朝鼠标位置释放（2026-11-12 修正：此前沿角色朝向释放，站位静止时
+            // 弹道与瞄准意图失衡）；无鼠标信息/鼠标压在身上时回退角色朝向
+            const m = game.input?.mouse;
+            let [nx, ny] = m ? Vec.normalize(m.x - p.x, m.y - p.y) : [0, 0];
+            if (nx === 0 && ny === 0) [nx, ny] = p.getCastDirection?.() ?? Vec.normalize(p.facingX ?? 1, p.facingY ?? 0);
             const [mx, my] = p.getMuzzlePosition?.() ?? [p.x, p.y];
             const b = game.bulletPool.spawn({ x: mx, y: my, vx: nx * 900, vy: ny * 900, damage: p.stats.damage * 3, radius: 8, color: '#00ccff', pierceLeft: 999, lifeTime: 2, owner: 'player', charKey: p.charId, isCrit: Rng.chance(p.stats.critRate || 0) });
             b.onHitCb = (_bullet: any, enemy: any) => {

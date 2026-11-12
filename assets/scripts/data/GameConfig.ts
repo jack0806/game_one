@@ -61,6 +61,8 @@ export const CONFIG_ITEMS: ConfigItemDef[] = [
     // ── E. 海克斯商店 ──
     { key: 'augRarityLuck',      group: '海克斯商店', name: '金/彩出现权重加成', desc: '金色/彩色权重 ×此值（即时）', def: 1,    min: 0.1, max: 20,  step: 0.1 },
     { key: 'augPriceMult',       group: '海克斯商店', name: '海克斯售价系数',   desc: '三档定价乘区（即时）',         def: 1,    min: 0.1, max: 10,  step: 0.1 },
+    { key: 'augSkipGoldMult',     group: '海克斯商店', name: '跳档金卡权重',   desc: '未购买银档时三档卡金档(Lv2)刷出权重 ×此值', def: 0.5, min: 0.05, max: 1, step: 0.05 },
+    { key: 'augSkipPrismMult',    group: '海克斯商店', name: '跳档彩卡权重',   desc: '未购买银档时三档卡彩档(Lv3)刷出权重 ×此值', def: 0.25, min: 0.05, max: 1, step: 0.05 },
     { key: 'pinFeeRate',         group: '海克斯商店', name: '固定附加费率',     desc: '固定强化页签加价（即时）',     def: 0.05, min: 0,   max: 0.5, step: 0.01, percent: true },
     // ── E2. 海克斯特权（方案 D：升级档横向特权，数值曲线不动） ──
     { key: 'perkWarmupSec',      group: '海克斯特权', name: '热机时长',     desc: '加速齿轮Lv2：每波开场攻速加成秒数',   def: 5,    min: 1, max: 30,  step: 1 },

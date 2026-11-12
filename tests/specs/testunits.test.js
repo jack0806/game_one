@@ -723,7 +723,7 @@ test('毒刺鬼水母现形时发射独立毒针轮廓', () => {
 
 // ── 支援型无人机 ──
 
-test('支援型无人机治疗附近友军并部署150能量盾', () => {
+test('支援型无人机治疗附近友军并部署90能量盾(2026-11-09重标定)', () => {
     const game = makeMockGame();
     const wounded = new EnemyBase(); wounded.init('golem', 1, game);
     wounded.hp = wounded.maxHp * 0.5;
@@ -736,7 +736,7 @@ test('支援型无人机治疗附近友军并部署150能量盾', () => {
     const player = makePlayer({ x: 500, y: 500 });
     drone.update(0.1, player, game);
     assert.ok(wounded.hp > wounded.maxHp * 0.5, '友军应被治疗');
-    assert.equal(wounded.shieldHp, 150, '友军应获得150能量盾');
+    assert.equal(wounded.shieldHp, 90, '友军应获得90能量盾（重标定：旧150/5-10只对低输出角色过量）');
     assert.equal(wounded.shieldActive, true);
     assert.equal(drone.actorAnimation.action, 'skill2', '同帧治疗和护盾最终显示护盾部署峰值');
     assert.equal(drone.actorAnimation.frame, drone.actorAnimation.clip.frames.findIndex(f=>f.event==='cast'));

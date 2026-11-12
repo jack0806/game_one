@@ -10,7 +10,7 @@ const { EnemyBase } = require('../dist/entities/EnemyBase.js');
 const { AugmentManager } = require('../dist/systems/AugmentManager.js');
 const {
     AUGMENT_DB, ELEMENT_HEX_IDS, ELEMENT_OF_HEX, ELEMENT_TYPES,
-    applyElementMark, fireElementalVolley,
+    applyElementMark,
 } = require('../dist/data/AugmentDB.js');
 
 const byId = (id) => AUGMENT_DB.find(a => a.id === id);
@@ -60,25 +60,21 @@ test('元素暴击激活条件:八张元素卡中任意持有四张即解锁(不
     assert.equal(am2.elementSetComplete(), false, '三种元素不激活');
 });
 
-test('元素暴击飞弹池:只从玩家持有的元素卡中取元素(未提供持有信息时兜底全八种)', () => {
+test('元素暴击改版(2026-11-12):持有后元素卡命中附加印记,不再发射飞弹齐射', () => {
     const game = makeMockGame();
     game.bullets = { spawn(cfg) { (game._spawned ||= []).push(cfg); } };
-    game.enemies = [makeEnemy('grunt', game, 300, 0)];
-    game.augmentManager = { ownedOf: (id) => (id === 'hex35' || id === 'hex36' ? {} : undefined) };
-    fireElementalVolley({}, { x: 0, y: 0, stats: {} }, game);
-    assert.ok(game._spawned.length >= 10, `齐射应正常发射（${game._spawned.length}枚）`);
-    for (const b of game._spawned) {
-        assert.ok(b.element === 'thunder' || b.element === 'frost',
-            `持有雷/冰时飞弹元素只应出现雷/冰（出现 ${b.element}）`);
-        assert.equal(b.color, ELEMENT_TYPES[b.element].color, '飞弹颜色应随元素不同');
-    }
-    // 兜底：无持有信息（mock 简配）→ 全八种都可能
-    const game2 = makeMockGame();
-    game2.bullets = { spawn(cfg) { (game2._spawned ||= []).push(cfg); } };
-    game2.enemies = [makeEnemy('grunt', game2, 300, 0)];
-    fireElementalVolley({}, { x: 0, y: 0, stats: {} }, game2);
-    const kinds = new Set(game2._spawned.map(b => b.element));
-    assert.ok([...kinds].every(k => ALL_ELEMENTS.includes(k)), '兜底池应只含八种合法元素');
+    const am = wireAm(game);
+    const p = makeElemPlayer();
+    am.equip({ id: 'hex19', level: 1 }, p, game, { force: true });
+    am.equip({ id: 'hex35', level: 1 }, p, game);   // 雷
+    am.equip({ id: 'hex36', level: 1 }, p, game);   // 冰
+    const e = { x: 300, y: 0, radius: 12, alive: true, dead: false, taken: [],
+        takeDamage(d) { this.taken.push(d); return d; } };
+    game.enemies = [e];
+    am.dispatchHit(p, e, 100, game);
+    assert.equal((game._spawned || []).length, 0, '改版后不再发射元素飞弹齐射');
+    // 雷卡打印记(1种不引爆) → 冰卡补第二种印记 → 元素爆炸 = 当次命中100×2
+    assert.deepEqual(e.taken, [200], '集齐雷+冰两种印记按当次命中伤害×2 引爆');
 });
 
 test('差异化附带效果:水减速/冰强减速/雷直伤/光真伤/暗吸血/风击退各有不同结算', () => {
@@ -274,4 +270,64 @@ test('元素闭环:集齐四种元素后每次刷新必出元素暴击,持有后
         if (am.rollOptions(3, 10).some(c => c.id === 'hex19')) seen++;
     }
     assert.ok(seen < 200, '持有后不再每轮必出');
+});
+
+// ── 2026-11-09 商店刷出规则(玩家调整):单档卡购后不刷 + 跳档衰减 ──
+
+test('单档技能卡购后不再刷出且重复装备被拒(hex19/闪电网链)', () => {
+    const am = wireAm(makeMockGame());
+    const p = makeElemPlayer();
+    const game = makeMockGame(); game.augmentManager = am;
+    // 闪电网链(hex24 单档金):购前可刷出,购后金档池整局绝迹
+    let seenBefore = 0;
+    for (let i = 0; i < 300; i++) {
+        if (am.rollOptions(3, 10).some(c => c.id === 'hex24')) seenBefore++;
+    }
+    assert.ok(seenBefore > 0, '购前金档池可刷出闪电网链');
+    assert.equal(am.equip({ id: 'hex24', level: 1 }, p, game, { force: true }), true);
+    for (let i = 0; i < 300; i++) {
+        for (const c of am.rollOptions(3, 10)) {
+            assert.notEqual(c.id, 'hex24', '单档卡持有后不应再刷出');
+        }
+    }
+    // 重复装备被拒(无更高档可升,重复购买无效果)
+    assert.equal(am.equip({ id: 'hex24', level: 1 }, p, game), false, '单档卡重复装备应被拒');
+    assert.equal(am.equip({ id: 'hex24', level: 2 }, p, game), false, '伪高档同样被拒');
+});
+
+test('元素暴击购后同样绝迹:集齐→必出→购买→不再出现', () => {
+    const am = wireAm(makeMockGame());
+    const p = makeElemPlayer();
+    const game = makeMockGame(); game.augmentManager = am;
+    for (const id of ['hex20', 'hex21', 'hex22', 'hex23']) {
+        am.equip({ id, level: 1 }, p, makeMockGame());
+    }
+    assert.ok(am.rollOptions(3, 10).some(c => c.id === 'hex19'), '集齐后必出');
+    assert.equal(am.equip({ id: 'hex19', level: 1 }, p, game, { force: true }), true);
+    for (let i = 0; i < 100; i++) {
+        for (const c of am.rollOptions(3, 10)) {
+            assert.notEqual(c.id === 'hex19' ? c.id : '', 'hex19', '持有后整局不再刷出元素暴击');
+        }
+    }
+});
+
+test('跳档衰减:未购买银档时金档刷出率下降,持有银档后恢复(升级卡)', () => {
+    const countAt = (am, targetId, rounds) => {
+        let hits = 0;
+        for (let i = 0; i < rounds; i++) {
+            for (const c of am.rollOptions(3, 10)) {
+                if (c.id === targetId && (c.level ?? 1) === 2) hits++;
+            }
+        }
+        return hits;
+    };
+    // 未持有风元素:金档直出权重 ×0.5（采样放大到2000轮稳住方差）
+    const am0 = wireAm(makeMockGame());
+    const skip = countAt(am0, 'hex20', 2000);
+    // 持有风元素 Lv1:金档走升级卡通道权重 ×1.0
+    const am1 = wireAm(makeMockGame());
+    am1.equip({ id: 'hex20', level: 1 }, makeElemPlayer(), makeMockGame());
+    const upgrade = countAt(am1, 'hex20', 2000);
+    assert.ok(upgrade > skip * 1.2,
+        `持有银档后金档应更常刷出（跳档${skip} vs 升级${upgrade}）`);
 });

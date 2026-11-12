@@ -184,6 +184,9 @@ export class AugmentManager {
                 const elemBoost = elemLuck > 1 && ELEMENT_HEX_IDS.indexOf(a.id) >= 0 ? elemLuck : 1;
                 const owned = this.ownedOf(a.id);
                 if (owned && !a.oneShot) {
+                    // 单档技能卡已持有（元素暴击/闪电网链/天雷等）：没有更高档可升，
+                    // 重复购买既不加属性也不提供额外效果——整局不再刷出（2026-11-09 玩家调整）
+                    if (a.prices.length <= 1) continue;
                     if (a.category === '功能') {
                         // 功能性无限叠加（银档可重复购）；金档及以上只作"升级通道"——
                         // 已拥有同档及以上实例后不再刷出（特权只由最高档实例提供，
@@ -201,7 +204,14 @@ export class AugmentManager {
                 }
                 let w = 1;
                 if (a.category === '功能') w = 3;                   // 功能化强化出现率提升
-                else if (slotsFull && a.category === '技能') w = 0.3;   // 满格后新技能卡降频
+                else {
+                    if (slotsFull && a.category === '技能') w = 0.3;     // 满格后新技能卡降频
+                    // 2026-11-09 玩家调整：三档卡未购买银档时，金/彩档刷出概率下降
+                    //（越级直出更稀有——从银档买起才恢复常规升级节奏）
+                    if (a.prices.length > 1 && level >= 2) {
+                        w *= level === 2 ? GameConfig.get('augSkipGoldMult') : GameConfig.get('augSkipPrismMult');
+                    }
+                }
                 pool.push(a); poolWeights.push(w * elemBoost);
             }
             if (!pool.length) continue;
@@ -250,7 +260,9 @@ export class AugmentManager {
         const def = AUGMENT_DB.find(a => a.id === p.id) ?? p;
         if (def.oneShot && this._oneShotUsed.has(def.id)) return false;
         const owned = this.ownedOf(def.id);
-        return !(owned && def.category !== '功能' && (owned.level ?? 1) >= 3);
+        // 单档技能卡已持有后固定卡同样失效（重复购买无效果）
+        return !(owned && def.category !== '功能' &&
+            (def.prices.length <= 1 || (owned.level ?? 1) >= 3));
     }
 
     private _rollRarity(weights: Record<HexRarity, number>): HexRarity | null {
@@ -333,6 +345,9 @@ export class AugmentManager {
         } else {
             const existing = list.find(a => a.id === def.id);
             if (existing) {
+                // 单档卡已持有：无更高档可升，重复购买既不加属性也不提供
+                // 额外效果——拒绝（测试房 force 仍可授予）（2026-11-09 玩家调整）
+                if (def.prices.length <= 1 && !opts?.force) return false;
                 const from = existing.level ?? 1;
                 if (from >= 3) return false;
                 const to = Math.min(3, Math.max(from + 1, card.level ?? from + 1));
