@@ -204,6 +204,12 @@ RENDERABLES.add(Mask);
 
 // 补 Node 的 UI 构造路径需要的成员（既有字段/方法保持原样）
 Node.prototype.setPosition = function (v) { this._position = v; return this; };
+// 引擎 Node.position 为 getter（返回 Vec3）；UI 代码（如购买碎裂特效）读取 .x/.y
+Object.defineProperty(Node.prototype, 'position', {
+    get() { return this._position ?? (this._position = new Vec3(0, 0, 0)); },
+    set(v) { this._position = v; },
+    configurable: true,
+});
 Node.prototype.setScale = function () { return this; };
 Node.prototype.setSiblingIndex = function () { return this; };
 Node.prototype.getChildByName = function (name) {

@@ -90,6 +90,13 @@ export function bindAchievementGame(game: any): void {
     const player = game.player;
     const tracker: AchievementTracker = game.achievementTracker;
     if (!player || !tracker) return;
+    // 2026-11-12 修复（购买强化失败根因）：AugmentManager / game 等跨局单例的
+    // 包装只在第一局绑定一次（wrap 幂等），闭包捕获的 player 在下一局
+    // _clearRunEntities 销毁后会被 Cocos 置空属性（stats 变 null）——第二局
+    // 购买强化时 equip 包装读 player.stats.armor 直接抛 TypeError，金币已扣
+    // 而 equip 本体未执行（表现为"钱没了强化没买到"）。跨局包装一律经
+    // livePlayer() 取当前局玩家；player 自身方法的包装每局新实例重包，不受影响。
+    const livePlayer = (): any => game._player ?? player;
     for (const e of game.enemies ?? []) bindAchievementEnemy(game, e);
     // 每名角色的数据实例独立，绝不改全局CharacterDB。
     player._charDef = { ...player._charDef };
@@ -160,7 +167,8 @@ export function bindAchievementGame(game: any): void {
                     if (method === 'dispatchUpdate') a[callback](args[0], args[1] * scale, args[2]);
                     else a[callback](...args);
                     bindAchievementEmitters(game, tr.current);
-                    tr.observe(player, game);
+                    const lp = livePlayer();
+                    if (lp?.stats) tr.observe(lp, game);
                 });
             }
         });
@@ -169,10 +177,12 @@ export function bindAchievementGame(game: any): void {
         const tr = running(game);
         if (!tr) return original(...args);
         const card = args[0], level = am.ownedOf(card.id)?.level ?? 0;
-        const armor = player.stats.armor, blueprint = am.nextLevelBonus > 0;
+        // 跨局安全：旧局玩家销毁后 stats 为 null，读取前先取当前局玩家
+        const cur = livePlayer();
+        const armor = cur?.stats?.armor ?? 0, blueprint = am.nextLevelBonus > 0;
         const result = original(...args);
         if (result) {
-            tr.acquired(card, level, armor, blueprint, player, game);
+            tr.acquired(card, level, armor, blueprint, cur, game);
             bindAchievementEmitters(game, tr.source('hex', card.id));
         }
         return result;
@@ -191,8 +201,9 @@ export function bindAchievementGame(game: any): void {
         const result = original(...args); running(game)?.cloneTriggered(); return result;
     });
     wrap(game, 'grantSoul', (original, args) => {
-        const before = player.stats._souls ?? 0, result = original(...args);
-        if (!game.achievementDeathDepth) running(game)?.soul(Math.max(0, (player.stats._souls ?? 0) - before), player);
+        const cur = livePlayer();
+        const before = cur?.stats?._souls ?? 0, result = original(...args);
+        if (!game.achievementDeathDepth) running(game)?.soul(Math.max(0, (cur?.stats?._souls ?? 0) - before), cur);
         return result;
     });
     wrap(game, 'tryRaiseSkeleton', (original, args) => {

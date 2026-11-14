@@ -589,6 +589,33 @@ test('固定强化跨波次保留:开页回显已固定状态,刷新不替换固
     assert.match(gameSource, /this\._augMgr\.shopOptions\(3, Math\.max\(1, this\._waveMgr\.templateWave\(\)\)\)/);
 });
 
+test('固定强化购买即失效:UI 买入成功同步清本地固定标记,刷新不再把已购卡顶回货架', () => {
+    const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
+    // 2026-11-12 修复：equip 侧购买已 unpinCard，但 UI 本地 _pinned 未清——
+    // 本页刷新会把已购卡按原档位/原价顶回货架（_bought 已重置），可反复购买。
+    // 买入成功分支必须紧跟 _pinned.delete(aug.id)
+    assert.match(augSource, /this\._bought\.add\(aug\.id\);[\s\S]{0,240}this\._pinned\.delete\(aug\.id\);/);
+});
+
+test('购买强化卡碎裂特效:买入成功炸开稀有度色碎片,外抛重力自转淡出并自动清场', () => {
+    const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
+    // 买入成功分支触发碎裂（2026-11-12 购买反馈）
+    assert.match(augSource, /this\._cardShatter\(idx, aug\.rarity\);/);
+    // 特效层建在卡片之后、按钮/卖出弹窗之前（盖住卡面但压不过模态）
+    assert.match(augSource, /new Node\('ShatterFx'\)/);
+    // 碎片按稀有度着色，update 驱动重力下坠+自转+淡出
+    assert.match(augSource, /RARITY_COLOR\[rarity\]/);
+    assert.match(augSource, /f\.vy -= 900 \* step;/);
+    assert.match(augSource, /update\(dt: number\)/);
+    // 商店页关闭时清场，不留悬空碎片节点
+    assert.match(augSource, /hide\(\) \{ this\._clearShatter\(\); this\.node\.active = false; \}/);
+    // 购买链路抗异常（2026-11-12 线上反馈）：ctx.buy 中途抛错按实际持有回填成败，
+    // 反馈层异常不吞购买结果——杜绝"钱扣了、卡没变已售出"的隐形购买
+    assert.match(augSource, /ctx\.buy 抛异常，按实际持有状态回填/);
+    assert.match(augSource, /ok = !!this\._ctx\?\.owned\?\.\(\)\.some\(o => o\.id === aug\.id\);/);
+    assert.match(augSource, /购买反馈异常（购买本身已成功）/);
+});
+
 test('海克斯卖出=显式按钮+确认弹窗:标签本体不绑定卖出,确认后才调ctx.sell', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
     // 每格右缘内嵌「卖 N」按钮，是唯一卖出入口；按钮直接标注回收额
