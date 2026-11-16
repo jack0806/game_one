@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hexblast · 元素强化美术核验</title>
+<link rel="icon" href="data:,">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1423;color:#eaf1ff;font:15px/1.6 "Microsoft YaHei",sans-serif}main{max-width:1180px;margin:36px auto;padding:0 24px}header{display:flex;align-items:end;justify-content:space-between}h1{font-size:30px;margin:0}h2{font-size:17px;margin:0}p{color:#9aaec9;margin:8px 0 24px}.tag{color:#a2d8da;letter-spacing:3px;font:12px Consolas,monospace}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{border:1px solid #293952;border-radius:12px;background:#131f32;padding:20px}.icons{height:116px;display:flex;align-items:center;justify-content:space-evenly;background:#0e1726;border-radius:8px;margin:12px 0}.icons img{object-fit:contain}small{color:#91a5c0}canvas{display:block;width:100%;height:170px;margin:12px 0;border-radius:8px;background:#1b2838}.old{display:flex;align-items:center;gap:20px;border:1px solid #293952;border-radius:10px;margin:20px 0;padding:12px 20px}.old img{width:38px;height:38px;object-fit:contain}button{color:#e7edff;background:#223751;border:1px solid #4a637a;border-radius:6px;padding:8px 16px;cursor:pointer}.steps{display:flex;gap:10px;margin:18px 0}.card p{font-size:13px;margin:8px 0 0}.foot{margin-top:20px;font-size:12px}
+</style>
+<main>
+<header><div><div class="tag">HEXBLAST / ELEMENT AUGMENTS</div><h1>雷 · 冰 · 光 · 暗</h1></div><button id="play">暂停动画</button></header>
+<p>延续现有深蓝粗描边与分块高光。图标按 88 / 48 / 30 px 对照；特效为游戏素材叠加预览。</p>
+<div class="grid" id="cards"></div>
+<div class="steps"><button data-frame="0">起势</button><button data-frame="1">爆发</button><button data-frame="2">碎裂</button><button data-frame="3">消散</button><button id="resume">连续播放</button></div>
+<div class="old"><small>已有元素 · 风 / 火 / 土 / 水</small><img src="../assets/resources/art/ui_icon_hex20.png"><img src="../assets/resources/art/ui_icon_hex21.png"><img src="../assets/resources/art/ui_icon_hex22.png"><img src="../assets/resources/art/ui_icon_hex23.png"></div>
+<small>下排每格：左侧为普通附带命中，右侧为元素爆发。四帧取样保持实际中心枢轴与透明度，爆发层置于单位下方。</small>
+<p class="foot">素材核验页 · 用于检查缩小可读性、真实透明通道和逐帧形变；Cocos 实际战斗表现需在编辑器预览中复核。</p>
+</main>
+<script>
+const art='../assets/resources/art/';
+const defs=[['雷元素','35','#f5e36b','折角金雷 · 感电 / 静电落雷'],['冰元素','36','#a8ecff','六棱冰晶 · 寒意 / 冻结 / 碎冰'],['光元素','37','#fff3b0','暖白棱星 · 真伤 / 曝光'],['暗元素','38','#b899ff','紫晶蚀月 · 腐蚀 / 暗影之力']];
+const cards=document.getElementById('cards');
+defs.forEach(([name,id,color,desc],row)=>{const card=document.createElement('article');card.className='card';card.innerHTML=`<h2 style="color:${color}">${name}</h2><div class="icons">${[88,48,30].map(size=>`<img alt="${name} ${size}px" src="${art}ui_icon_hex${id}.png" width="${size}" height="${size}">`).join('')}</div><small>图标：88 / 48 / 30 px</small><canvas width="480" height="340" data-row="${row}" aria-label="${name}四帧特效"></canvas><p>${desc}</p>`;cards.appendChild(card)});
+const load=name=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(Error(name));image.src=art+name+'.png'});
+let playing=true,forced=null,images;
+const play=document.getElementById('play');
+play.onclick=()=>{playing=!playing;play.textContent=playing?'暂停动画':'继续动画'};
+document.getElementById('resume').onclick=()=>{forced=null;playing=true;play.textContent='暂停动画'};
+document.querySelectorAll('[data-frame]').forEach(button=>button.onclick=()=>{forced=Number(button.dataset.frame);playing=false;play.textContent='继续动画';draw(performance.now())});
+let held=0;
+function draw(time){
+    if(!images)return;
+    if(playing)held=time;
+    const frame=forced??Math.floor((held%1000)/250);
+    const [sheet,enemy,bg]=images,cell=sheet.width/4;
+    document.querySelectorAll('canvas').forEach(canvas=>{
+        const ctx=canvas.getContext('2d'),row=Number(canvas.dataset.row);
+        ctx.clearRect(0,0,480,340);ctx.globalAlpha=.55;ctx.drawImage(bg,0,0,480,340);ctx.globalAlpha=1;
+        const fx=(x,y,size,alpha)=>{ctx.globalAlpha=alpha;ctx.drawImage(sheet,frame*cell,row*cell,cell,cell,x-size/2,y-size/2,size,size);ctx.globalAlpha=1};
+        fx(335,170,224,.78);ctx.drawImage(enemy,287,122,96,96);
+        ctx.drawImage(enemy,80,122,96,96);fx(128,170,79.36,.7);
+        ctx.fillStyle='#e4e9ef';ctx.font='22px Microsoft YaHei';ctx.textAlign='center';ctx.fillText('附带命中',128,305);ctx.fillText('元素爆发',335,305);
+    });
+}
+Promise.all(['anim_fx_element_augments','enemy_grunt','bg_chapter1'].map(load)).then(result=>{images=result;window.reviewReady=true;function tick(t){draw(t);requestAnimationFrame(tick)}requestAnimationFrame(tick)});
+</script>
+</html>

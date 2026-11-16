@@ -15,6 +15,11 @@ function effectRow(sheet: string, row: number, pivot: [number, number], seconds:
 
 /** 语义key可沿用旧特效调用；实际只加载clip.sheet，不加载不存在的独立PNG。 */
 export const EFFECT_ANIMATIONS: Record<string, ActorClip> = {
+    // 元素扩展：雷弧、冰晶、棱光与暗蚀各占独立一行，四帧真实形变共用中心枢轴。
+    fx_element_thunder: effectRow('anim_fx_element_augments', 0, [0.5, 0.5], [.035, .10, .12, .105]),
+    fx_element_frost: effectRow('anim_fx_element_augments', 1, [0.5, 0.5], [.035, .10, .12, .105]),
+    fx_element_light: effectRow('anim_fx_element_augments', 2, [0.5, 0.5], [.035, .10, .12, .105]),
+    fx_element_shadow: effectRow('anim_fx_element_augments', 3, [0.5, 0.5], [.035, .10, .12, .105]),
     fx_joker_slap: {
         sheet: 'anim_fx_joker_slap', columns: 4, rows: 1, cellSize: 543, cellHeight: 724, loop: false,
         frames: [0, 1, 2, 3].map((index) => ({ index, pivot: [0.5, 0.5], seconds: [0.035, 0.07, 0.08, 0.055][index] })),

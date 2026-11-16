@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class ReviewHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         route = self.path.split('?', 1)[0]
-        if route in ['/output/playwright/icon-review.html', '/output/playwright/combat-review.html']:
+        if route in ['/output/playwright/icon-review.html', '/output/playwright/combat-review.html', '/tools/element-review.html']:
             target = ROOT / 'tools' / route.rsplit('/', 1)[-1]
             mime = 'text/html; charset=utf-8'
         elif route.startswith('/game/'):
@@ -23,7 +23,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         elif re.fullmatch(r'/output/playwright/(unit-|doc-|phase-|final-)[a-z0-9_-]+\.png', route):
             target = ROOT / route.lstrip('/')
             mime = 'image/png'
-        elif re.fullmatch(r'/assets/resources/art/ui_icon_(skill_[a-z]+_[qer]|hex\d{2})\.png', route):
+        elif route in ['/assets/resources/art/anim_fx_element_augments.png', '/assets/resources/art/enemy_grunt.png', '/assets/resources/art/bg_chapter1.png'] or re.fullmatch(r'/assets/resources/art/ui_icon_(skill_[a-z]+_[qer]|hex\d{2})\.png', route):
             target = ROOT / route.lstrip('/')
             mime = 'image/png'
         else:

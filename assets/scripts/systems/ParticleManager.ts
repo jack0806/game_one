@@ -68,6 +68,31 @@ export class ParticleManager {
     particles: Particle[] = [];
     spriteFx:  SpriteFx[] = [];
 
+    /** 元素命中用独立材质；同处连击合并，爆发优先于微型火花，不增加持续节点。 */
+    elementImpact(x: number, y: number, element: 'thunder' | 'frost' | 'light' | 'shadow', radius = 0): void {
+        const key = 'fx_element_' + element;
+        const burst = radius > 0;
+        const active = this.spriteFx.filter(fx => fx.key.startsWith('fx_element_'));
+        for (const fx of active) {
+            const dx = fx.x - x, dy = fx.y - y;
+            if (fx.key !== key || dx * dx + dy * dy > 38 * 38) continue;
+            if (burst && fx.motion !== 'burst') {
+                this.spriteFx.splice(this.spriteFx.indexOf(fx), 1);
+            } else if (fx.life > fx.maxLife * 0.45) return;
+        }
+        if (this.spriteFx.filter(fx => fx.key.startsWith('fx_element_')).length >= 12) {
+            if (!burst) return;
+            const small = this.spriteFx.find(fx => fx.key.startsWith('fx_element_') && fx.motion !== 'burst');
+            if (!small) return;
+            this.spriteFx.splice(this.spriteFx.indexOf(small), 1);
+        }
+        this.spawnSpriteFx(x, y, key, burst ? 0.36 : 0.2,
+            burst ? Math.min(1.9, Math.max(1, radius / 50)) : 0.62, undefined, {
+                motion: burst ? 'burst' : 'slash', layer: burst ? 'ground' : 'impact',
+                baseAlpha: burst ? 0.78 : 0.7,
+            });
+    }
+
     /** 生成一个一次性美术特效（按 key 淡出消失）。 */
     spawnSpriteFx(
         x: number,

@@ -818,7 +818,7 @@ export class EnemyBase {
                     if (ex) { ex.dps = spark.dps; ex.timeLeft = 2; }
                     else dots.push({ type: 'hex_thunder', dps: spark.dps, timeLeft: 2, color: '#f5e36b' });
                     game.particles?.lightning?.(this.x, this.y, best.x, best.y, '#f5e36b');
-                    game.particles?.hit?.(best.x, best.y, '#f5e36b');
+                    game.particles?.elementImpact?.(best.x, best.y, 'thunder', 45);
                 }
             }
         }

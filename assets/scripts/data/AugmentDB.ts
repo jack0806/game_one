@@ -86,11 +86,13 @@ export type AugDef = AugmentDef;
 
 // ── 通用辅助（GameManager / 技能海克斯共用） ─────────────
 
-export function spawnExplosion(player: any, x: number, y: number, dmg: number, radius: number, game: any): void {
+export function spawnExplosion(player: any, x: number, y: number, dmg: number, radius: number, game: any,
+        element?: 'thunder' | 'frost'): void {
     if (!game) return;
     const explode = () => {
-        game.particles.explode(x, y, '#ff6600', radius);
-        game.audio?.playSfx?.('explode');
+        if (element) game.particles?.elementImpact?.(x, y, element, radius);
+        else game.particles.explode(x, y, '#ff6600', radius);
+        game.audio?.playSfx?.(element === 'thunder' ? 'lightning' : element === 'frost' ? 'freeze' : 'explode');
         game.screenShake.shake(6, 0.2);
         for (const e of game.enemies) {
             if (e.alive && Vec.dist(e.x, e.y, x, y) < radius
@@ -855,7 +857,7 @@ export const AUGMENT_DB: AugmentDef[] = [
     // 与风火土水同构（银卡三档 + Lv2/Lv3 特权）；集齐任意四种元素激活元素暴击。
     // 感电走 DoT 通道、灼烧同例——大Boss负面免疫对两者同样生效（与火元素一致）；
     // 寒潮/腐蚀用独立计时字段（_frostMarkT/_shadowMarkT）绕开 Boss 的 DoT 清空。
-    // icon 为程序生成的元素色占位图（ui_icon_hex35~38），专属图标产出后覆盖同名文件替换。
+    // 雷/冰/光/暗使用独立透明图标与四帧命中特效，保留原资源名和 UUID。
     { id: 'hex35', index: 35, rarity: 'silver', icon: 'hex35', name: '雷元素', category: '技能',
       prices: [50, 230, 880], values: [0.08, 0.10, 0.12],
       descAt: (l) => `攻击命中挂「感电」2 秒：每秒造成攻击力 ${[8, 10, 12][l - 1]}% 的雷伤（重复命中刷新；Boss 免疫持续伤害）`
@@ -875,12 +877,13 @@ export const AUGMENT_DB: AugmentDef[] = [
           const ex = dots.find(d => d.type === 'hex_thunder');
           if (ex) { ex.dps = dps; ex.timeLeft = 2; }
           else dots.push({ type: 'hex_thunder', dps, timeLeft: 2, color: '#f5e36b' });
+          game?.particles?.elementImpact?.(enemy.x, enemy.y, 'thunder');
           // Lv2 静电积累：0.5s 内置冷却防高频攻击连爆
           if ((this.level ?? 1) >= 2 && this._arcCd <= 0 && Rng.chance(GameConfig.get('perkThunderArc'))) {
               this._arcCd = 0.5;
               spawnExplosion(p, enemy.x, enemy.y,
                   (p.stats?.damage ?? 20) * GameConfig.get('perkThunderArcDmg'),
-                  GameConfig.get('perkThunderArcRange'), game);
+                  GameConfig.get('perkThunderArcRange'), game, 'thunder');
               game?.floatingText?.spawn?.(enemy.x, enemy.y - 36, '静电落雷！', '#f5e36b', 14, true);
           }
       } },
@@ -899,21 +902,23 @@ export const AUGMENT_DB: AugmentDef[] = [
           tryElementMark(this, _p, enemy, _dmg, game);
           const need = this.values[(this.level ?? 1) - 1];
           enemy._frostStacks = (enemy._frostStacks ?? 0) + 1;
+          game?.particles?.elementImpact?.(enemy.x, enemy.y, 'frost');
           if (enemy._frostStacks < need) return;
           enemy._frostStacks = 0;
+          game?.particles?.elementImpact?.(enemy.x, enemy.y, 'frost', 60);
           if (enemy.isBoss) {
               enemy._frostMarkT = GameConfig.get('perkFrostBossSec'); // 独立字段，不吃 Boss DoT 清空
               game?.floatingText?.spawn?.(enemy.x, enemy.y - 46, '寒潮涌动！', '#a8ecff', 15, true);
           } else {
               enemy.frozen = Math.max(enemy.frozen, 1.2);
-              game?.particles?.coldImpact?.(enemy.x, enemy.y);
+              game?.audio?.playSfx?.('freeze');
           }
       },
       onCrit(p, enemy, _dmg, game) {
           if ((this.level ?? 1) < 3 || !enemy?.alive || (enemy.frozen ?? 0) <= 0) return;
           enemy.frozen = 0;
           spawnExplosion(p, enemy.x, enemy.y,
-              (p.stats?.damage ?? 20) * GameConfig.get('perkShatterDmg'), 70, game);
+              (p.stats?.damage ?? 20) * GameConfig.get('perkShatterDmg'), 70, game, 'frost');
           game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, '碎冰！', '#a8ecff', 16, true);
       } },
 
@@ -945,6 +950,7 @@ export const AUGMENT_DB: AugmentDef[] = [
               game?.floatingText?.spawn?.(enemy.x, enemy.y - 40, '曝光！', '#fff3b0', 15, true);
           }
           enemy.takeTrueDamage?.(base * bonus + expose, p, game);
+          game?.particles?.elementImpact?.(enemy.x, enemy.y, 'light', expose > 0 ? 50 : 0);
       } },
 
     { id: 'hex38', index: 38, rarity: 'silver', icon: 'hex38', name: '暗元素', category: '技能',
@@ -971,10 +977,12 @@ export const AUGMENT_DB: AugmentDef[] = [
           if (!enemy?.alive) return;
           tryElementMark(this, _p, enemy, _dmg, _game);
           enemy._shadowMarkT = 2; // 独立字段：Boss 的 DoT 免疫不清腐蚀标记
+          _game?.particles?.elementImpact?.(enemy.x, enemy.y, 'shadow');
       },
       onKill(p, enemy, _dmg, game) {
           if ((enemy?._shadowMarkT ?? 0) <= 0) return;
           if (p.stats?.perkShadowHeal) p.heal?.(p.stats.perkShadowHeal);
+          game?.particles?.elementImpact?.(enemy.x, enemy.y, 'shadow', 45);
           if ((this.level ?? 1) < 3 || !p.stats?.perkShadowKillReq) return;
           this._killCount++;
           game?.floatingText?.spawn?.(p.x, p.y - 40,
@@ -983,6 +991,7 @@ export const AUGMENT_DB: AugmentDef[] = [
               this._killCount = 0;
               p.applyBuff?.('shadow_power', GameConfig.get('perkShadowPowerSec'),
                   { dmgMult: 1 + GameConfig.get('perkShadowPower') });
+              game?.particles?.elementImpact?.(p.x, p.y, 'shadow', 65);
               game?.floatingText?.spawn?.(p.x, p.y - 52, '暗影之力！', '#9c7bff', 16, true);
           }
       } },
