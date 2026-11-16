@@ -4,7 +4,7 @@ import {
 } from 'cc';
 import { AugDef } from '../data/AugmentDB';
 import { RARITY_COLOR, RARITY_LABEL } from '../core/Constants';
-import { Rng } from '../core/MathUtils';
+import { AugmentCardFx, drawAugmentCardFace } from './AugmentCardFx';
 import { styleLabel } from '../core/LabelUtils';
 import { depotDropArt } from '../core/DepotStyle';
 import { applyArtSprite } from '../core/SpriteUtils';
@@ -17,6 +17,7 @@ const { ccclass } = _decorator;
 
 interface CardSlot {
     root:        Node;
+    receipt:     Node;
     bg:          Graphics;
     iconSprite:  Sprite;
     tierLabel:   Label;
@@ -41,17 +42,6 @@ interface ChipSlot {
     sellSkin: HexButtonSkin;
     sellLabel: Label;
     id:    string;
-}
-
-/** 购买碎裂特效的一片碎片：三角形多边形 + 外抛/重力/自转/淡出（update 驱动）。 */
-interface ShatterFx {
-    node:  Node;
-    g:     Graphics;
-    poly:  number[];
-    color: Color;
-    x: number; y: number; vx: number; vy: number;
-    vr: number; rot: number;
-    t: number; life: number;
 }
 
 /** 商店上下文： GameManager 提供（金币/购买/固定/刷新/卖出/继续）。 */
@@ -114,8 +104,8 @@ export class AugSelectUI extends Component {
     private _drawDim!: () => void;
     /** 购买碎裂特效层：建在卡片之后、按钮/弹窗之前——碎片盖住卡片但压不过模态。 */
     private _shatterRoot!: Node;
-    /** 飞行中的碎片（update 逐帧驱动，寿命尽自动销毁）。 */
-    private _shatterFxs: ShatterFx[] = [];
+    /** 各次购买独立播放，支持连续购买多张。 */
+    private _shatterFxs: AugmentCardFx[] = [];
     /** 标题后缀「· 开局战备包」（战备包模式显示，普通波次隐藏）。 */
     private _titleSuffix?: Label;
     private _continueLbl!: Label;
@@ -143,6 +133,7 @@ export class AugSelectUI extends Component {
     // ── public API ────────────────────────────────────────────
 
     show(options: AugDef[], ctx: AugShopCtx, starter = false) {
+        this._clearShatter();
         this._options = options;
         this._ctx     = ctx;
         this._bought  = new Set();
@@ -164,6 +155,9 @@ export class AugSelectUI extends Component {
     }
 
     hide() { this._clearShatter(); this.node.active = false; }
+
+    onDisable() { this._clearShatter(); }
+    onDestroy() { this._clearShatter(); }
 
     fitToVisible(): void {
         if (!this._dimNode) return;
@@ -249,6 +243,30 @@ export class AugSelectUI extends Component {
     }
 
     private _mkCard(idx: number, cx: number): CardSlot {
+        // 卡牌解体后只保留终端回执，避免完整的“已售出”卡面削弱碎裂感。
+        const receipt = new Node(`Receipt${idx}`); receipt.setParent(this.node);
+        receipt.setPosition(new Vec3(cx, 76, 0));
+        const receiptG = receipt.addComponent(Graphics);
+        const drawReceipt = () => {
+            receiptG.clear();
+            receiptG.strokeColor = new Color(96, 139, 158, 95); receiptG.lineWidth = 1.5;
+            for (const side of [-1, 1]) {
+                receiptG.moveTo(side * 76, 18); receiptG.lineTo(side * 86, 18);
+                receiptG.lineTo(side * 86, -18); receiptG.lineTo(side * 76, -18);
+            }
+            receiptG.stroke();
+            receiptG.strokeColor = new Color(103, 215, 205, 160); receiptG.lineWidth = 2;
+            receiptG.moveTo(-48, 0); receiptG.lineTo(-43, -5); receiptG.lineTo(-34, 6); receiptG.stroke();
+        };
+        drawReceipt(); attachEnableRedraw(receipt, drawReceipt);
+        const receiptText = new Node('Status'); receiptText.setParent(receipt);
+        receiptText.setPosition(14, 0, 0);
+        receiptText.addComponent(UITransform).setContentSize(100, 30);
+        const receiptLabel = receiptText.addComponent(Label);
+        receiptLabel.string = '已装载'; receiptLabel.fontSize = 16;
+        receiptLabel.color = new Color(142, 180, 190, 210);
+        styleLabel(receiptLabel, { outline: false });
+        receipt.active = false;
         const root = new Node(`Card${idx}`); root.setParent(this.node);
         root.setPosition(new Vec3(cx, 40, 0));
         root.addComponent(UITransform).setContentSize(this.CARD_W, this.CARD_H);
@@ -350,7 +368,7 @@ export class AugSelectUI extends Component {
         oddsLbl.color = new Color(255, 214, 90, 255);
         styleLabel(oddsLbl);
 
-        return { root, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel,
+        return { root, receipt, bg, iconSprite, tierLabel, nameLabel, descLabel, rarityLabel, priceLabel,
                  odds: oddsLbl, pinBtn, pinSkin, pinLabel };
     }
 
@@ -480,13 +498,10 @@ export class AugSelectUI extends Component {
         for (let i = 0; i < 3; i++) {
             const aug = this._options[i];
             const c   = this._cards[i];
-            if (!aug || this._bought.has(aug.id)) {
-                c.root.active = !!aug;
-                if (aug) this._paintCard(c, aug, gold, true, odds);
-                continue;
-            }
-            c.root.active = true;
-            this._paintCard(c, aug, gold, false, odds);
+            const sold = !!aug && this._bought.has(aug.id);
+            c.receipt.active = sold;
+            c.root.active = !!aug && !sold;
+            if (aug && !sold) this._paintCard(c, aug, gold, odds);
         }
 
         // 再来一次·强化版(hex29)：refreshCost() 返回 0 表示免费刷新次数未用完
@@ -506,43 +521,38 @@ export class AugSelectUI extends Component {
         this._refreshChips();
     }
 
-    private _paintCard(c: CardSlot, aug: AugDef, gold: number, sold: boolean, odds?: { silver: number; gold: number; prismatic: number }) {
+    private _paintCard(c: CardSlot, aug: AugDef, gold: number, odds?: { silver: number; gold: number; prismatic: number }) {
         const hex = RARITY_COLOR[aug.rarity] ?? '#888888';
         const col = Color.fromHEX(new Color(), hex);
 
-        c.bg.clear();
-        // 与补给商店共用蓝灰装甲底板，稀有度只占上沿色带。
-        drawHexPanel(c.bg, -this.CARD_W / 2, -this.CARD_H / 2, this.CARD_W, this.CARD_H,
-            sold ? new Color(70, 84, 96) : new Color(96, 123, 144), 255);
-        c.bg.fillColor = sold ? new Color(70, 84, 96) : col;
-        c.bg.fillRect(-this.CARD_W / 2 + 18, this.CARD_H / 2 - 6, this.CARD_W - 36, 3);
+        drawAugmentCardFace(c.bg, this.CARD_W, this.CARD_H, col);
 
         const price = aug._price ?? 0;
-        const afford = gold >= price && !sold;
+        const afford = gold >= price;
         c.rarityLabel.string = (RARITY_LABEL[aug.rarity] ?? aug.rarity) + (aug.oneShot ? ' · 一次性' : '');
         c.rarityLabel.color  = col;
         const lvl = aug.level ?? 1;
         c.tierLabel.string = aug.oneShot ? '一次性' : `Lv.${lvl}`;
         if ((aug as any)._isUpgrade) c.tierLabel.string = `升级至 Lv.${lvl}`;
-        c.nameLabel.string = sold ? '已售出' : aug.name;
+        c.nameLabel.string = aug.name;
         c.descLabel.string = aug.desc ?? '';
-        c.priceLabel.string = sold ? '已购入' : afford ? `购买 ${price} 金币` : `金币不足 · ${price}`;
+        c.priceLabel.string = afford ? `购买 ${price} 金币` : `金币不足 · ${price}`;
         c.priceLabel.color  = afford ? new Color(255, 210, 50, 255) : new Color(255, 96, 96, 255);
-        c.iconSprite.color  = sold ? new Color(120, 120, 120, 160) : Color.WHITE;
+        c.iconSprite.color  = Color.WHITE;
         applyArtSprite(c.iconSprite, `ui_icon_${aug.icon}`);
         // 右上角出现率徽标：本卡稀有度在本波的出现概率（随刷新/波次实时变化）
         if (c.odds) {
             const pct = aug.rarity === 'gold' ? odds?.gold
                 : aug.rarity === 'prismatic' ? odds?.prismatic
                 : odds?.silver;
-            c.odds.string = sold ? '' : `出现率 ${pct ?? 0}%`;
-            c.odds.node.active = !sold;
+            c.odds.string = `出现率 ${pct ?? 0}%`;
+            c.odds.node.active = true;
         }
         // 固定页签：已固定金色调；固定过的卡片售价已含一次性 +5% 附加费
         const pinned = this._pinned.has(aug.id);
         c.pinLabel.string = pinned ? '已固定' : '固定 +5%';
         c.pinSkin.setAccent(pinned ? new Color(176, 138, 44, 255) : new Color(110, 92, 40, 255));
-        c.pinBtn.active = !sold;
+        c.pinBtn.active = true;
     }
 
     private _refreshChips() {
@@ -606,11 +616,12 @@ export class AugSelectUI extends Component {
                 // 买入即解除固定（equip 侧已 unpinCard）：同步清 UI 本地固定标记——
                 // 否则本页刷新仍按固定卡把已购卡按原档位/原价顶回货架，可反复购买
                 this._pinned.delete(aug.id);
-                // 购买反馈：卡面炸开稀有度色碎片（强化卡到手即碎，重画为"已购入"）
+                // 成交后播放独立卡面快照，原卡立即退出交互与键盘焦点。
                 this._cardShatter(idx, aug.rarity);
                 this.onPickSfx?.();
             } catch (e) {
                 console.warn('[AugSelectUI] 购买反馈异常（购买本身已成功）:', e);
+                this._clearShatter();
             }
         } else {
             this.onButtonSfx?.();
@@ -619,72 +630,35 @@ export class AugSelectUI extends Component {
         if (this._bought.has(aug.id)) keyboardFocusTarget(this._cards[idx].root)?.setFocused(false);
     }
 
-    /**
-     * 购买碎裂特效（2026-11-12）：卡片位置炸出 14 片三角形碎片——起点散布
-     * 卡面，初速从卡心向外+上抛，之后重力下坠、自转、随寿命平方淡出；颜色
-     * 以稀有度色为主、装甲底板色混排。碎片挂在 _shatterRoot（卡片之上、
-     * 按钮/卖出弹窗之下），寿命 0.5-0.8 秒，update 逐帧驱动。
-     */
+    /** 只采样纯图文节点，不复制卡片/固定按钮的输入事件。 */
     private _cardShatter(idx: number, rarity: AugDef['rarity']): void {
         const card = this._cards[idx];
         if (!card || !this._shatterRoot) return;
         const col = Color.fromHEX(new Color(), RARITY_COLOR[rarity] ?? '#888888');
-        const base = card.root.position;
-        for (let i = 0; i < 14; i++) {
-            const n = new Node(`Shard${i}`); n.setParent(this._shatterRoot);
-            const fx = base.x + Rng.float(-1, 1) * (this.CARD_W / 2 - 20);
-            const fy = base.y + Rng.float(-1, 1) * (this.CARD_H / 2 - 20);
-            n.setPosition(new Vec3(fx, fy, 0));
-            const g = n.addComponent(Graphics);
-            const s = Rng.float(6, 20);
-            const poly = [0, 0,
-                s * Rng.float(0.4, 1.2), s * Rng.float(0.2, 0.7),
-                s * Rng.float(0, 0.6), s * Rng.float(0.6, 1.2)];
-            const ang = Math.atan2(fy - base.y, fx - base.x) + Rng.float(-0.4, 0.4);
-            const spd = Rng.float(180, 440);
-            this._shatterFxs.push({
-                node: n, g, poly,
-                color: Rng.chance(0.55) ? col : new Color(122, 148, 170, 255),
-                x: fx, y: fy,
-                vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd + 130,
-                vr: Rng.float(-720, 720), rot: 0,
-                t: 0, life: Rng.float(0.5, 0.8),
-            });
-        }
+        this._shatterFxs.push(new AugmentCardFx(this._shatterRoot, card.root,
+            this.CARD_W, this.CARD_H, col, [card.rarityLabel.node, card.tierLabel.node,
+                card.nameLabel.node, card.iconSprite.node, card.descLabel.node, card.priceLabel.node],
+            rarity));
     }
 
     private _clearShatter(): void {
-        for (const f of this._shatterFxs) f.node.destroy();
+        for (const f of this._shatterFxs) f.destroy();
         this._shatterFxs = [];
+        // 构造特效中途异常的半成品也要回收，不能留下一张悬空快照。
+        for (const child of this._shatterRoot?.children ?? []) {
+            child.active = false;
+            child.destroy();
+        }
     }
 
-    /** 碎片逐帧驱动：外抛+重力下坠+自转+淡出，寿命尽自动销毁（商店页关闭时由 hide 清场）。 */
     update(dt: number) {
         if (!this._shatterFxs.length) return;
-        const step = Math.min(dt, 0.05);
         try {
             for (let i = this._shatterFxs.length - 1; i >= 0; i--) {
                 const f = this._shatterFxs[i];
-                f.t += step;
-                if (f.t >= f.life) { f.node.destroy(); this._shatterFxs.splice(i, 1); continue; }
-                f.vy -= 900 * step;
-                f.x += f.vx * step; f.y += f.vy * step;
-                f.rot += f.vr * step;
-                const k = 1 - f.t / f.life;
-                f.node.setPosition(new Vec3(f.x, f.y, 0));
-                // 多边形顶点手动旋转（引擎 Node.angle 之外的桩安全路径）
-                const cos = Math.cos(f.rot), sin = Math.sin(f.rot);
-                const px = [f.poly[0], f.poly[2], f.poly[4]];
-                const py = [f.poly[1], f.poly[3], f.poly[5]];
-                f.g.clear();
-                f.g.fillColor = new Color(f.color.r, f.color.g, f.color.b, Math.floor(255 * k * k));
-                f.g.moveTo(px[0] * cos - py[0] * sin, px[0] * sin + py[0] * cos);
-                f.g.lineTo(px[1] * cos - py[1] * sin, px[1] * sin + py[1] * cos);
-                f.g.lineTo(px[2] * cos - py[2] * sin, px[2] * sin + py[2] * cos);
-                f.g.close(); f.g.fill();
+                if (f.update(dt)) { f.destroy(); this._shatterFxs.splice(i, 1); }
             }
         } catch (e) {
-            // 表现层异常只放弃特效，不逐帧刷屏
             console.warn('[AugSelectUI] 碎裂特效更新异常，已清场:', e);
             this._clearShatter();
         }
@@ -698,6 +672,7 @@ export class AugSelectUI extends Component {
         const next = this._ctx?.refresh();
         this.onButtonSfx?.();
         if (next) {
+            this._clearShatter();
             // 固定的强化不被刷新替换：保持原槽位（连同已上浮的定价）。
             const pinnedKeep = this._options.map(a => (a && this._pinned.has(a.id)) ? a : null);
             for (let i = 0; i < pinnedKeep.length && i < next.length; i++) {

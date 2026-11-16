@@ -21,6 +21,7 @@
     "assets/scripts/core/ActorCorpses.ts",
     "assets/scripts/core/ArenaGeometry.ts",
     "assets/scripts/core/Constants.ts",
+    "assets/scripts/core/CardFracture.ts",
     "assets/scripts/core/DirectionalFacing.ts",
     "assets/scripts/core/EntityVisual.ts",
     "assets/scripts/core/ImageLayout.ts",

@@ -569,7 +569,7 @@ test('海克斯卡片:左上角固定+5%页签恢复,右上角出现率徽标并
     // 每张卡右上角出现率徽标：按稀有度从 ctx.odds() 取本波概率，随刷新更新
     assert.match(augSource, /const oddsLbl = oddsN\.addComponent\(Label\)/);
     assert.match(augSource, /出现率 \$\{pct \?\? 0\}%/);
-    assert.match(augSource, /_paintCard\(c, aug, gold, (?:true|false), odds\)/);
+    assert.match(augSource, /_paintCard\(c, aug, gold, odds\)/);
     // GameManager 侧 pin 契约完整接线（UI 实际调用）
     assert.match(gameSource, /pin: \(card\) => this\._augMgr\.pinCard\(card\)/);
     // 波间商店开页仍走 shopOptions
@@ -597,15 +597,16 @@ test('固定强化购买即失效:UI 买入成功同步清本地固定标记,刷
     assert.match(augSource, /this\._bought\.add\(aug\.id\);[\s\S]{0,240}this\._pinned\.delete\(aug\.id\);/);
 });
 
-test('购买强化卡碎裂特效:买入成功炸开稀有度色碎片,外抛重力自转淡出并自动清场', () => {
+test('购买强化卡碎裂特效:买入成功解体原卡面并留下回执,关闭页面清场', () => {
     const augSource = fs.readFileSync(path.join(root, 'assets/scripts/ui/AugSelectUI.ts'), 'utf8');
     // 买入成功分支触发碎裂（2026-11-12 购买反馈）
     assert.match(augSource, /this\._cardShatter\(idx, aug\.rarity\);/);
     // 特效层建在卡片之后、按钮/卖出弹窗之前（盖住卡面但压不过模态）
     assert.match(augSource, /new Node\('ShatterFx'\)/);
-    // 碎片按稀有度着色，update 驱动重力下坠+自转+淡出
+    // 碎片按稀有度着色，原卡成交即退出交互，回执与卡面互斥
     assert.match(augSource, /RARITY_COLOR\[rarity\]/);
-    assert.match(augSource, /f\.vy -= 900 \* step;/);
+    assert.match(augSource, /c\.root\.active = !!aug && !sold/);
+    assert.match(augSource, /c\.receipt\.active = sold/);
     assert.match(augSource, /update\(dt: number\)/);
     // 商店页关闭时清场，不留悬空碎片节点
     assert.match(augSource, /hide\(\) \{ this\._clearShatter\(\); this\.node\.active = false; \}/);
