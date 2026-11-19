@@ -121,11 +121,71 @@ function resetBullet(b: BulletData): void {
     if (b.node) b.node.active = false;
 }
 
+// ── 敌人碰撞空间网格（2026-11-18 性能优化） ──────────────────
+// 怪多 + 穿透弹（骨刺/冰晶穿刺/无限穿透普攻）场景下，原实现每颗子弹每帧
+// 对全量敌人做 O(子弹×敌人) 距离扫描，且逐弹 concat 临时目标数组——
+// 数百颗活跃子弹时每帧数千次数组分配，GC 压力造成周期性卡顿。
+// 网格每帧重建一次（O(敌人数)，敌人会移动不能跨帧复用），子弹只查询
+// 邻近格子里的候选；格数组/候选数组全程复用，稳态零分配。
+const GRID_CELL = 96;
+const GRID_COLS = Math.ceil((CANVAS_W + GRID_CELL) / GRID_CELL);
+const GRID_ROWS = Math.ceil((PLAYFIELD_BOTTOM + GRID_CELL) / GRID_CELL);
+
+export class EnemyGrid {
+    private _cells: any[][] = [];
+    private _qid = 0;
+
+    constructor() {
+        for (let i = 0; i < GRID_COLS * GRID_ROWS; i++) this._cells.push([]);
+    }
+
+    /** 重建：每个目标按自身 AABB 插入所有覆盖格（负坐标/越界统一钳到边缘格）。 */
+    build(targets: any[]): void {
+        for (const cell of this._cells) cell.length = 0;
+        for (const e of targets) {
+            if (!e || e.x === undefined || e.y === undefined) continue;
+            const r = e.radius ?? 10;
+            const c0 = Math.max(0, Math.floor((e.x - r) / GRID_CELL));
+            const c1 = Math.min(GRID_COLS - 1, Math.floor((e.x + r) / GRID_CELL));
+            const r0 = Math.max(0, Math.floor((e.y - r) / GRID_CELL));
+            const r1 = Math.min(GRID_ROWS - 1, Math.floor((e.y + r) / GRID_CELL));
+            for (let row = r0; row <= r1; row++)
+                for (let col = c0; col <= c1; col++)
+                    this._cells[row * GRID_COLS + col].push(e);
+        }
+    }
+
+    /**
+     * 收集查询圆包围盒覆盖格内的全部候选到 out（复用数组，返回前已清空）。
+     * 跨多格的大体型目标用查询印章（_gridQ）去重，保证每目标至多出现一次。
+     */
+    query(x: number, y: number, r: number, out: any[]): any[] {
+        out.length = 0;
+        const qid = ++this._qid;
+        const c0 = Math.max(0, Math.floor((x - r) / GRID_CELL));
+        const c1 = Math.min(GRID_COLS - 1, Math.floor((x + r) / GRID_CELL));
+        const r0 = Math.max(0, Math.floor((y - r) / GRID_CELL));
+        const r1 = Math.min(GRID_ROWS - 1, Math.floor((y + r) / GRID_CELL));
+        for (let row = r0; row <= r1; row++)
+            for (let col = c0; col <= c1; col++)
+                for (const e of this._cells[row * GRID_COLS + col]) {
+                    if (e._gridQ === qid) continue;
+                    e._gridQ = qid;
+                    out.push(e);
+                }
+        return out;
+    }
+}
+
 export class BulletPool {
     private _pool:   BulletData[] = [];
     private _active: BulletData[] = [];
     /** Parent for pooled bullets' Sprite nodes; undefined in headless/test contexts (no Node created). */
     private _parent?: Node;
+    /** 敌人空间网格：每帧重建一次，玩家子弹碰撞只查邻近格（见 EnemyGrid）。 */
+    private _grid = new EnemyGrid();
+    /** 网格查询候选复用数组（所有子弹共用，query 内先清空）。 */
+    private _cand: any[] = [];
 
     constructor(size = 400, parent?: Node) {
         this._parent = parent;
@@ -203,6 +263,14 @@ export class BulletPool {
 
     // ── 更新（仅处理玩家/炮台子弹） ──────────────────────
     update(dt: number, enemies: any[], player: any, game: any): void {
+        // 2026-11-18 性能优化：合并目标与网格重建每帧只做一次——原实现每颗
+        // 子弹每帧都 concat 机制物目标（还要先分配一次 getEnemyMechanismTargets
+        // 数组），数百颗活跃子弹时每帧数千次临时分配，是怪多穿透弹卡顿的
+        // GC 压力源；机制物只在极少 Boss 战存在，空列表时直接用 enemies 原数组。
+        const mech = game.getEnemyMechanismTargets?.();
+        const targets = mech && mech.length ? enemies.concat(mech) : enemies;
+        // 空目标也要重建（build 先清空全部格子）：避免持有上一帧的陈旧引用
+        this._grid.build(targets);
         for (let i = this._active.length - 1; i >= 0; i--) {
             const b = this._active[i];
             if (b.isEnemyBullet || b.owner === 'enemy') continue;
@@ -289,18 +357,18 @@ export class BulletPool {
                 b.pierceLeft = (b.pierceLeft ?? 0) + 1;
             }
 
-            // 碰撞检测 vs 敌人
+            // 碰撞检测 vs 敌人：只查网格邻近格的候选（取代全量 O(子弹×敌人) 扫描；
+            // 候选数组所有子弹共用复用，跨格大目标已按查询印章去重）
             let released = false;
-            const collisionTargets = game.getEnemyMechanismTargets
-                ? enemies.concat(game.getEnemyMechanismTargets())
-                : enemies;
-            for (const e of collisionTargets) {
+            const candidates = this._grid.query(b.x, b.y, b.radius, this._cand);
+            for (const e of candidates) {
                 if (!e.alive || b.hitEnemies.has(e)) continue;
                 // 玩家子弹穿透隐身/飞空的隐藏单位：它们无敌，撞上只会被隐形"吃弹"，
                 // 还挡住射向其后方真实目标的火力（隐身结束恢复可命中）
                 if (!b.isEnemyBullet && b.owner !== 'enemy'
                     && (!!e.invisible || ((e as any).mechSkyT ?? 0) > 0)) continue;
-                if (Vec.dist2(b.x, b.y, e.x, e.y) < (b.radius + e.radius) ** 2) {
+                const hitR = b.radius + e.radius;
+                if (Vec.dist2(b.x, b.y, e.x, e.y) < hitR * hitR) {
                     const leaveAchievementSource = game.achievementTracker?.enter(b.achievementSource);
                     try {
                     b.hitEnemies.add(e);

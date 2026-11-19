@@ -2,6 +2,8 @@
 // 海克斯管理器：等级叠加 / 一次性消耗 / 定价溢价 / 卖出回退 / 满格规则
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { AugmentManager } = require('../dist/systems/AugmentManager');
 const { AUGMENT_DB } = require('../dist/data/AugmentDB');
 const { makeMockGame, makePlayer } = require('./mockGame');
@@ -342,6 +344,47 @@ test('刷新降权：金色显著低于基础货架且≤20%，彩色极小概�
     // 彩色随波次升至"合适比例"：W20 权重 12/总94 ≈ 12.8%（≤14% 容差）
     assert.ok(base.prism <= 0.14, `基础货架彩色新曲线约12.8%，实际 ${(base.prism * 100).toFixed(1)}%`);
     assert.ok(base.prism >= 0.08, `基础货架彩色应明显高于旧版4%（≥8%），实际 ${(base.prism * 100).toFixed(1)}%`);
+});
+
+test('刷新保底回升:累计刷新越多金彩越高,刷满后三档均分33/33/34(不封顶在基础货架)', () => {
+    const am = new AugmentManager();
+    const base = am.rarityWeights(20);   // W20：银48/金34/彩12
+    const start = am.refreshRarityWeights(20);
+    assert.ok(start.gold < base.gold && start.prismatic < base.prismatic, '起步仍是刷新降权（金40%/彩压顶）');
+    assert.equal(am.totalRefreshes, 0, '开局累计刷新为 0');
+    // 逐次累计刷新：金/彩权重单调不减（默认 refreshRecoverCount=12 次刷满）
+    let prevGold = start.gold, prevPrism = start.prismatic;
+    for (let i = 1; i <= 12; i++) {
+        am.recordRefresh();
+        const w = am.refreshRarityWeights(20);
+        assert.ok(w.gold >= prevGold - 1e-9, `第 ${i} 次刷新后金色权重不减`);
+        assert.ok(w.prismatic >= prevPrism - 1e-9, `第 ${i} 次刷新后彩色权重不减`);
+        prevGold = w.gold; prevPrism = w.prismatic;
+    }
+    // 刷满：三档均分 银33/金33/彩34——彩色远超基础货架(12)，不设基础上限
+    const full = am.refreshRarityWeights(20);
+    assert.ok(Math.abs(full.silver - 33) < 1e-9, '刷满后银色=33');
+    assert.ok(Math.abs(full.gold - 33) < 1e-9, '刷满后金色=33');
+    assert.ok(Math.abs(full.prismatic - 34) < 1e-9, '刷满后彩色=34');
+    assert.ok(full.prismatic > base.prismatic, '彩色超过基础货架权重（无基础上限）');
+    // 半程：线性回升，金色 = 折扣起点与目标 33 的均值
+    const half = new AugmentManager();
+    for (let i = 0; i < 6; i++) half.recordRefresh();
+    assert.ok(Math.abs(half.refreshRarityWeights(20).gold - (start.gold + 33) / 2) < 1e-9, '半程金=起点与目标均值');
+    // 超额刷新：保持在 33/33/34 不再变化
+    am.recordRefresh();
+    const over = am.refreshRarityWeights(20);
+    assert.ok(Math.abs(over.gold - 33) < 1e-9 && Math.abs(over.prismatic - 34) < 1e-9, '刷满后继续刷保持33/33/34');
+    // reset：新一局累计清零，从折扣重新起步
+    am.reset();
+    assert.equal(am.totalRefreshes, 0, 'reset 后累计刷新清零');
+    assert.ok(am.refreshRarityWeights(20).gold < base.gold, 'reset 后重新从刷新降权起步');
+    // 接线：GameManager 刷新回调（免费/付费两条路径）都要累计次数
+    const gameSource = fs.readFileSync(
+        path.join(__dirname, '../../assets/scripts/core/GameManager.ts'), 'utf8');
+    const refreshCtx = gameSource.match(/refresh: \(\) => \{[\s\S]*?\n            \},/)?.[0] ?? '';
+    assert.equal(refreshCtx.split('recordRefresh()').length - 1, 2,
+        '免费与付费刷新路径各计一次 recordRefresh()');
 });
 
 test('v4章节金币乘数:一局一章温和上调 1.0~1.75（原5.5倍通胀已压平）', () => {

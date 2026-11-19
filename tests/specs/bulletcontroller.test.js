@@ -460,3 +460,79 @@ test('穿甲弹(pierceDecay):穿透目标后弹体伤害×0.75,后续目标按�
     assert.equal(pool.active.length, 1, '无限穿透弹命中后继续飞行');
     assert.ok(Math.abs(b.damage - 100 * 0.75 * 0.75 * 0.75) < 1e-9, '穿透三个目标后弹体伤害衰减为42.1875');
 });
+
+// ── 2026-11-18 空间网格碰撞（怪多穿透弹卡顿优化） ──────────
+const { EnemyGrid } = require('../dist/entities/BulletController');
+
+function makeCrowdEnemy(x, y, r = 12) {
+    return { x, y, radius: r, alive: true, isElite: false, isBoss: false, hp: 100,
+        takeDamage(dmg) { this.hp -= dmg; return dmg; } };
+}
+
+test('EnemyGrid:build按AABB插入,query只返回邻近候选且跨格目标去重', () => {
+    const grid = new EnemyGrid();
+    const near = makeCrowdEnemy(100, 100);
+    const far = makeCrowdEnemy(1100, 600);
+    const big = makeCrowdEnemy(96, 96, 80);       // AABB 跨多格的大体型目标
+    grid.build([near, far, big]);
+    const out = [];
+    grid.query(100, 100, 6, out);
+    assert.ok(out.includes(near), '邻近小怪在候选中');
+    assert.ok(out.includes(big), '跨格大目标在候选中');
+    assert.ok(!out.includes(far), '远处敌人不在候选中');
+    assert.equal(out.length, 2, '跨格目标去重后无重复');
+    // 空 build 清空全部格子：不残留上一帧的陈旧引用
+    grid.build([]);
+    grid.query(100, 100, 6, out);
+    assert.equal(out.length, 0, '空目标重建后无候选');
+});
+
+test('穿透弹穿过密集怪群:同帧全命中,远处敌人不误伤,连续帧不重复伤害', () => {
+    const pool = new BulletPool(8);
+    const game = makeMockGame();
+    const player = makePlayer();
+    // 8 个敌人环绕弹体一圈（命中半径 6+12=18 内）
+    const crowd = [];
+    for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        crowd.push(makeCrowdEnemy(300 + Math.cos(a) * 10, 300 + Math.sin(a) * 10));
+    }
+    const far = makeCrowdEnemy(1100, 300);
+    const b = pool.spawn({ x: 300, y: 300, vx: 0, vy: 0, damage: 10, radius: 6, pierceLeft: 999, lifeTime: 2 });
+    pool.update(0.016, [...crowd, far], player, game);
+    assert.ok(crowd.every(e => e.hp === 90), '穿透弹同帧命中密集群全部 8 个敌人');
+    assert.equal(far.hp, 100, '远处敌人不被误伤');
+    assert.equal(pool.active.length, 1, '穿透弹命中后仍存活');
+    assert.equal(b.hitEnemies.size, crowd.length, '8 个敌人各记一次命中');
+    // 下一帧弹体未移动：hitEnemies 持续生效，不再重复结算
+    pool.update(0.016, [...crowd, far], player, game);
+    assert.ok(crowd.every(e => e.hp === 90), '连续帧不对已命中目标重复伤害');
+});
+
+test('网格碰撞下大体型(Boss级)目标跨格只结算一次命中', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const player = makePlayer();
+    const boss = makeCrowdEnemy(192, 300, 80);    // AABB 跨格边界两侧
+    const b = pool.spawn({ x: 192, y: 300, vx: 0, vy: 0, damage: 10, radius: 8, pierceLeft: 2, lifeTime: 2 });
+    pool.update(0.016, [boss], player, game);
+    assert.equal(boss.hp, 90, '大体型目标只扣一次血');
+    assert.equal(b.hitEnemies.size, 1, '命中去重：只记一次');
+    assert.equal(b.pierceLeft, 1, '穿透数只递减一次');
+});
+
+test('网格碰撞合并Boss机制物目标:每帧只收集一次仍可被命中', () => {
+    const pool = new BulletPool(4);
+    const game = makeMockGame();
+    const player = makePlayer();
+    let mechCalls = 0;
+    const node = makeCrowdEnemy(500, 300, 18);
+    game.getEnemyMechanismTargets = () => { mechCalls++; return [node]; };
+    pool.spawn({ x: 500, y: 300, vx: 0, vy: 0, damage: 10, radius: 5, pierceLeft: 0, lifeTime: 2 });
+    // 场上两颗子弹同帧更新：机制物列表只收集一次（原来是逐弹 concat+收集）
+    pool.spawn({ x: 700, y: 300, vx: 0, vy: 0, damage: 10, radius: 5, pierceLeft: 0, lifeTime: 2 });
+    pool.update(0.016, [], player, game);
+    assert.equal(mechCalls, 1, '机制物目标每帧只收集一次');
+    assert.equal(node.hp, 90, '机制物节点可被命中');
+    assert.equal(pool.active.length, 1, '命中节点的子弹释放，未命中的存活');
+});

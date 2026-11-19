@@ -2747,15 +2747,17 @@ export class GameManager extends Component {
                 if (this._augMgr.freeRefreshes > 0) {
                     this._augMgr.freeRefreshes--;
                     this._augOfferRefreshed = true;
-                    // 免费刷新同样走降权概率：金色只概率出、彩色极小概率
+                    // 免费刷新同样走降权概率并计入累计次数（金彩保底回升用）
+                    this._augMgr.recordRefresh();
                     return this._augMgr.rollOptions(3, this._waveMgr.wave, { refresh: true });
                 }
                 const cost = this._nextAugRefreshCost();
                 if (!this._economy.spend(cost)) return null;
                 this._augRefreshCount++;
                 this._augOfferRefreshed = true;
+                this._augMgr.recordRefresh();
                 this.goldSpentThisRun = true; // 「一毛不拔」：付费刷新同样算消费
-                // 刷新走降权概率：金色只概率出、彩色极小概率
+                // 刷新走降权概率：累计刷新越多金彩越高，直至三档均分33/33/34
                 return this._augMgr.rollOptions(3, this._waveMgr.wave, { refresh: true });
             },
             owned: () => this._augMgr.all(),

@@ -38,6 +38,9 @@ export class AugmentManager {
     freeRefreshBonus = 0;
     /** v3「变异图谱」被动：金色海克斯权重乘区（1.03；未拥有为 1）。 */
     goldWeightMult = 1;
+    /** 本局累计刷新总次数（付费 / hex29 免费 / 战备包免费都计入）：
+     *  刷新金彩保底回升用——刷得越多，刷新出的金/彩权重越高。 */
+    totalRefreshes = 0;
     /** 固定强化：已收过 +5% 附加费的海克斯 id（同一强化无论固定几次只收一次）。 */
     private _pinCharged: Set<string> = new Set();
     /** 固定强化的货架卡实例：跨波次保留，下次开页占前几张，直到购买或手动取消。 */
@@ -100,6 +103,11 @@ export class AugmentManager {
         this.boughtPerRarity[rarity] = (this.boughtPerRarity[rarity] || 0) + 1;
     }
 
+    /** 记一次刷新（付费与免费都算）：累计次数驱动刷新金/彩权重回升。 */
+    recordRefresh(): void {
+        this.totalRefreshes++;
+    }
+
     /** 卖出回收价 = 实付 × 回收率（默认 75%，后台 augSellRate 可调）。 */
     sellValue(inst: AugmentDef): number {
         return Math.round((inst.paid ?? 0) * GameConfig.get('augSellRate'));
@@ -123,16 +131,30 @@ export class AugmentManager {
     }
 
     /**
-     * 刷新后的三档稀有度权重：金色再砍到基础的 40%，彩色压到 ≤1%
+     * 刷新后的三档稀有度权重：起步金色砍到基础的 40%、彩色压到 ≤1%
      * （被砍掉的部分回填银色）——刷新只能概率出金色，极小概率出彩色。
+     * 2026-11-18 玩家二改：回升不以基础货架为上限——本局累计刷新总次数
+     * （整个关卡跨波次累计，付费/免费都算）把三档权重从折扣起点线性推向
+     * 固定目标 银33/金33/彩34，刷满 refreshRecoverCount 次后三档均分，
+     * 之后保持不变（再刷不涨也不降）。
      */
     refreshRarityWeights(wave: number): Record<HexRarity, number> {
         const base = this.rarityWeights(wave);
-        const gold = base.gold * 0.4;
-        const prismatic = Math.min(1, base.prismatic * 0.25);
+        // 折扣起点：金=基础×0.4、彩≤1，被砍部分回填银色（总量与基础一致）
+        const startGold = base.gold * 0.4;
+        const startPrism = Math.min(1, base.prismatic * 0.25);
+        const start = {
+            silver: base.silver + (base.gold - startGold) + (base.prismatic - startPrism),
+            gold: startGold,
+            prismatic: startPrism,
+        };
+        // 回升目标（玩家定稿 2026-11-18）：三档均分 银33/金33/彩34
+        const t = Math.min(1, this.totalRefreshes / GameConfig.get('refreshRecoverCount'));
+        const to = (a: number, b: number) => a + (b - a) * t;
         return {
-            silver: base.silver + (base.gold - gold) + (base.prismatic - prismatic),
-            gold, prismatic,
+            silver: to(start.silver, 33),
+            gold: to(start.gold, 33),
+            prismatic: to(start.prismatic, 34),
         };
     }
 
@@ -148,7 +170,7 @@ export class AugmentManager {
      *  · opts.firstWave（第一章第一轮）：三张卡必定全部是功能性海克斯
      *    （银档 Lv.1，数值小但可无限叠购）；
      *  · opts.refresh（付费刷新）：稀有度改走 refreshRarityWeights，
-     *    金色只概率出现、彩色极小概率。
+     *    金色只概率出现、彩色极小概率；随本局累计刷新次数回升（见上）。
      */
     rollOptions(n = 3, wave = 1, opts?: { firstWave?: boolean; refresh?: boolean; forceRarity?: HexRarity }): AugmentDef[] {
         const weights = opts?.refresh ? this.refreshRarityWeights(wave) : this.rarityWeights(wave);
@@ -449,6 +471,7 @@ export class AugmentManager {
         this.refreshCostMult = 1;
         this.freeRefreshBonus = 0;
         this.goldWeightMult = 1;
+        this.totalRefreshes = 0;
         this._pinCharged = new Set();
         this.pinnedCards = [];
     }
